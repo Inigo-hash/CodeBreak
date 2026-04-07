@@ -1,5 +1,6 @@
 import pygame
 import sys
+from src.ui.button import Button
 
 # Initialize Pygame
 pygame.init()
@@ -22,41 +23,16 @@ LIGHT_BLUE = (100, 160, 210)
 title_font = pygame.font.Font(None, 100)
 button_font = pygame.font.Font(None, 50)
 
-# Button class
-class Button:
-    def __init__(self, x, y, width, height, text, color, hover_color):
-        self.rect = pygame.Rect(x, y, width, height)
-        self.text = text
-        self.color = color
-        self.hover_color = hover_color
-        self.is_hovered = False
-    
-    def draw(self, surface):
-        # Choose color based on hover state
-        current_color = self.hover_color if self.is_hovered else self.color
-        
-        # Draw button rectangle
-        pygame.draw.rect(surface, current_color, self.rect, border_radius=10)
-        pygame.draw.rect(surface, WHITE, self.rect, 3, border_radius=10)  # Border
-        
-        # Draw button text
-        text_surface = button_font.render(self.text, True, WHITE)
-        text_rect = text_surface.get_rect(center=self.rect.center)
-        surface.blit(text_surface, text_rect)
-    
-    def check_hover(self, mouse_pos):
-        self.is_hovered = self.rect.collidepoint(mouse_pos)
-    
-    def is_clicked(self, mouse_pos, mouse_pressed):
-        return self.rect.collidepoint(mouse_pos) and mouse_pressed[0]
-
-# Create buttons
-start_button = Button(SCREEN_WIDTH//2 - 150, 300, 300, 70, "Start Game", BLUE, LIGHT_BLUE)
-settings_button = Button(SCREEN_WIDTH//2 - 150, 400, 300, 70, "Settings", BLUE, LIGHT_BLUE)
-exit_button = Button(SCREEN_WIDTH//2 - 150, 500, 300, 70, "Exit", BLUE, LIGHT_BLUE)
-
 # Main menu loop
 def main_menu():
+    from src.screens.settings import settings_screen
+    from src.screens.tutorial import tutorial_screen
+    
+    # Create buttons
+    start_button = Button(SCREEN_WIDTH//2 - 150, 300, 300, 70, "Start Game", BLUE, LIGHT_BLUE)
+    settings_button = Button(SCREEN_WIDTH//2 - 150, 400, 300, 70, "Settings", BLUE, LIGHT_BLUE)
+    exit_button = Button(SCREEN_WIDTH//2 - 150, 500, 300, 70, "Exit", BLUE, LIGHT_BLUE)
+    
     clock = pygame.time.Clock()
     running = True
     
@@ -76,18 +52,17 @@ def main_menu():
         
         # Check button clicks
         if start_button.is_clicked(mouse_pos, mouse_pressed):
-            print("Start Game clicked!")  # Replace with actual game start later
-            # For now, just show it works
+            tutorial_screen(screen)  # Go to tutorial
             
         if settings_button.is_clicked(mouse_pos, mouse_pressed):
-            print("Settings clicked!")  # Replace with settings screen later
+            settings_screen(screen)  # Go to settings
             
         if exit_button.is_clicked(mouse_pos, mouse_pressed):
             pygame.quit()
             sys.exit()
         
         # Draw everything
-        screen.fill(GRAY)  # Background
+        screen.fill(GRAY)
         
         # Draw title
         title_text = title_font.render("CodeBreak", True, WHITE)
@@ -100,8 +75,4 @@ def main_menu():
         exit_button.draw(screen)
         
         pygame.display.flip()
-        clock.tick(60)  # 60 FPS
-
-# Run the main menu
-if __name__ == "__main__":
-    main_menu()
+        clock.tick(60)

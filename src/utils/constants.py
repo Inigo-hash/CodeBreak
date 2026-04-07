@@ -1,0 +1,16 @@
+# Screen settings
+SCREEN_WIDTH = 1280
+SCREEN_HEIGHT = 720
+
+# Colors
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
+GRAY = (50, 50, 50)
+LIGHT_GRAY = (100, 100, 100)
+BLUE = (70, 130, 180)
+LIGHT_BLUE = (100, 160, 210)
+GREEN = (50, 200, 50)
+RED = (200, 50, 50)
+
+# Game settings
+FPS = 60

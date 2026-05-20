@@ -1,6 +1,7 @@
 import pygame
 import sys
 from src.screens.main_menu import main_menu
+from pytmx.util_pygame import load_pygame
 
 # Initialize Pygame
 pygame.init()

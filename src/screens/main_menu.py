@@ -1,8 +1,8 @@
 import math
 import random
 import sys
-
 import pygame
+from src.screens.game import game_screen
 
 # Initialize Pygame
 pygame.init()
@@ -236,7 +236,7 @@ def main_menu():
         hovers = [r.collidepoint(mouse_pos) for r in rects]
 
         if rects[0].collidepoint(mouse_pos) and mouse_pressed[0]:
-            tutorial_screen(screen)
+            game_screen(screen)
         if rects[1].collidepoint(mouse_pos) and mouse_pressed[0]:
             tutorial_screen(screen)
         if rects[2].collidepoint(mouse_pos) and mouse_pressed[0]:

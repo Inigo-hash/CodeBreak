@@ -13,6 +13,10 @@ SCREEN_HEIGHT = 720
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("CodeBreak - Main Menu")
 
+background = pygame.image.load("src/assets/images/mainMenuBg.png").convert()
+background = pygame.transform.scale(background, (SCREEN_WIDTH, SCREEN_HEIGHT))
+screen.blit(background, (0, 0))
+
 # Palette — dungeon + digital accents
 STONE_DARK = (28, 30, 38)
 STONE_MID = (42, 46, 58)
@@ -69,84 +73,6 @@ def _stone_texture(surf: pygame.Surface, rect: pygame.Rect, seed: int) -> None:
     pygame.draw.line(surf, hi, rect.topleft, (rect.right - 1, rect.top), 1)
     lo = tuple(max(0, c - 25) for c in STONE_DARK)
     pygame.draw.line(surf, lo, (rect.left, rect.bottom - 1), rect.bottomright, 1)
-
-
-def _draw_dungeon_bg(surf: pygame.Surface, t: float) -> None:
-    surf.fill(STONE_DARK)
-    # Stone blocks grid
-    for gy in range(0, SCREEN_HEIGHT + 80, 80):
-        for gx in range(-40, SCREEN_WIDTH + 80, 100):
-            ox = int(8 * math.sin(t * 0.3 + gy * 0.01))
-            r = pygame.Rect(gx + ox, gy, 98, 78)
-            shade = 22 + (gx + gy) % 18
-            pygame.draw.rect(surf, (shade, shade + 2, shade + 6), r)
-            pygame.draw.rect(surf, (18, 20, 28), r, 1)
-    # Arch + portal (left)
-    arch_cx, arch_cy = 140, 280
-    pygame.draw.ellipse(surf, (20, 22, 30), (arch_cx - 70, arch_cy - 120, 140, 200))
-    pygame.draw.ellipse(surf, BLUE_DEEP, (arch_cx - 55, arch_cy - 95, 110, 160), 3)
-    for i in range(6):
-        pygame.draw.ellipse(
-            surf,
-            BLUE_GLOW,
-            (arch_cx - 45 + i * 3, arch_cy - 80 + i * 5, 90 - i * 6, 130 - i * 10),
-            2,
-        )
-    glow = int(80 + 40 * math.sin(t * 2))
-    pygame.draw.circle(surf, BLUE_GLOW, (arch_cx, arch_cy + 20), 38)
-    pygame.draw.circle(surf, (120, 200, 255), (arch_cx, arch_cy + 20), 28)
-    pygame.draw.circle(surf, (200, 240, 255), (arch_cx, arch_cy + 20), 14)
-    # Crystal pedestal (center-left)
-    ped_x, ped_y = 320, 420
-    pygame.draw.rect(surf, STONE_MID, (ped_x - 40, ped_y, 80, 24))
-    pygame.draw.polygon(surf, STONE_LIGHT, [(ped_x, ped_y), (ped_x - 20, ped_y), (ped_x, ped_y - 50), (ped_x + 20, ped_y)])
-    pts = [(ped_x, ped_y - 55), (ped_x - 18, ped_y - 35), (ped_x + 18, ped_y - 35)]
-    pygame.draw.polygon(surf, (100, 200, 255), pts)
-    pygame.draw.polygon(surf, (180, 230, 255), pts, 2)
-    # Floating code snippets
-    snippets = ["{}", "< />", "0x1F", "def", "10110", "[]", "lambda"]
-    for i, snip in enumerate(snippets):
-        x = int(200 + 90 * i + 40 * math.sin(t * 0.7 + i))
-        y = int(80 + 25 * math.sin(t * 0.5 + i * 0.8) + (i % 3) * 100)
-        alpha = int(60 + 40 * math.sin(t + i))
-        col = (80 + alpha // 3, 120 + alpha // 2, 160 + alpha // 2)
-        txt = _small.render(snip, True, col)
-        surf.blit(txt, (x % (SCREEN_WIDTH - 80), y % (SCREEN_HEIGHT - 40)))
-    # Blue particles
-    rng = random.Random(42)
-    for n in range(55):
-        px = (rng.randint(0, SCREEN_WIDTH) + int(15 * math.sin(t * 1.2 + n))) % SCREEN_WIDTH
-        py = (rng.randint(0, SCREEN_HEIGHT) + int(10 * math.cos(t + n * 0.2))) % SCREEN_HEIGHT
-        pygame.draw.circle(surf, BLUE_GLOW, (px, py), rng.randint(1, 2))
-
-
-def _draw_python_emblem(surf: pygame.Surface, cx: int, cy: int, scale: float = 1.0) -> None:
-    r = int(38 * scale)
-    # Simplified dual-snake emblem
-    pygame.draw.arc(surf, PYTHON_BLUE, (cx - r - 6, cy - r, r * 2, r * 2), math.pi * 0.1, math.pi * 1.1, 8)
-    pygame.draw.arc(surf, PYTHON_YELLOW, (cx - r + 6, cy - r, r * 2, r * 2), math.pi * 1.1, math.pi * 2.1, 8)
-    pygame.draw.circle(surf, PYTHON_BLUE, (cx - 12, cy - 8), 10)
-    pygame.draw.circle(surf, PYTHON_YELLOW, (cx + 12, cy + 8), 10)
-
-
-def _draw_logo(surf: pygame.Surface, t: float) -> None:
-    lx, ly = 36, 28
-    glow = int(30 + 20 * math.sin(t * 2))
-    for radius in (120, 90, 60):
-        s = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
-        pygame.draw.circle(s, (*ORANGE_ACCENT[:3], glow), (radius, radius), radius)
-        surf.blit(s, (lx + 80 - radius, ly + 40 - radius))
-    # Crossed spears (simplified)
-    spear_col = (140, 130, 100)
-    p1 = [(lx + 200, ly + 10), (lx + 120, ly + 120), (lx + 128, ly + 128), (lx + 208, ly + 18)]
-    p2 = [(lx + 40, ly + 20), (lx + 160, ly + 130), (lx + 152, ly + 138), (lx + 32, ly + 28)]
-    pygame.draw.polygon(surf, spear_col, p1)
-    pygame.draw.polygon(surf, spear_col, p2)
-    _draw_python_emblem(surf, lx + 130, ly + 85, 1.0)
-    code = _title_large.render("CODE", True, PYTHON_BLUE)
-    brk = _title_sub.render("BREAK", True, ORANGE_ACCENT)
-    surf.blit(code, (lx + 200, ly + 50))
-    surf.blit(brk, (lx + 200 + code.get_width() + 8, ly + 58))
 
 
 def _draw_menu_icon(surf: pygame.Surface, kind: str, rect: pygame.Rect) -> None:
@@ -280,12 +206,16 @@ def main_menu():
     from src.screens.settings import settings_screen
     from src.screens.tutorial import tutorial_screen
 
-    bx, bw, bh = 48, 300, 52
-    by0 = 220
+    bw, bh = 300, 52
+    by0 = 250
     gap = 16
     rects = [
-        pygame.Rect(bx, by0 + i * (bh + gap), bw, bh) for i in range(4)
+        pygame.Rect(380, by0 + 0 * (bh + gap), bw, bh),  # START
+        pygame.Rect(380, by0 + 1 * (bh + gap), bw, bh),  # CONTINUE
+        pygame.Rect(160,  320 + 2 * (bh + gap), bw, bh),  # SETTINGS
+        pygame.Rect(160,  320 + 3 * (bh + gap), bw, bh),  # QUIT
     ]
+
     icons = ["play", "chest", "gear", "quit"]
     labels = ["START NEW GAME", "CONTINUE", "SETTINGS", "QUIT"]
     seeds = [11, 22, 33, 44]
@@ -315,8 +245,8 @@ def main_menu():
             pygame.quit()
             sys.exit()
 
-        _draw_dungeon_bg(screen, t)
-        _draw_logo(screen, t)
+        # Draw background first
+        screen.blit(background, (0, 0))
 
         for rect, label, icon, h, seed in zip(rects, labels, icons, hovers, seeds):
             _draw_stone_button(screen, rect, label, icon, h, seed)

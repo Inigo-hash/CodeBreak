@@ -13,25 +13,23 @@ def game_screen(screen):
     map_width  = tmx_data.width  * TILE_SIZE
     map_height = tmx_data.height * TILE_SIZE
 
-    # --- Build collision rects from tileset collision shapes ---
+    # --- Build collision rects from tile custom properties ---
     collision_rects = []
     for layer in tmx_data.visible_layers:
         if hasattr(layer, 'data'):
             for x, y, gid in layer:
                 if gid == 0:
                     continue
-                try:
-                    objects = tmx_data.get_tile_colliders(gid)
-                    for obj in objects:
-                        rect = pygame.Rect(
-                            x * TILE_SIZE + obj.x,
-                            y * TILE_SIZE + obj.y,
-                            obj.width,
-                            obj.height
+                props = tmx_data.get_tile_properties_by_gid(gid)
+                if props and props.get('collidable'):
+                    collision_rects.append(
+                        pygame.Rect(
+                            x * TILE_SIZE,
+                            y * TILE_SIZE,
+                            TILE_SIZE,
+                            TILE_SIZE
                         )
-                        collision_rects.append(rect)
-                except Exception:
-                    pass
+                    )
 
     # --- Player Setup ---
     SCREEN_W, SCREEN_H = screen.get_size()

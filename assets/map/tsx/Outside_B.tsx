@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <tileset version="1.10" tiledversion="1.12.1" name="Outside_B" tilewidth="16" tileheight="16" tilecount="1024" columns="32">
- <image source="D:/Downloads/Castle Looter/Castle Looter/Graphics/Tilesets/Outside_B.png" width="512" height="512"/>
+ <image source="../tiledsets/Outside_B.png" width="512" height="512"/>
  <tile id="432">
   <properties>
    <property name="collidable" type="bool" value="true"/>

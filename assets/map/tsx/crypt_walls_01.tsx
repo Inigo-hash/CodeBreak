@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <tileset version="1.10" tiledversion="1.12.1" name="crypt_walls_01" tilewidth="16" tileheight="16" tilecount="247" columns="13">
- <image source="D:/Downloads/Free_Version_V1003/Free_Version_V1003/Tilesets/crypt_walls_01.png" width="208" height="304"/>
+ <image source="../tiledsets/crypt_walls_01.png" width="208" height="304"/>
  <tile id="2">
   <objectgroup draworder="index" id="2">
    <object id="1" x="0.0625" y="0" width="15.875" height="15.875"/>

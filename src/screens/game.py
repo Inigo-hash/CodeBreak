@@ -1,9 +1,14 @@
 from pytmx.util_pygame import load_pygame
 import pygame
 import sys
+from src.settings_state import settings_state as _settings_state
 
 def game_screen(screen):
     clock = pygame.time.Clock()
+
+    pygame.mixer.music.load("assets/audios/gameStage1Bgm.mp3")  
+    pygame.mixer.music.set_volume(_settings_state["music_vol"])  # ← use saved volume                  
+    pygame.mixer.music.play(-1)
 
     # --- Load Map ---
     tmx_data = load_pygame("assets/map/tmx/basic.tmx")
@@ -97,6 +102,7 @@ def game_screen(screen):
                 sys.exit()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
+                    pygame.mixer.music.stop()
                     return
 
         # --- Movement ---

@@ -3,6 +3,7 @@ import random
 import sys
 import pygame
 from src.screens.game import game_screen
+from src.settings_state import settings_state as _settings_state
 
 # Initialize Pygame
 pygame.init()
@@ -134,15 +135,6 @@ def _draw_robot_tip(surf: pygame.Surface, t: float) -> None:
     for i, line in enumerate(tip_lines):
         surf.blit(_tip_font.render(line, True, GREEN_TIP), (tip_r.left + 12, tip_r.top + 10 + i * 22))
 
-# Settings state (kept outside so values persist)
-_settings_state = {
-    "music_vol": 0.55,
-    "sfx_vol": 0.45,
-    "themes": ["GREEN", "BLUE", "ORANGE", "PURPLE"],
-    "theme_index": 0,
-    "dragging_music": False,
-    "dragging_sfx": False,
-}
 
 def _draw_interactive_settings(surf: pygame.Surface, mouse_pos, show: bool) -> bool:
     s = _settings_state
@@ -251,7 +243,7 @@ def main_menu():
     logo = pygame.transform.scale(logo, (620, 400))
     running = True
 
-    pygame.mixer.music.load("assets/audios/mainMenuBg.mp3")
+    pygame.mixer.music.load("assets/audios/mainMenuBgm.mp3")
     pygame.mixer.music.set_volume(0.5)
     pygame.mixer.music.play(-1)  # -1 means loop forever
 
@@ -268,6 +260,8 @@ def main_menu():
                 if rects[0].collidepoint(event.pos):
                     pygame.mixer.music.stop()
                     game_screen(screen)
+                    pygame.mixer.music.load("assets/audios/mainMenuBgm.mp3")  # ← add
+                    pygame.mixer.music.set_volume(0.5)                         # ← add
                     pygame.mixer.music.play(-1) # resume when back
                 if rects[1].collidepoint(event.pos):
                     pygame.mixer.music.stop()

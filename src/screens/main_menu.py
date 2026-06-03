@@ -31,7 +31,7 @@ METAL_FRAME = (90, 94, 110)
 ROBOT_BLUE = (70, 140, 220)
 
 # Fonts
-_button_font = pygame.font.SysFont("consolas", 22, bold=True)
+_button_font = pygame.font.SysFont("consolas", 26, bold=True)
 _small = pygame.font.SysFont("consolas", 18)
 _tip_font = pygame.font.SysFont("consolas", 17)
 
@@ -223,15 +223,17 @@ def main_menu():
 
     show_settings = False
 
-    bw, bh = 300, 52
-    by0 = 340
+    bw, bh = 380, 64
+    by0 = SCREEN_HEIGHT // 2 - 80
     gap = 16
 
+    center_x = SCREEN_WIDTH // 2 - bw // 2   # horizontally centered
+
     rects = [
-        pygame.Rect(480, by0 + 0 * (bh + gap), bw, bh),  # START
-        pygame.Rect(480, by0 + 1 * (bh + gap), bw, bh),  # CONTINUE
-        pygame.Rect(240, 460 + 2 * (bh + gap), bw, bh),  # SETTINGS
-        pygame.Rect(240, 460 + 3 * (bh + gap), bw, bh),  # QUIT
+        pygame.Rect(center_x, by0 + 0 * (bh + gap), bw, bh),  # START
+        pygame.Rect(center_x, by0 + 1 * (bh + gap), bw, bh),  # CONTINUE
+        pygame.Rect(center_x, by0 + 2 * (bh + gap), bw, bh),  # SETTINGS
+        pygame.Rect(center_x, by0 + 3 * (bh + gap), bw, bh),  # QUIT
     ]
 
     icons = ["play", "chest", "gear", "quit"]
@@ -274,7 +276,7 @@ def main_menu():
 
 
         screen.blit(background, (0, 0))
-        screen.blit(logo, (190, 0))
+        screen.blit(logo, (SCREEN_WIDTH // 2 - logo.get_width() // 2, 0))
 
         for rect, label, icon, h, seed in zip(rects, labels, icons, hovers, seeds):
             _draw_stone_button(screen, rect, label, icon, h, seed)

@@ -176,6 +176,7 @@ def _draw_interactive_settings(surf: pygame.Surface, mouse_pos, show: bool) -> b
 
     if s["dragging_music"]:
         s["music_vol"] = max(0.0, min(1.0, (mouse_pos[0] - music_bar.left) / music_bar.width))
+        pygame.mixer.music.set_volume(s["music_vol"]) # update volume immediately
     if s["dragging_sfx"]:
         s["sfx_vol"] = max(0.0, min(1.0, (mouse_pos[0] - sfx_bar.left) / sfx_bar.width))
 
@@ -250,6 +251,10 @@ def main_menu():
     logo = pygame.transform.scale(logo, (620, 400))
     running = True
 
+    pygame.mixer.music.load("assets/audios/mainMenuBg.mp3")
+    pygame.mixer.music.set_volume(0.5)
+    pygame.mixer.music.play(-1)  # -1 means loop forever
+
     while running:
         t = pygame.time.get_ticks() / 1000.0
         mouse_pos = pygame.mouse.get_pos()
@@ -261,8 +266,11 @@ def main_menu():
                 sys.exit()
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if rects[0].collidepoint(event.pos):
+                    pygame.mixer.music.stop()
                     game_screen(screen)
+                    pygame.mixer.music.play(-1) # resume when back
                 if rects[1].collidepoint(event.pos):
+                    pygame.mixer.music.stop()
                     tutorial_screen(screen)
                 if rects[2].collidepoint(event.pos):
                     show_settings = not show_settings

@@ -146,7 +146,7 @@ _settings_state = {
 
 def _draw_interactive_settings(surf: pygame.Surface, mouse_pos, show: bool) -> bool:
     s = _settings_state
-    pr = pygame.Rect(SCREEN_WIDTH - 420, 70, 380, 480)
+    pr = pygame.Rect(SCREEN_WIDTH - 620, 200, 380, 480)
 
     # Rects
     music_bar   = pygame.Rect(pr.left + 28, pr.top + 160, pr.width - 56, 14)
@@ -231,14 +231,14 @@ def main_menu():
     show_settings = False
 
     bw, bh = 300, 52
-    by0 = 260
+    by0 = 340
     gap = 16
 
     rects = [
-        pygame.Rect(380, by0 + 0 * (bh + gap), bw, bh),  # START
-        pygame.Rect(380, by0 + 1 * (bh + gap), bw, bh),  # CONTINUE
-        pygame.Rect(160, 320 + 2 * (bh + gap), bw, bh),  # SETTINGS
-        pygame.Rect(160, 320 + 3 * (bh + gap), bw, bh),  # QUIT
+        pygame.Rect(480, by0 + 0 * (bh + gap), bw, bh),  # START
+        pygame.Rect(480, by0 + 1 * (bh + gap), bw, bh),  # CONTINUE
+        pygame.Rect(240, 460 + 2 * (bh + gap), bw, bh),  # SETTINGS
+        pygame.Rect(240, 460 + 3 * (bh + gap), bw, bh),  # QUIT
     ]
 
     icons = ["play", "chest", "gear", "quit"]
@@ -272,7 +272,7 @@ def main_menu():
 
 
         screen.blit(background, (0, 0))
-        screen.blit(logo, (100, -30))
+        screen.blit(logo, (190, 0))
 
         for rect, label, icon, h, seed in zip(rects, labels, icons, hovers, seeds):
             _draw_stone_button(screen, rect, label, icon, h, seed)

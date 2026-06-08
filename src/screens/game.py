@@ -65,15 +65,17 @@ def game_screen(screen):
     inspect_font = pygame.font.SysFont("consolas", 20)
     INSPECT_TIME = 2.0  # seconds to hold E
 
-    # --- Camera ---
+    # --- Camera with zoom ---
     camera_x = 0
     camera_y = 0
 
+    ZOOM = 2 # increase this to zoom in more (ex. 2, 3, or 4)
+
     def update_camera():
-        cx = player_rect.centerx - SCREEN_W // 2
-        cy = player_rect.centery - SCREEN_H // 2
-        cx = max(0, min(cx, map_width  - SCREEN_W))
-        cy = max(0, min(cy, map_height - SCREEN_H))
+        cx = player_rect.centerx * ZOOM - SCREEN_W // 2
+        cy = player_rect.centery * ZOOM - SCREEN_H // 2
+        cx = max(0, min(cx, map_width * ZOOM - SCREEN_W))
+        cy = max(0, min(cy, map_height * ZOOM - SCREEN_H))
         return cx, cy
 
     # --- Pre-render map ---
@@ -90,6 +92,9 @@ def game_screen(screen):
         return surf
 
     map_surface = render_map_surface()
+    # Scale the pre-rendered map once at startup based on ZOOM level (e.g. ZOOM=2 doubles the size)
+    # This avoids rescaling every frame which would slow down the game
+    map_surface = pygame.transform.scale(map_surface, (map_width * ZOOM, map_height * ZOOM))
 
     running = True
     while running:
@@ -146,6 +151,7 @@ def game_screen(screen):
         near_interactable = None
         for item in interactables:
             detection_rect = item['rect'].inflate(20, 20)
+
             if player_rect.colliderect(detection_rect):
                 near_interactable = item
                 break
@@ -171,22 +177,23 @@ def game_screen(screen):
         # --- Draw ---
         screen.blit(map_surface, (-camera_x, -camera_y))
 
-        # Draw player
+        # Draw player (scaled position)
         pygame.draw.rect(
             screen,
             player_color,
             pygame.Rect(
-                player_rect.x - camera_x,
-                player_rect.y - camera_y,
-                player_rect.width,
-                player_rect.height
+                player_rect.x * ZOOM - camera_x,
+                player_rect.y * ZOOM - camera_y,
+                player_rect.width * ZOOM,
+                player_rect.height * ZOOM
             )
         )
 
         # --- Draw interaction UI ---
         if near_interactable:
-            cam_x = near_interactable['rect'].x - camera_x
-            cam_y = near_interactable['rect'].y - camera_y - 30
+            # Scale the interactable position to match the zoomed map
+            cam_x = near_interactable['rect'].x * ZOOM - camera_x
+            cam_y = near_interactable['rect'].y * ZOOM - camera_y - 30
 
             if not near_interactable['inspecting']:
                 # "Hold E" prompt
@@ -202,8 +209,19 @@ def game_screen(screen):
                                  (cam_x, cam_y + 22,
                                   int(bar_w * near_interactable['inspect_progress']), 8))
             else:
-                # Barrel is empty message (centered on screen)
-                msg = inspect_font.render("The barrel is empty.", True, (255, 255, 200))
+                # Show message based on object type
+                action = near_interactable.get('actions', '')
+                if action == 'search_barrel':
+                    message = 'The barrel is empty.'
+                elif action == 'search_burrow':
+                    message = 'The burrow is empty.'
+                elif action == 'search_vase':
+                    message = 'The vase is empty.'
+                elif action == 'search_hay':
+                    message = 'The hay is empty.'
+                else:
+                    message = "Nothing here."
+                msg = inspect_font.render(message, True, (255, 255, 200))
                 box = pygame.Rect(
                     SCREEN_W // 2 - msg.get_width() // 2 - 10,
                     SCREEN_H // 2 - msg.get_height() // 2 - 10,

@@ -57,7 +57,12 @@ def game_screen(screen):
         player_size,
         player_size
     )
-    player_speed = 3
+
+    # Float position to avoid integer truncation causing uneven movement
+    player_rect.clamp_ip(pygame.Rect(0, 0, map_width, map_height))
+    player_x = float(player_rect.x)
+    player_y = float(player_rect.y)
+    player_speed = 2.50
     player_color = (255, 50, 50)
 
     # --- Fonts ---
@@ -115,31 +120,44 @@ def game_screen(screen):
         dx, dy = 0, 0
 
         if keys[pygame.K_w] or keys[pygame.K_UP]:
-            dy = -player_speed
+            dy = -1
         if keys[pygame.K_s] or keys[pygame.K_DOWN]:
-            dy =  player_speed
+            dy =  1
         if keys[pygame.K_a] or keys[pygame.K_LEFT]:
-            dx = -player_speed
+            dx = -1
         if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
-            dx =  player_speed
+            dx =  1
+        
+        # Normalize diagonal movement so it's the same speed as cadinal directions
+        if dx != 0 and dy != 0:
+            dx *= 0.7071 # 1/sqrt(2)
+            dy *= 0.7071
+
+        #========== DUE TO INCONSISTENT MOVEMENT SPEED I AM TESTING THIS PART OF THE CODE ==========        
+        dx *= player_speed
+        dy *= player_speed
 
         # --- Collision (horizontal) ---
-        player_rect.x += dx
+        player_x += dx
+        player_rect.x = round(player_x)
         for rect in collision_rects:
             if player_rect.colliderect(rect):
                 if dx > 0:
                     player_rect.right = rect.left
                 elif dx < 0:
-                    player_rect.left  = rect.right
+                    player_rect.left = rect.right
+        player_x = float(player_rect.x)  # sync float back after collision
 
         # --- Collision (vertical) ---
-        player_rect.y += dy
+        player_y += dy
+        player_rect.y = round(player_y)
         for rect in collision_rects:
             if player_rect.colliderect(rect):
                 if dy > 0:
                     player_rect.bottom = rect.top
                 elif dy < 0:
-                    player_rect.top    = rect.bottom
+                    player_rect.top = rect.bottom
+        player_y = float(player_rect.y)  # sync float back after collision
 
         # --- Keep player inside map bounds ---
         player_rect.clamp_ip(pygame.Rect(0, 0, map_width, map_height))
@@ -244,5 +262,5 @@ def game_screen(screen):
         # ESC hint
         hint = font.render("ESC = Back to Menu", True, (255, 255, 255))
         screen.blit(hint, (10, 10))
-
+        
         pygame.display.flip()

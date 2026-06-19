@@ -1,5 +1,6 @@
 import pygame
 import sys
+from src.settings_state import settings_state as _settings_state
 
 def settings_screen(screen):
     SCREEN_WIDTH, SCREEN_HEIGHT = screen.get_size()
@@ -20,8 +21,6 @@ def settings_screen(screen):
     font_btn   = pygame.font.SysFont("consolas", 22, bold=True)
 
     # State
-    music_vol   = 0.55
-    sfx_vol     = 0.45
     themes      = ["GREEN", "BLUE", "ORANGE", "PURPLE"]
     theme_index = 0
     dragging_music = False
@@ -71,10 +70,10 @@ def settings_screen(screen):
 
             if event.type == pygame.MOUSEMOTION:
                 if dragging_music:
-                    music_vol = max(0.0, min(1.0, (event.pos[0] - music_bar.left) / music_bar.width))
-                    pygame.mixer.music.set_volume(music_vol)
+                    _settings_state["music_vol"] = max(0.0, min(1.0, (event.pos[0] - music_bar.left) / music_bar.width))
+                    pygame.mixer.music.set_volume(_settings_state["music_vol"])
                 if dragging_sfx:
-                    sfx_vol = max(0.0, min(1.0, (event.pos[0] - sfx_bar.left) / sfx_bar.width))
+                    _settings_state["sfx_vol"] = max(0.0, min(1.0, (event.pos[0] - sfx_bar.left) / sfx_bar.width))
 
         # --- Draw ---
         # Dim overlay
@@ -98,13 +97,13 @@ def settings_screen(screen):
         # MUSIC slider
         screen.blit(font_label.render("MUSIC", True, (200, 200, 210)), (pr.left + 28, pr.top + 140))
         pygame.draw.rect(screen, (30, 32, 40), music_bar, border_radius=4)
-        mx = music_bar.left + int((music_bar.width - 16) * music_vol)
+        mx = music_bar.left + int((music_bar.width - 16) * _settings_state["music_vol"])
         pygame.draw.rect(screen, YELLOW_GLOW, (mx, music_bar.top - 2, 16, 18), border_radius=3)
 
         # SFX slider
         screen.blit(font_label.render("SFX", True, (200, 200, 210)), (pr.left + 28, pr.top + 220))
         pygame.draw.rect(screen, (30, 32, 40), sfx_bar, border_radius=4)
-        sx = sfx_bar.left + int((sfx_bar.width - 16) * sfx_vol)
+        sx = sfx_bar.left + int((sfx_bar.width - 16) * _settings_state["sfx_vol"])
         pygame.draw.rect(screen, YELLOW_GLOW, (sx, sfx_bar.top - 2, 16, 18), border_radius=3)
 
         # SYNTAX THEME

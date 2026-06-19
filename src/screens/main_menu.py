@@ -246,7 +246,7 @@ def main_menu():
     running = True
 
     pygame.mixer.music.load("assets/audios/mainMenuBgm.mp3")
-    pygame.mixer.music.set_volume(0.5)
+    pygame.mixer.music.set_volume(_settings_state["music_vol"])
     pygame.mixer.music.play(-1)  # -1 means loop forever
 
     while running:
@@ -263,7 +263,7 @@ def main_menu():
                     pygame.mixer.music.stop()
                     game_screen(screen)
                     pygame.mixer.music.load("assets/audios/mainMenuBgm.mp3")  # ← add
-                    pygame.mixer.music.set_volume(0.5)                         # ← add
+                    pygame.mixer.music.set_volume(_settings_state["music_vol"])                         # ← add
                     pygame.mixer.music.play(-1) # resume when back
                 if rects[1].collidepoint(event.pos):
                     pygame.mixer.music.stop()

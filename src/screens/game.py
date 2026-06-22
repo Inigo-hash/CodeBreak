@@ -2,6 +2,7 @@ from pytmx.util_pygame import load_pygame
 import pygame
 import sys
 from src.settings_state import settings_state as _settings_state
+from src.entities.player import MainCharacter
 
 def game_screen(screen):
     clock = pygame.time.Clock()
@@ -177,6 +178,7 @@ def game_screen(screen):
         draw_pause_button(surf, settings_back_rect, "BACK", back_hovered)
 
     running = True
+    main_character = MainCharacter(screen, map_width, map_height)
     while running:
         clock.tick(60)
         mouse_pos = pygame.mouse.get_pos()
@@ -399,5 +401,10 @@ def game_screen(screen):
         # ESC hint
         hint = font.render("ESC = Pause", True, (255, 255, 255))
         screen.blit(hint, (10, 10))
+
+        main_character.update_position(dx, dy, player_rect, player_x, player_y, collision_rects, map_width, map_height)   
+        main_character.update_frames(keys)
+        main_character.draw_frames(ZOOM, camera_x, camera_y)
+        
         
         pygame.display.flip()

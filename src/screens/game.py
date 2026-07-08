@@ -23,10 +23,8 @@ def game_screen(screen):
     for layer in tmx_data.visible_layers:
         if hasattr(layer, 'data'):
             for x, y, gid in layer:
-
                 if gid == 0:
                     continue
-                print(type(gid))
                 props = tmx_data.get_tile_properties_by_gid(gid)
                 if props and props.get('collidable'):
                     collision_rects.append(

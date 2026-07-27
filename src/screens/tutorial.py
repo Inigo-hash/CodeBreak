@@ -1,6 +1,6 @@
 import pygame
 import sys
-from src.ui.button import Button
+from src.ui.editor_widgets import Button
 
 def tutorial_screen(screen):
     BLUE = (70, 130, 180)

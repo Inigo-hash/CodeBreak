@@ -3,6 +3,7 @@ import pygame
 import sys
 from src.settings_state import settings_state as _settings_state
 from src.entities.player import MainCharacter
+from src.ui.code_editor import CodeEditor
 
 def game_screen(screen):
     clock = pygame.time.Clock()
@@ -197,6 +198,14 @@ def game_screen(screen):
                         paused = False
                     else:
                         paused = True
+                elif event.key == pygame.K_F5:
+                    sample_challenge = {
+                        "title": "Variables",
+                        "objective": "Create a variable called age and assign the value 18."
+                    }
+                    background_snapshot = screen.copy()
+                    editor = CodeEditor(screen, sample_challenge, background_snapshot)
+                    editor.run()
 
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if paused and not show_pause_settings:
@@ -258,6 +267,7 @@ def game_screen(screen):
             dx = -1
         if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
             dx =  1
+            
         
         # Normalize diagonal movement so it's the same speed as cardinal directions
         if dx != 0 and dy != 0:
@@ -408,3 +418,5 @@ def game_screen(screen):
         
         
         pygame.display.flip()
+
+        

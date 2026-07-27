@@ -1,84 +1,93 @@
+"""
+editor_theme.py
+
+Contains all colors, fonts, spacing, and sizing used by the
+CodeBreak coding environment.
+
+Changing values here automatically updates the appearance
+of the entire editor.
+"""
+
 import pygame
 
-pygame.font.init()
+# --------------------------------------------------
+# Window
+# --------------------------------------------------
 
-# ----------------------------
-# WINDOW
-# ----------------------------
 WINDOW_WIDTH = 1280
 WINDOW_HEIGHT = 720
 
-FPS = 60
-
-# ----------------------------
-# COLORS
-# ----------------------------
-BACKGROUND = (30, 30, 30)
-
-TOP_BAR = (45, 45, 45)
-
-SIDEBAR = (37, 37, 38)
-
-EDITOR_BG = (24, 24, 24)
-
-OUTPUT_BG = (20, 20, 20)
-
-PANEL_BG = (35, 35, 35)
-
-BUTTON = (50, 100, 200)
-
-BUTTON_HOVER = (70, 120, 230)
-
-BUTTON_TEXT = (255, 255, 255)
-
-TEXT = (220, 220, 220)
-
-TEXT_SECONDARY = (170, 170, 170)
-
-LINE_NUMBER = (120, 120, 120)
-
-CURSOR = (255, 255, 255)
-
-SUCCESS = (50, 200, 50)
-
-ERROR = (220, 80, 80)
-
-BORDER = (70, 70, 70)
-
-# ----------------------------
-# FONTS
-# ----------------------------
-TITLE_FONT = pygame.font.SysFont("consolas", 24, bold=True)
-
-HEADER_FONT = pygame.font.SysFont("consolas", 20)
-
-TEXT_FONT = pygame.font.SysFont("consolas", 18)
-
-EDITOR_FONT = pygame.font.SysFont("consolas", 20)
-
-BUTTON_FONT = pygame.font.SysFont("consolas", 18, bold=True)
-
-OUTPUT_FONT = pygame.font.SysFont("consolas", 18)
-
-# ----------------------------
-# LAYOUT
-# ----------------------------
-TOP_BAR_HEIGHT = 55
-
-PROBLEM_PANEL_WIDTH = 360
-
-OUTPUT_HEIGHT = 150
-
 PADDING = 15
 
-LINE_HEIGHT = 28
+# --------------------------------------------------
+# Popup Panel (medium-sized overlay instead of fullscreen)
+# --------------------------------------------------
 
-LINE_NUMBER_WIDTH = 50
+PANEL_WIDTH = 820
+PANEL_HEIGHT = 600
 
-BUTTON_WIDTH = 120
+# --------------------------------------------------
+# Colors
+# --------------------------------------------------
 
-BUTTON_HEIGHT = 40
+BACKGROUND_COLOR = (24, 28, 36)
 
-BUTTON_SPACING = 15
+HEADER_COLOR = (36, 41, 51)
 
-EDITOR_MARGIN = 10
+PANEL_COLOR = (46, 52, 64)
+
+EDITOR_COLOR = (30, 34, 42)
+
+OUTPUT_COLOR = (20, 22, 28)
+
+BUTTON_COLOR = (70, 110, 180)
+
+BUTTON_HOVER_COLOR = (90, 135, 210)
+
+TEXT_COLOR = (240, 240, 240)
+
+SECONDARY_TEXT = (180, 180, 180)
+
+BORDER_COLOR = (85, 90, 100)
+
+SUCCESS_COLOR = (70, 200, 120)
+
+ERROR_COLOR = (220, 80, 80)
+
+# --------------------------------------------------
+# Fonts
+# --------------------------------------------------
+
+pygame.font.init()
+
+TITLE_FONT = pygame.font.SysFont("consolas", 28, bold=True)
+
+HEADER_FONT = pygame.font.SysFont("consolas", 22)
+
+TEXT_FONT = pygame.font.SysFont("consolas", 20)
+
+CODE_FONT = pygame.font.SysFont("consolas", 22)
+
+SMALL_FONT = pygame.font.SysFont("consolas", 16)
+
+# --------------------------------------------------
+# Layout
+# --------------------------------------------------
+
+HEADER_HEIGHT = 50
+
+OBJECTIVE_HEIGHT = 90
+
+EDITOR_HEIGHT = 230
+
+OUTPUT_HEIGHT = 90
+
+BUTTON_HEIGHT = 50
+
+BUTTON_WIDTH = 150
+
+LINE_NUMBER_WIDTH = 55
+
+PANEL_RADIUS = 8
+
+BUTTON_RADIUS = 8

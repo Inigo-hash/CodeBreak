@@ -1,4 +1,11 @@
+# Python
 __pycache__/
 *.pyc
-__pycache__/
-*.pyc
+
+# VS Code
+.vscode/
+
+# Virtual Environments
+.venv/
+venv/
+env/

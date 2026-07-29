@@ -76,10 +76,16 @@ class MainCharacter():
 
         self.pos_x = float(player_rect.x)
         self.pos_y = float(player_rect.y)
+        self.center_x = player_rect.centerx
+        self.center_y = player_rect.centery
 
     def draw_frames(self, ZOOM, camera_x, camera_y):
         self.timer += 1
         if self.timer >= 6:
             self.timer = 0
             self.current = (self.current + 1) % 8
-        self.screen.blit(self.current_frames[self.current], (self.pos_x * ZOOM - camera_x, self.pos_y * ZOOM - camera_y))
+
+        frame = self.current_frames[self.current]
+        draw_x = self.center_x * ZOOM - camera_x - frame.get_width() // 2
+        draw_y = self.center_y * ZOOM - camera_y - frame.get_height() // 2
+        self.screen.blit(frame, (draw_x, draw_y))

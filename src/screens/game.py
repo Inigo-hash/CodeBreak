@@ -54,9 +54,10 @@ def game_screen(screen):
     SCREEN_W, SCREEN_H = screen.get_size()
     player_size = TILE_SIZE
 
-    spawn_margin = TILE_SIZE * 10  # distance from the edges so you don't spawn inside a wall
+    spawn_margin = TILE_SIZE * 6
+    spawn_offset_x = TILE_SIZE * 7  # how far right of center — tweak this number
     player_rect = pygame.Rect(
-        spawn_margin,
+        map_width // 2 - player_size // 2 + spawn_offset_x,
         map_height - spawn_margin,
         player_size,
         player_size
@@ -347,16 +348,7 @@ def game_screen(screen):
         screen.blit(map_surface, (-camera_x, -camera_y))
 
         # Draw player (scaled position)
-        pygame.draw.rect(
-            screen,
-            player_color,
-            pygame.Rect(
-                player_rect.x * ZOOM - camera_x,
-                player_rect.y * ZOOM - camera_y,
-                player_rect.width * ZOOM,
-                player_rect.height * ZOOM
-            )
-        )
+        # (removed red placeholder rect — sprite is drawn below via main_character.draw_frames)
 
         # --- Draw interaction UI ---
         if near_interactable:

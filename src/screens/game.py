@@ -53,9 +53,11 @@ def game_screen(screen):
     # --- Player Setup ---
     SCREEN_W, SCREEN_H = screen.get_size()
     player_size = TILE_SIZE
+
+    spawn_margin = TILE_SIZE * 10  # distance from the edges so you don't spawn inside a wall
     player_rect = pygame.Rect(
-        map_width  // 2,
-        map_height // 2,
+        spawn_margin,
+        map_height - spawn_margin,
         player_size,
         player_size
     )

@@ -1,105 +1,113 @@
+"""
+output_panel.py
+
+Displays messages produced by the coding environment.
+
+Responsibilities
+----------------
+- Display validation results
+- Display syntax errors
+- Display challenge completion messages
+- Display general information
+
+The output panel does NOT validate code.
+It only displays messages.
+"""
+
 import pygame
 
-from .editor_theme import *
+from src.ui.editor_theme import *
 
 
 class OutputPanel:
 
     def __init__(self):
 
-        self.lines = []
+        # Default message shown when opening the editor.
+        self.messages = [
+            "Waiting for execution..."
+        ]
+
+    # ---------------------------------------------------------
+    # Public Methods
+    # ---------------------------------------------------------
 
     def clear(self):
+        """
+        Clears every output message.
+        """
 
-        self.lines.clear()
+        self.messages.clear()
 
     def add(self, message):
+        """
+        Adds a new message to the output panel.
+        """
 
-        self.lines.append(message)
+        self.messages.append(message)
 
-        if len(self.lines) > 7:
+    def set_message(self, message):
+        """
+        Replaces the output with a single message.
+        """
 
-            self.lines.pop(0)
+        self.messages = [message]
 
-    def draw(self, screen):
+    # ---------------------------------------------------------
+    # Draw
+    # ---------------------------------------------------------
 
-        rect = pygame.Rect(
+    def draw(self, screen, rect):
 
-            PROBLEM_PANEL_WIDTH,
-
-            WINDOW_HEIGHT - OUTPUT_HEIGHT,
-
-            WINDOW_WIDTH - PROBLEM_PANEL_WIDTH,
-
-            OUTPUT_HEIGHT
-
-        )
-
+        # Background
         pygame.draw.rect(
-
             screen,
-
-            OUTPUT_BG,
-
-            rect
-
+            OUTPUT_COLOR,
+            rect,
+            border_radius=PANEL_RADIUS
         )
 
-        pygame.draw.line(
-
+        # Border
+        pygame.draw.rect(
             screen,
-
-            BORDER,
-
-            (PROBLEM_PANEL_WIDTH,
-             WINDOW_HEIGHT - OUTPUT_HEIGHT),
-
-            (WINDOW_WIDTH,
-             WINDOW_HEIGHT - OUTPUT_HEIGHT),
-
-            2
-
+            BORDER_COLOR,
+            rect,
+            2,
+            border_radius=PANEL_RADIUS
         )
 
+        # Header
         title = HEADER_FONT.render(
-
-            "Output",
-
+            "OUTPUT",
             True,
-
-            TEXT
-
+            TEXT_COLOR
         )
 
         screen.blit(
-
             title,
-
-            (PROBLEM_PANEL_WIDTH + 15,
-             WINDOW_HEIGHT - OUTPUT_HEIGHT + 10)
-
+            (
+                rect.x + 15,
+                rect.y + 10
+            )
         )
 
-        y = WINDOW_HEIGHT - OUTPUT_HEIGHT + 45
+        # Draw messages
+        y = rect.y + 45
 
-        for line in self.lines:
+        for message in self.messages[-5:]:
 
-            txt = OUTPUT_FONT.render(
-
-                line,
-
+            text = SMALL_FONT.render(
+                message,
                 True,
-
-                TEXT
-
+                SECONDARY_TEXT
             )
 
             screen.blit(
-
-                txt,
-
-                (PROBLEM_PANEL_WIDTH + 20, y)
-
+                text,
+                (
+                    rect.x + 15,
+                    y
+                )
             )
 
-            y += 24
+            y += 22

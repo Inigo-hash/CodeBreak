@@ -1,6 +1,20 @@
+"""
+problem_panel.py
+
+Displays the current coding challenge information.
+
+Responsibilities:
+- Draw the objective panel.
+- Show the challenge title.
+- Show the objective.
+- (Future) Show hints and difficulty.
+
+This class ONLY draws the problem information.
+"""
+
 import pygame
 
-from .editor_theme import *
+from src.ui.editor_theme import *
 
 
 class ProblemPanel:
@@ -9,100 +23,92 @@ class ProblemPanel:
 
         self.challenge = challenge
 
-    def wrap_text(self, text, font, width):
+    def draw(self, screen, rect):
+        """
+        Draw the challenge panel.
 
-        words = text.split()
+        Parameters
+        ----------
+        screen : pygame.Surface
+            Main display surface.
 
-        lines = []
+        rect : pygame.Rect
+            Area where the panel should be drawn.
+        """
 
-        current = ""
+        # --------------------------------------
+        # Panel Background
+        # --------------------------------------
 
-        for word in words:
-
-            test = current + word + " "
-
-            if font.size(test)[0] < width:
-
-                current = test
-
-            else:
-
-                lines.append(current)
-
-                current = word + " "
-
-        if current:
-
-            lines.append(current)
-
-        return lines
-
-    def draw(self, screen):
-
-        rect = pygame.Rect(
-            0,
-            TOP_BAR_HEIGHT,
-            PROBLEM_PANEL_WIDTH,
-            WINDOW_HEIGHT - TOP_BAR_HEIGHT
-        )
-
-        pygame.draw.rect(screen, PANEL_BG, rect)
-
-        pygame.draw.line(
+        pygame.draw.rect(
             screen,
-            BORDER,
-            (PROBLEM_PANEL_WIDTH, TOP_BAR_HEIGHT),
-            (PROBLEM_PANEL_WIDTH, WINDOW_HEIGHT),
-            2
+            PANEL_COLOR,
+            rect,
+            border_radius=PANEL_RADIUS
         )
 
-        x = 15
-        y = TOP_BAR_HEIGHT + 15
+        # --------------------------------------
+        # Panel Border
+        # --------------------------------------
 
-        title = TITLE_FONT.render(
+        pygame.draw.rect(
+            screen,
+            BORDER_COLOR,
+            rect,
+            2,
+            border_radius=PANEL_RADIUS
+        )
+
+        # --------------------------------------
+        # Title
+        # --------------------------------------
+
+        title = HEADER_FONT.render(
             self.challenge["title"],
             True,
-            TEXT
+            TEXT_COLOR
         )
 
-        screen.blit(title, (x, y))
-
-        y += 40
-
-        diff = HEADER_FONT.render(
-            f'Difficulty: {self.challenge["difficulty"]}',
-            True,
-            TEXT_SECONDARY
-        )
-
-        screen.blit(diff, (x, y))
-
-        y += 45
-
-        lesson = HEADER_FONT.render(
-            "Problem",
-            True,
-            TEXT
-        )
-
-        screen.blit(lesson, (x, y))
-
-        y += 35
-
-        wrapped = self.wrap_text(
-            self.challenge["problem"],
-            TEXT_FONT,
-            PROBLEM_PANEL_WIDTH - 30
-        )
-
-        for line in wrapped:
-
-            txt = TEXT_FONT.render(
-                line,
-                True,
-                TEXT
+        screen.blit(
+            title,
+            (
+                rect.x + 15,
+                rect.y + 12
             )
+        )
 
-            screen.blit(txt, (x, y))
+        # --------------------------------------
+        # Objective Label
+        # --------------------------------------
 
-            y += LINE_HEIGHT
+        objective_label = SMALL_FONT.render(
+            "Objective",
+            True,
+            SECONDARY_TEXT
+        )
+
+        screen.blit(
+            objective_label,
+            (
+                rect.x + 15,
+                rect.y + 48
+            )
+        )
+
+        # --------------------------------------
+        # Objective Text
+        # --------------------------------------
+
+        objective = TEXT_FONT.render(
+            self.challenge["objective"],
+            True,
+            TEXT_COLOR
+        )
+
+        screen.blit(
+            objective,
+            (
+                rect.x + 15,
+                rect.y + 72
+            )
+        )

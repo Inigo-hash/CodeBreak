@@ -1,41 +1,106 @@
+"""
+editor_widgets.py
+
+Reusable UI widgets for the CodeBreak project.
+
+Currently contains:
+- Button
+
+Future widgets:
+- TextBox
+- ScrollBar
+- CheckBox
+- ProgressBar
+"""
+
 import pygame
 
-from .editor_theme import *
+from src.ui.editor_theme import *
 
 
 class Button:
+    """
+    Reusable button for the game's user interface.
+
+    Responsibilities
+    ----------------
+    - Draw itself.
+    - Detect mouse hovering.
+    - Detect mouse clicks.
+
+    The button does NOT perform any action itself.
+    CodeEditor decides what happens when the button is clicked.
+    """
 
     def __init__(self, x, y, width, height, text):
 
-        self.rect = pygame.Rect(x, y, width, height)
+        self.rect = pygame.Rect(
+            x,
+            y,
+            width,
+            height
+        )
 
         self.text = text
 
-        self.hover = False
+        self.hovered = False
 
-    def update(self):
-
-        self.hover = self.rect.collidepoint(pygame.mouse.get_pos())
+    # -------------------------------------------------
+    # Draw
+    # -------------------------------------------------
 
     def draw(self, screen):
 
-        color = BUTTON_HOVER if self.hover else BUTTON
+        color = BUTTON_HOVER_COLOR if self.hovered else BUTTON_COLOR
 
-        pygame.draw.rect(screen, color, self.rect, border_radius=6)
+        pygame.draw.rect(
+            screen,
+            color,
+            self.rect,
+            border_radius=BUTTON_RADIUS
+        )
 
-        pygame.draw.rect(screen, BORDER, self.rect, 2, border_radius=6)
+        pygame.draw.rect(
+            screen,
+            BORDER_COLOR,
+            self.rect,
+            2,
+            border_radius=BUTTON_RADIUS
+        )
 
-        txt = BUTTON_FONT.render(self.text, True, BUTTON_TEXT)
+        label = TEXT_FONT.render(
+            self.text,
+            True,
+            TEXT_COLOR
+        )
 
         screen.blit(
-            txt,
-            txt.get_rect(center=self.rect.center)
+            label,
+            label.get_rect(center=self.rect.center)
         )
 
-    def clicked(self, event):
+    # -------------------------------------------------
+    # Update Hover State
+    # -------------------------------------------------
 
-        return (
-            event.type == pygame.MOUSEBUTTONDOWN
-            and event.button == 1
-            and self.rect.collidepoint(event.pos)
+    def update(self):
+
+        mouse_position = pygame.mouse.get_pos()
+
+        self.hovered = self.rect.collidepoint(
+            mouse_position
         )
+
+    # -------------------------------------------------
+    # Click Detection
+    # -------------------------------------------------
+
+    def is_clicked(self, event):
+
+        if event.type != pygame.MOUSEBUTTONDOWN:
+            return False
+
+        if event.button != 1:
+            return False
+
+        return self.rect.collidepoint(event.pos)

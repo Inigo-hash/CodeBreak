@@ -1,3 +1,19 @@
+"""
+text_buffer.py
+
+Stores and edits the user's code.
+
+Responsibilities
+----------------
+- Store lines of code.
+- Handle typing.
+- Handle backspace.
+- Handle Enter.
+- Handle cursor movement.
+
+This class does NOT draw anything.
+"""
+
 import pygame
 
 
@@ -5,16 +21,16 @@ class TextBuffer:
 
     def __init__(self):
 
+        # Start with one empty line.
         self.lines = [""]
 
+        # Cursor position
         self.cursor_row = 0
-
         self.cursor_col = 0
 
-    @property
-    def text(self):
-
-        return "\n".join(self.lines)
+    # ==========================================================
+    # Character Input
+    # ==========================================================
 
     def insert(self, character):
 
@@ -26,26 +42,15 @@ class TextBuffer:
             + line[self.cursor_col:]
         )
 
-        self.cursor_col += len(character)
+        self.cursor_col += 1
 
-    def enter(self):
-
-        current = self.lines[self.cursor_row]
-
-        left = current[:self.cursor_col]
-
-        right = current[self.cursor_col:]
-
-        self.lines[self.cursor_row] = left
-
-        self.lines.insert(self.cursor_row + 1, right)
-
-        self.cursor_row += 1
-
-        self.cursor_col = 0
+    # ==========================================================
+    # Backspace
+    # ==========================================================
 
     def backspace(self):
 
+        # Delete inside current line
         if self.cursor_col > 0:
 
             line = self.lines[self.cursor_row]
@@ -59,133 +64,73 @@ class TextBuffer:
 
             return
 
-        if self.cursor_row == 0:
+        # Merge with previous line
+        if self.cursor_row > 0:
 
-            return
+            previous = self.lines[self.cursor_row - 1]
+            current = self.lines[self.cursor_row]
 
-        previous = self.lines[self.cursor_row - 1]
+            self.cursor_col = len(previous)
 
-        current = self.lines.pop(self.cursor_row)
+            self.lines[self.cursor_row - 1] = previous + current
 
-        self.cursor_row -= 1
+            del self.lines[self.cursor_row]
 
-        self.cursor_col = len(previous)
+            self.cursor_row -= 1
 
-        self.lines[self.cursor_row] = previous + current
+    # ==========================================================
+    # Enter
+    # ==========================================================
 
-    def delete(self):
+    def new_line(self):
 
         line = self.lines[self.cursor_row]
 
-        if self.cursor_col < len(line):
+        left = line[:self.cursor_col]
+        right = line[self.cursor_col:]
 
-            self.lines[self.cursor_row] = (
-                line[:self.cursor_col]
-                + line[self.cursor_col + 1:]
-            )
+        self.lines[self.cursor_row] = left
 
-            return
+        self.lines.insert(
+            self.cursor_row + 1,
+            right
+        )
 
-        if self.cursor_row == len(self.lines) - 1:
+        self.cursor_row += 1
+        self.cursor_col = 0
 
-            return
-
-        self.lines[self.cursor_row] += self.lines.pop(self.cursor_row + 1)
+    # ==========================================================
+    # Cursor Movement
+    # ==========================================================
 
     def move_left(self):
 
         if self.cursor_col > 0:
-
             self.cursor_col -= 1
 
-            return
+    def move_right(self):
+
+        if self.cursor_col < len(self.lines[self.cursor_row]):
+            self.cursor_col += 1
+
+    def move_up(self):
 
         if self.cursor_row > 0:
 
             self.cursor_row -= 1
 
-            self.cursor_col = len(self.lines[self.cursor_row])
+            self.cursor_col = min(
+                self.cursor_col,
+                len(self.lines[self.cursor_row])
+            )
 
-    def move_right(self):
-
-        line = self.lines[self.cursor_row]
-
-        if self.cursor_col < len(line):
-
-            self.cursor_col += 1
-
-            return
+    def move_down(self):
 
         if self.cursor_row < len(self.lines) - 1:
 
             self.cursor_row += 1
 
-            self.cursor_col = 0
-
-    def move_up(self):
-
-        if self.cursor_row == 0:
-
-            return
-
-        self.cursor_row -= 1
-
-        self.cursor_col = min(
-            self.cursor_col,
-            len(self.lines[self.cursor_row])
-        )
-
-    def move_down(self):
-
-        if self.cursor_row >= len(self.lines) - 1:
-
-            return
-
-        self.cursor_row += 1
-
-        self.cursor_col = min(
-            self.cursor_col,
-            len(self.lines[self.cursor_row])
-        )
-
-    def handle_event(self, event):
-
-        if event.type != pygame.KEYDOWN:
-
-            return
-
-        if event.key == pygame.K_BACKSPACE:
-
-            self.backspace()
-
-        elif event.key == pygame.K_DELETE:
-
-            self.delete()
-
-        elif event.key == pygame.K_RETURN:
-
-            self.enter()
-
-        elif event.key == pygame.K_TAB:
-
-            self.insert("    ")
-
-        elif event.key == pygame.K_LEFT:
-
-            self.move_left()
-
-        elif event.key == pygame.K_RIGHT:
-
-            self.move_right()
-
-        elif event.key == pygame.K_UP:
-
-            self.move_up()
-
-        elif event.key == pygame.K_DOWN:
-
-            self.move_down()
-
-        elif event.unicode and event.unicode.isprintable():
-
-            self.insert(event.unicode)
+            self.cursor_col = min(
+                self.cursor_col,
+                len(self.lines[self.cursor_row])
+            )

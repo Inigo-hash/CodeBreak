@@ -17,6 +17,9 @@ It does not handle typing, validation, or game logic.
 
 import pygame
 
+from src.ui.editor_widgets import Button
+from src.ui.output_panel import OutputPanel
+from src.ui.problem_panel import ProblemPanel
 from src.ui.editor_theme import *
 
 
@@ -26,11 +29,16 @@ class EditorRenderer:
     of the coding environment.
     """
 
-    def __init__(self, screen, challenge, background=None):
+    def __init__(self, screen, challenge, text_buffer, background=None):
 
         self.screen = screen
         self.challenge = challenge
-        self.background = background  # snapshot of the game screen behind the popup
+        self.text_buffer = text_buffer
+        self.background = background
+
+        # UI Components
+        self.problem_panel = ProblemPanel(challenge)
+        self.output_panel = OutputPanel()
 
         # ----------------------------------
         # Popup Panel Rect (centered, medium-sized)
@@ -76,6 +84,42 @@ class EditorRenderer:
             self.output_rect.bottom + PADDING,
             PANEL_WIDTH - (PADDING * 2),
             BUTTON_HEIGHT
+        )
+
+        # ----------------------------------
+        # Buttons
+        # ----------------------------------
+
+        spacing = 25
+
+        total_width = (BUTTON_WIDTH * 3) + (spacing * 2)
+
+        start_x = self.panel_rect.x + (
+            PANEL_WIDTH - total_width
+        ) // 2
+
+        self.run_button = Button(
+            start_x,
+            self.button_rect.y + 5,
+            BUTTON_WIDTH,
+            BUTTON_HEIGHT - 10,
+            "Run"
+        )
+
+        self.submit_button = Button(
+            start_x + BUTTON_WIDTH + spacing,
+            self.button_rect.y + 5,
+            BUTTON_WIDTH,
+            BUTTON_HEIGHT - 10,
+            "Submit"
+        )
+
+        self.leave_button = Button(
+            start_x + (BUTTON_WIDTH + spacing) * 2,
+            self.button_rect.y + 5,
+            BUTTON_WIDTH,
+            BUTTON_HEIGHT - 10,
+            "Leave"
         )
 
     # ==================================================
@@ -155,37 +199,10 @@ class EditorRenderer:
         )
 
     def draw_problem_panel(self):
-        """Draw the challenge objective panel."""
 
-        pygame.draw.rect(
+        self.problem_panel.draw(
             self.screen,
-            PANEL_COLOR,
-            self.problem_rect,
-            border_radius=PANEL_RADIUS
-        )
-
-        title = HEADER_FONT.render(
-            "OBJECTIVE",
-            True,
-            TEXT_COLOR
-        )
-
-        self.screen.blit(
-            title,
-            (self.problem_rect.x + 15,
-             self.problem_rect.y + 10)
-        )
-
-        objective = SMALL_FONT.render(
-            self.challenge["objective"],
-            True,
-            SECONDARY_TEXT
-        )
-
-        self.screen.blit(
-            objective,
-            (self.problem_rect.x + 15,
-             self.problem_rect.y + 50)
+            self.problem_rect
         )
 
     def draw_editor_panel(self):
@@ -229,43 +246,60 @@ class EditorRenderer:
             ),
             2
         )
+        # ----------------------------------
+        # Draw User Code
+        # ----------------------------------
+
+        text_x = self.editor_rect.x + LINE_NUMBER_WIDTH + 15
+        text_y = self.editor_rect.y + 15
+
+        line_spacing = 20
+
+        for line in self.text_buffer.lines:
+
+            rendered = TEXT_FONT.render(
+                line,
+                True,
+                TEXT_COLOR
+            )
+
+            self.screen.blit(
+                rendered,
+                (text_x, text_y)
+            )
+
+            text_y += line_spacing
+
+        # ----------------------------------
+        # Draw Cursor
+        # ----------------------------------
+
+        cursor_x = (
+            self.editor_rect.x
+            + LINE_NUMBER_WIDTH
+            + 15
+            + self.text_buffer.cursor_col * 10
+        )
+
+        cursor_y = (
+            self.editor_rect.y
+            + 15
+            + self.text_buffer.cursor_row * line_spacing
+        )
+
+        pygame.draw.line(
+            self.screen,
+            TEXT_COLOR,
+            (cursor_x, cursor_y),
+            (cursor_x, cursor_y + 18),
+            2
+        )
 
     def draw_output_panel(self):
-        """Draw the output area."""
 
-        pygame.draw.rect(
+        self.output_panel.draw(
             self.screen,
-            OUTPUT_COLOR,
-            self.output_rect,
-            border_radius=PANEL_RADIUS
-        )
-
-        title = HEADER_FONT.render(
-            "OUTPUT",
-            True,
-            TEXT_COLOR
-        )
-
-        self.screen.blit(
-            title,
-            (
-                self.output_rect.x + 15,
-                self.output_rect.y + 10
-            )
-        )
-
-        message = SMALL_FONT.render(
-            "Waiting for execution...",
-            True,
-            SECONDARY_TEXT
-        )
-
-        self.screen.blit(
-            message,
-            (
-                self.output_rect.x + 15,
-                self.output_rect.y + 50
-            )
+            self.output_rect
         )
 
     def draw_button_panel(self):
@@ -278,51 +312,36 @@ class EditorRenderer:
             border_radius=PANEL_RADIUS
         )
 
-        button_names = [
-            "Run",
-            "Submit",
-            "Leave"
-        ]
+    def draw_button_panel(self):
+        """Draw the bottom button area."""
 
-        spacing = 25
-
-        total_width = (
-            BUTTON_WIDTH * len(button_names)
-        ) + (
-            spacing * (len(button_names) - 1)
+        pygame.draw.rect(
+            self.screen,
+            PANEL_COLOR,
+            self.button_rect,
+            border_radius=PANEL_RADIUS
         )
 
-        start_x = self.panel_rect.x + (
-            PANEL_WIDTH - total_width
-        ) // 2
+        self.run_button.update()
+        self.submit_button.update()
+        self.leave_button.update()
 
-        for index, text in enumerate(button_names):
+        self.run_button.draw(self.screen)
+        self.submit_button.draw(self.screen)
+        self.leave_button.draw(self.screen)
 
-            x = start_x + (
-                index * (BUTTON_WIDTH + spacing)
-            )
 
-            button = pygame.Rect(
-                x,
-                self.button_rect.y + 5,
-                BUTTON_WIDTH,
-                BUTTON_HEIGHT - 10
-            )
+    def get_output_panel(self):
+        return self.output_panel
+    
+    def get_run_button(self):
+        return self.run_button
 
-            pygame.draw.rect(
-                self.screen,
-                BUTTON_COLOR,
-                button,
-                border_radius=BUTTON_RADIUS
-            )
 
-            label = TEXT_FONT.render(
-                text,
-                True,
-                TEXT_COLOR
-            )
+    def get_submit_button(self):
+        return self.submit_button
 
-            self.screen.blit(
-                label,
-                label.get_rect(center=button.center)
-            )
+
+    def get_leave_button(self):
+        return self.leave_button
+    

@@ -8,18 +8,16 @@ from src.settings_state import settings_state as _settings_state
 # Initialize Pygame
 pygame.init()
 
-from src.config import (
-    FULLSCREEN,
-    SCREEN_WIDTH,
-    SCREEN_HEIGHT,
-)
+from src.config import FULLSCREEN
 
-flags = pygame.FULLSCREEN if FULLSCREEN else 0
+if FULLSCREEN:
+    screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+else:
+    screen = pygame.display.set_mode((1280, 720), pygame.RESIZABLE)
 
-screen = pygame.display.set_mode(
-    (SCREEN_WIDTH, SCREEN_HEIGHT),
-    flags
-)
+SCREEN_WIDTH, SCREEN_HEIGHT = screen.get_size()
+
+
 
 pygame.display.set_caption("CodeBreak - Main Menu")
 
@@ -148,7 +146,15 @@ def _draw_robot_tip(surf: pygame.Surface, t: float) -> None:
 
 def _draw_interactive_settings(surf: pygame.Surface, mouse_pos, show: bool) -> bool:
     s = _settings_state
-    pr = pygame.Rect(SCREEN_WIDTH - 620, 200, 380, 480)
+    panel_width = 380
+    panel_height = 480
+
+    pr = pygame.Rect(
+        (SCREEN_WIDTH - panel_width) // 2,
+        (SCREEN_HEIGHT - panel_height) // 2,
+        panel_width,
+        panel_height
+    )
 
     # Rects
     music_bar   = pygame.Rect(pr.left + 28, pr.top + 160, pr.width - 56, 14)
@@ -183,6 +189,24 @@ def _draw_interactive_settings(surf: pygame.Surface, mouse_pos, show: bool) -> b
         s["sfx_vol"] = max(0.0, min(1.0, (mouse_pos[0] - sfx_bar.left) / sfx_bar.width))
 
     # Draw panel
+    # ---------- Blur Background ----------
+    blur = pygame.transform.smoothscale(
+        surf,
+        (SCREEN_WIDTH // 8, SCREEN_HEIGHT // 8)
+    )
+
+    blur = pygame.transform.smoothscale(
+        blur,
+        (SCREEN_WIDTH, SCREEN_HEIGHT)
+    )
+
+    surf.blit(blur, (0, 0))
+
+    overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+    overlay.fill((0, 0, 0, 120))
+    surf.blit(overlay, (0, 0))
+    # -------------------------------------
+
     pygame.draw.rect(surf, (36, 38, 48), pr)
     pygame.draw.rect(surf, METAL_FRAME, pr, 4)
     pygame.draw.rect(surf, (26, 28, 36), pr.inflate(-24, -24))
@@ -233,17 +257,26 @@ def main_menu():
 
     show_settings = False
 
-    bw, bh = 380, 64
-    by0 = SCREEN_HEIGHT // 2 - 80
-    gap = 16
+    # Load logo and compute its height FIRST
+    logo = pygame.image.load("assets/images/logos/codebreakLogo.png").convert_alpha()
+    logo_width = int(SCREEN_WIDTH * 0.32)
+    aspect_ratio = logo.get_height() / logo.get_width()
+    logo_height = int(logo_width * aspect_ratio)
+    logo = pygame.transform.smoothscale(logo, (logo_width, logo_height))
 
-    center_x = SCREEN_WIDTH // 2 - bw // 2   # horizontally centered
+    # Now these can safely use logo_height
+    bw = int(SCREEN_WIDTH * 0.20)
+    bh = int(SCREEN_HEIGHT * 0.075)
+    by0 = logo_height + int(SCREEN_HEIGHT * 0.08)
+    gap = int(SCREEN_HEIGHT * 0.02)
+
+    center_x = SCREEN_WIDTH // 2 - bw // 2
 
     rects = [
-        pygame.Rect(center_x, by0 + 0 * (bh + gap), bw, bh),  # START
-        pygame.Rect(center_x, by0 + 1 * (bh + gap), bw, bh),  # CONTINUE
-        pygame.Rect(center_x, by0 + 2 * (bh + gap), bw, bh),  # SETTINGS
-        pygame.Rect(center_x, by0 + 3 * (bh + gap), bw, bh),  # QUIT
+        pygame.Rect(center_x, by0 + 0 * (bh + gap), bw, bh),
+        pygame.Rect(center_x, by0 + 1 * (bh + gap), bw, bh),
+        pygame.Rect(center_x, by0 + 2 * (bh + gap), bw, bh),
+        pygame.Rect(center_x, by0 + 3 * (bh + gap), bw, bh),
     ]
 
     icons = ["play", "chest", "gear", "quit"]
@@ -251,8 +284,6 @@ def main_menu():
     seeds = [11, 22, 33, 44]
 
     clock = pygame.time.Clock()
-    logo = pygame.image.load("assets/images/logos/codebreakLogo.png").convert_alpha()
-    logo = pygame.transform.scale(logo, (620, 400))
     running = True
 
     pygame.mixer.music.load("assets/audios/mainMenuBgm.mp3")
@@ -265,28 +296,32 @@ def main_menu():
         hovers = [r.collidepoint(mouse_pos) for r in rects]
 
         for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
             if event.type == pygame.MOUSEBUTTONDOWN:
-                if rects[0].collidepoint(event.pos):
-                    pygame.mixer.music.stop()
-                    game_screen(screen)
-                    pygame.mixer.music.load("assets/audios/mainMenuBgm.mp3")  # ← add
-                    pygame.mixer.music.set_volume(_settings_state["music_vol"])                         # ← add
-                    pygame.mixer.music.play(-1) # resume when back
-                if rects[1].collidepoint(event.pos):
-                    pygame.mixer.music.stop()
-                    tutorial_screen(screen)
-                if rects[2].collidepoint(event.pos):
-                    show_settings = not show_settings
-                if rects[3].collidepoint(event.pos):
-                    pygame.quit()
-                    sys.exit()
+                if not show_settings:
+                    if rects[0].collidepoint(event.pos):
+                        pygame.mixer.music.stop()
+                        game_screen(screen)
+                        pygame.mixer.music.load("assets/audios/mainMenuBgm.mp3")
+                        pygame.mixer.music.set_volume(_settings_state["music_vol"])
+                        pygame.mixer.music.play(-1)
+                    if rects[1].collidepoint(event.pos):
+                        pygame.mixer.music.stop()
+                        tutorial_screen(screen)
+                    if rects[2].collidepoint(event.pos):
+                        show_settings = not show_settings
+                    if rects[3].collidepoint(event.pos):
+                        pygame.quit()
+                        sys.exit()
 
 
         screen.blit(background, (0, 0))
-        screen.blit(logo, (SCREEN_WIDTH // 2 - logo.get_width() // 2, 0))
+        screen.blit(
+            logo,
+            (
+                SCREEN_WIDTH // 2 - logo.get_width() // 2,
+                int(SCREEN_HEIGHT * 0.04)
+            )
+        )
 
         for rect, label, icon, h, seed in zip(rects, labels, icons, hovers, seeds):
             _draw_stone_button(screen, rect, label, icon, h, seed)

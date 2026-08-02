@@ -117,8 +117,15 @@ def game_screen(screen):
         ("SETTINGS", "settings"),
         ("RETURN TO MAIN MENU", "main_menu"),
     ]
-    PAUSE_BTN_WIDTH, PAUSE_BTN_HEIGHT, PAUSE_BTN_GAP = 320, 56, 18
-    pause_by0 = SCREEN_H // 2 - 60
+    PAUSE_BTN_WIDTH = int(SCREEN_W * 0.25)
+    PAUSE_BTN_HEIGHT = int(SCREEN_H * 0.07)
+    PAUSE_BTN_GAP = int(SCREEN_H * 0.02)
+    total_height = (
+        len(PAUSE_MENU_OPTIONS) * PAUSE_BTN_HEIGHT
+        + (len(PAUSE_MENU_OPTIONS) - 1) * PAUSE_BTN_GAP
+    )
+
+    pause_by0 = (SCREEN_H - total_height) // 2
     pause_center_x = SCREEN_W // 2 - PAUSE_BTN_WIDTH // 2
 
     pause_buttons = []
@@ -134,9 +141,31 @@ def game_screen(screen):
             )
         })
 
-    settings_panel_rect = pygame.Rect(SCREEN_W // 2 - 220, SCREEN_H // 2 - 160, 440, 320)
-    music_bar = pygame.Rect(settings_panel_rect.left + 30, settings_panel_rect.top + 100, settings_panel_rect.width - 60, 14)
-    sfx_bar   = pygame.Rect(settings_panel_rect.left + 30, settings_panel_rect.top + 170, settings_panel_rect.width - 60, 14)
+    panel_width = min(500, int(SCREEN_W * 0.40))
+    panel_height = min(360, int(SCREEN_H * 0.50))
+
+    settings_panel_rect = pygame.Rect(
+        (SCREEN_W - panel_width) // 2,
+        (SCREEN_H - panel_height) // 2,
+        panel_width,
+        panel_height
+    )
+    padding = 30
+
+    music_bar = pygame.Rect(
+        settings_panel_rect.left + padding,
+        settings_panel_rect.top + int(settings_panel_rect.height * 0.35),
+        settings_panel_rect.width - padding * 2,
+        14
+    )
+
+    sfx_bar = pygame.Rect(
+        settings_panel_rect.left + padding,
+        settings_panel_rect.top + int(settings_panel_rect.height * 0.58),
+        settings_panel_rect.width - padding * 2,
+        14
+    )
+
     settings_back_rect = pygame.Rect(settings_panel_rect.centerx - 70, settings_panel_rect.bottom - 56, 140, 36)
     dragging_music = False
     dragging_sfx = False
@@ -150,11 +179,47 @@ def game_screen(screen):
         surf.blit(txt, (rect.centerx - txt.get_width() // 2, rect.centery - txt.get_height() // 2))
 
     def draw_pause_menu(surf, mouse_pos):
+        # ----- Blur the current game screen -----
+        small = pygame.transform.smoothscale(
+            surf,
+            (SCREEN_W // 8, SCREEN_H // 8)
+        )
+        blurred = pygame.transform.smoothscale(
+            small,
+            (SCREEN_W, SCREEN_H)
+        )
+        surf.blit(blurred, (0, 0))
+
+        # ----- Dark transparent overlay -----
         overlay = pygame.Surface((SCREEN_W, SCREEN_H), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 160))
+        overlay.fill((0, 0, 0, 120))
         surf.blit(overlay, (0, 0))
+
+        # ----- Center panel -----
+        panel_width = min(520, int(SCREEN_W * 0.42))
+        panel_height = min(420, int(SCREEN_H * 0.60))
+
+        panel = pygame.Rect(
+            (SCREEN_W - panel_width) // 2,
+            (SCREEN_H - panel_height) // 2,
+            panel_width,
+            panel_height
+        )
+
+        pygame.draw.rect(surf, (36, 38, 48), panel, border_radius=10)
+        pygame.draw.rect(surf, (90, 94, 110), panel, 3, border_radius=10)
+
+        # ----- Title -----
         title = pause_title_font.render("PAUSED", True, (255, 255, 255))
-        surf.blit(title, (SCREEN_W // 2 - title.get_width() // 2, pause_by0 - 100))
+        surf.blit(
+            title,
+            (
+                panel.centerx - title.get_width() // 2,
+                panel.top + 30
+            )
+        )
+
+        # ----- Buttons -----
         for btn in pause_buttons:
             hovered = btn["rect"].collidepoint(mouse_pos)
             draw_pause_button(surf, btn["rect"], btn["label"], hovered)

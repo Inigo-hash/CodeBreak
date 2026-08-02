@@ -8,9 +8,19 @@ from src.settings_state import settings_state as _settings_state
 # Initialize Pygame
 pygame.init()
 
-# Screen settings
-screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
-SCREEN_WIDTH, SCREEN_HEIGHT = screen.get_size()
+from src.config import (
+    FULLSCREEN,
+    SCREEN_WIDTH,
+    SCREEN_HEIGHT,
+)
+
+flags = pygame.FULLSCREEN if FULLSCREEN else 0
+
+screen = pygame.display.set_mode(
+    (SCREEN_WIDTH, SCREEN_HEIGHT),
+    flags
+)
+
 pygame.display.set_caption("CodeBreak - Main Menu")
 
 background = pygame.image.load("assets/images/backgrounds/mainMenuBg.png").convert()

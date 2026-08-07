@@ -35,6 +35,7 @@ class EditorRenderer:
         self.challenge = challenge
         self.text_buffer = text_buffer
         self.background = background
+        self.last_input_time = 0
 
         # UI Components
         self.problem_panel = ProblemPanel(challenge)
@@ -274,11 +275,15 @@ class EditorRenderer:
         # Draw Cursor
         # ----------------------------------
 
+        current_line = self.text_buffer.lines[self.text_buffer.cursor_row]
+
+        text_before_cursor = current_line[:self.text_buffer.cursor_col]
+
         cursor_x = (
             self.editor_rect.x
             + LINE_NUMBER_WIDTH
             + 15
-            + self.text_buffer.cursor_col * 10
+            + TEXT_FONT.size(text_before_cursor)[0]
         )
 
         cursor_y = (
@@ -287,13 +292,25 @@ class EditorRenderer:
             + self.text_buffer.cursor_row * line_spacing
         )
 
-        pygame.draw.line(
-            self.screen,
-            TEXT_COLOR,
-            (cursor_x, cursor_y),
-            (cursor_x, cursor_y + 18),
-            2
-        )
+        # ----------------------------------
+        # Draw Blinking Cursor
+        # ----------------------------------
+        current_time = pygame.time.get_ticks()
+
+        # Stay solid for 500 ms after any keyboard input.
+        if current_time - self.last_input_time < 500:
+            show_cursor = True
+        else:
+            show_cursor = (current_time // 500) % 2 == 0
+
+        if show_cursor:
+            pygame.draw.line(
+                self.screen,
+                TEXT_COLOR,
+                (cursor_x, cursor_y),
+                (cursor_x, cursor_y + 18),
+                2
+            )
 
     def draw_output_panel(self):
 

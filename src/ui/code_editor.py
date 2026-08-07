@@ -45,6 +45,9 @@ class CodeEditor:
         # Controls whether the editor is open.
         self.running = False
 
+        # Cursor blinking
+        self.last_input_time = pygame.time.get_ticks()
+
         # Responsible only for drawing.
         self.renderer = EditorRenderer(
             screen,
@@ -80,6 +83,8 @@ class CodeEditor:
         while self.running:
 
             self.handle_events()
+
+            self.renderer.last_input_time = self.last_input_time
 
             self.renderer.draw()
 
@@ -119,6 +124,7 @@ class CodeEditor:
             if event.type == pygame.TEXTINPUT:
 
                 self.text_buffer.insert(event.text)
+                self.last_input_time = pygame.time.get_ticks()
 
             # -------------------------------
             # Keyboard
@@ -133,28 +139,29 @@ class CodeEditor:
                 elif event.key == pygame.K_BACKSPACE:
 
                     self.text_buffer.backspace()
+                    self.last_input_time = pygame.time.get_ticks()
 
                 elif event.key == pygame.K_RETURN:
 
                     self.text_buffer.new_line()
+                    self.last_input_time = pygame.time.get_ticks()
 
                 elif event.key == pygame.K_LEFT:
 
                     self.text_buffer.move_left()
+                    self.last_input_time = pygame.time.get_ticks()
 
                 elif event.key == pygame.K_RIGHT:
 
                     self.text_buffer.move_right()
+                    self.last_input_time = pygame.time.get_ticks()
 
                 elif event.key == pygame.K_UP:
 
                     self.text_buffer.move_up()
+                    self.last_input_time = pygame.time.get_ticks()
 
                 elif event.key == pygame.K_DOWN:
 
                     self.text_buffer.move_down()
-
-            # Character typing
-            if event.type == pygame.TEXTINPUT:
-                            
-                self.text_buffer.insert(event.text)
+                    self.last_input_time = pygame.time.get_ticks()

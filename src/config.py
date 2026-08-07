@@ -2,7 +2,7 @@ import pygame
 
 pygame.init()
 
-FULLSCREEN = False
+FULLSCREEN = True
 
 DISPLAY = pygame.display.Info()
 

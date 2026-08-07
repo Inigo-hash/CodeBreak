@@ -259,7 +259,7 @@ def main_menu():
 
     # Load logo and compute its height FIRST
     logo = pygame.image.load("assets/images/logos/codebreakLogo.png").convert_alpha()
-    logo_width = int(SCREEN_WIDTH * 0.32)
+    logo_width = int(SCREEN_WIDTH * 0.50)
     aspect_ratio = logo.get_height() / logo.get_width()
     logo_height = int(logo_width * aspect_ratio)
     logo = pygame.transform.smoothscale(logo, (logo_width, logo_height))
@@ -267,7 +267,8 @@ def main_menu():
     # Now these can safely use logo_height
     bw = int(SCREEN_WIDTH * 0.20)
     bh = int(SCREEN_HEIGHT * 0.075)
-    by0 = logo_height + int(SCREEN_HEIGHT * 0.08)
+    logo_top = int(SCREEN_HEIGHT * 0.04)
+    by0 = logo_top + logo_height + -130
     gap = int(SCREEN_HEIGHT * 0.02)
 
     center_x = SCREEN_WIDTH // 2 - bw // 2

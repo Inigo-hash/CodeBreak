@@ -21,7 +21,7 @@ SCREEN_WIDTH, SCREEN_HEIGHT = screen.get_size()
 
 pygame.display.set_caption("CodeBreak - Main Menu")
 
-background = pygame.image.load("assets/images/backgrounds/mainMenuBg.png").convert()
+background = pygame.image.load("assets/images/backgrounds/mainMenuBg1.png").convert()
 background = pygame.transform.scale(background, (SCREEN_WIDTH, SCREEN_HEIGHT))
 screen.blit(background, (0, 0))
 

@@ -26,9 +26,9 @@ background = pygame.transform.scale(background, (SCREEN_WIDTH, SCREEN_HEIGHT))
 screen.blit(background, (0, 0))
 
 # Palette
-STONE_DARK = (28, 30, 38)
-STONE_MID = (42, 46, 58)
-STONE_LIGHT = (62, 68, 82)
+STONE_DARK = (14, 14, 18)
+STONE_MID = (24, 25, 31)
+STONE_LIGHT = (38, 39, 47)
 BLUE_GLOW = (80, 180, 255)
 BLUE_DEEP = (35, 90, 140)
 YELLOW_GLOW = (255, 220, 120)
@@ -39,16 +39,16 @@ METAL_FRAME = (90, 94, 110)
 ROBOT_BLUE = (70, 140, 220)
 
 # Fonts
-_button_font = pygame.font.SysFont("consolas", 26, bold=True)
-_small = pygame.font.SysFont("consolas", 18)
-_tip_font = pygame.font.SysFont("consolas", 17)
-
+_CINZEL_BOLD_PATH = "assets/fonts/Cinzel-Bold.ttf"
+_CINZEL_PATH = "assets/fonts/Cinzel-VariableFont_wght.ttf"
 
 def _fallback_font(size, bold=False):
     return pygame.font.Font(None, size)
 
-
 try:
+    _button_font = pygame.font.Font(_CINZEL_BOLD_PATH, 26)
+    _small = pygame.font.Font(_CINZEL_PATH, 16)
+    _tip_font = pygame.font.Font(_CINZEL_PATH, 15)
     _ = _button_font.render("x", True, WHITE)
 except Exception:
     _button_font = _fallback_font(24, True)
@@ -58,12 +58,98 @@ except Exception:
 
 def _stone_texture(surf: pygame.Surface, rect: pygame.Rect, seed: int) -> None:
     rng = random.Random(seed)
-    surf.fill(STONE_MID, rect)
-    for _ in range(120):
-        x = rect.left + rng.randint(0, rect.width - 1)
-        y = rect.top + rng.randint(0, rect.height - 1)
-        c = rng.choice([STONE_DARK, STONE_LIGHT, (50, 54, 68)])
-        pygame.draw.rect(surf, c, (x, y, rng.randint(2, 5), rng.randint(1, 3)))
+
+    MORTAR = (8, 8, 10)
+    surf.fill(MORTAR, rect)
+
+    brick_h = 22
+    mortar_w = 3
+    row = 0
+    y = rect.top
+    brick_cells = []  # track placed bricks so damage can reference them
+
+    while y < rect.bottom:
+        brick_w = rng.randint(58, 84)
+        offset = (brick_w // 2) if row % 2 else 0
+        x = rect.left - offset
+
+        while x < rect.right:
+            bw = rng.randint(58, 84)
+            brick_rect = pygame.Rect(x, y, bw - mortar_w, min(brick_h, rect.bottom - y) - mortar_w)
+            brick_rect = brick_rect.clip(rect)
+
+            if brick_rect.width > 2 and brick_rect.height > 2:
+                shade = rng.randint(-14, 10)
+                base = tuple(max(0, min(255, c + shade)) for c in STONE_MID)
+                pygame.draw.rect(surf, base, brick_rect)
+
+                for _ in range(6):
+                    sx = brick_rect.left + rng.randint(0, max(1, brick_rect.width - 2))
+                    sy = brick_rect.top + rng.randint(0, max(1, brick_rect.height - 2))
+                    c = rng.choice([STONE_DARK, STONE_LIGHT])
+                    pygame.draw.rect(surf, c, (sx, sy, rng.randint(2, 4), rng.randint(1, 2)))
+
+                hi = tuple(min(255, c + 30) for c in base)
+                lo = tuple(max(0, c - 30) for c in base)
+                pygame.draw.line(surf, hi, brick_rect.topleft, (brick_rect.right - 1, brick_rect.top), 1)
+                pygame.draw.line(surf, hi, brick_rect.topleft, (brick_rect.left, brick_rect.bottom - 1), 1)
+                pygame.draw.line(surf, lo, (brick_rect.left, brick_rect.bottom - 1), brick_rect.bottomright, 1)
+                pygame.draw.line(surf, lo, (brick_rect.right - 1, brick_rect.top), brick_rect.bottomright, 1)
+
+                brick_cells.append(brick_rect)
+
+            x += bw
+        y += brick_h
+        row += 1
+
+    # ---------- DAMAGE PASS ----------
+
+    # 1. Chipped corners — carve small mortar-colored notches out of random bricks
+    for b in brick_cells:
+        if rng.random() < 0.35:
+            corner = rng.choice(["tl", "tr", "bl", "br"])
+            cw = rng.randint(4, 9)
+            ch = rng.randint(4, 9)
+            if corner == "tl":
+                cx, cy = b.left, b.top
+            elif corner == "tr":
+                cx, cy = b.right - cw, b.top
+            elif corner == "bl":
+                cx, cy = b.left, b.bottom - ch
+            else:
+                cx, cy = b.right - cw, b.bottom - ch
+            pygame.draw.rect(surf, MORTAR, (cx, cy, cw, ch))
+
+    # 2. Hairline cracks — jagged dark lines crossing 1-3 bricks
+    for _ in range(max(3, len(brick_cells) // 12)):
+        start = rng.choice(brick_cells)
+        px, py = rng.randint(start.left, start.right), rng.randint(start.top, start.bottom)
+        length = rng.randint(3, 6)
+        crack_color = (10, 10, 12)
+        for _ in range(length):
+            nx = px + rng.randint(-10, 10)
+            ny = py + rng.randint(-4, 4)
+            pygame.draw.line(surf, crack_color, (px, py), (nx, ny), 1)
+            px, py = nx, ny
+
+    # 3. Grime / moss patches — soft dark-green-ish blotches, mostly lower half
+    moss = (26, 34, 22)
+    for _ in range(max(2, len(brick_cells) // 20)):
+        b = rng.choice(brick_cells)
+        if b.top < rect.top + rect.height * 0.4 and rng.random() < 0.6:
+            continue  # bias moss toward the lower/damp-looking area
+        blot = pygame.Surface((rng.randint(10, 20), rng.randint(6, 12)), pygame.SRCALPHA)
+        pygame.draw.ellipse(blot, (*moss, rng.randint(60, 110)), blot.get_rect())
+        surf.blit(blot, (b.left + rng.randint(-4, 4), b.bottom - rng.randint(4, 10)))
+
+    # 4. Crumbled mortar gaps — occasionally widen a mortar joint into a dark gap
+    for b in brick_cells:
+        if rng.random() < 0.12:
+            gap_rect = pygame.Rect(b.right, b.top, mortar_w + rng.randint(2, 5), b.height)
+            pygame.draw.rect(surf, (4, 4, 5), gap_rect.clip(rect))
+
+    # ---------- END DAMAGE PASS ----------
+
     pygame.draw.rect(surf, STONE_LIGHT, rect, 2)
     hi = tuple(min(255, c + 35) for c in STONE_LIGHT)
     pygame.draw.line(surf, hi, rect.topleft, (rect.right - 1, rect.top), 1)
@@ -71,9 +157,7 @@ def _stone_texture(surf: pygame.Surface, rect: pygame.Rect, seed: int) -> None:
     pygame.draw.line(surf, lo, (rect.left, rect.bottom - 1), rect.bottomright, 1)
 
 
-def _draw_menu_icon(surf: pygame.Surface, kind: str, rect: pygame.Rect) -> None:
-    ix = rect.left + 28
-    iy = rect.centery
+def _draw_menu_icon(surf: pygame.Surface, kind: str, ix: int, iy: int) -> None:
     if kind == "play":
         pygame.draw.polygon(surf, GREEN_PLAY, [(ix - 10, iy - 14), (ix - 10, iy + 14), (ix + 14, iy)])
     elif kind == "chest":
@@ -111,9 +195,16 @@ def _draw_stone_button(
         overlay.fill((*BLUE_GLOW[:3], 40))
         tmp.blit(overlay, (0, 0))
     surf.blit(tmp, r.topleft)
-    _draw_menu_icon(surf, icon, pygame.Rect(r.left, r.top, r.w, r.h))
+
+    # Icon stays fixed on the left
+    icon_cx = r.left + 28
+    icon_cy = r.centery
+    _draw_menu_icon(surf, icon, icon_cx, icon_cy)
+
+    # Label centered in the full button, independent of icon position
     txt = _button_font.render(label, True, WHITE)
-    surf.blit(txt, (r.left + 52, r.centery - txt.get_height() // 2))
+    txt_x = r.centerx - txt.get_width() // 2
+    surf.blit(txt, (txt_x, r.centery - txt.get_height() // 2))
 
 
 def _draw_robot_tip(surf: pygame.Surface, t: float) -> None:

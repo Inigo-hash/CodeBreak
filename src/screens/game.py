@@ -459,7 +459,7 @@ def game_screen(screen):
                 screen.blit(msg, (SCREEN_W // 2 - msg.get_width() // 2,
                                   SCREEN_H // 2 - msg.get_height() // 2))
 
-                close_hint = font.render("Release E to close", True, (180, 180, 180))
+                close_hint = font.render("Release E to close", True, (255, 0, 0))
                 screen.blit(close_hint, (SCREEN_W // 2 - close_hint.get_width() // 2,
                                          SCREEN_H // 2 + msg.get_height()))
 

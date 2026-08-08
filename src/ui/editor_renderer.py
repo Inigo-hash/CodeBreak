@@ -216,8 +216,17 @@ class EditorRenderer:
             border_radius=PANEL_RADIUS
         )
 
-        # Draw line numbers
-        for i in range(10):
+        # Maximum number of lines that can fit inside the editor
+        line_spacing = 20
+
+        max_visible_lines = (
+            self.editor_rect.height - 30
+        ) // line_spacing
+
+        # Draw line numbers based on actual visible lines
+        for i in range(
+            min(len(self.text_buffer.lines), max_visible_lines)
+        ):
 
             number = SMALL_FONT.render(
                 str(i + 1),
@@ -229,7 +238,7 @@ class EditorRenderer:
                 number,
                 (
                     self.editor_rect.x + 12,
-                    self.editor_rect.y + 15 + (i * 20)
+                    self.editor_rect.y + 15 + (i * line_spacing)
                 )
             )
 
@@ -254,9 +263,8 @@ class EditorRenderer:
         text_x = self.editor_rect.x + LINE_NUMBER_WIDTH + 15
         text_y = self.editor_rect.y + 15
 
-        line_spacing = 20
-
-        for line in self.text_buffer.lines:
+        # Draw only lines that fit inside the editor
+        for line in self.text_buffer.lines[:max_visible_lines]:
 
             rendered = TEXT_FONT.render(
                 line,
@@ -303,7 +311,7 @@ class EditorRenderer:
         else:
             show_cursor = (current_time // 500) % 2 == 0
 
-        if show_cursor:
+        if show_cursor and self.text_buffer.cursor_row < max_visible_lines:
             pygame.draw.line(
                 self.screen,
                 TEXT_COLOR,
@@ -317,16 +325,6 @@ class EditorRenderer:
         self.output_panel.draw(
             self.screen,
             self.output_rect
-        )
-
-    def draw_button_panel(self):
-        """Draw the bottom button area."""
-
-        pygame.draw.rect(
-            self.screen,
-            PANEL_COLOR,
-            self.button_rect,
-            border_radius=PANEL_RADIUS
         )
 
     def draw_button_panel(self):

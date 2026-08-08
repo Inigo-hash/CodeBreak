@@ -140,6 +140,18 @@ class CodeEditor:
 
                     self.text_buffer.backspace()
                     self.last_input_time = pygame.time.get_ticks()
+                    
+                elif event.key == pygame.K_TAB:
+
+                    if pygame.key.get_mods() & pygame.KMOD_SHIFT:
+
+                        self.text_buffer.dedent()
+
+                    else:
+
+                        self.text_buffer.indent()
+
+                    self.last_input_time = pygame.time.get_ticks()
 
                 elif event.key == pygame.K_RETURN:
 

@@ -447,7 +447,7 @@ def game_screen(screen):
                     message = 'The hay is empty.'
                 else:
                     message = "Nothing here."
-                msg = inspect_font.render(message, True, (255, 255, 200))
+                msg = inspect_font.render(message, True, (255, 0, 0))
                 box = pygame.Rect(
                     SCREEN_W // 2 - msg.get_width() // 2 - 10,
                     SCREEN_H // 2 - msg.get_height() // 2 - 10,

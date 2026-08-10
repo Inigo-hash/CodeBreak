@@ -309,23 +309,13 @@ def game_screen(screen):
 
         if paused:
             screen.blit(map_surface, (-camera_x, -camera_y))
-            pygame.draw.rect(
-                screen,
-                player_color,
-                pygame.Rect(
-                    player_rect.x * ZOOM - camera_x,
-                    player_rect.y * ZOOM - camera_y,
-                    player_rect.width * ZOOM,
-                    player_rect.height * ZOOM
-                )
-            )
+            main_character.draw_frames(ZOOM, camera_x, camera_y)
             if show_pause_settings:
                 draw_pause_settings(screen, mouse_pos)
             else:
                 draw_pause_menu(screen, mouse_pos)
             pygame.display.flip()
             continue
-
         # --- Movement ---
         keys = pygame.key.get_pressed()
         dx, dy = 0, 0

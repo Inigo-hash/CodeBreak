@@ -148,25 +148,32 @@ def game_screen(screen):
                     tile = tmx_data.get_tile_image_by_gid(gid)
                     if tile:
                         surf.blit(tile, (x * TILE_SIZE, y * TILE_SIZE))
-            elif hasattr(layer, 'name') and layer.name == "Object Layer 1":
-                # Draw tile objects (e.g. the big tree) placed on the object layer
-                for obj in layer:
-                    gid = getattr(obj, 'gid', None)
-                    if not gid:
-                        continue  # skip non-tile objects (interactables, shapes, etc.)
-                    tile_image = tmx_data.get_tile_image_by_gid(gid)
-                    if not tile_image:
-                        continue
-                    # Scale to whatever size you resized the object to in Tiled
-                    scaled = pygame.transform.scale(tile_image, (int(obj.width), int(obj.height)))
-                    # Tiled anchors tile objects at bottom-left, so shift y up by height
-                    surf.blit(scaled, (obj.x, obj.y - obj.height))
         return surf
 
     map_surface = render_map_surface()
     # Scale the pre-rendered map once at startup based on ZOOM level (e.g. ZOOM=2 doubles the size)
     # This avoids rescaling every frame which would slow down the game
     map_surface = pygame.transform.scale(map_surface, (map_width * ZOOM, map_height * ZOOM))
+
+    # --- Dynamic props (tile objects requiring per-frame depth sorting) ---
+    dynamic_props = []
+    for layer in tmx_data.visible_layers:
+        if hasattr(layer, 'name') and layer.name == "Object Layer 1":
+            for obj in layer:
+                gid = getattr(obj, 'gid', None)
+                if not gid:
+                    continue
+                tile_image = tmx_data.get_tile_image_by_gid(gid)
+                if not tile_image:
+                    continue
+                dynamic_props.append({
+                    'image': pygame.transform.scale(
+                        tile_image, (int(obj.width * ZOOM), int(obj.height * ZOOM))
+                    ),
+                    'x': obj.x * ZOOM,
+                    'y': (obj.y - obj.height) * ZOOM,
+                    'sort_y': obj.y
+                })
 
     # --- Pause menu setup ---
     paused = False
@@ -480,8 +487,22 @@ def game_screen(screen):
         # --- Draw ---
         screen.blit(map_surface, (-camera_x, -camera_y))
 
-        # Draw player (scaled position)
-        # (removed red placeholder rect — sprite is drawn below via main_character.draw_frames)
+        main_character.update_position(dx, dy, player_rect, player_x, player_y, collision_rects, map_width, map_height)   
+        main_character.update_frames(keys)
+
+        # --- Depth-sorted draw pass (painter's algorithm) ---
+        draw_list = [('prop', p['sort_y'], p) for p in dynamic_props]
+        draw_list.append(('player', player_rect.bottom, None))
+        draw_list.append(('enemy', enemy.center_y, None))
+        draw_list.sort(key=lambda entry: entry[1])
+
+        for kind, _, prop in draw_list:
+            if kind == 'prop':
+                screen.blit(prop['image'], (prop['x'] - camera_x, prop['y'] - camera_y))
+            elif kind == 'player':
+                main_character.draw_frames(ZOOM, camera_x, camera_y)
+            elif kind == 'enemy':
+                enemy.draw_frames(ZOOM, camera_x, camera_y)
 
         # --- Draw interaction UI ---
         if near_interactable:
@@ -542,14 +563,6 @@ def game_screen(screen):
         hint = font.render("ESC = Pause", True, (255, 255, 255))
         screen.blit(hint, (SCREEN_W - hint.get_width() - 10, 10))
 
-        main_character.update_position(dx, dy, player_rect, player_x, player_y, collision_rects, map_width, map_height)   
-        main_character.update_frames(keys)
-        main_character.draw_frames(ZOOM, camera_x, camera_y)
-
-        # Draw the enemy (animated)
-        enemy.draw_frames(ZOOM, camera_x, camera_y)
-        
-        
         pygame.display.flip()
 
         

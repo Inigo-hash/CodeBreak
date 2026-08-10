@@ -6,6 +6,7 @@ from src.entities.player import MainCharacter
 from src.entities.enemy import Enemy
 from src.ui.code_editor import CodeEditor
 from src.screens.game_over import game_over_screen
+from src.screens.profile import profile_screen
 
 def game_screen(screen):
     clock = pygame.time.Clock()
@@ -78,6 +79,50 @@ def game_screen(screen):
     pause_title_font = pygame.font.SysFont("consolas", 40, bold=True)
     pause_button_font = pygame.font.SysFont("consolas", 24, bold=True)
     INSPECT_TIME = 2.0  # seconds to hold E
+
+    # --- Profile HUD (top-left portrait + HP/PP bars) ---
+    # Draft values — not wired to real damage/energy systems yet.
+    profile_name = "Bobiles the explorer the great"
+    player_hp, player_max_hp = 100, 100
+    player_pp, player_max_pp = 100, 100
+
+    hud_font_name = pygame.font.SysFont("consolas", 16, bold=True)
+    hud_font_bar = pygame.font.SysFont("consolas", 12, bold=True)
+
+    HUD_MARGIN = 14
+    HUD_PORTRAIT_SIZE = 56
+    hud_portrait = pygame.image.load("assets/images/logos/codebreakLogo.png").convert_alpha()
+    hud_portrait = pygame.transform.smoothscale(hud_portrait, (HUD_PORTRAIT_SIZE, HUD_PORTRAIT_SIZE))
+    hud_portrait_rect = pygame.Rect(HUD_MARGIN, HUD_MARGIN, HUD_PORTRAIT_SIZE, HUD_PORTRAIT_SIZE)
+
+    HUD_BAR_WIDTH = 180
+    HUD_BAR_HEIGHT = 16
+    hud_bars_left = hud_portrait_rect.right + 10
+    hud_hp_rect = pygame.Rect(hud_bars_left, hud_portrait_rect.top + 22, HUD_BAR_WIDTH, HUD_BAR_HEIGHT)
+    hud_pp_rect = pygame.Rect(hud_bars_left, hud_hp_rect.bottom + 6, HUD_BAR_WIDTH, HUD_BAR_HEIGHT)
+
+    def draw_hud_bar(surf, rect, value, max_value, fill_color, edge_color):
+        pygame.draw.rect(surf, (20, 22, 28), rect, border_radius=4)
+        ratio = 0 if max_value <= 0 else max(0.0, min(1.0, value / max_value))
+        fill_rect = pygame.Rect(rect.left, rect.top, int(rect.width * ratio), rect.height)
+        if fill_rect.width > 0:
+            pygame.draw.rect(surf, fill_color, fill_rect, border_radius=4)
+        pygame.draw.rect(surf, edge_color, rect, 2, border_radius=4)
+        label = hud_font_bar.render(f"{value}/{max_value}", True, (255, 255, 255))
+        surf.blit(label, (rect.centerx - label.get_width() // 2, rect.centery - label.get_height() // 2))
+
+    def draw_profile_hud(surf, mouse_pos):
+        pygame.draw.rect(surf, (20, 20, 26), hud_portrait_rect.inflate(6, 6), border_radius=4)
+        surf.blit(hud_portrait, hud_portrait_rect)
+        hovered = hud_portrait_rect.collidepoint(mouse_pos)
+        frame_color = (255, 220, 120) if hovered else (90, 94, 110)
+        pygame.draw.rect(surf, frame_color, hud_portrait_rect.inflate(6, 6), 2, border_radius=4)
+
+        name_surf = hud_font_name.render(profile_name, True, (240, 240, 240))
+        surf.blit(name_surf, (hud_bars_left, hud_portrait_rect.top))
+
+        draw_hud_bar(surf, hud_hp_rect, player_hp, player_max_hp, (200, 40, 40), (255, 90, 90))
+        draw_hud_bar(surf, hud_pp_rect, player_pp, player_max_pp, (210, 175, 40), (255, 220, 120))
 
     # --- Camera with zoom ---
     camera_x = 0
@@ -303,6 +348,16 @@ def game_screen(screen):
                         dragging_sfx = True
                     if settings_back_rect.collidepoint(event.pos):
                         show_pause_settings = False
+                elif not paused:
+                    if hud_portrait_rect.collidepoint(event.pos):
+                        background_snapshot = screen.copy()
+                        profile_screen(
+                            screen,
+                            background=background_snapshot,
+                            name=profile_name,
+                            hp=player_hp, max_hp=player_max_hp,
+                            pp=player_pp, max_pp=player_max_pp,
+                        )
 
             if event.type == pygame.MOUSEBUTTONUP:
                 dragging_music = False
@@ -467,9 +522,12 @@ def game_screen(screen):
                     near_interactable['inspecting'] = False
                     near_interactable['inspect_progress'] = 0.0
 
-        # ESC hint
+        # Profile HUD (top-left)
+        draw_profile_hud(screen, mouse_pos)
+
+        # ESC hint (top-right, out of the way of the profile HUD)
         hint = font.render("ESC = Pause", True, (255, 255, 255))
-        screen.blit(hint, (10, 10))
+        screen.blit(hint, (SCREEN_W - hint.get_width() - 10, 10))
 
         main_character.update_position(dx, dy, player_rect, player_x, player_y, collision_rects, map_width, map_height)   
         main_character.update_frames(keys)

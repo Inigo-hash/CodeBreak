@@ -103,6 +103,19 @@ def game_screen(screen):
                     tile = tmx_data.get_tile_image_by_gid(gid)
                     if tile:
                         surf.blit(tile, (x * TILE_SIZE, y * TILE_SIZE))
+            elif hasattr(layer, 'name') and layer.name == "Object Layer 1":
+                # Draw tile objects (e.g. the big tree) placed on the object layer
+                for obj in layer:
+                    gid = getattr(obj, 'gid', None)
+                    if not gid:
+                        continue  # skip non-tile objects (interactables, shapes, etc.)
+                    tile_image = tmx_data.get_tile_image_by_gid(gid)
+                    if not tile_image:
+                        continue
+                    # Scale to whatever size you resized the object to in Tiled
+                    scaled = pygame.transform.scale(tile_image, (int(obj.width), int(obj.height)))
+                    # Tiled anchors tile objects at bottom-left, so shift y up by height
+                    surf.blit(scaled, (obj.x, obj.y - obj.height))
         return surf
 
     map_surface = render_map_surface()

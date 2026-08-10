@@ -378,22 +378,26 @@ def main_menu():
     bh = int(SCREEN_HEIGHT * 0.075)
     gap = int(SCREEN_HEIGHT * 0.02)
 
-    bottom_reserved = int(SCREEN_HEIGHT * 0.18)  # keep clear of the tip box / bottom edge
-    available_top = int(SCREEN_HEIGHT * 0.5)  # was 0.02 — more clearance below the logo/crystal
+    # Buttons can never shrink smaller than what the label/icon actually
+    # need — this is what stops rows from visually colliding on smaller
+    # or differently-scaled screens.
+    min_bh = int(_button_font.get_height() * 1.8)
+    min_gap = int(_button_font.get_height() * 0.3)
+    bh = max(bh, min_bh)
+    gap = max(gap, min_gap)
+
+    bottom_reserved = int(SCREEN_HEIGHT * 0.18)
+    available_top = int(SCREEN_HEIGHT * 0.5)
     available_bottom = SCREEN_HEIGHT - bottom_reserved
     available_height = max(1, available_bottom - available_top)
 
     block_height = 4 * bh + 3 * gap
     if block_height > available_height:
-        # Not enough vertical room for full-size buttons on this screen —
-        # shrink them proportionally instead of letting them overlap
-        # the logo above or the tip box below.
         shrink = available_height / block_height
-        bh = max(30, int(bh * shrink))
-        gap = max(6, int(gap * shrink))
+        bh = max(min_bh, int(bh * shrink))   # never shrink below min_bh
+        gap = max(min_gap, int(gap * shrink))  # never shrink below min_gap
         block_height = 4 * bh + 3 * gap
 
-    # Center the button block in whatever room is left; never start above available_top
     by0 = available_top + max(0, (available_height - block_height) // 2)
 
     center_x = SCREEN_WIDTH // 2 - bw // 2   # horizontally centered

@@ -379,7 +379,7 @@ def main_menu():
     gap = int(SCREEN_HEIGHT * 0.02)
 
     bottom_reserved = int(SCREEN_HEIGHT * 0.18)  # keep clear of the tip box / bottom edge
-    available_top = logo_bottom + int(SCREEN_HEIGHT * 0.02)
+    available_top = int(SCREEN_HEIGHT * 0.5)  # was 0.02 — more clearance below the logo/crystal
     available_bottom = SCREEN_HEIGHT - bottom_reserved
     available_height = max(1, available_bottom - available_top)
 

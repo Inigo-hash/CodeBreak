@@ -3,6 +3,7 @@ import pygame
 import sys
 from src.settings_state import settings_state as _settings_state
 from src.entities.player import MainCharacter
+from src.entities.enemy import Enemy
 from src.ui.code_editor import CodeEditor
 
 def game_screen(screen):
@@ -248,6 +249,8 @@ def game_screen(screen):
 
     running = True
     main_character = MainCharacter(screen, map_width, map_height)
+    # simple enemy instance for visual testing/animation
+    enemy = Enemy(screen, map_width, map_height)
     while running:
         clock.tick(60)
         mouse_pos = pygame.mouse.get_pos()
@@ -474,6 +477,9 @@ def game_screen(screen):
         main_character.update_position(dx, dy, player_rect, player_x, player_y, collision_rects, map_width, map_height)   
         main_character.update_frames(keys)
         main_character.draw_frames(ZOOM, camera_x, camera_y)
+
+        # Draw the enemy (animated)
+        enemy.draw_frames(ZOOM, camera_x, camera_y)
         
         
         pygame.display.flip()

@@ -5,6 +5,7 @@ from src.settings_state import settings_state as _settings_state
 from src.entities.player import MainCharacter
 from src.entities.enemy import Enemy
 from src.ui.code_editor import CodeEditor
+from src.screens.game_over import game_over_screen
 
 def game_screen(screen):
     clock = pygame.time.Clock()
@@ -277,6 +278,12 @@ def game_screen(screen):
                     background_snapshot = screen.copy()
                     editor = CodeEditor(screen, sample_challenge, background_snapshot)
                     editor.run()
+                elif event.key == pygame.K_F8:
+                    # Dev-only preview: press F8 to see the Game Over screen,
+                    # F8 again (or Esc/Enter/R/M/click) to leave it and resume
+                    # gameplay right where you were.
+                    background_snapshot = screen.copy()
+                    game_over_screen(screen, background=background_snapshot)
 
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if paused and not show_pause_settings:

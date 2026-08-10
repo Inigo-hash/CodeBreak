@@ -5,10 +5,12 @@ import pygame
 from src.screens.game import game_screen
 from src.settings_state import settings_state as _settings_state
 
+# Import config first — it sets the SDL_VIDEO_MINIMIZE_ON_FOCUS_LOSS env var,
+# which must exist before pygame.init() brings up the video subsystem.
+from src.config import FULLSCREEN
+
 # Initialize Pygame
 pygame.init()
-
-from src.config import FULLSCREEN
 
 if FULLSCREEN:
     screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
@@ -268,23 +270,31 @@ def _draw_interactive_settings(surf: pygame.Surface, mouse_pos, show: bool) -> b
     right_arrow = pygame.Rect(pr.right - 100, arrow_y, 40, 28)
     back_r      = pygame.Rect(pr.centerx - 70, pr.bottom - 56, 140, 36)
 
-    mouse_pressed = pygame.mouse.get_pressed()
+    mouse_down = pygame.mouse.get_pressed()[0]
+    # Edge-triggered click: True only on the frame the button first goes
+    # down. Using the raw held state here made theme_index (and the back
+    # button) fire on every frame the mouse stayed down, cycling through
+    # syntax themes ~60x/sec and looking like a glitch/flicker.
+    mouse_clicked = mouse_down and not _draw_interactive_settings.prev_pressed
+    _draw_interactive_settings.prev_pressed = mouse_down
 
     # Click handling
-    if mouse_pressed[0]:
+    if mouse_down:
         if music_bar.collidepoint(mouse_pos):
             s["dragging_music"] = True
         if sfx_bar.collidepoint(mouse_pos):
             s["dragging_sfx"] = True
+    else:
+        s["dragging_music"] = False
+        s["dragging_sfx"]   = False
+
+    if mouse_clicked:
         if left_arrow.collidepoint(mouse_pos):
             s["theme_index"] = (s["theme_index"] - 1) % len(s["themes"])
         if right_arrow.collidepoint(mouse_pos):
             s["theme_index"] = (s["theme_index"] + 1) % len(s["themes"])
         if back_r.collidepoint(mouse_pos):
             return False  # close panel
-    else:
-        s["dragging_music"] = False
-        s["dragging_sfx"]   = False
 
     if s["dragging_music"]:
         s["music_vol"] = max(0.0, min(1.0, (mouse_pos[0] - music_bar.left) / music_bar.width))
@@ -354,6 +364,8 @@ def _draw_interactive_settings(surf: pygame.Surface, mouse_pos, show: bool) -> b
     surf.blit(bt, (back_r.centerx - bt.get_width() // 2, back_r.centery - bt.get_height() // 2))
 
     return True  # keep panel open
+
+_draw_interactive_settings.prev_pressed = False
 
 def main_menu():
     from src.screens.settings import settings_screen

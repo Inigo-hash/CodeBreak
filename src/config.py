@@ -1,3 +1,11 @@
+import os
+
+# Must be set before pygame.init() (SDL reads this hint at video subsystem
+# init). Without it, SDL auto-minimizes the exclusive-fullscreen window the
+# instant it loses OS focus, which is what happens when a screenshot tool
+# (Snipping Tool, Game Bar, PrintScreen) briefly steals focus to capture.
+os.environ["SDL_VIDEO_MINIMIZE_ON_FOCUS_LOSS"] = "0"
+
 import pygame
 
 pygame.init()

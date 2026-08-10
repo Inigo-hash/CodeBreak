@@ -42,18 +42,24 @@ ROBOT_BLUE = (70, 140, 220)
 _CINZEL_BOLD_PATH = "assets/fonts/Cinzel-Bold.ttf"
 _CINZEL_PATH = "assets/fonts/Cinzel-VariableFont_wght.ttf"
 
+
 def _fallback_font(size, bold=False):
     return pygame.font.Font(None, size)
 
+
+# Scale font sizes off screen height vs a 1080p reference, clamped so they
+# never go microscopic on small laptop screens or oversized on big monitors.
+_font_scale = max(0.65, min(1.25, SCREEN_HEIGHT / 1080))
+
 try:
-    _button_font = pygame.font.Font(_CINZEL_BOLD_PATH, 26)
-    _small = pygame.font.Font(_CINZEL_PATH, 16)
-    _tip_font = pygame.font.Font(_CINZEL_PATH, 15)
+    _button_font = pygame.font.Font(_CINZEL_BOLD_PATH, max(14, int(26 * _font_scale)))
+    _small = pygame.font.Font(_CINZEL_PATH, max(12, int(16 * _font_scale)))
+    _tip_font = pygame.font.Font(_CINZEL_PATH, max(11, int(15 * _font_scale)))
     _ = _button_font.render("x", True, WHITE)
 except Exception:
-    _button_font = _fallback_font(24, True)
-    _small = _fallback_font(18)
-    _tip_font = _fallback_font(17)
+    _button_font = _fallback_font(max(14, int(24 * _font_scale)), True)
+    _small = _fallback_font(max(12, int(18 * _font_scale)))
+    _tip_font = _fallback_font(max(11, int(17 * _font_scale)))
 
 
 def _stone_texture(surf: pygame.Surface, rect: pygame.Rect, seed: int) -> None:
@@ -208,7 +214,7 @@ def _draw_stone_button(
 
 
 def _draw_robot_tip(surf: pygame.Surface, t: float) -> None:
-    rx, ry = SCREEN_WIDTH - 200, SCREEN_HEIGHT - 140
+    rx, ry = SCREEN_WIDTH - 90, SCREEN_HEIGHT - 140
     pygame.draw.rect(surf, ROBOT_BLUE, (rx - 36, ry - 50, 72, 70), border_radius=6)
     pygame.draw.rect(surf, (40, 90, 150), (rx - 36, ry - 50, 72, 70), 2, border_radius=6)
     pygame.draw.rect(surf, (20, 40, 70), (rx - 24, ry - 42, 48, 28))
@@ -223,7 +229,14 @@ def _draw_robot_tip(surf: pygame.Surface, t: float) -> None:
     pygame.draw.rect(surf, (120, 100, 70), scr, 1, border_radius=2)
     pygame.draw.rect(surf, ROBOT_BLUE, (rx - 22, ry + 18, 16, 22), border_radius=3)
     pygame.draw.rect(surf, ROBOT_BLUE, (rx + 6, ry + 18, 16, 22), border_radius=3)
-    tip_r = pygame.Rect(SCREEN_WIDTH - 520, SCREEN_HEIGHT - 118, 300, 72)
+
+    # Tip box anchored off the robot's own position (rx/ry) instead of a
+    # fixed SCREEN_WIDTH offset, so moving the robot moves the box with it.
+    robot_left_edge = rx - 50  # leftmost point of the robot (its arm)
+    tip_gap = 20
+    tip_w, tip_h = 300, 72
+    tip_r = pygame.Rect(robot_left_edge - tip_gap - tip_w, ry + 22, tip_w, tip_h)
+
     pulse = int(80 + 40 * math.sin(t * 3))
     pygame.draw.rect(surf, (10, 40, 20), tip_r, border_radius=4)
     pygame.draw.rect(surf, (GREEN_TIP[0] // 2, GREEN_TIP[1] // 2, GREEN_TIP[2] // 2), tip_r, 2, border_radius=4)
@@ -355,20 +368,41 @@ def main_menu():
     logo_height = int(logo_width * aspect_ratio)
     logo = pygame.transform.smoothscale(logo, (logo_width, logo_height))
 
-    # Now these can safely use logo_height
+    # This offset is used BOTH for the layout math below AND for the
+    # actual blit position in the draw loop, so they can never drift
+    # out of sync with each other again.
+    logo_top_offset = int(SCREEN_HEIGHT * 0.04)
+    logo_bottom = logo_top_offset + logo_height
+
     bw = int(SCREEN_WIDTH * 0.20)
     bh = int(SCREEN_HEIGHT * 0.075)
-    logo_top = int(SCREEN_HEIGHT * 0.04)
-    by0 = logo_top + logo_height + -130
     gap = int(SCREEN_HEIGHT * 0.02)
 
-    center_x = SCREEN_WIDTH // 2 - bw // 2
+    bottom_reserved = int(SCREEN_HEIGHT * 0.18)  # keep clear of the tip box / bottom edge
+    available_top = logo_bottom + int(SCREEN_HEIGHT * 0.02)
+    available_bottom = SCREEN_HEIGHT - bottom_reserved
+    available_height = max(1, available_bottom - available_top)
+
+    block_height = 4 * bh + 3 * gap
+    if block_height > available_height:
+        # Not enough vertical room for full-size buttons on this screen —
+        # shrink them proportionally instead of letting them overlap
+        # the logo above or the tip box below.
+        shrink = available_height / block_height
+        bh = max(30, int(bh * shrink))
+        gap = max(6, int(gap * shrink))
+        block_height = 4 * bh + 3 * gap
+
+    # Center the button block in whatever room is left; never start above available_top
+    by0 = available_top + max(0, (available_height - block_height) // 2)
+
+    center_x = SCREEN_WIDTH // 2 - bw // 2   # horizontally centered
 
     rects = [
-        pygame.Rect(center_x, by0 + 0 * (bh + gap), bw, bh),
-        pygame.Rect(center_x, by0 + 1 * (bh + gap), bw, bh),
-        pygame.Rect(center_x, by0 + 2 * (bh + gap), bw, bh),
-        pygame.Rect(center_x, by0 + 3 * (bh + gap), bw, bh),
+        pygame.Rect(center_x, by0 + 0 * (bh + gap), bw, bh),  # START
+        pygame.Rect(center_x, by0 + 1 * (bh + gap), bw, bh),  # CONTINUE
+        pygame.Rect(center_x, by0 + 2 * (bh + gap), bw, bh),  # SETTINGS
+        pygame.Rect(center_x, by0 + 3 * (bh + gap), bw, bh),  # QUIT
     ]
 
     icons = ["play", "chest", "gear", "quit"]
@@ -388,6 +422,9 @@ def main_menu():
         hovers = [r.collidepoint(mouse_pos) for r in rects]
 
         for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if not show_settings:
                     if rects[0].collidepoint(event.pos):
@@ -405,13 +442,12 @@ def main_menu():
                         pygame.quit()
                         sys.exit()
 
-
         screen.blit(background, (0, 0))
         screen.blit(
             logo,
             (
                 SCREEN_WIDTH // 2 - logo.get_width() // 2,
-                int(SCREEN_HEIGHT * 0.04)
+                logo_top_offset
             )
         )
 

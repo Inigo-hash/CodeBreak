@@ -5,10 +5,12 @@ import pygame
 from src.screens.game import game_screen
 from src.settings_state import settings_state as _settings_state
 
+# Import config first — it sets the SDL_VIDEO_MINIMIZE_ON_FOCUS_LOSS env var,
+# which must exist before pygame.init() brings up the video subsystem.
+from src.config import FULLSCREEN
+
 # Initialize Pygame
 pygame.init()
-
-from src.config import FULLSCREEN
 
 if FULLSCREEN:
     screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)

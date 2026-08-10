@@ -5,7 +5,7 @@ What Each Folder Is For
 assets/ — all your game resources
 
 images/ — sprites, backgrounds, UI elements
-sounds/ — background music and sound effects
+audios/ — background music and sound effects
 fonts/ — custom fonts for text
 
 src/ — all your Python code organized by purpose

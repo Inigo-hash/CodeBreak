@@ -390,6 +390,14 @@ def game_over_screen(screen, background=None, failed_snippet=None):
                 pygame.quit()
                 raise SystemExit
 
+            # F8 is the dev/debug toggle used to preview this screen from
+            # game.py (press F8 to open, F8 again to close) — it works even
+            # mid-animation so you're not stuck waiting to back out of it.
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_F8:
+                result = "debug_close"
+                running = False
+                break
+
             # Ignore input until everything has finished animating in,
             # so you can't accidentally click through a half-faded button.
             if now < all_shown_ms:

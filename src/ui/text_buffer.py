@@ -50,7 +50,7 @@ class TextBuffer:
 
     def backspace(self):
 
-        # Delete inside current line
+        # Delete character inside current line
         if self.cursor_col > 0:
 
             line = self.lines[self.cursor_row]
@@ -64,19 +64,25 @@ class TextBuffer:
 
             return
 
-        # Merge with previous line
+        # Merge current line with previous line
         if self.cursor_row > 0:
 
-            previous = self.lines[self.cursor_row - 1]
+            previous_row = self.cursor_row - 1
+
+            previous = self.lines[previous_row]
             current = self.lines[self.cursor_row]
 
+            # Cursor goes to the end of the previous line
             self.cursor_col = len(previous)
 
-            self.lines[self.cursor_row - 1] = previous + current
+            # Merge the lines
+            self.lines[previous_row] = previous + current
 
+            # Remove the current line
             del self.lines[self.cursor_row]
 
-            self.cursor_row -= 1
+            # Move cursor to previous line
+            self.cursor_row = previous_row
 
     # ==========================================================
     # Enter
@@ -163,33 +169,56 @@ class TextBuffer:
     # ==========================================================
 
     def move_left(self):
+        """Move the cursor one character to the left."""
 
         if self.cursor_col > 0:
             self.cursor_col -= 1
 
+
     def move_right(self):
+        """Move the cursor one character to the right."""
 
         if self.cursor_col < len(self.lines[self.cursor_row]):
             self.cursor_col += 1
 
+
     def move_up(self):
+        """Move the cursor to the same column on the previous line."""
 
         if self.cursor_row > 0:
 
             self.cursor_row -= 1
 
+            # Prevent the cursor from going past
+            # the end of the new line.
             self.cursor_col = min(
                 self.cursor_col,
                 len(self.lines[self.cursor_row])
             )
 
+
     def move_down(self):
+        """Move the cursor to the same column on the next line."""
 
         if self.cursor_row < len(self.lines) - 1:
 
             self.cursor_row += 1
 
+            # Prevent the cursor from going past
+            # the end of the new line.
             self.cursor_col = min(
                 self.cursor_col,
                 len(self.lines[self.cursor_row])
             )
+
+    def set_cursor(self, row, col):
+        """Move the cursor to a specific row and column."""
+
+        # Keep the row within the available lines.
+        row = max(0, min(row, len(self.lines) - 1))
+
+        # Keep the column within the selected line.
+        col = max(0, min(col, len(self.lines[row])))
+
+        self.cursor_row = row
+        self.cursor_col = col

@@ -7,6 +7,8 @@ from src.entities.enemy import Enemy
 from src.ui.code_editor import CodeEditor
 from src.screens.game_over import game_over_screen
 from src.screens.profile import profile_screen
+# Minecraft-style inventory: the bottom hotbar and the B-key bag screen.
+from src.screens.inventory import PlayerInventory, Toolbar, open_inventory
 
 def game_screen(screen):
     clock = pygame.time.Clock()
@@ -123,6 +125,14 @@ def game_screen(screen):
 
         draw_hud_bar(surf, hud_hp_rect, player_hp, player_max_hp, (200, 40, 40), (255, 90, 90))
         draw_hud_bar(surf, hud_pp_rect, player_pp, player_max_pp, (210, 175, 40), (255, 220, 120))
+
+    # --- Inventory system ---
+    # One PlayerInventory object holds every item the player owns. The Toolbar
+    # (bottom-centre hotbar) and the B-key bag screen both read from it, so
+    # they can never fall out of sync. It starts empty for now; drop items in
+    # later with player_inventory.add_item(Item("Name")).
+    player_inventory = PlayerInventory()
+    toolbar = Toolbar(screen, player_inventory)
 
     # --- Camera with zoom ---
     camera_x = 0
@@ -327,8 +337,21 @@ def game_screen(screen):
                 pygame.quit()
                 sys.exit()
 
+            # Let the hotbar claim its own input first (number keys 1-5, mouse
+            # wheel and clicks on a slot). Only while actually playing - the
+            # pause menu should not have its clicks stolen. handle_event()
+            # returns True when it used the event, so we skip the rest below.
+            if not paused and toolbar.handle_event(event):
+                continue
+
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
+                if event.key == pygame.K_b and not paused:
+                    # B opens the bag. Freeze the current frame and hand that
+                    # snapshot to the inventory screen so it has something to
+                    # blur while it slides up.
+                    background_snapshot = screen.copy()
+                    open_inventory(screen, player_inventory, background_snapshot)
+                elif event.key == pygame.K_ESCAPE:
                     if show_pause_settings:
                         show_pause_settings = False
                     elif paused:
@@ -392,6 +415,9 @@ def game_screen(screen):
         if paused:
             screen.blit(map_surface, (-camera_x, -camera_y))
             main_character.draw_frames(ZOOM, camera_x, camera_y)
+            # Draw the hotbar before the pause overlay so it gets blurred
+            # along with the rest of the scene instead of vanishing.
+            toolbar.draw()
             if show_pause_settings:
                 draw_pause_settings(screen, mouse_pos)
             else:
@@ -559,8 +585,12 @@ def game_screen(screen):
         # Profile HUD (top-left)
         draw_profile_hud(screen, mouse_pos)
 
-        # ESC hint (top-right, out of the way of the profile HUD)
-        hint = font.render("ESC = Pause", True, (255, 255, 255))
+        # Hotbar (bottom-centre). Drawn after the world and the HUD so it
+        # always sits on top of everything else in the scene.
+        toolbar.draw(mouse_pos)
+
+        # Key hints (top-right, out of the way of the profile HUD)
+        hint = font.render("ESC = Pause    B = Inventory", True, (255, 255, 255))
         screen.blit(hint, (SCREEN_W - hint.get_width() - 10, 10))
 
         pygame.display.flip()

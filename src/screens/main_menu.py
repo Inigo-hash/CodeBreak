@@ -164,28 +164,86 @@ def _stone_texture(surf: pygame.Surface, rect: pygame.Rect, seed: int) -> None:
     lo = tuple(max(0, c - 25) for c in STONE_DARK)
     pygame.draw.line(surf, lo, (rect.left, rect.bottom - 1), rect.bottomright, 1)
 
+def _draw_medallion(surf: pygame.Surface, center: tuple, radius: int, seed: int) -> None:
+    rng = random.Random(seed)
+    cx, cy = center
 
-def _draw_menu_icon(surf: pygame.Surface, kind: str, ix: int, iy: int) -> None:
+    # Outer metal ring
+    pygame.draw.circle(surf, METAL_FRAME, (cx, cy), radius + 4)
+    pygame.draw.circle(surf, STONE_DARK, (cx, cy), radius + 4, 2)
+
+    # Inner stone fill
+    pygame.draw.circle(surf, STONE_MID, (cx, cy), radius)
+
+    # Subtle stone texture speckles
+    for _ in range(14):
+        ang = rng.uniform(0, math.tau)
+        dist = rng.uniform(0, radius - 3)
+        x = cx + int(dist * math.cos(ang))
+        y = cy + int(dist * math.sin(ang))
+        c = rng.choice([STONE_DARK, STONE_LIGHT])
+        pygame.draw.circle(surf, c, (x, y), rng.randint(1, 2))
+
+    # Beveled highlight (top-left) and shadow (bottom-right)
+    hi = tuple(min(255, c + 40) for c in STONE_LIGHT)
+    lo = tuple(max(0, c - 25) for c in STONE_DARK)
+    bbox = (cx - radius, cy - radius, radius * 2, radius * 2)
+    pygame.draw.arc(surf, hi, bbox, math.radians(135), math.radians(225), 2)
+    pygame.draw.arc(surf, lo, bbox, math.radians(-45), math.radians(45), 2)
+
+    # Gold engraved ring accent
+    pygame.draw.circle(surf, YELLOW_GLOW, (cx, cy), radius, 1)
+    
+def _draw_menu_icon(surf: pygame.Surface, kind: str, rect: pygame.Rect) -> None:
+    ix = rect.left + 34
+    iy = rect.centery
+    radius = 22
+
+    _draw_medallion(surf, (ix, iy), radius, seed=sum(map(ord, kind)))
+
     if kind == "play":
-        pygame.draw.polygon(surf, GREEN_PLAY, [(ix - 10, iy - 14), (ix - 10, iy + 14), (ix + 14, iy)])
-    elif kind == "chest":
-        pygame.draw.rect(surf, BLUE_DEEP, (ix - 14, iy - 10, 28, 20), border_radius=2)
-        pygame.draw.rect(surf, BLUE_GLOW, (ix - 14, iy - 14, 28, 6), border_radius=2)
-        pygame.draw.rect(surf, STONE_LIGHT, (ix - 14, iy - 10, 28, 20), 2, border_radius=2)
-    elif kind == "gear":
-        pygame.draw.circle(surf, (140, 140, 150), (ix, iy), 14)
-        for a in range(0, 360, 45):
-            rad = math.radians(a)
-            x1 = ix + int(10 * math.cos(rad))
-            y1 = iy + int(10 * math.sin(rad))
-            x2 = ix + int(18 * math.cos(rad))
-            y2 = iy + int(18 * math.sin(rad))
-            pygame.draw.line(surf, (180, 180, 190), (x1, y1), (x2, y2), 4)
-        pygame.draw.circle(surf, (60, 62, 72), (ix, iy), 6)
-    elif kind == "quit":
-        pygame.draw.line(surf, (255, 80, 80), (ix - 12, iy - 12), (ix + 12, iy + 12), 5)
-        pygame.draw.line(surf, (255, 80, 80), (ix - 12, iy + 12), (ix + 12, iy - 12), 5)
+        # Lit torch — handle + layered flame
+        pygame.draw.rect(surf, (90, 60, 40), (ix - 3, iy - 2, 6, 16), border_radius=2)
+        pygame.draw.rect(surf, (60, 40, 25), (ix - 3, iy - 2, 6, 16), 1, border_radius=2)
+        flame_outer = [(ix, iy - 20), (ix - 8, iy - 4), (ix - 4, iy - 2),
+                        (ix, iy - 6), (ix + 4, iy - 2), (ix + 8, iy - 4)]
+        pygame.draw.polygon(surf, (255, 140, 60), flame_outer)
+        flame_inner = [(ix, iy - 15), (ix - 4, iy - 4), (ix, iy - 7), (ix + 4, iy - 4)]
+        pygame.draw.polygon(surf, YELLOW_GLOW, flame_inner)
 
+    elif kind == "chest":
+        # Rolled scroll
+        body = pygame.Rect(ix - 12, iy - 7, 24, 14)
+        pygame.draw.rect(surf, (225, 205, 160), body)
+        pygame.draw.rect(surf, (140, 115, 80), body, 1)
+        pygame.draw.circle(surf, (200, 175, 130), (ix - 12, iy), 4)
+        pygame.draw.circle(surf, (200, 175, 130), (ix + 12, iy), 4)
+        pygame.draw.circle(surf, (140, 115, 80), (ix - 12, iy), 4, 1)
+        pygame.draw.circle(surf, (140, 115, 80), (ix + 12, iy), 4, 1)
+        for i in range(3):
+            y = iy - 4 + i * 4
+            pygame.draw.line(surf, (150, 125, 90), (ix - 7, y), (ix + 7, y), 1)
+
+    elif kind == "gear":
+        # Etched rune sigil
+        pygame.draw.circle(surf, BLUE_GLOW, (ix, iy), 13, 2)
+        pygame.draw.circle(surf, BLUE_GLOW, (ix, iy), 6, 1)
+        for a in range(0, 360, 60):
+            rad = math.radians(a)
+            x1 = ix + int(6 * math.cos(rad))
+            y1 = iy + int(6 * math.sin(rad))
+            x2 = ix + int(13 * math.cos(rad))
+            y2 = iy + int(13 * math.sin(rad))
+            pygame.draw.line(surf, BLUE_GLOW, (x1, y1), (x2, y2), 1)
+        pygame.draw.circle(surf, WHITE, (ix, iy), 2)
+
+    elif kind == "quit":
+        # Closing wooden door
+        frame = pygame.Rect(ix - 10, iy - 14, 20, 28)
+        pygame.draw.rect(surf, (50, 30, 25), frame, border_radius=3)
+        pygame.draw.rect(surf, (30, 18, 15), frame, 2, border_radius=3)
+        pygame.draw.line(surf, (30, 18, 15), (ix, iy - 14), (ix, iy + 14), 1)
+        pygame.draw.circle(surf, YELLOW_GLOW, (ix + 4, iy), 2)
 
 def _draw_stone_button(
     surf: pygame.Surface,
@@ -207,12 +265,12 @@ def _draw_stone_button(
     # Icon stays fixed on the left
     icon_cx = r.left + 28
     icon_cy = r.centery
-    _draw_menu_icon(surf, icon, icon_cx, icon_cy)
+    _draw_menu_icon(surf, icon, pygame.Rect(icon_cx - 22, icon_cy - 22, 44, 44))
 
     # Label centered in the full button, independent of icon position
     txt = _button_font.render(label, True, WHITE)
     txt_x = r.centerx - txt.get_width() // 2
-    surf.blit(txt, (txt_x, r.centery - txt.get_height() // 2))
+    surf.blit(txt, (r.left + 68, r.centery - txt.get_height() // 2))
 
 
 def _draw_robot_tip(surf: pygame.Surface, t: float) -> None:

@@ -50,6 +50,9 @@ class CodeEditor:
 
         self.dragging_scrollbar = False
 
+        # Enables access to the OS clipboard for Ctrl+C / Ctrl+V.
+        pygame.scrap.init()
+
         # Responsible only for drawing.
         self.renderer = EditorRenderer(
             screen,
@@ -179,6 +182,13 @@ class CodeEditor:
                         )
                     )
 
+                    # A plain click always cancels any existing
+                    # selection before moving the cursor.
+                    self.text_buffer.clear_selection()
+
+                    # Move the text cursor to that position.
+                    self.text_buffer.set_cursor(row, col)
+
                     # Move the text cursor to that position.
                     self.text_buffer.set_cursor(row, col)
 
@@ -236,20 +246,85 @@ class CodeEditor:
                     self.running = False
 
                 # ----------------------------------
+                # Undo (Ctrl+Z)
+                # ----------------------------------
+
+                if (
+                    event.key == pygame.K_z
+                    and pygame.key.get_mods() & pygame.KMOD_CTRL
+                ):
+                    # Restores the previous editor state.
+                    self.text_buffer.undo()
+
+                    # Keeps the restored cursor within the visible area.
+                    self.renderer.ensure_cursor_visible()
+
+                    # Resets the cursor blink timer.
+                    self.last_input_time = pygame.time.get_ticks()
+
+                # ----------------------------------
+                # Redo (Ctrl+Y)
+                # ----------------------------------
+
+                elif (
+                    event.key == pygame.K_y
+                    and pygame.key.get_mods() & pygame.KMOD_CTRL
+                ):
+                    # Restores the most recently undone editor state.
+                    self.text_buffer.redo()
+
+                    # Keeps the restored cursor within the visible area.
+                    self.renderer.ensure_cursor_visible()
+
+                    # Resets the cursor blink timer.
+                    self.last_input_time = pygame.time.get_ticks()
+
+                # ----------------------------------
                 # Backspace
                 # ----------------------------------
 
                 elif event.key == pygame.K_BACKSPACE:
 
-                    # Delete the character before the cursor
-                    # or merge the current line with the previous one.
+                    # Deletes text before the cursor.
                     self.text_buffer.backspace()
 
-                    # Automatically follow the cursor.
+                    # Keeps the cursor within the visible area.
                     self.renderer.ensure_cursor_visible()
 
-                    # Reset the cursor blink timer.
+                    # Resets the cursor blink timer.
                     self.last_input_time = pygame.time.get_ticks()
+
+                # ----------------------------------
+                # Select All (Ctrl+A)
+                # ----------------------------------
+
+                elif (
+                    event.key == pygame.K_a
+                    and pygame.key.get_mods() & pygame.KMOD_CTRL
+                ):
+                    self.text_buffer.select_all()
+                    self.renderer.ensure_cursor_visible()
+                    self.last_input_time = pygame.time.get_ticks()
+
+                # ----------------------------------
+                # Copy (Ctrl+C)
+                # ----------------------------------
+
+                elif (
+                    event.key == pygame.K_c
+                    and pygame.key.get_mods() & pygame.KMOD_CTRL
+                ):
+                    self.copy_selection()
+
+                # ----------------------------------
+                # Paste (Ctrl+V)
+                # ----------------------------------
+
+                elif (
+                    event.key == pygame.K_v
+                    and pygame.key.get_mods() & pygame.KMOD_CTRL
+                ):
+                    self.paste_clipboard()
 
                 # ----------------------------------
                 # Tab / Shift + Tab
@@ -292,55 +367,159 @@ class CodeEditor:
                     self.last_input_time = pygame.time.get_ticks()
 
                 # ----------------------------------
-                # Move Cursor Left
+                # Move Cursor Left (Shift extends selection)
                 # ----------------------------------
 
                 elif event.key == pygame.K_LEFT:
 
+                    shift_held = pygame.key.get_mods() & pygame.KMOD_SHIFT
+
+                    # If Shift was just pressed, anchor the selection
+                    # at the current cursor position before moving.
+                    if shift_held and not self.text_buffer.has_selection():
+                        self.text_buffer.start_selection(
+                            self.text_buffer.cursor_row,
+                            self.text_buffer.cursor_col
+                        )
+
+                    # A plain arrow press (no Shift) cancels
+                    # any existing selection.
+                    elif not shift_held:
+                        self.text_buffer.clear_selection()
+
                     self.text_buffer.move_left()
 
-                    # Scroll if necessary to keep the cursor visible.
-                    self.renderer.ensure_cursor_visible()
+                    # While Shift is held, stretch the selection
+                    # to follow the cursor's new position.
+                    if shift_held:
+                        self.text_buffer.update_selection(
+                            self.text_buffer.cursor_row,
+                            self.text_buffer.cursor_col
+                        )
 
+                    self.renderer.ensure_cursor_visible()
                     self.last_input_time = pygame.time.get_ticks()
 
                 # ----------------------------------
-                # Move Cursor Right
+                # Move Cursor Right (Shift extends selection)
                 # ----------------------------------
 
                 elif event.key == pygame.K_RIGHT:
 
+                    shift_held = pygame.key.get_mods() & pygame.KMOD_SHIFT
+
+                    if shift_held and not self.text_buffer.has_selection():
+                        self.text_buffer.start_selection(
+                            self.text_buffer.cursor_row,
+                            self.text_buffer.cursor_col
+                        )
+                    elif not shift_held:
+                        self.text_buffer.clear_selection()
+
                     self.text_buffer.move_right()
 
-                    # Scroll if necessary to keep the cursor visible.
-                    self.renderer.ensure_cursor_visible()
+                    if shift_held:
+                        self.text_buffer.update_selection(
+                            self.text_buffer.cursor_row,
+                            self.text_buffer.cursor_col
+                        )
 
+                    self.renderer.ensure_cursor_visible()
                     self.last_input_time = pygame.time.get_ticks()
 
                 # ----------------------------------
-                # Move Cursor Up
+                # Move Cursor Up (Shift extends selection)
                 # ----------------------------------
 
                 elif event.key == pygame.K_UP:
 
+                    shift_held = pygame.key.get_mods() & pygame.KMOD_SHIFT
+
+                    if shift_held and not self.text_buffer.has_selection():
+                        self.text_buffer.start_selection(
+                            self.text_buffer.cursor_row,
+                            self.text_buffer.cursor_col
+                        )
+                    elif not shift_held:
+                        self.text_buffer.clear_selection()
+
                     self.text_buffer.move_up()
 
-                    # Scroll upward if the cursor leaves
-                    # the visible editor area.
-                    self.renderer.ensure_cursor_visible()
+                    if shift_held:
+                        self.text_buffer.update_selection(
+                            self.text_buffer.cursor_row,
+                            self.text_buffer.cursor_col
+                        )
 
+                    self.renderer.ensure_cursor_visible()
                     self.last_input_time = pygame.time.get_ticks()
 
                 # ----------------------------------
-                # Move Cursor Down
+                # Move Cursor Down (Shift extends selection)
                 # ----------------------------------
 
                 elif event.key == pygame.K_DOWN:
 
+                    shift_held = pygame.key.get_mods() & pygame.KMOD_SHIFT
+
+                    if shift_held and not self.text_buffer.has_selection():
+                        self.text_buffer.start_selection(
+                            self.text_buffer.cursor_row,
+                            self.text_buffer.cursor_col
+                        )
+                    elif not shift_held:
+                        self.text_buffer.clear_selection()
+
                     self.text_buffer.move_down()
 
-                    # Scroll downward if the cursor leaves
-                    # the visible editor area.
-                    self.renderer.ensure_cursor_visible()
+                    if shift_held:
+                        self.text_buffer.update_selection(
+                            self.text_buffer.cursor_row,
+                            self.text_buffer.cursor_col
+                        )
 
+                    self.renderer.ensure_cursor_visible()
                     self.last_input_time = pygame.time.get_ticks()
+
+    # ---------------------------------------------------------
+    # Clipboard
+    # ---------------------------------------------------------
+
+    def copy_selection(self):
+        """
+        Copies the currently selected text to the system clipboard
+        (not just an internal variable), so the player can paste
+        it into other applications too, and vice versa.
+        """
+
+        if not self.text_buffer.has_selection():
+            return
+
+        selected_text = self.text_buffer.get_selected_text()
+
+        # SCRAP_TEXT expects raw bytes, not a Python string.
+        pygame.scrap.put(
+            pygame.SCRAP_TEXT,
+            selected_text.encode("utf-8")
+        )
+
+    def paste_clipboard(self):
+        """
+        Reads whatever text is currently on the system clipboard
+        and inserts it at the cursor position as a single undoable
+        operation, replacing any active selection first.
+        """
+
+        clipboard_bytes = pygame.scrap.get(pygame.SCRAP_TEXT)
+
+        if not clipboard_bytes:
+            return
+
+        text = clipboard_bytes.decode("utf-8", errors="ignore")
+        text = text.replace("\x00", "")
+        text = text.replace("\r\n", "\n").replace("\r", "\n")
+
+        self.text_buffer.insert_text(text)
+
+        self.renderer.ensure_cursor_visible()
+        self.last_input_time = pygame.time.get_ticks()

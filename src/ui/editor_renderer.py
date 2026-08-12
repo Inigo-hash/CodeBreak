@@ -283,6 +283,14 @@ class EditorRenderer:
         )
 
         # ----------------------------------
+        # Draw Selection Highlight
+        # ----------------------------------
+        # Drawn before the text so highlighted characters
+        # remain fully readable on top of the highlight.
+
+        self.draw_selection()
+        
+        # ----------------------------------
         # Draw User Code
         # ----------------------------------
 
@@ -364,6 +372,76 @@ class EditorRenderer:
             )
 
         self.draw_scrollbar()
+
+    # ==========================================================
+    # Selection Highlight
+    # ==========================================================
+
+    def draw_selection(self):
+        """
+        Draws a translucent highlight rectangle behind every
+        selected character, one row at a time. Only draws over
+        rows that are currently scrolled into view.
+        """
+
+        if not self.text_buffer.has_selection():
+            return
+
+        start_row, start_col, end_row, end_col = (
+            self.text_buffer.get_selection_range()
+        )
+
+        line_spacing = 20
+        max_visible_lines = self.get_max_visible_lines()
+
+        text_x = self.editor_rect.x + LINE_NUMBER_WIDTH + 15
+        text_y = self.editor_rect.y + 15
+
+        # Only rows within this range are actually drawn on screen.
+        first_visible_row = self.scroll_offset
+        last_visible_row = self.scroll_offset + max_visible_lines - 1
+
+        # Walk through every line the selection touches.
+        for row in range(start_row, end_row + 1):
+
+            # Skip rows that are scrolled out of view -
+            # no point highlighting something that isn't drawn.
+            if row < first_visible_row or row > last_visible_row:
+                continue
+
+            line = self.text_buffer.lines[row]
+
+            # The first and last selected lines are only
+            # partially highlighted; lines in between are
+            # highlighted in full.
+            col_start = start_col if row == start_row else 0
+            col_end = end_col if row == end_row else len(line)
+
+            # Measure pixel positions using the font, so the
+            # highlight lines up exactly with the rendered text.
+            x_start = text_x + TEXT_FONT.size(line[:col_start])[0]
+            x_end = text_x + TEXT_FONT.size(line[:col_end])[0]
+
+            # Guarantee a minimum width so an empty selected
+            # line (e.g. a fully selected blank line) still
+            # shows a visible highlight sliver.
+            width = max(4, x_end - x_start)
+
+            row_in_view = row - self.scroll_offset
+
+            highlight_rect = pygame.Rect(
+                x_start,
+                text_y + (row_in_view * line_spacing),
+                width,
+                18
+            )
+
+            # Use a separate surface with per-pixel alpha so the
+            # highlight can be semi-transparent over the code.
+            highlight_surface = pygame.Surface(highlight_rect.size, pygame.SRCALPHA)
+            highlight_surface.fill((100, 150, 255, 90))
+
+            self.screen.blit(highlight_surface, highlight_rect.topleft)
 
     def draw_output_panel(self):
         """Draw the output panel."""

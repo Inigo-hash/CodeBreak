@@ -21,6 +21,7 @@ from src.ui.editor_widgets import Button
 from src.ui.output_panel import OutputPanel
 from src.ui.problem_panel import ProblemPanel
 from src.ui.editor_theme import *
+from src.ui.syntax_highlighter import highlight_line, compute_line_states
 
 SCROLLBAR_WIDTH = 8
 SCROLLBAR_MARGIN = 4
@@ -291,7 +292,7 @@ class EditorRenderer:
         self.draw_selection()
         
         # ----------------------------------
-        # Draw User Code
+        # Draw User Code (syntax highlighted)
         # ----------------------------------
 
         text_x = (
@@ -302,18 +303,41 @@ class EditorRenderer:
 
         text_y = self.editor_rect.y + 15
 
-        for line in visible_lines:
+        # Multi-line (triple-quoted) strings can open on a line far
+        # above the ones currently on screen and still be "open" by
+        # the time we reach the visible lines - so the state has to
+        # be computed starting from line 0 of the whole buffer, not
+        # just from the visible slice.
+        line_states = compute_line_states(self.text_buffer.lines)
 
-            rendered = TEXT_FONT.render(
+        for offset, line in enumerate(visible_lines):
+
+            line_index = self.scroll_offset + offset
+
+            segments, _ = highlight_line(
                 line,
-                True,
-                TEXT_COLOR
+                line_states[line_index]
             )
 
-            self.screen.blit(
-                rendered,
-                (text_x, text_y)
-            )
+            segment_x = text_x
+
+            for segment_text, segment_color in segments:
+
+                if not segment_text:
+                    continue
+
+                rendered = TEXT_FONT.render(
+                    segment_text,
+                    True,
+                    segment_color
+                )
+
+                self.screen.blit(
+                    rendered,
+                    (segment_x, text_y)
+                )
+
+                segment_x += rendered.get_width()
 
             text_y += line_spacing
 

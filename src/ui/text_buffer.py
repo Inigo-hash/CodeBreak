@@ -170,6 +170,32 @@ class TextBuffer:
         self.cursor_row += 1
         self.cursor_col = len(indentation)
 
+    def _insert_newline_plain(self):
+        """
+        Splits the current line at the cursor WITHOUT adding any
+        automatic indentation.
+
+        Used only during paste (insert_text). Pasted text already
+        contains its own indentation as literal spaces, so running
+        it through the auto-indent logic in _insert_newline() would
+        stack a second layer of indentation on top of it.
+        """
+
+        line = self.lines[self.cursor_row]
+
+        left = line[:self.cursor_col]
+        right = line[self.cursor_col:]
+
+        self.lines[self.cursor_row] = left
+
+        self.lines.insert(
+            self.cursor_row + 1,
+            right
+        )
+
+        self.cursor_row += 1
+        self.cursor_col = 0
+
     # ==========================================================
     # Bulk Text Insertion (Paste)
     # ==========================================================
@@ -192,7 +218,7 @@ class TextBuffer:
 
         for char in text:
             if char == "\n":
-                self._insert_newline()
+                self._insert_newline_plain()
             else:
                 self._insert_character(char)
                 

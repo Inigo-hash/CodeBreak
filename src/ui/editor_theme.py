@@ -55,6 +55,26 @@ SUCCESS_COLOR = (70, 200, 120)
 ERROR_COLOR = (220, 80, 80)
 
 # --------------------------------------------------
+# Syntax Highlighting
+# --------------------------------------------------
+
+SYNTAX_KEYWORD_COLOR = (198, 120, 221)     # def, if, return, for...
+
+SYNTAX_BUILTIN_COLOR = (86, 182, 194)      # print, len, range...
+
+SYNTAX_STRING_COLOR = (152, 195, 121)      # "text", 'text'
+
+SYNTAX_NUMBER_COLOR = (209, 154, 102)      # 18, 3.14
+
+SYNTAX_COMMENT_COLOR = (106, 115, 125)     # # comment
+
+SYNTAX_FUNCTION_COLOR = (229, 192, 123)    # name after def / class
+
+SYNTAX_SELF_COLOR = (224, 108, 117)        # self, cls
+
+SYNTAX_DECORATOR_COLOR = (209, 154, 102)   # @staticmethod
+
+# --------------------------------------------------
 # Fonts
 # --------------------------------------------------
 

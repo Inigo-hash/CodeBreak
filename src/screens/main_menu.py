@@ -14,8 +14,11 @@ pygame.init()
 
 if FULLSCREEN:
     screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+    
 else:
     screen = pygame.display.set_mode((1280, 720), pygame.RESIZABLE)
+    
+    
 
 SCREEN_WIDTH, SCREEN_HEIGHT = screen.get_size()
 

@@ -6,7 +6,7 @@ Each challenge is pure data.
 No validation logic belongs here.
 """
 
-CHALLENGES = {
+CHALLENGES = { 
 
     "variables_001": {
 

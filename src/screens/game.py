@@ -176,6 +176,9 @@ def game_screen(screen):
     # a straight crop centered on the player, no texture rotation needed.
     MINIMAP_SIZE = max(150, min(220, int(SCREEN_H * 0.22)))
     MINIMAP_MARGIN = 14
+    # Taken from the map's own water tiles, so the area past the map edge
+    # blends into the real coastline instead of reading as a flat backdrop.
+    MINIMAP_SEA_COLOR = (44, 232, 244)
     MINIMAP_SPAN_FACTOR = 1.5  # how much wider the minimap's view is than the player's own screen view
     minimap_px_per_unit = MINIMAP_SIZE / ((max(SCREEN_W, SCREEN_H) / ZOOM) * MINIMAP_SPAN_FACTOR)
     minimap_texture = pygame.transform.smoothscale(
@@ -196,7 +199,10 @@ def game_screen(screen):
 
         # Background shows through wherever the crop runs past the edge
         # of the map (e.g. the player standing near the map border).
-        pygame.draw.rect(surf, (10, 10, 14), panel_rect)
+        # Sampled straight from the map's own water tiles so the
+        # out-of-bounds area reads as the sea continuing past the edge
+        # instead of an obvious flat panel behind the map.
+        pygame.draw.rect(surf, MINIMAP_SEA_COLOR, panel_rect)
 
         # The minimap-texture pixel the player is standing on, cropped so
         # that pixel lands dead-center in the panel — this is what makes

@@ -87,39 +87,54 @@ def game_screen(screen):
     player_hp, player_max_hp = 100, 100
     player_pp, player_max_pp = 100, 100
 
-    hud_font_name = pygame.font.SysFont("consolas", 16, bold=True)
-    hud_font_bar = pygame.font.SysFont("consolas", 12, bold=True)
+    # Every dimension of the profile HUD is derived from this one factor, so
+    # the whole panel can be resized from a single line. 1 is the original
+    # size the layout numbers below were picked at.
+    HUD_SCALE = 1.5
+
+    def hud_px(value):
+        # Rounded because pygame needs whole pixels — font sizes, smoothscale
+        # dimensions and border radii all reject floats, so a fractional
+        # HUD_SCALE would otherwise blow up here.
+        return round(value * HUD_SCALE)
+
+    hud_font_name = pygame.font.SysFont("consolas", hud_px(16), bold=True)
+    hud_font_bar = pygame.font.SysFont("consolas", hud_px(12), bold=True)
 
     minimap_compass_font = pygame.font.SysFont("consolas", 14, bold=True)
 
     HUD_MARGIN = 14
-    HUD_PORTRAIT_SIZE = 56
+    HUD_PORTRAIT_SIZE = hud_px(56)
+    HUD_FRAME_PAD = hud_px(6)
+    HUD_EDGE_WIDTH = hud_px(2)
+    HUD_RADIUS = hud_px(4)
     hud_portrait = pygame.image.load("assets/images/logos/codebreakLogo.png").convert_alpha()
     hud_portrait = pygame.transform.smoothscale(hud_portrait, (HUD_PORTRAIT_SIZE, HUD_PORTRAIT_SIZE))
     hud_portrait_rect = pygame.Rect(HUD_MARGIN, HUD_MARGIN, HUD_PORTRAIT_SIZE, HUD_PORTRAIT_SIZE)
 
-    HUD_BAR_WIDTH = 180
-    HUD_BAR_HEIGHT = 16
-    hud_bars_left = hud_portrait_rect.right + 10
-    hud_hp_rect = pygame.Rect(hud_bars_left, hud_portrait_rect.top + 22, HUD_BAR_WIDTH, HUD_BAR_HEIGHT)
-    hud_pp_rect = pygame.Rect(hud_bars_left, hud_hp_rect.bottom + 6, HUD_BAR_WIDTH, HUD_BAR_HEIGHT)
+    HUD_BAR_WIDTH = hud_px(180)
+    HUD_BAR_HEIGHT = hud_px(16)
+    hud_bars_left = hud_portrait_rect.right + hud_px(10)
+    hud_hp_rect = pygame.Rect(hud_bars_left, hud_portrait_rect.top + hud_px(22), HUD_BAR_WIDTH, HUD_BAR_HEIGHT)
+    hud_pp_rect = pygame.Rect(hud_bars_left, hud_hp_rect.bottom + hud_px(6), HUD_BAR_WIDTH, HUD_BAR_HEIGHT)
 
     def draw_hud_bar(surf, rect, value, max_value, fill_color, edge_color):
-        pygame.draw.rect(surf, (20, 22, 28), rect, border_radius=4)
+        pygame.draw.rect(surf, (20, 22, 28), rect, border_radius=HUD_RADIUS)
         ratio = 0 if max_value <= 0 else max(0.0, min(1.0, value / max_value))
         fill_rect = pygame.Rect(rect.left, rect.top, int(rect.width * ratio), rect.height)
         if fill_rect.width > 0:
-            pygame.draw.rect(surf, fill_color, fill_rect, border_radius=4)
-        pygame.draw.rect(surf, edge_color, rect, 2, border_radius=4)
+            pygame.draw.rect(surf, fill_color, fill_rect, border_radius=HUD_RADIUS)
+        pygame.draw.rect(surf, edge_color, rect, HUD_EDGE_WIDTH, border_radius=HUD_RADIUS)
         label = hud_font_bar.render(f"{value}/{max_value}", True, (255, 255, 255))
         surf.blit(label, (rect.centerx - label.get_width() // 2, rect.centery - label.get_height() // 2))
 
     def draw_profile_hud(surf, mouse_pos):
-        pygame.draw.rect(surf, (20, 20, 26), hud_portrait_rect.inflate(6, 6), border_radius=4)
+        frame_rect = hud_portrait_rect.inflate(HUD_FRAME_PAD, HUD_FRAME_PAD)
+        pygame.draw.rect(surf, (20, 20, 26), frame_rect, border_radius=HUD_RADIUS)
         surf.blit(hud_portrait, hud_portrait_rect)
         hovered = hud_portrait_rect.collidepoint(mouse_pos)
         frame_color = (255, 220, 120) if hovered else (90, 94, 110)
-        pygame.draw.rect(surf, frame_color, hud_portrait_rect.inflate(6, 6), 2, border_radius=4)
+        pygame.draw.rect(surf, frame_color, frame_rect, HUD_EDGE_WIDTH, border_radius=HUD_RADIUS)
 
         name_surf = hud_font_name.render(profile_name, True, (240, 240, 240))
         surf.blit(name_surf, (hud_bars_left, hud_portrait_rect.top))

@@ -1,6 +1,7 @@
+#challenge_manager.py
 import ast
 
-from learning.validators.variable_validator import VariableValidator
+from src.learning.validators.variable_validator import VariableValidator
 
 
 class ChallengeManager:

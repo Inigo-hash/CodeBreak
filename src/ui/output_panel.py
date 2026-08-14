@@ -23,9 +23,11 @@ class OutputPanel:
 
     def __init__(self):
 
-        # Default message shown when opening the editor.
+        # Each message is (text, color), so callers can show plain
+        # info, printed output, success, and error lines all in
+        # their own color.
         self.messages = [
-            "Waiting for execution..."
+            ("Waiting for execution...", SECONDARY_TEXT)
         ]
 
     # ---------------------------------------------------------
@@ -37,21 +39,21 @@ class OutputPanel:
         Clears every output message.
         """
 
-        self.messages.clear()
+        self.messages = []
 
-    def add(self, message):
+    def add(self, message, color=None):
         """
         Adds a new message to the output panel.
         """
 
-        self.messages.append(message)
+        self.messages.append((message, color or SECONDARY_TEXT))
 
-    def set_message(self, message):
+    def set_message(self, message, color=None):
         """
         Replaces the output with a single message.
         """
 
-        self.messages = [message]
+        self.messages = [(message, color or SECONDARY_TEXT)]
 
     # ---------------------------------------------------------
     # Draw
@@ -94,12 +96,12 @@ class OutputPanel:
         # Draw messages
         y = rect.y + 45
 
-        for message in self.messages[-5:]:
+        for message, color in self.messages[-5:]:
 
             text = SMALL_FONT.render(
                 message,
                 True,
-                SECONDARY_TEXT
+                color
             )
 
             screen.blit(

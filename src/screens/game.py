@@ -481,6 +481,7 @@ def game_screen(screen):
                     # blur while it slides up.
                     background_snapshot = screen.copy()
                     open_inventory(screen, player_inventory, background_snapshot)
+
                 elif event.key == pygame.K_ESCAPE:
                     if show_pause_settings:
                         show_pause_settings = False
@@ -488,14 +489,21 @@ def game_screen(screen):
                         paused = False
                     else:
                         paused = True
+
                 elif event.key == pygame.K_F5:
                     sample_challenge = {
                         "title": "Variables",
-                        "objective": "Create a variable called age and assign the value 18."
+                        "objective": "Create a variable called age and assign the value 18.",
+                        "type": "variable",
+                        "expected": {
+                            "name": "age",
+                            "value": 18
+                        }
                     }
                     background_snapshot = screen.copy()
                     editor = CodeEditor(screen, sample_challenge, background_snapshot)
                     editor.run()
+                    
                 elif event.key == pygame.K_F8:
                     # Dev-only preview: press F8 to see the Game Over screen,
                     # F8 again (or Esc/Enter/R/M/click) to leave it and resume

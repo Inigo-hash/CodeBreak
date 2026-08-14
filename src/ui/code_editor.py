@@ -17,7 +17,9 @@ import pygame
 
 from src.ui.text_buffer import TextBuffer
 from src.ui.editor_renderer import EditorRenderer
-
+from src.ui.editor_theme import TEXT_COLOR, SUCCESS_COLOR, ERROR_COLOR
+from src.learning.sandbox import run_user_code
+from src.learning.challenge_manager import ChallengeManager
 
 class CodeEditor:
     """
@@ -56,6 +58,10 @@ class CodeEditor:
 
         # Enables access to the OS clipboard for Ctrl+C / Ctrl+V.
         pygame.scrap.init()
+
+        # Routes submitted code to the correct validator
+        # based on the current challenge's "type" field.
+        self.challenge_manager = ChallengeManager()
 
         # Responsible only for drawing.
         self.renderer = EditorRenderer(
@@ -125,6 +131,18 @@ class CodeEditor:
             if self.leave_button.is_clicked(event):
 
                 self.running = False
+
+            if self.leave_button.is_clicked(event):
+
+                self.running = False
+
+            if self.run_button.is_clicked(event):
+
+                self.run_code()
+
+            if self.submit_button.is_clicked(event):
+
+                self.submit_code()
 
             # ==========================================================
             # Mouse Wheel Scrolling
@@ -515,6 +533,67 @@ class CodeEditor:
 
                     self.renderer.ensure_cursor_visible()
                     self.last_input_time = pygame.time.get_ticks()
+
+    # ---------------------------------------------------------
+    # Code Execution
+    # ---------------------------------------------------------
+
+    def run_code(self):
+        """
+        Executes the code currently in the editor inside the
+        sandbox and shows the result (printed output, or an error)
+        in the output panel. This does NOT check the code against
+        the challenge's objective - that only happens on Submit.
+        """
+
+        code = "\n".join(self.text_buffer.lines)
+
+        result = run_user_code(code)
+
+        self.output_panel.clear()
+
+        if result["output"]:
+            for line in result["output"].rstrip("\n").split("\n"):
+                self.output_panel.add(line, TEXT_COLOR)
+
+        if result["success"]:
+            self.output_panel.add("Ran successfully.", SUCCESS_COLOR)
+        else:
+            self.output_panel.add(result["error"], ERROR_COLOR)
+
+    def submit_code(self):
+        """
+        Runs the code and, if it executed without error, checks
+        it against the challenge's expected solution.
+        """
+
+        code = "\n".join(self.text_buffer.lines)
+
+        result = run_user_code(code)
+
+        self.output_panel.clear()
+
+        if result["output"]:
+            for line in result["output"].rstrip("\n").split("\n"):
+                self.output_panel.add(line, TEXT_COLOR)
+
+        # A syntax/runtime/safety error means the code never even
+        # finished running - no point checking it against the
+        # challenge, since there's nothing valid to check yet.
+        if not result["success"]:
+            self.output_panel.add(result["error"], ERROR_COLOR)
+            return
+
+        # Passes the raw source code (not the sandbox's runtime
+        # globals) since ChallengeManager's validators work by
+        # parsing the code's AST, not by inspecting variable values.
+        passed, feedback = self.challenge_manager.validate(
+            self.challenge,
+            code
+        )
+
+        color = SUCCESS_COLOR if passed else ERROR_COLOR
+        self.output_panel.add(feedback, color)
 
     # ---------------------------------------------------------
     # Clipboard

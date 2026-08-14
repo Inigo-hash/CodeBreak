@@ -91,6 +91,9 @@ def game_screen(screen):
     hud_font_name = pygame.font.SysFont("consolas", 16, bold=True)
     hud_font_bar = pygame.font.SysFont("consolas", 12, bold=True)
 
+    minimap_compass_font = pygame.font.SysFont("consolas", 14, bold=True)
+    minimap_player_font = pygame.font.SysFont("consolas", 16, bold=True)
+
     HUD_MARGIN = 14
     HUD_PORTRAIT_SIZE = 56
     hud_portrait = pygame.image.load("assets/images/logos/codebreakLogo.png").convert_alpha()
@@ -160,10 +163,77 @@ def game_screen(screen):
                         surf.blit(tile, (x * TILE_SIZE, y * TILE_SIZE))
         return surf
 
-    map_surface = render_map_surface()
+    raw_map_surface = render_map_surface()
     # Scale the pre-rendered map once at startup based on ZOOM level (e.g. ZOOM=2 doubles the size)
     # This avoids rescaling every frame which would slow down the game
-    map_surface = pygame.transform.scale(map_surface, (map_width * ZOOM, map_height * ZOOM))
+    map_surface = pygame.transform.scale(raw_map_surface, (map_width * ZOOM, map_height * ZOOM))
+
+    # --- Minimap ---
+    # Pre-bake the whole map once at minimap resolution (same idea as
+    # map_surface above) so drawing it per-frame is just a cheap clipped
+    # blit rather than a rescale. The camera never rotates — it's the
+    # same fixed birds-eye view as the main game — so "panning" is just
+    # a straight crop centered on the player, no texture rotation needed.
+    MINIMAP_SIZE = max(150, min(220, int(SCREEN_H * 0.22)))
+    MINIMAP_MARGIN = 14
+    MINIMAP_SPAN_FACTOR = 1.5  # how much wider the minimap's view is than the player's own screen view
+    minimap_px_per_unit = MINIMAP_SIZE / ((max(SCREEN_W, SCREEN_H) / ZOOM) * MINIMAP_SPAN_FACTOR)
+    minimap_texture = pygame.transform.smoothscale(
+        raw_map_surface,
+        (
+            max(1, int(map_width * minimap_px_per_unit)),
+            max(1, int(map_height * minimap_px_per_unit)),
+        )
+    )
+
+    def draw_minimap(surf, player_rect):
+        panel_rect = pygame.Rect(
+            MINIMAP_MARGIN,
+            SCREEN_H - MINIMAP_MARGIN - MINIMAP_SIZE,
+            MINIMAP_SIZE,
+            MINIMAP_SIZE
+        )
+
+        # Background shows through wherever the crop runs past the edge
+        # of the map (e.g. the player standing near the map border).
+        pygame.draw.rect(surf, (10, 10, 14), panel_rect)
+
+        # The minimap-texture pixel the player is standing on, cropped so
+        # that pixel lands dead-center in the panel — this is what makes
+        # the minimap pan while keeping the player marker fixed in place.
+        mm_x = player_rect.centerx * minimap_px_per_unit
+        mm_y = player_rect.centery * minimap_px_per_unit
+        src_left = mm_x - MINIMAP_SIZE / 2
+        src_top = mm_y - MINIMAP_SIZE / 2
+
+        prev_clip = surf.get_clip()
+        surf.set_clip(panel_rect)
+        surf.blit(minimap_texture, (panel_rect.left - src_left, panel_rect.top - src_top))
+        surf.set_clip(prev_clip)
+
+        # Compass letters fixed to the panel edges — the view never
+        # rotates, so N is always "up" here just like on the main screen.
+        for label, (lx, ly) in (
+            ("N", (panel_rect.centerx, panel_rect.top + 11)),
+            ("S", (panel_rect.centerx, panel_rect.bottom - 11)),
+            ("W", (panel_rect.left + 11, panel_rect.centery)),
+            ("E", (panel_rect.right - 11, panel_rect.centery)),
+        ):
+            shadow = minimap_compass_font.render(label, True, (0, 0, 0))
+            txt = minimap_compass_font.render(label, True, (235, 220, 180))
+            surf.blit(shadow, (lx - txt.get_width() // 2 + 1, ly - txt.get_height() // 2 + 1))
+            surf.blit(txt, (lx - txt.get_width() // 2, ly - txt.get_height() // 2))
+
+        # Player marker — always dead-center, since the crop above keeps
+        # the player's world position pinned to the middle of the panel.
+        p_txt = minimap_player_font.render("P", True, (255, 255, 255))
+        marker_radius = max(p_txt.get_width(), p_txt.get_height()) // 2 + 6
+        pygame.draw.circle(surf, player_color, panel_rect.center, marker_radius)
+        pygame.draw.circle(surf, (255, 255, 255), panel_rect.center, marker_radius, 2)
+        surf.blit(p_txt, (panel_rect.centerx - p_txt.get_width() // 2,
+                           panel_rect.centery - p_txt.get_height() // 2))
+
+        pygame.draw.rect(surf, (90, 94, 110), panel_rect, 3)
 
     # --- Dynamic props (tile objects requiring per-frame depth sorting) ---
     dynamic_props = []
@@ -584,6 +654,9 @@ def game_screen(screen):
 
         # Profile HUD (top-left)
         draw_profile_hud(screen, mouse_pos)
+
+        # Minimap (bottom-left)
+        draw_minimap(screen, player_rect)
 
         # Hotbar (bottom-centre). Drawn after the world and the HUD so it
         # always sits on top of everything else in the scene.

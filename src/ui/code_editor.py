@@ -50,6 +50,10 @@ class CodeEditor:
 
         self.dragging_scrollbar = False
 
+        # True while the user is holding the mouse button down
+        # and dragging across the code to select text.
+        self.dragging_text = False
+
         # Enables access to the OS clipboard for Ctrl+C / Ctrl+V.
         pygame.scrap.init()
 
@@ -182,15 +186,17 @@ class CodeEditor:
                         )
                     )
 
-                    # A plain click always cancels any existing
-                    # selection before moving the cursor.
-                    self.text_buffer.clear_selection()
+                    # Anchor a new selection at the click point. If the
+                    # user releases without moving the mouse, start and
+                    # end stay identical, so has_selection() reports
+                    # False - a plain click, not a drag-selection.
+                    self.text_buffer.start_selection(row, col)
 
                     # Move the text cursor to that position.
                     self.text_buffer.set_cursor(row, col)
 
-                    # Move the text cursor to that position.
-                    self.text_buffer.set_cursor(row, col)
+                    # Begin tracking a possible drag-to-select gesture.
+                    self.dragging_text = True
 
                     # Make sure the cursor remains visible.
                     self.renderer.ensure_cursor_visible()
@@ -207,6 +213,8 @@ class CodeEditor:
 
                 self.dragging_scrollbar = False
 
+                # Stop tracking the drag-to-select gesture.
+                self.dragging_text = False
 
             # ==========================================================
             # Drag Scrollbar
@@ -219,6 +227,33 @@ class CodeEditor:
                 self.renderer.set_scroll_from_mouse_y(
                     event.pos[1]
                 )
+
+            # ==========================================================
+            # Drag-to-Select Text
+            # ==========================================================
+
+            if event.type == pygame.MOUSEMOTION and self.dragging_text:
+
+                # Convert the current mouse position into a
+                # row/column, even if the mouse strayed outside
+                # the editor rect - the position gets clamped
+                # to the nearest valid line and column.
+                row, col = (
+                    self.renderer.get_cursor_position_from_mouse(
+                        event.pos
+                    )
+                )
+
+                # Stretch the selection to follow the mouse.
+                self.text_buffer.update_selection(row, col)
+
+                # Move the cursor along with the selection edge,
+                # so the blinking cursor tracks the drag visually.
+                self.text_buffer.set_cursor(row, col)
+
+                # Scroll automatically if dragging past the
+                # top or bottom edge of the visible editor area.
+                self.renderer.ensure_cursor_visible()
 
             # -------------------------------
             # Text Input

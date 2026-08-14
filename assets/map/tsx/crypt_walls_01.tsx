@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<tileset version="1.10" tiledversion="1.12.1" name="crypt_walls_01" tilewidth="16" tileheight="16" tilecount="247" columns="13">
+<tileset version="1.10" tiledversion="1.12.2" name="crypt_walls_01" tilewidth="16" tileheight="16" tilecount="247" columns="13">
  <image source="../tiledsets/crypt_walls_01.png" width="208" height="304"/>
  <tile id="2">
   <objectgroup draworder="index" id="2">
@@ -217,20 +217,25 @@
  </tile>
  <tile id="197">
   <properties>
-   <property name="collidable" type="bool" value="false"/>
+   <property name="collidable" type="bool" value="true"/>
   </properties>
  </tile>
  <tile id="199">
   <properties>
-   <property name="collidable" type="bool" value="false"/>
+   <property name="collidable" type="bool" value="true"/>
   </properties>
  </tile>
  <tile id="210">
   <properties>
-   <property name="collidable" type="bool" value="false"/>
+   <property name="collidable" type="bool" value="true"/>
   </properties>
  </tile>
  <tile id="212">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="235">
   <properties>
    <property name="collidable" type="bool" value="false"/>
   </properties>

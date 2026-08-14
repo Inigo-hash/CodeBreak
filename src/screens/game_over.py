@@ -58,52 +58,35 @@ RIVET_COLOR  = (150, 150, 160)
 
 
 # ======================================================================
-# Title: chunky "written out" GAME OVER text
+# Title: bold "written out" GAME OVER text
 # ======================================================================
 
-def _build_pixel_title(text, target_height, color):
-    """
-    Renders `text` in a chunky pixel-art style.
+TITLE_FONT_PATH = "assets/fonts/Cinzel-Black.ttf"
 
-    If a real pixel font is dropped at assets/fonts/PressStart2P-Regular.ttf
-    (or any other path you swap in below), it's used directly at full
-    size. Otherwise this fakes the blocky look by rendering small with
-    a bold monospace font and upscaling with nearest-neighbor scaling
-    (pygame.transform.scale, NOT smoothscale) — that's what gives the
-    hard pixel edges even without a dedicated font file.
-    """
-    pixel_font_path = "assets/fonts/PressStart2P-Regular.ttf"
 
+def _build_title_glyph(text, target_height, color):
+    """
+    Renders `text` in the game's Cinzel display font — the same family
+    used for the stone buttons in main_menu.py — directly at full
+    size, so it stays crisp at any resolution instead of being
+    upscaled from a small render.
+    """
     try:
-        size = int(target_height)
-        font = pygame.font.Font(pixel_font_path, size)
-        base_surf = font.render(text, True, color)
-        scale = 1
+        font = pygame.font.Font(TITLE_FONT_PATH, int(target_height))
     except Exception:
-        base_size = max(10, int(target_height / 5))
-        font = pygame.font.SysFont("consolas", base_size, bold=True)
-        base_surf = font.render(text, True, color)
-        scale = 5
+        font = pygame.font.SysFont("georgia", int(target_height), bold=True)
 
-    if scale != 1:
-        big_surf = pygame.transform.scale(
-            base_surf,
-            (base_surf.get_width() * scale, base_surf.get_height() * scale)
-        )
-    else:
-        big_surf = base_surf
-
-    return big_surf, font, scale
+    return font.render(text, True, color), font
 
 
 def _build_title_surfaces(text, target_height):
     """
     Builds the crisp red title plus a soft red glow layer behind it,
-    cached once so the (relatively expensive) font render/scale work
-    doesn't happen every frame of the typewriter animation.
+    cached once so the (relatively expensive) font render work doesn't
+    happen every frame of the typewriter animation.
     """
-    crisp, font, scale = _build_pixel_title(text, target_height, (235, 40, 40))
-    glow_base, _, _ = _build_pixel_title(text, target_height, BLOOD_BRIGHT)
+    crisp, font = _build_title_glyph(text, target_height, (235, 40, 40))
+    glow_base, _ = _build_title_glyph(text, target_height, BLOOD_BRIGHT)
 
     pad = 12
     glow = pygame.Surface(
@@ -114,7 +97,7 @@ def _build_title_surfaces(text, target_height):
     for ox, oy in ((-4, 0), (4, 0), (0, -4), (0, 4), (-3, -3), (3, 3), (-3, 3), (3, -3)):
         glow.blit(glow_base, (pad + ox, pad + oy))
 
-    return {"crisp": crisp, "glow": glow, "font": font, "scale": scale, "pad": pad}
+    return {"crisp": crisp, "glow": glow, "font": font, "pad": pad}
 
 
 def _draw_title(screen, assets, text, now_ms, letter_ms, screen_w, screen_h):
@@ -124,12 +107,12 @@ def _draw_title(screen, assets, text, now_ms, letter_ms, screen_w, screen_h):
     cursor while it's still "typing".
     """
     crisp, glow = assets["crisp"], assets["glow"]
-    font, scale, pad = assets["font"], assets["scale"], assets["pad"]
+    font, pad = assets["font"], assets["pad"]
 
     revealed_chars = min(len(text), now_ms // letter_ms + 1)
     shown = text[:revealed_chars]
 
-    crop_w = min(crisp.get_width(), font.size(shown)[0] * scale)
+    crop_w = min(crisp.get_width(), font.size(shown)[0])
     if crop_w <= 0:
         return
 

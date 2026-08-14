@@ -39,10 +39,15 @@ GREEN_PLAY = (80, 220, 120)
 WHITE = (255, 255, 255)
 METAL_FRAME = (90, 94, 110)
 ROBOT_BLUE = (70, 140, 220)
+SILVER_LIGHT = (225, 228, 232)
+SILVER_MID = (160, 165, 172)
+SILVER_DARK = (95, 98, 105)
+SILVER_SHINE = (250, 252, 255)
 
 # Fonts
 _CINZEL_BOLD_PATH = "assets/fonts/Cinzel-Bold.ttf"
 _CINZEL_PATH = "assets/fonts/Cinzel-VariableFont_wght.ttf"
+
 
 
 def _fallback_font(size, bold=False):
@@ -163,6 +168,16 @@ def _stone_texture(surf: pygame.Surface, rect: pygame.Rect, seed: int) -> None:
     pygame.draw.line(surf, hi, rect.topleft, (rect.right - 1, rect.top), 1)
     lo = tuple(max(0, c - 25) for c in STONE_DARK)
     pygame.draw.line(surf, lo, (rect.left, rect.bottom - 1), rect.bottomright, 1)
+    
+_icon_anim = {"play": 0.0, "chest": 0.0, "gear": 0.0, "quit": 0.0}
+
+
+def _update_icon_anims(hover_map: dict, dt: float, speed: float = 8.0) -> None:
+    for kind, hovered in hover_map.items():
+        target = 1.0 if hovered else 0.0
+        current = _icon_anim.get(kind, 0.0)
+        current += (target - current) * min(1.0, speed * dt)
+        _icon_anim[kind] = current
 
 def _draw_medallion(surf: pygame.Surface, center: tuple, radius: int, seed: int) -> None:
     rng = random.Random(seed)
@@ -194,56 +209,93 @@ def _draw_medallion(surf: pygame.Surface, center: tuple, radius: int, seed: int)
     # Gold engraved ring accent
     pygame.draw.circle(surf, YELLOW_GLOW, (cx, cy), radius, 1)
     
-def _draw_menu_icon(surf: pygame.Surface, kind: str, rect: pygame.Rect) -> None:
+def _draw_menu_icon(surf: pygame.Surface, kind: str, rect: pygame.Rect, hovered: bool = False, t: float = 0.0) -> None:
     ix = rect.left + 34
     iy = rect.centery
     radius = 22
+    anim = _icon_anim.get(kind, 0.0)  # 0 = idle, 1 = fully hovered
 
     _draw_medallion(surf, (ix, iy), radius, seed=sum(map(ord, kind)))
 
     if kind == "play":
-        # Lit torch — handle + layered flame
+        flicker = math.sin(t * 14) * (1 + anim * 4)
+        sway = math.sin(t * 9) * anim * 3
         pygame.draw.rect(surf, (90, 60, 40), (ix - 3, iy - 2, 6, 16), border_radius=2)
         pygame.draw.rect(surf, (60, 40, 25), (ix - 3, iy - 2, 6, 16), 1, border_radius=2)
-        flame_outer = [(ix, iy - 20), (ix - 8, iy - 4), (ix - 4, iy - 2),
-                        (ix, iy - 6), (ix + 4, iy - 2), (ix + 8, iy - 4)]
+        flame_outer = [
+            (ix + sway, iy - 20 - flicker),
+            (ix - 8, iy - 4),
+            (ix - 4, iy - 2),
+            (ix + sway * 0.5, iy - 6),
+            (ix + 4, iy - 2),
+            (ix + 8, iy - 4),
+        ]
         pygame.draw.polygon(surf, (255, 140, 60), flame_outer)
-        flame_inner = [(ix, iy - 15), (ix - 4, iy - 4), (ix, iy - 7), (ix + 4, iy - 4)]
+        flame_inner = [
+            (ix + sway * 0.6, iy - 15 - flicker * 0.6),
+            (ix - 4, iy - 4),
+            (ix, iy - 7),
+            (ix + 4, iy - 4),
+        ]
         pygame.draw.polygon(surf, YELLOW_GLOW, flame_inner)
 
     elif kind == "chest":
-        # Rolled scroll
-        body = pygame.Rect(ix - 12, iy - 7, 24, 14)
+        half_w = 6 + int(6 * anim)
+        body = pygame.Rect(ix - half_w, iy - 7, half_w * 2, 14)
         pygame.draw.rect(surf, (225, 205, 160), body)
         pygame.draw.rect(surf, (140, 115, 80), body, 1)
-        pygame.draw.circle(surf, (200, 175, 130), (ix - 12, iy), 4)
-        pygame.draw.circle(surf, (200, 175, 130), (ix + 12, iy), 4)
-        pygame.draw.circle(surf, (140, 115, 80), (ix - 12, iy), 4, 1)
-        pygame.draw.circle(surf, (140, 115, 80), (ix + 12, iy), 4, 1)
-        for i in range(3):
-            y = iy - 4 + i * 4
-            pygame.draw.line(surf, (150, 125, 90), (ix - 7, y), (ix + 7, y), 1)
+        pygame.draw.circle(surf, (200, 175, 130), (ix - half_w, iy), 4)
+        pygame.draw.circle(surf, (200, 175, 130), (ix + half_w, iy), 4)
+        pygame.draw.circle(surf, (140, 115, 80), (ix - half_w, iy), 4, 1)
+        pygame.draw.circle(surf, (140, 115, 80), (ix + half_w, iy), 4, 1)
+        if anim > 0.3:
+            fade = min(1.0, (anim - 0.3) / 0.7)
+            line_w = int((half_w - 3) * fade)
+            for i in range(3):
+                y = iy - 4 + i * 4
+                pygame.draw.line(surf, (150, 125, 90), (ix - line_w, y), (ix + line_w, y), 1)
 
     elif kind == "gear":
-        # Etched rune sigil
-        pygame.draw.circle(surf, BLUE_GLOW, (ix, iy), 13, 2)
-        pygame.draw.circle(surf, BLUE_GLOW, (ix, iy), 6, 1)
+        speed = 0.4 + anim * 3.5
+        base_angle = t * speed * 60
+
+        # Base metal ring with dark edge for depth
+        pygame.draw.circle(surf, SILVER_MID, (ix, iy), 13)
+        pygame.draw.circle(surf, SILVER_DARK, (ix, iy), 13, 2)
+
+        # Rotating spokes with light/dark faces to read as beveled metal
         for a in range(0, 360, 60):
-            rad = math.radians(a)
+            rad = math.radians(a + base_angle)
             x1 = ix + int(6 * math.cos(rad))
             y1 = iy + int(6 * math.sin(rad))
             x2 = ix + int(13 * math.cos(rad))
             y2 = iy + int(13 * math.sin(rad))
-            pygame.draw.line(surf, BLUE_GLOW, (x1, y1), (x2, y2), 1)
+            pygame.draw.line(surf, SILVER_LIGHT, (x1, y1), (x2, y2), 2)
+            pygame.draw.line(surf, SILVER_DARK, (x1 + 1, y1 + 1), (x2 + 1, y2 + 1), 1)
+
+        # Inner hub
+        pygame.draw.circle(surf, SILVER_DARK, (ix, iy), 7)
+        pygame.draw.circle(surf, SILVER_MID, (ix, iy), 6)
+        pygame.draw.circle(surf, SILVER_LIGHT, (ix, iy), 6, 1)
+
+        # Fixed highlight arc (doesn't rotate) to sell the "shiny metal" look
+        bbox = (ix - 12, iy - 12, 24, 24)
+        pygame.draw.arc(surf, SILVER_SHINE, bbox, math.radians(120), math.radians(200), 2)
+
+        # Center pin
         pygame.draw.circle(surf, WHITE, (ix, iy), 2)
 
     elif kind == "quit":
-        # Closing wooden door
-        frame = pygame.Rect(ix - 10, iy - 14, 20, 28)
-        pygame.draw.rect(surf, (50, 30, 25), frame, border_radius=3)
-        pygame.draw.rect(surf, (30, 18, 15), frame, 2, border_radius=3)
-        pygame.draw.line(surf, (30, 18, 15), (ix, iy - 14), (ix, iy + 14), 1)
-        pygame.draw.circle(surf, YELLOW_GLOW, (ix + 4, iy), 2)
+        doorway = pygame.Rect(ix - 10, iy - 14, 20, 28)
+        pygame.draw.rect(surf, (15, 10, 8), doorway, border_radius=3)
+        pygame.draw.rect(surf, (30, 18, 15), doorway, 2, border_radius=3)
+        door_w = max(2, int(20 * (1 - 0.7 * anim)))
+        panel = pygame.Rect(ix - 10, iy - 14, door_w, 28)
+        pygame.draw.rect(surf, (60, 38, 30), panel, border_radius=2)
+        pygame.draw.rect(surf, (35, 22, 18), panel, 1, border_radius=2)
+        if door_w > 6:
+            knob_x = ix - 10 + door_w - 4
+            pygame.draw.circle(surf, YELLOW_GLOW, (knob_x, iy), 2)
 
 def _draw_stone_button(
     surf: pygame.Surface,
@@ -252,6 +304,7 @@ def _draw_stone_button(
     icon: str,
     hovered: bool,
     seed: int,
+    t: float = 0.0,
 ) -> None:
     r = rect.inflate(4, 4) if hovered else rect
     tmp = pygame.Surface((r.w, r.h))
@@ -261,15 +314,8 @@ def _draw_stone_button(
         overlay.fill((*BLUE_GLOW[:3], 40))
         tmp.blit(overlay, (0, 0))
     surf.blit(tmp, r.topleft)
-
-    # Icon stays fixed on the left
-    icon_cx = r.left + 28
-    icon_cy = r.centery
-    _draw_menu_icon(surf, icon, pygame.Rect(icon_cx - 22, icon_cy - 22, 44, 44))
-
-    # Label centered in the full button, independent of icon position
+    _draw_menu_icon(surf, icon, pygame.Rect(r.left, r.top, r.w, r.h), hovered, t)
     txt = _button_font.render(label, True, WHITE)
-    txt_x = r.centerx - txt.get_width() // 2
     surf.blit(txt, (r.left + 68, r.centery - txt.get_height() // 2))
 
 
@@ -484,6 +530,7 @@ def main_menu():
     seeds = [11, 22, 33, 44]
 
     clock = pygame.time.Clock()
+    clock.tick(60)
     running = True
 
     pygame.mixer.music.load("assets/audios/mainMenuBgm.mp3")
@@ -491,9 +538,11 @@ def main_menu():
     pygame.mixer.music.play(-1)  # -1 means loop forever
 
     while running:
+        dt = clock.tick(60) / 1000.0
         t = pygame.time.get_ticks() / 1000.0
         mouse_pos = pygame.mouse.get_pos()
         hovers = [r.collidepoint(mouse_pos) for r in rects]
+        _update_icon_anims(dict(zip(icons, hovers)), dt)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -526,7 +575,7 @@ def main_menu():
         )
 
         for rect, label, icon, h, seed in zip(rects, labels, icons, hovers, seeds):
-            _draw_stone_button(screen, rect, label, icon, h, seed)
+            _draw_stone_button(screen, rect, label, icon, h, seed, t)
 
         _draw_robot_tip(screen, t)
         ver = _small.render("v1.0", True, WHITE)
@@ -536,4 +585,4 @@ def main_menu():
             show_settings = _draw_interactive_settings(screen, mouse_pos, show_settings)
 
         pygame.display.flip()
-        clock.tick(60)
+        

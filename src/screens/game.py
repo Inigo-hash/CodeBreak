@@ -73,7 +73,6 @@ def game_screen(screen):
     player_x = float(player_rect.x)
     player_y = float(player_rect.y)
     player_speed = 2.50
-    player_color = (255, 50, 50)
 
     # --- Fonts ---
     font = pygame.font.SysFont("consolas", 18)
@@ -92,7 +91,6 @@ def game_screen(screen):
     hud_font_bar = pygame.font.SysFont("consolas", 12, bold=True)
 
     minimap_compass_font = pygame.font.SysFont("consolas", 14, bold=True)
-    minimap_player_font = pygame.font.SysFont("consolas", 16, bold=True)
 
     HUD_MARGIN = 14
     HUD_PORTRAIT_SIZE = 56
@@ -207,7 +205,18 @@ def game_screen(screen):
         )
     )
 
-    def draw_minimap(surf, player_rect):
+    # Player marker: a GTA-style white arrowhead pointing whichever way the
+    # character faces. The character's four facings map to screen headings —
+    # "forward" is north here, matching the compass letters below.
+    MINIMAP_ARROW_SIZE = 8
+    MINIMAP_ARROW_HEADINGS = {
+        'forward': (0, -1),
+        'backward': (0, 1),
+        'left': (-1, 0),
+        'right': (1, 0),
+    }
+
+    def draw_minimap(surf, player_rect, character):
         panel_rect = pygame.Rect(
             MINIMAP_MARGIN,
             SCREEN_H - MINIMAP_MARGIN - MINIMAP_SIZE,
@@ -250,12 +259,26 @@ def game_screen(screen):
 
         # Player marker — always dead-center, since the crop above keeps
         # the player's world position pinned to the middle of the panel.
-        p_txt = minimap_player_font.render("P", True, (255, 255, 255))
-        marker_radius = max(p_txt.get_width(), p_txt.get_height()) // 2 + 6
-        pygame.draw.circle(surf, player_color, panel_rect.center, marker_radius)
-        pygame.draw.circle(surf, (255, 255, 255), panel_rect.center, marker_radius, 2)
-        surf.blit(p_txt, (panel_rect.centerx - p_txt.get_width() // 2,
-                           panel_rect.centery - p_txt.get_height() // 2))
+        # Points are laid out along the heading vector (how far forward)
+        # and across it (how far out to the side): a long tip against a
+        # narrow tail, with a notch cut into the back so the pointed end
+        # is unmistakable. Turns with the character's facing.
+        hx, hy = MINIMAP_ARROW_HEADINGS[character.facing]
+        px, py = -hy, hx  # perpendicular to the heading
+        cx, cy = panel_rect.center
+
+        def arrow_point(along, across):
+            return (cx + (hx * along + px * across) * MINIMAP_ARROW_SIZE,
+                    cy + (hy * along + py * across) * MINIMAP_ARROW_SIZE)
+
+        arrow = (
+            arrow_point(1.15, 0),      # tip
+            arrow_point(-0.7, 0.62),   # back corner
+            arrow_point(-0.42, 0),     # notch, pulled forward between them
+            arrow_point(-0.7, -0.62),  # back corner
+        )
+        pygame.draw.polygon(surf, (255, 255, 255), arrow)
+        pygame.draw.polygon(surf, (30, 30, 30), arrow, 1)
 
         pygame.draw.rect(surf, (90, 94, 110), panel_rect, 3)
 
@@ -680,7 +703,7 @@ def game_screen(screen):
         draw_profile_hud(screen, mouse_pos)
 
         # Minimap (bottom-left)
-        draw_minimap(screen, player_rect)
+        draw_minimap(screen, player_rect, main_character)
 
         # Hotbar (bottom-centre). Drawn after the world and the HUD so it
         # always sits on top of everything else in the scene.

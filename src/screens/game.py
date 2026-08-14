@@ -181,8 +181,26 @@ def game_screen(screen):
     MINIMAP_SEA_COLOR = (44, 232, 244)
     MINIMAP_SPAN_FACTOR = 1.5  # how much wider the minimap's view is than the player's own screen view
     minimap_px_per_unit = MINIMAP_SIZE / ((max(SCREEN_W, SCREEN_H) / ZOOM) * MINIMAP_SPAN_FACTOR)
+
+    # Object Layer 1 (trees, etc.) is drawn per-frame as depth-sorted
+    # dynamic_props rather than baked into raw_map_surface, so on its own
+    # raw_map_surface is missing those objects. Bake them into a separate
+    # copy just for the minimap texture so the main game's map_surface
+    # (which is derived from raw_map_surface) doesn't end up with a
+    # duplicate, non-depth-sorted copy of every tree.
+    minimap_base_surface = raw_map_surface.copy()
+    for layer in tmx_data.visible_layers:
+        if hasattr(layer, 'name') and layer.name == "Object Layer 1":
+            for obj in layer:
+                gid = getattr(obj, 'gid', None)
+                if not gid:
+                    continue
+                tile_image = tmx_data.get_tile_image_by_gid(gid)
+                if tile_image:
+                    minimap_base_surface.blit(tile_image, (obj.x, obj.y - obj.height))
+
     minimap_texture = pygame.transform.smoothscale(
-        raw_map_surface,
+        minimap_base_surface,
         (
             max(1, int(map_width * minimap_px_per_unit)),
             max(1, int(map_height * minimap_px_per_unit)),

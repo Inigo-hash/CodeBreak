@@ -205,18 +205,13 @@ def game_screen(screen):
         )
     )
 
-    # Player marker: a GTA-style white arrowhead pointing whichever way the
-    # character faces. The character's four facings map to screen headings —
-    # "forward" is north here, matching the compass letters below.
+    # Player marker: a GTA-style white arrowhead. It takes a heading vector
+    # straight off the movement input rather than the character's `facing`,
+    # which only tracks the four cardinals it has sprite sets for — that way
+    # the arrow covers the diagonals (NE/NW/SE/SW) as well.
     MINIMAP_ARROW_SIZE = 8
-    MINIMAP_ARROW_HEADINGS = {
-        'forward': (0, -1),
-        'backward': (0, 1),
-        'left': (-1, 0),
-        'right': (1, 0),
-    }
 
-    def draw_minimap(surf, player_rect, character):
+    def draw_minimap(surf, player_rect, heading):
         panel_rect = pygame.Rect(
             MINIMAP_MARGIN,
             SCREEN_H - MINIMAP_MARGIN - MINIMAP_SIZE,
@@ -263,7 +258,7 @@ def game_screen(screen):
         # and across it (how far out to the side): a long tip against a
         # narrow tail, with a notch cut into the back so the pointed end
         # is unmistakable. Turns with the character's facing.
-        hx, hy = MINIMAP_ARROW_HEADINGS[character.facing]
+        hx, hy = heading
         px, py = -hy, hx  # perpendicular to the heading
         cx, cy = panel_rect.center
 
@@ -441,6 +436,9 @@ def game_screen(screen):
         draw_pause_button(surf, settings_back_rect, "BACK", back_hovered)
 
     running = True
+    # Matches MainCharacter's own starting facing, so the arrow agrees with
+    # the sprite before the player has moved at all.
+    minimap_heading = (1, 0)
     main_character = MainCharacter(screen, map_width, map_height)
     # simple enemy instance for visual testing/animation
     enemy = Enemy(screen, map_width, map_height)
@@ -559,6 +557,14 @@ def game_screen(screen):
         if dx != 0 and dy != 0:
             dx *= 0.7071 # 1/sqrt(2)
             dy *= 0.7071
+
+        # Feed the minimap arrow off the movement input, which already covers
+        # all eight directions. It's a unit vector at this point (the diagonal
+        # normalization above is exactly what makes it one), so the arrow comes
+        # out the same length whichever way it points. Held over when standing
+        # still so the marker keeps the last direction walked.
+        if dx or dy:
+            minimap_heading = (dx, dy)
 
         dx *= player_speed
         dy *= player_speed
@@ -703,7 +709,7 @@ def game_screen(screen):
         draw_profile_hud(screen, mouse_pos)
 
         # Minimap (bottom-left)
-        draw_minimap(screen, player_rect, main_character)
+        draw_minimap(screen, player_rect, minimap_heading)
 
         # Hotbar (bottom-centre). Drawn after the world and the HUD so it
         # always sits on top of everything else in the scene.

@@ -14,6 +14,7 @@ from src.screens.game_over import game_over_screen
 from src.screens.profile import profile_screen
 from src.screens.inventory import PlayerInventory, Toolbar, open_inventory
 from src.systems import save_manager
+from src.data.zones import ZONES
 
 def game_screen(screen, slot_num=None, save_state=None):
     clock = pygame.time.Clock()
@@ -273,6 +274,25 @@ def game_screen(screen, slot_num=None, save_state=None):
     # the arrow covers the diagonals (NE/NW/SE/SW) as well.
     MINIMAP_ARROW_SIZE = 8
 
+    # --- Zone Labels ---
+    # Converts each zone's fractional rect (from zones.py) into a
+    # real pixel rect once, using this map's actual dimensions.
+    zone_pixel_rects = []
+    for zone in ZONES:
+        frac_x, frac_y, frac_w, frac_h = zone["rect"]
+        zone_pixel_rects.append({
+            "name": zone["name"],
+            "is_boss_zone": zone.get("is_boss_zone", False),
+            "rect": pygame.Rect(
+                frac_x * map_width,
+                frac_y * map_height,
+                frac_w * map_width,
+                frac_h * map_height
+            )
+        })
+
+    zone_label_font = pygame.font.SysFont("consolas", 11, bold=True)
+
     def draw_minimap(surf, player_rect, heading):
         panel_rect = pygame.Rect(
             MINIMAP_MARGIN,
@@ -299,6 +319,41 @@ def game_screen(screen, slot_num=None, save_state=None):
         prev_clip = surf.get_clip()
         surf.set_clip(panel_rect)
         surf.blit(minimap_texture, (panel_rect.left - src_left, panel_rect.top - src_top))
+        surf.set_clip(prev_clip)
+
+        # ----------------------------------
+        # Zone Name Labels
+        # ----------------------------------
+        # Reuses the same crop math as the map texture above, so a
+        # zone's label lines up with the terrain it's naming even
+        # as the minimap pans with the player.
+
+        surf.set_clip(panel_rect)
+
+        for zone in zone_pixel_rects:
+
+            zone_center_x = zone["rect"].centerx * minimap_px_per_unit
+            zone_center_y = zone["rect"].centery * minimap_px_per_unit
+
+            label_x = panel_rect.left - src_left + zone_center_x
+            label_y = panel_rect.top - src_top + zone_center_y
+
+            label_color = (
+                (255, 210, 90) if zone["is_boss_zone"] else (230, 230, 230)
+            )
+
+            shadow = zone_label_font.render(zone["name"], True, (0, 0, 0))
+            label = zone_label_font.render(zone["name"], True, label_color)
+
+            surf.blit(
+                shadow,
+                (label_x - label.get_width() // 2 + 1, label_y - label.get_height() // 2 + 1)
+            )
+            surf.blit(
+                label,
+                (label_x - label.get_width() // 2, label_y - label.get_height() // 2)
+            )
+
         surf.set_clip(prev_clip)
 
         # Compass letters fixed to the panel edges — the view never
@@ -616,6 +671,14 @@ def game_screen(screen, slot_num=None, save_state=None):
                     background_snapshot = screen.copy()
                     editor = CodeEditor(screen, sample_challenge, background_snapshot)
                     editor.run()
+
+                elif event.key == pygame.K_F6:
+                    # Debug: prints the player's position as a
+                    # fraction of the map, for placing zone rects
+                    # in zones.py accurately.
+                    frac_x = player_rect.centerx / map_width
+                    frac_y = player_rect.centery / map_height
+                    print(f"Zone debug position: ({frac_x:.2f}, {frac_y:.2f})")
                     
                 elif event.key == pygame.K_F8:
                     # Dev-only preview: press F8 to see the Game Over screen,
@@ -832,6 +895,8 @@ def game_screen(screen, slot_num=None, save_state=None):
                     message = 'The vase is empty.'
                 elif action == 'search_hay':
                     message = 'The hay is empty.'
+                elif action == 'search_crate':
+                    message = 'The crate is empty.'
                 else:
                     message = "Nothing here."
                 msg = inspect_font.render(message, True, (255, 255, 255))

@@ -5,17 +5,11 @@
   <properties>
    <property name="collidable" type="bool" value="true"/>
   </properties>
-  <objectgroup draworder="index" id="2">
-   <object id="1" x="7.0625" y="0.125" width="8.875" height="14.75"/>
-  </objectgroup>
  </tile>
  <tile id="433">
   <properties>
    <property name="collidable" type="bool" value="true"/>
   </properties>
-  <objectgroup draworder="index" id="2">
-   <object id="1" x="0.0625" y="0.0625" width="8.8125" height="14.9375"/>
-  </objectgroup>
  </tile>
  <tile id="590">
   <properties>

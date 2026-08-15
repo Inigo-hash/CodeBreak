@@ -4,6 +4,12 @@ import sys
 import pygame
 from src.screens.game import game_screen
 from src.settings_state import settings_state as _settings_state
+from src.screens.settings import settings_screen
+from src.screens.how_to_play import how_to_play_screen
+from src.screens.start_game_menu import start_game_menu
+
+icons = ["play", "chest", "gear", "quit"]
+labels = ["START NEW GAME", "HOW TO PLAY", "SETTINGS", "QUIT"]
 
 # Import config first — it sets the SDL_VIDEO_MINIMIZE_ON_FOCUS_LOSS env var,
 # which must exist before pygame.init() brings up the video subsystem.
@@ -172,7 +178,7 @@ def _stone_texture(surf: pygame.Surface, rect: pygame.Rect, seed: int) -> None:
     lo = tuple(max(0, c - 25) for c in STONE_DARK)
     pygame.draw.line(surf, lo, (rect.left, rect.bottom - 1), rect.bottomright, 1)
     
-_icon_anim = {"play": 0.0, "chest": 0.0, "gear": 0.0, "quit": 0.0}
+_icon_anim = {"play": 0.0, "chest": 0.0, "gear": 0.0, "quit": 0.0, "book": 0.0}
 
 
 def _update_icon_anims(hover_map: dict, dt: float, speed: float = 8.0) -> None:
@@ -299,6 +305,33 @@ def _draw_menu_icon(surf: pygame.Surface, kind: str, rect: pygame.Rect, hovered:
         if door_w > 6:
             knob_x = ix - 10 + door_w - 4
             pygame.draw.circle(surf, YELLOW_GLOW, (knob_x, iy), 2)
+            
+    elif kind == "book":
+        # Open book — pages spread wider on hover, text lines fade in once mostly open
+        spread = 6 + int(4 * anim)
+        left_page = pygame.Rect(ix - spread - 10, iy - 10, spread + 10, 20)
+        right_page = pygame.Rect(ix, iy - 10, spread + 10, 20)
+
+        pygame.draw.rect(surf, (225, 205, 160), left_page,
+                          border_top_left_radius=2, border_bottom_left_radius=2)
+        pygame.draw.rect(surf, (225, 205, 160), right_page,
+                          border_top_right_radius=2, border_bottom_right_radius=2)
+        pygame.draw.rect(surf, (140, 115, 80), left_page, 1,
+                          border_top_left_radius=2, border_bottom_left_radius=2)
+        pygame.draw.rect(surf, (140, 115, 80), right_page, 1,
+                          border_top_right_radius=2, border_bottom_right_radius=2)
+
+        pygame.draw.line(surf, (90, 60, 40), (ix, iy - 11), (ix, iy + 11), 2)
+
+        if anim > 0.3:
+            fade = min(1.0, (anim - 0.3) / 0.7)
+            for i in range(3):
+                y = iy - 5 + i * 5
+                lw = int((spread + 4) * fade)
+                pygame.draw.line(surf, (150, 125, 90), (ix - 4 - lw, y), (ix - 4, y), 1)
+                pygame.draw.line(surf, (150, 125, 90), (ix + 4, y), (ix + 4 + lw, y), 1)
+
+        pygame.draw.circle(surf, YELLOW_GLOW, (ix, iy - 12), 2)  # gold bookmark clasp
 
 def _draw_stone_button(
     surf: pygame.Surface,
@@ -528,8 +561,8 @@ def main_menu():
         pygame.Rect(center_x, by0 + 3 * (bh + gap), bw, bh),  # QUIT
     ]
 
-    icons = ["play", "chest", "gear", "quit"]
-    labels = ["START NEW GAME", "CONTINUE", "SETTINGS", "QUIT"]
+    icons = ["play", "book", "gear", "quit"]
+    labels = ["START NEW GAME", "HOW TO PLAY", "SETTINGS", "QUIT"]
     seeds = [11, 22, 33, 44]
 
     clock = pygame.time.Clock()
@@ -554,14 +587,9 @@ def main_menu():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if not show_settings:
                     if rects[0].collidepoint(event.pos):
-                        pygame.mixer.music.stop()
-                        game_screen(screen)
-                        pygame.mixer.music.load("assets/audios/mainMenuBgm.mp3")
-                        pygame.mixer.music.set_volume(_settings_state["music_vol"])
-                        pygame.mixer.music.play(-1)
-                    if rects[1].collidepoint(event.pos):
-                        pygame.mixer.music.stop()
-                        tutorial_screen(screen)
+                        start_game_menu(screen)
+                    if rects[1].collidepoint(event.pos):                      
+                        how_to_play_screen(screen)
                     if rects[2].collidepoint(event.pos):
                         show_settings = not show_settings
                     if rects[3].collidepoint(event.pos):

@@ -12,10 +12,10 @@ from src.entities.enemy import Enemy
 from src.ui.code_editor import CodeEditor
 from src.screens.game_over import game_over_screen
 from src.screens.profile import profile_screen
-# Minecraft-style inventory: the bottom hotbar and the B-key bag screen.
 from src.screens.inventory import PlayerInventory, Toolbar, open_inventory
+from src.systems import save_manager
 
-def game_screen(screen):
+def game_screen(screen, slot_num=None, save_state=None):
     clock = pygame.time.Clock()
 
     pygame.mixer.music.load("assets/audios/gameStage1Bgm.mp3")  
@@ -74,10 +74,52 @@ def game_screen(screen):
     )
 
     # Float position to avoid integer truncation causing uneven movement
+    # Float position to avoid integer truncation causing uneven movement
     player_rect.clamp_ip(pygame.Rect(0, 0, map_width, map_height))
     player_x = float(player_rect.x)
     player_y = float(player_rect.y)
     player_speed = 2.50
+
+    # --- Restore from a save slot, if one was passed in ---
+    # (map_position only for now - hearts/keys/topics/challenges are
+    # carried through so they round-trip on save/load, but nothing in
+    # this loop drains hearts or grants keys yet; inventory items aren't
+    # restored either, since Item icons aren't currently serializable.)
+    save_hearts = 5
+    save_keys = 0
+    save_stage = "Island"
+    save_topics_completed = []
+    save_challenges_passed = []
+
+    if save_state:
+        save_hearts = save_state.get("hearts", save_hearts)
+        save_keys = save_state.get("keys", save_keys)
+        save_stage = save_state.get("stage", save_stage)
+        save_topics_completed = save_state.get("topics_completed", [])
+        save_challenges_passed = save_state.get("challenges_passed", [])
+
+        map_position = save_state.get("map_position")
+        if map_position:
+            player_x, player_y = float(map_position[0]), float(map_position[1])
+            player_rect.x, player_rect.y = int(player_x), int(player_y)
+            player_rect.clamp_ip(pygame.Rect(0, 0, map_width, map_height))
+            player_x, player_y = float(player_rect.x), float(player_rect.y)
+
+    def build_save_state():
+        return {
+            "stage": save_stage,
+            "hearts": save_hearts,
+            "keys": save_keys,
+            "topics_completed": save_topics_completed,
+            "challenges_passed": save_challenges_passed,
+            "map_position": [player_x, player_y],
+            "inventory": [],
+        }
+
+    # Feedback message shown briefly after SAVE is pressed. Frame-based
+    # (this loop doesn't track dt / delta-time), so this counts down once
+    # per rendered frame rather than in real seconds.
+    save_message_frames = 0
 
     # --- Fonts ---
     font = pygame.font.SysFont("consolas", 18)
@@ -323,6 +365,7 @@ def game_screen(screen):
 
     PAUSE_MENU_OPTIONS = [
         ("RESUME", "resume"),
+        ("SAVE GAME", "save"),
         ("SETTINGS", "settings"),
         ("RETURN TO MAIN MENU", "main_menu"),
     ]
@@ -443,9 +486,22 @@ def game_screen(screen):
         )
 
         # ----- Buttons -----
+        # ----- Buttons -----
         for btn in pause_buttons:
             hovered = btn["rect"].collidepoint(mouse_pos)
             draw_pause_button(surf, btn["rect"], btn["label"], hovered)
+
+        # ----- Save feedback -----
+        if save_message_frames > 0:
+            if slot_num is not None:
+                msg, color = "Game saved.", (120, 220, 140)
+            else:
+                msg, color = "No save slot active - can't save here.", (230, 120, 120)
+            msg_surf = font.render(msg, True, color)
+            surf.blit(
+                msg_surf,
+                (panel.centerx - msg_surf.get_width() // 2, panel.bottom - 34)
+            )
 
     def draw_pause_settings(surf, mouse_pos):
         overlay = pygame.Surface((SCREEN_W, SCREEN_H), pygame.SRCALPHA)
@@ -574,6 +630,10 @@ def game_screen(screen):
                         if btn["rect"].collidepoint(event.pos):
                             if btn["action"] == "resume":
                                 paused = False
+                            elif btn["action"] == "save":
+                                if slot_num is not None:
+                                    save_manager.save_slot(slot_num, build_save_state())
+                                save_message_frames = 96  # ~1.6s at 60fps
                             elif btn["action"] == "settings":
                                 show_pause_settings = True
                             elif btn["action"] == "main_menu":
@@ -614,17 +674,20 @@ def game_screen(screen):
             _settings_state["sfx_vol"] = max(0.0, min(1.0, (mouse_pos[0] - sfx_bar.left) / sfx_bar.width))
 
         if paused:
-            screen.blit(map_surface, (-camera_x, -camera_y))
-            main_character.draw_frames(ZOOM, camera_x, camera_y)
-            # Draw the hotbar before the pause overlay so it gets blurred
-            # along with the rest of the scene instead of vanishing.
-            toolbar.draw()
-            if show_pause_settings:
-                draw_pause_settings(screen, mouse_pos)
-            else:
-                draw_pause_menu(screen, mouse_pos)
-            pygame.display.flip()
-            continue
+            if paused:
+                screen.blit(map_surface, (-camera_x, -camera_y))
+                main_character.draw_frames(ZOOM, camera_x, camera_y)
+                # Draw the hotbar before the pause overlay so it gets blurred
+                # along with the rest of the scene instead of vanishing.
+                toolbar.draw()
+                if show_pause_settings:
+                    draw_pause_settings(screen, mouse_pos)
+                else:
+                    draw_pause_menu(screen, mouse_pos)
+                    if save_message_frames > 0:
+                        save_message_frames -= 1
+                pygame.display.flip()
+                continue
         # --- Movement ---
         keys = pygame.key.get_pressed()
         dx, dy = 0, 0

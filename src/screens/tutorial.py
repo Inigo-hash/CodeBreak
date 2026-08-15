@@ -14,7 +14,7 @@ from src.screens.how_to_play import (
 )
 
 
-def tutorial_screen(screen):
+def tutorial_screen(screen, play_music=True):
     SCREEN_WIDTH, SCREEN_HEIGHT = screen.get_size()
 
     # --- Palette (stone/gold theme, matches main menu & game UI) ---
@@ -39,9 +39,10 @@ def tutorial_screen(screen):
     manual_btn_font = pygame.font.SysFont("consolas", 22, bold=True)
 
     # --- Music: reuse the main menu theme for the tutorial ---
-    pygame.mixer.music.load("assets/audios/mainMenuBgm.mp3")
-    pygame.mixer.music.set_volume(_settings_state["music_vol"])
-    pygame.mixer.music.play(-1)
+    if play_music:
+        pygame.mixer.music.load("assets/audios/tutorial_background_music.mp3")
+        pygame.mixer.music.set_volume(_settings_state["music_vol"])
+        pygame.mixer.music.play(-1)
 
     def _stop_tutorial_music():
         pygame.mixer.music.stop()

@@ -112,7 +112,7 @@ def start_game_menu(screen):
         state = save_manager.new_game_state()
         save_manager.save_slot(slot_num, state)
         pygame.mixer.music.stop()
-        tutorial_screen(screen, play_music=False)
+        tutorial_screen(screen)
         result = game_screen(screen)
         _resume_menu_music()
         return result

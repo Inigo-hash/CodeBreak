@@ -44,6 +44,8 @@ and assign the value
 18
         """,
 
+        "objective": "Create a variable named age and assign it the value 18.",
+
         "requirements": [],
 
         "expected": {
@@ -51,6 +53,46 @@ and assign the value
             "name": "age",
 
             "value": 18
+
+        }
+
+    },
+
+    "print_001": {
+
+        "id": "print_001",
+
+        "title": "Say Hello",
+
+        "difficulty": "Beginner",
+
+        "type": "print",
+
+        "lesson":
+
+        """
+print() displays text on the screen.
+
+Example
+
+print("I am a warrior")
+        """,
+
+        "problem":
+
+        """
+Use print() to display the message
+
+Hello, World!
+        """,
+
+        "objective": 'Use print() to display: Hello, World!',
+
+        "requirements": [],
+
+        "expected": {
+
+            "value": "Hello, World!"
 
         }
 

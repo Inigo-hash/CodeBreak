@@ -47,8 +47,9 @@ class MainCharacter():
         self.idle_backward_frames = [self.walking_backward_frames[0]] * 8
 
         self.current_frames = self.idle_right_frames
-        self.facing = 'right'
         self.pos_x, self.pos_y = map_width // 2, map_height // 2
+        self.center_x, self.center_y = self.pos_x, self.pos_y
+        self.facing = 'right'
         self.current, self.timer = 0, 0
 
     @staticmethod

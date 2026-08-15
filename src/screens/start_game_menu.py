@@ -2,6 +2,8 @@ import sys
 import pygame
 from src.settings_state import settings_state as _settings_state
 from src.systems import save_manager
+from src.screens.game import game_screen
+from src.screens.tutorial import tutorial_screen
 
 
 def start_game_menu(screen):
@@ -9,7 +11,7 @@ def start_game_menu(screen):
         STONE_DARK, STONE_MID, STONE_LIGHT, METAL_FRAME, BLUE_GLOW, WHITE,
         _button_font, _small, _draw_stone_button, _update_icon_anims,
     )
-    from src.screens.game import game_screen
+    
 
     SCREEN_WIDTH, SCREEN_HEIGHT = screen.get_size()
     background = screen.copy()   # snapshot the main menu behind this screen
@@ -110,6 +112,7 @@ def start_game_menu(screen):
         state = save_manager.new_game_state()
         save_manager.save_slot(slot_num, state)
         pygame.mixer.music.stop()
+        tutorial_screen(screen)
         result = game_screen(screen)
         _resume_menu_music()
         return result
@@ -190,7 +193,7 @@ def start_game_menu(screen):
         # ---------------- DRAW ----------------
         screen.blit(background, (0, 0))
         dim = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-        dim.fill((0, 0, 0, 170))
+        dim.fill((0, 0, 0, 200))
         screen.blit(dim, (0, 0))
 
         title = _button_font.render("START GAME", True, WHITE)

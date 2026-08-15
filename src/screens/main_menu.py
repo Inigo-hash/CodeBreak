@@ -3,7 +3,12 @@ import random
 import sys
 import pygame
 from src.screens.game import game_screen
-from src.settings_state import settings_state as _settings_state
+from src.settings_state import (
+    settings_state as _settings_state,
+    current_theme_name,
+    cycle_theme,
+    swatch_color,
+)
 from src.screens.settings import settings_screen
 from src.screens.how_to_play import how_to_play_screen
 from src.screens.start_game_menu import start_game_menu
@@ -429,23 +434,14 @@ def _draw_interactive_settings(surf: pygame.Surface, mouse_pos, show: bool) -> b
         s["dragging_sfx"]   = False
 
     if mouse_clicked:
-        theme_changed = False
-
+        # cycle_theme() both moves the index and restyles the editor.
+        # Without that second half the arrows would only move a number
+        # nothing ever reads, which is exactly why the old theme picker
+        # appeared to do nothing.
         if left_arrow.collidepoint(mouse_pos):
-            s["theme_index"] = (s["theme_index"] - 1) % len(s["themes"])
-            theme_changed = True
+            cycle_theme(-1)
         if right_arrow.collidepoint(mouse_pos):
-            s["theme_index"] = (s["theme_index"] + 1) % len(s["themes"])
-            theme_changed = True
-
-        # Actually restyle the coding environment. Without this the
-        # arrows would only move an index nothing ever reads, which is
-        # exactly why the old theme picker appeared to do nothing.
-        # Imported here rather than at module scope so the menu doesn't
-        # pull in the editor's fonts just to show the settings panel.
-        if theme_changed:
-            from src.ui.editor_theme import apply_theme
-            apply_theme(s["themes"][s["theme_index"]])
+            cycle_theme(1)
 
         if back_r.collidepoint(mouse_pos):
             return False  # close panel
@@ -506,13 +502,8 @@ def _draw_interactive_settings(surf: pygame.Surface, mouse_pos, show: bool) -> b
     tri_r = [(right_arrow.left + 8, right_arrow.top + 6), (right_arrow.left + 8, right_arrow.bottom - 6), (right_arrow.right - 6, right_arrow.centery)]
     pygame.draw.polygon(surf, BLUE_GLOW, tri_l)
     pygame.draw.polygon(surf, BLUE_GLOW, tri_r)
-    # Swatch color for the theme's name, so the label hints at the look
-    # of the theme it selects. These are read against this dark panel,
-    # so LIGHT is shown as a warm near-white rather than the actual
-    # white background it produces in the editor.
-    theme_colors = {"BLUE": (80, 180, 255), "DARK": (150, 160, 180), "LIGHT": (255, 248, 230)}
-    current = s["themes"][s["theme_index"]]
-    th = _button_font.render(current, True, theme_colors.get(current, (200, 200, 210)))
+    current = current_theme_name()
+    th = _button_font.render(current, True, swatch_color(current))
     surf.blit(th, (pr.centerx - th.get_width() // 2, arrow_y + 4))
 
     # Back button

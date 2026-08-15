@@ -1,7 +1,12 @@
 from pytmx.util_pygame import load_pygame
 import pygame
 import sys
-from src.settings_state import settings_state as _settings_state
+from src.settings_state import (
+    settings_state as _settings_state,
+    current_theme_name,
+    cycle_theme,
+    swatch_color,
+)
 from src.entities.player import MainCharacter
 from src.entities.enemy import Enemy
 from src.ui.code_editor import CodeEditor
@@ -346,7 +351,9 @@ def game_screen(screen):
         })
 
     panel_width = min(500, int(SCREEN_W * 0.40))
-    panel_height = min(360, int(SCREEN_H * 0.50))
+    # Taller than the old two-slider panel so the COLOR THEME row below
+    # has room to sit between SFX and the BACK button.
+    panel_height = min(430, int(SCREEN_H * 0.58))
 
     settings_panel_rect = pygame.Rect(
         (SCREEN_W - panel_width) // 2,
@@ -358,16 +365,28 @@ def game_screen(screen):
 
     music_bar = pygame.Rect(
         settings_panel_rect.left + padding,
-        settings_panel_rect.top + int(settings_panel_rect.height * 0.35),
+        settings_panel_rect.top + int(settings_panel_rect.height * 0.28),
         settings_panel_rect.width - padding * 2,
         14
     )
 
     sfx_bar = pygame.Rect(
         settings_panel_rect.left + padding,
-        settings_panel_rect.top + int(settings_panel_rect.height * 0.58),
+        settings_panel_rect.top + int(settings_panel_rect.height * 0.46),
         settings_panel_rect.width - padding * 2,
         14
+    )
+
+    # COLOR THEME row: a pair of arrows with the current theme's name
+    # between them, matching the picker in the main menu's settings.
+    theme_arrow_y = settings_panel_rect.top + int(settings_panel_rect.height * 0.66)
+
+    theme_left_rect = pygame.Rect(
+        settings_panel_rect.left + padding, theme_arrow_y, 40, 28
+    )
+
+    theme_right_rect = pygame.Rect(
+        settings_panel_rect.right - padding - 40, theme_arrow_y, 40, 28
     )
 
     settings_back_rect = pygame.Rect(settings_panel_rect.centerx - 70, settings_panel_rect.bottom - 56, 140, 36)
@@ -446,6 +465,44 @@ def game_screen(screen):
         pygame.draw.rect(surf, (20, 22, 30), sfx_bar, border_radius=4)
         sx = sfx_bar.left + int((sfx_bar.width - 16) * _settings_state["sfx_vol"])
         pygame.draw.rect(surf, (255, 220, 120), (sx, sfx_bar.top - 2, 16, 18), border_radius=3)
+
+        # --- COLOR THEME (restyles the coding environment only) ---
+        surf.blit(
+            font.render("COLOR THEME", True, (200, 200, 210)),
+            (theme_left_rect.left, theme_arrow_y - 26)
+        )
+
+        for rect in (theme_left_rect, theme_right_rect):
+            hovered = rect.collidepoint(mouse_pos)
+            pygame.draw.rect(
+                surf,
+                (60, 90, 130) if hovered else (50, 55, 70),
+                rect,
+                border_radius=4
+            )
+
+        arrow_left = [
+            (theme_left_rect.right - 8, theme_left_rect.top + 6),
+            (theme_left_rect.right - 8, theme_left_rect.bottom - 6),
+            (theme_left_rect.left + 6, theme_left_rect.centery),
+        ]
+        arrow_right = [
+            (theme_right_rect.left + 8, theme_right_rect.top + 6),
+            (theme_right_rect.left + 8, theme_right_rect.bottom - 6),
+            (theme_right_rect.right - 6, theme_right_rect.centery),
+        ]
+        pygame.draw.polygon(surf, (80, 180, 255), arrow_left)
+        pygame.draw.polygon(surf, (80, 180, 255), arrow_right)
+
+        theme_name = current_theme_name()
+        theme_label = font.render(theme_name, True, swatch_color(theme_name))
+        surf.blit(
+            theme_label,
+            (
+                settings_panel_rect.centerx - theme_label.get_width() // 2,
+                theme_arrow_y + 14 - theme_label.get_height() // 2
+            )
+        )
 
         back_hovered = settings_back_rect.collidepoint(mouse_pos)
         draw_pause_button(surf, settings_back_rect, "BACK", back_hovered)
@@ -527,6 +584,12 @@ def game_screen(screen):
                         dragging_music = True
                     if sfx_bar.collidepoint(event.pos):
                         dragging_sfx = True
+                    # Shared with the main menu's picker, so both panels
+                    # always agree on the selected theme.
+                    if theme_left_rect.collidepoint(event.pos):
+                        cycle_theme(-1)
+                    if theme_right_rect.collidepoint(event.pos):
+                        cycle_theme(1)
                     if settings_back_rect.collidepoint(event.pos):
                         show_pause_settings = False
                 elif not paused:

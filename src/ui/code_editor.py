@@ -47,6 +47,12 @@ class CodeEditor:
         # Controls whether the editor is open.
         self.running = False
 
+        # True once the player has submitted a correct solution.
+        # Callers (e.g. the tutorial) check this after run() returns
+        # to know whether the challenge was actually passed, not just
+        # that the editor was closed.
+        self.solved = False
+
         # Cursor blinking
         self.last_input_time = pygame.time.get_ticks()
 
@@ -591,6 +597,9 @@ class CodeEditor:
             self.challenge,
             code
         )
+
+        if passed:
+            self.solved = True
 
         color = SUCCESS_COLOR if passed else ERROR_COLOR
         self.output_panel.add(feedback, color)

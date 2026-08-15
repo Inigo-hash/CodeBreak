@@ -9,6 +9,10 @@ class MainCharacter():
         self.is_idle = True
         self.idle_bob_timer = 0.0
 
+        # NOTE: fill in the actual folder paths for the four new
+        # diagonal walking sets below (walking_northeast, etc).
+        # Each folder is expected to contain frame_0.png ... frame_7.png,
+        # same as every other entry here.
         frame_sets = {
             'idle_right': "assets/images/frames/main_character/idle/idle_right",
             'idle_left': "assets/images/frames/main_character/idle/idle_left",
@@ -16,6 +20,10 @@ class MainCharacter():
             'walking_right': "assets/images/frames/main_character/walking/walking_right",
             'walking_forward': "assets/images/frames/main_character/walking/walking_forward",
             'walking_backward': "assets/images/frames/main_character/walking/walking_backward",
+            'walking_northeast': "assets/images/frames/main_character/walking/walking_forward_right",
+            'walking_northwest': "assets/images/frames/main_character/walking/walking_forward_left",
+            'walking_southeast': "assets/images/frames/main_character/walking/walking_backward_right",
+            'walking_southwest': "assets/images/frames/main_character/walking/walking_backward_left",
         }
 
         raw_frames = {}
@@ -28,6 +36,8 @@ class MainCharacter():
 
         target_content_height = content_heights['idle_right'] * (1 / 5)
 
+        # self.scaled holds every direction's frames, cardinal and
+        # diagonal alike, keyed by the same names used in frame_sets.
         self.scaled = {}
         for key, frames in raw_frames.items():
             factor = target_content_height / content_heights[key]
@@ -36,6 +46,8 @@ class MainCharacter():
                 for f in frames
             ]
 
+        # Named attributes kept for the original four directions so
+        # nothing else that references them directly breaks.
         self.idle_right_frames = self.scaled['idle_right']
         self.idle_left_frames = self.scaled['idle_left']
         self.walking_left_frames = self.scaled['walking_left']
@@ -43,8 +55,20 @@ class MainCharacter():
         self.walking_forward_frames = self.scaled['walking_forward']
         self.walking_backward_frames = self.scaled['walking_backward']
 
+        # New diagonal walking sets.
+        self.walking_northeast_frames = self.scaled['walking_northeast']
+        self.walking_northwest_frames = self.scaled['walking_northwest']
+        self.walking_southeast_frames = self.scaled['walking_southeast']
+        self.walking_southwest_frames = self.scaled['walking_southwest']
+
+        # Idle poses that have no dedicated asset are synthesized by
+        # freezing on the first frame of that direction's walking set.
         self.idle_forward_frames = [self.walking_forward_frames[0]] * 8
         self.idle_backward_frames = [self.walking_backward_frames[0]] * 8
+        self.idle_northeast_frames = [self.walking_northeast_frames[0]] * 8
+        self.idle_northwest_frames = [self.walking_northwest_frames[0]] * 8
+        self.idle_southeast_frames = [self.walking_southeast_frames[0]] * 8
+        self.idle_southwest_frames = [self.walking_southwest_frames[0]] * 8
 
         self.current_frames = self.idle_right_frames
         self.pos_x, self.pos_y = map_width // 2, map_height // 2
@@ -63,19 +87,43 @@ class MainCharacter():
         return int(rows.max() - rows.min() + 1)
 
     def update_frames(self, keys):
-        if keys[pygame.K_w] or keys[pygame.K_UP]:
+        up = keys[pygame.K_w] or keys[pygame.K_UP]
+        down = keys[pygame.K_s] or keys[pygame.K_DOWN]
+        left = keys[pygame.K_a] or keys[pygame.K_LEFT]
+        right = keys[pygame.K_d] or keys[pygame.K_RIGHT]
+
+        # Diagonal combos are checked FIRST. If these ran after the
+        # single-direction checks below, a diagonal would never be
+        # reached since e.g. "up" alone would already match first.
+        if up and right:
+            self.current_frames = self.walking_northeast_frames
+            self.facing = 'northeast'
+            self.is_idle = False
+        elif up and left:
+            self.current_frames = self.walking_northwest_frames
+            self.facing = 'northwest'
+            self.is_idle = False
+        elif down and right:
+            self.current_frames = self.walking_southeast_frames
+            self.facing = 'southeast'
+            self.is_idle = False
+        elif down and left:
+            self.current_frames = self.walking_southwest_frames
+            self.facing = 'southwest'
+            self.is_idle = False
+        elif up:
             self.current_frames = self.walking_forward_frames
             self.facing = 'forward'
             self.is_idle = False
-        elif keys[pygame.K_s] or keys[pygame.K_DOWN]:
+        elif down:
             self.current_frames = self.walking_backward_frames
             self.facing = 'backward'
             self.is_idle = False
-        elif keys[pygame.K_a] or keys[pygame.K_LEFT]:
+        elif left:
             self.current_frames = self.walking_left_frames
             self.facing = 'left'
             self.is_idle = False
-        elif keys[pygame.K_d] or keys[pygame.K_RIGHT]:
+        elif right:
             self.current_frames = self.walking_right_frames
             self.facing = 'right'
             self.is_idle = False
@@ -86,6 +134,10 @@ class MainCharacter():
                 'right': self.idle_right_frames,
                 'forward': self.idle_forward_frames,
                 'backward': self.idle_backward_frames,
+                'northeast': self.idle_northeast_frames,
+                'northwest': self.idle_northwest_frames,
+                'southeast': self.idle_southeast_frames,
+                'southwest': self.idle_southwest_frames,
             }
             self.current_frames = idle_map[self.facing]
 

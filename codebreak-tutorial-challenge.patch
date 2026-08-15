@@ -1,0 +1,445 @@
+diff --git a/src/data/challenges.py b/src/data/challenges.py
+index f5c5bb1..91c344a 100644
+--- a/src/data/challenges.py
++++ b/src/data/challenges.py
+@@ -44,6 +44,8 @@ and assign the value
+ 18
+         """,
+ 
++        "objective": "Create a variable named age and assign it the value 18.",
++
+         "requirements": [],
+ 
+         "expected": {
+@@ -54,6 +56,46 @@ and assign the value
+ 
+         }
+ 
++    },
++
++    "print_001": {
++
++        "id": "print_001",
++
++        "title": "Say Hello",
++
++        "difficulty": "Beginner",
++
++        "type": "print",
++
++        "lesson":
++
++        """
++print() displays text on the screen.
++
++Example
++
++print("I am a warrior")
++        """,
++
++        "problem":
++
++        """
++Use print() to display the message
++
++Hello, World!
++        """,
++
++        "objective": 'Use print() to display: Hello, World!',
++
++        "requirements": [],
++
++        "expected": {
++
++            "value": "Hello, World!"
++
++        }
++
+     }
+ 
+ }
+\ No newline at end of file
+diff --git a/src/learning/challenge_manager.py b/src/learning/challenge_manager.py
+index c4e9206..a0a526d 100644
+--- a/src/learning/challenge_manager.py
++++ b/src/learning/challenge_manager.py
+@@ -2,6 +2,7 @@
+ import ast
+ 
+ from src.learning.validators.variable_validator import VariableValidator
++from src.learning.validators.print_validator import PrintValidator
+ 
+ 
+ class ChallengeManager:
+@@ -14,7 +15,9 @@ class ChallengeManager:
+ 
+         self.validators = {
+ 
+-            "variable": VariableValidator()
++            "variable": VariableValidator(),
++
++            "print": PrintValidator()
+ 
+         }
+ 
+diff --git a/src/learning/validators/print_validator.py b/src/learning/validators/print_validator.py
+new file mode 100644
+index 0000000..1400e86
+--- /dev/null
++++ b/src/learning/validators/print_validator.py
+@@ -0,0 +1,45 @@
++#print_validator.py
++import ast
++
++
++class PrintValidator:
++
++    """
++    Validates challenges that ask the player to print a specific
++    message, e.g. print("Hello, World!").
++
++    Like VariableValidator, this checks the parsed AST rather than
++    captured stdout, so it stays consistent with how ChallengeManager
++    calls every validator (challenge dict + parsed source tree).
++    """
++
++    def validate(self, challenge, tree):
++
++        expected_value = challenge["expected"]["value"]
++
++        for node in ast.walk(tree):
++
++            if not isinstance(node, ast.Call):
++                continue
++
++            if not isinstance(node.func, ast.Name) or node.func.id != "print":
++                continue
++
++            if len(node.args) != 1:
++                continue
++
++            arg = node.args[0]
++
++            if not isinstance(arg, ast.Constant):
++                continue
++
++            if arg.value != expected_value:
++                return False, (
++                    f"Not quite. Try:\n\nprint(\"{expected_value}\")"
++                )
++
++            return True, "Correct! You printed it perfectly."
++
++        return False, (
++            f"Expected:\n\nprint(\"{expected_value}\")"
++        )
+diff --git a/src/screens/tutorial.py b/src/screens/tutorial.py
+index 5d45db7..56e12af 100644
+--- a/src/screens/tutorial.py
++++ b/src/screens/tutorial.py
+@@ -2,6 +2,16 @@ import pygame
+ import sys
+ from src.settings_state import settings_state as _settings_state
+ from src.entities.player import MainCharacter
++from src.ui.code_editor import CodeEditor
++from src.data.challenges import CHALLENGES
++from src.screens.how_to_play import (
++    CONTROLS_LINES,
++    RULES_LINES,
++    _wrap as _wrap_manual_text,
++    STONE_DARK,
++    STONE_LIGHT,
++    BLUE_GLOW,
++)
+ 
+ 
+ def tutorial_screen(screen):
+@@ -23,6 +33,10 @@ def tutorial_screen(screen):
+     dialogue_font = pygame.font.SysFont("consolas", 20)
+     hint_font = pygame.font.SysFont("consolas", 16)
+     prompt_font = pygame.font.SysFont("consolas", 18, bold=True)
++    manual_title_font = pygame.font.SysFont("consolas", 30, bold=True)
++    manual_header_font = pygame.font.SysFont("consolas", 20, bold=True)
++    manual_line_font = pygame.font.SysFont("consolas", 17)
++    manual_btn_font = pygame.font.SysFont("consolas", 22, bold=True)
+ 
+     # --- Music: reuse the main menu theme for the tutorial ---
+     pygame.mixer.music.load("assets/audios/mainMenuBgm.mp3")
+@@ -65,15 +79,15 @@ def tutorial_screen(screen):
+     except Exception:
+         dummy_sprite = None
+ 
+-    def draw_dummy(surf, rect, hit):
++    def draw_dummy(surf, rect, hit, tint_color=DUMMY_HIT_TINT):
+         if dummy_sprite:
+             surf.blit(dummy_sprite, rect.topleft)
+             if hit:
+                 tint = pygame.Surface(rect.size, pygame.SRCALPHA)
+-                tint.fill((*DUMMY_HIT_TINT, 120))
++                tint.fill((*tint_color, 120))
+                 surf.blit(tint, rect.topleft)
+         else:
+-            color = DUMMY_HIT_TINT if hit else DUMMY_FALLBACK_COLOR
++            color = tint_color if hit else DUMMY_FALLBACK_COLOR
+             pygame.draw.rect(surf, color, rect, border_radius=4)
+             pygame.draw.rect(surf, METAL_FRAME, rect, 2, border_radius=4)
+ 
+@@ -163,38 +177,147 @@ def tutorial_screen(screen):
+ 
+     dummy_rect = pygame.Rect(SCREEN_WIDTH // 2 + 220, SCREEN_HEIGHT // 2 - 32, *DUMMY_SIZE)
+     dummy_flash_timer = 0.0
++    dummy_flash_color = DUMMY_HIT_TINT
+ 
+     has_moved = {"up": False, "down": False, "left": False, "right": False}
+     has_attacked = False
++    has_solved = False
+ 
+     def gate_complete():
++        """Movement & Combat gate only - the coding challenge is its
++        own separate gate later in the state machine."""
+         return all(has_moved.values()) and has_attacked
+ 
+     # ------------------------------------------------------------------
+     # Tutorial state machine
+     # ------------------------------------------------------------------
+-    state = "intro_dialogue"  # -> "practice" -> "gate_complete_dialogue" -> "done"
++    # "intro_dialogue" -> "practice" (movement + attack)
++    #   -> "movement_complete_dialogue" -> "code_editor_intro_dialogue"
++    #   -> [CodeEditor opens] -> "challenge_complete_dialogue" (on pass)
++    #      or "retry_dialogue" -> [CodeEditor opens again] (on fail)
++    #   -> "stage_manual" -> "done"
++    state = "intro_dialogue"
+ 
+     intro_lines = [
+         "Ah, a new soul in CodeBreak... I am Mang Tahimik, and I will guide you through these halls.",
+         "Use W, A, S, D to move. Try walking in every direction so your legs remember the way.",
+         "When you're ready, press E near the training dummy to strike it. Combat will save your life down here.",
+     ]
+-    complete_lines = [
++    movement_complete_lines = [
+         "Good. Your body knows how to move, and your blade knows how to strike.",
+-        "That is all you need for now. The dungeon does not wait for the hesitant.",
++        "But steel alone won't get you far down here. Let me show you something else...",
++    ]
++    code_intro_lines = [
++        "This is the Code Editor. Type your code on the left, press RUN to test it, then SUBMIT when you're ready.",
++        "Your first lesson is simple: make the dummy hear you. Use print() to say... Hello, World!",
++    ]
++    retry_lines = [
++        "Not yet, but the dungeon is patient. Try again.",
++    ]
++    challenge_complete_lines = [
++        "Correct! Your mind now speaks the language of code, same as your blade speaks steel.",
++        "One more thing before you descend - take a moment with the stage manual. It won't bite.",
+     ]
+ 
+     def finish_intro():
+         nonlocal state
+         state = "practice"
+ 
+-    def finish_complete_dialogue():
++    def start_code_editor_intro():
++        nonlocal state, dialogue
++        dialogue = DialogueBox(code_intro_lines, on_finish=open_code_editor)
++        state = "code_editor_intro_dialogue"
++
++    def open_code_editor():
++        """Opens the CodeEditor as a blocking sub-loop (same pattern
++        used elsewhere in the codebase, e.g. game.py's F5 handler),
++        then folds the result back into the tutorial's own state
++        machine depending on whether the player actually solved it."""
++        nonlocal state, dialogue, has_solved, dummy_flash_timer, dummy_flash_color
++
++        challenge = CHALLENGES["print_001"]
++        background_snapshot = screen.copy()
++
++        editor = CodeEditor(screen, challenge, background_snapshot)
++        editor.run()
++
++        if editor.solved:
++            has_solved = True
++            dummy_flash_timer = 0.25
++            dummy_flash_color = GREEN_OK
++            dialogue = DialogueBox(challenge_complete_lines, on_finish=finish_challenge_complete)
++            state = "challenge_complete_dialogue"
++        else:
++            dummy_flash_timer = 0.15
++            dummy_flash_color = DUMMY_HIT_TINT
++            dialogue = DialogueBox(retry_lines, on_finish=open_code_editor)
++            state = "retry_dialogue"
++
++    def finish_challenge_complete():
+         nonlocal state
+-        state = "done"
++        state = "stage_manual"
+ 
+     dialogue = DialogueBox(intro_lines, on_finish=finish_intro)
+ 
++    # --- Stage manual layout (reuses the How To Play content so the
++    # two stay in sync) ---
++    manual_panel_rect = pygame.Rect(
++        SCREEN_WIDTH // 2 - 340, SCREEN_HEIGHT // 2 - 260, 680, 520
++    )
++    manual_begin_rect = pygame.Rect(
++        manual_panel_rect.centerx - 110, manual_panel_rect.bottom - 56, 220, 40
++    )
++    manual_col_gap = 30
++    manual_col_width = (manual_panel_rect.width - 80 - manual_col_gap) // 2
++    manual_left_col = pygame.Rect(
++        manual_panel_rect.left + 40, manual_panel_rect.top + 100,
++        manual_col_width, manual_panel_rect.height - 180
++    )
++    manual_right_col = pygame.Rect(
++        manual_left_col.right + manual_col_gap, manual_panel_rect.top + 100,
++        manual_col_width, manual_panel_rect.height - 180
++    )
++
++    def draw_stage_manual(surf, mouse_pos):
++        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
++        overlay.fill((0, 0, 0, 170))
++        surf.blit(overlay, (0, 0))
++
++        pygame.draw.rect(surf, (36, 38, 48), manual_panel_rect, border_radius=8)
++        pygame.draw.rect(surf, METAL_FRAME, manual_panel_rect, 4, border_radius=8)
++        pygame.draw.rect(surf, STONE_DARK, manual_panel_rect.inflate(-24, -24), border_radius=6)
++
++        title = manual_title_font.render("STAGE MANUAL", True, WHITE)
++        surf.blit(title, (manual_panel_rect.centerx - title.get_width() // 2, manual_panel_rect.top + 24))
++        pygame.draw.line(
++            surf, YELLOW_GLOW,
++            (manual_panel_rect.left + 40, manual_panel_rect.top + 70),
++            (manual_panel_rect.right - 40, manual_panel_rect.top + 70), 1
++        )
++
++        for col_rect, header, lines in (
++            (manual_left_col, "CONTROLS + MECHANICS", CONTROLS_LINES),
++            (manual_right_col, "PYTHON CHALLENGE RULES", RULES_LINES),
++        ):
++            h = manual_header_font.render(header, True, BLUE_GLOW)
++            surf.blit(h, (col_rect.left, col_rect.top))
++            y = col_rect.top + 36
++            for entry in lines:
++                for wrapped in _wrap_manual_text(manual_line_font, f"- {entry}", col_rect.width):
++                    txt = manual_line_font.render(wrapped, True, (215, 215, 220))
++                    surf.blit(txt, (col_rect.left, y))
++                    y += 24
++                y += 6
++
++        begin_hovered = manual_begin_rect.collidepoint(mouse_pos)
++        pygame.draw.rect(surf, (70, 140, 70) if begin_hovered else GREEN_OK, manual_begin_rect, border_radius=4)
++        pygame.draw.rect(surf, STONE_LIGHT, manual_begin_rect, 2, border_radius=4)
++        bt = manual_btn_font.render("BEGIN ADVENTURE", True, (20, 30, 20) if not begin_hovered else WHITE)
++        surf.blit(bt, (manual_begin_rect.centerx - bt.get_width() // 2, manual_begin_rect.centery - bt.get_height() // 2))
++
++        hint = hint_font.render("Click / E / SPACE / ENTER to begin", True, DIM_TEXT)
++        surf.blit(hint, (manual_panel_rect.centerx - hint.get_width() // 2, manual_begin_rect.bottom + 10))
++
+     clock = pygame.time.Clock()
+     running = True
+ 
+@@ -210,13 +333,31 @@ def tutorial_screen(screen):
+                 _stop_tutorial_music()
+                 return  # bail back to caller at any point
+ 
+-            if state in ("intro_dialogue", "gate_complete_dialogue"):
++            if state in (
++                "intro_dialogue",
++                "movement_complete_dialogue",
++                "code_editor_intro_dialogue",
++                "challenge_complete_dialogue",
++                "retry_dialogue",
++            ):
+                 dialogue.handle_event(event)
+ 
+             if state == "practice" and event.type == pygame.KEYDOWN and event.key == pygame.K_e:
+                 if player_rect.colliderect(dummy_rect.inflate(30, 30)):
+                     has_attacked = True
+                     dummy_flash_timer = 0.15
++                    dummy_flash_color = DUMMY_HIT_TINT
++
++            if state == "stage_manual":
++                begin_pressed = (
++                    event.type == pygame.KEYDOWN
++                    and event.key in (pygame.K_e, pygame.K_SPACE, pygame.K_RETURN)
++                ) or (
++                    event.type == pygame.MOUSEBUTTONDOWN
++                    and manual_begin_rect.collidepoint(event.pos)
++                )
++                if begin_pressed:
++                    state = "done"
+ 
+         keys = pygame.key.get_pressed()
+ 
+@@ -249,23 +390,25 @@ def tutorial_screen(screen):
+                 dummy_flash_timer -= dt
+ 
+             if gate_complete():
+-                dialogue = DialogueBox(complete_lines, on_finish=finish_complete_dialogue)
+-                state = "gate_complete_dialogue"
++                dialogue = DialogueBox(movement_complete_lines, on_finish=start_code_editor_intro)
++                state = "movement_complete_dialogue"
+ 
+             main_character.update_frames(keys)
+ 
+         if state == "done":
+             _stop_tutorial_music()
+-            return  # Movement & Combat gate cleared, hand control back to caller
++            return  # Full tutorial gate cleared, hand control back to caller
+ 
+         # --- draw ---
++        mouse_pos = pygame.mouse.get_pos()
++
+         screen.fill(BG_FLOOR)
+         for gx in range(0, SCREEN_WIDTH, 64):
+             pygame.draw.line(screen, (40, 42, 52), (gx, 0), (gx, SCREEN_HEIGHT), 1)
+         for gy in range(0, SCREEN_HEIGHT, 64):
+             pygame.draw.line(screen, (40, 42, 52), (0, gy), (SCREEN_WIDTH, gy), 1)
+ 
+-        draw_dummy(screen, dummy_rect, dummy_flash_timer > 0)
++        draw_dummy(screen, dummy_rect, dummy_flash_timer > 0, dummy_flash_color)
+ 
+         main_character.draw_frames(ZOOM, camera_x, camera_y)
+ 
+@@ -292,8 +435,11 @@ def tutorial_screen(screen):
+                 hint = hint_font.render("Walk up to the dummy and press E to attack", True, DIM_TEXT)
+                 screen.blit(hint, (dummy_rect.centerx - hint.get_width() // 2, dummy_rect.top - 26))
+ 
+-        esc_hint = hint_font.render("ESC = Skip tutorial for now", True, DIM_TEXT)
+-        screen.blit(esc_hint, (SCREEN_WIDTH - esc_hint.get_width() - 16, 16))
++        if state == "stage_manual":
++            draw_stage_manual(screen, mouse_pos)
++        else:
++            esc_hint = hint_font.render("ESC = Skip tutorial for now", True, DIM_TEXT)
++            screen.blit(esc_hint, (SCREEN_WIDTH - esc_hint.get_width() - 16, 16))
++            dialogue.draw(screen)
+ 
+-        dialogue.draw(screen)
+         pygame.display.flip()
+\ No newline at end of file
+diff --git a/src/ui/code_editor.py b/src/ui/code_editor.py
+index a4fef02..3f18af8 100644
+--- a/src/ui/code_editor.py
++++ b/src/ui/code_editor.py
+@@ -47,6 +47,12 @@ class CodeEditor:
+         # Controls whether the editor is open.
+         self.running = False
+ 
++        # True once the player has submitted a correct solution.
++        # Callers (e.g. the tutorial) check this after run() returns
++        # to know whether the challenge was actually passed, not just
++        # that the editor was closed.
++        self.solved = False
++
+         # Cursor blinking
+         self.last_input_time = pygame.time.get_ticks()
+ 
+@@ -592,6 +598,9 @@ class CodeEditor:
+             code
+         )
+ 
++        if passed:
++            self.solved = True
++
+         color = SUCCESS_COLOR if passed else ERROR_COLOR
+         self.output_panel.add(feedback, color)
+ 

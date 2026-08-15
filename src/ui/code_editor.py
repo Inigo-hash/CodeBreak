@@ -17,6 +17,7 @@ import pygame
 
 from src.ui.text_buffer import TextBuffer
 from src.ui.editor_renderer import EditorRenderer
+from src.ui.editor_settings import EditorSettingsPanel
 from src.ui.editor_theme import (
     TEXT_COLOR,
     SUCCESS_COLOR,
@@ -106,6 +107,11 @@ class CodeEditor:
         self.submit_button = self.renderer.get_submit_button()
         self.leave_button = self.renderer.get_leave_button()
 
+        # Volume / theme settings, opened by the wheel in the title bar.
+        # Kept in here rather than making the player walk back to the
+        # main menu, which would throw away their unsaved code.
+        self.settings_panel = EditorSettingsPanel(screen)
+
     # ---------------------------------------------------------
     # Main Loop
     # ---------------------------------------------------------
@@ -131,6 +137,12 @@ class CodeEditor:
             self.renderer.last_input_time = self.last_input_time
 
             self.renderer.draw()
+
+            # Drawn after the editor so it sits on top, and laid out
+            # from the popup's current rect so it stays centered even
+            # if the window was resized while it was open.
+            self.settings_panel.layout(self.renderer.panel_rect)
+            self.settings_panel.draw()
 
             pygame.display.flip()
 
@@ -172,7 +184,12 @@ class CodeEditor:
 
         position = pygame.mouse.get_pos()
 
-        if self.dragging_splitter or self.renderer.get_splitter_at(position):
+        # The overlay covers the editor, so keep a plain arrow over it
+        # instead of the text caret the code area would ask for.
+        if self.settings_panel.is_open:
+            self.set_mouse_cursor(pygame.SYSTEM_CURSOR_ARROW)
+
+        elif self.dragging_splitter or self.renderer.get_splitter_at(position):
             self.set_mouse_cursor(pygame.SYSTEM_CURSOR_SIZEWE)
 
         elif self.renderer.editor_rect.collidepoint(position):
@@ -197,6 +214,27 @@ class CodeEditor:
 
                 pygame.quit()
                 raise SystemExit
+
+            # -------------------------------
+            # Settings Overlay
+            # -------------------------------
+            # While it is open it swallows every event, so no keystroke
+            # can reach the code buffer and no click can move the caret
+            # behind the panel.
+
+            if self.settings_panel.is_open:
+
+                self.settings_panel.handle_event(event)
+                continue
+
+            if (
+                event.type == pygame.MOUSEBUTTONDOWN
+                and event.button == 1
+                and self.renderer.settings_gear_rect.collidepoint(event.pos)
+            ):
+
+                self.settings_panel.open()
+                continue
 
             # -------------------------------
             # Mouse Buttons

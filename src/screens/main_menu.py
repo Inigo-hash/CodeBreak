@@ -12,6 +12,7 @@ from src.settings_state import (
 from src.screens.settings import settings_screen
 from src.screens.how_to_play import how_to_play_screen
 from src.screens.start_game_menu import start_game_menu
+from src.ui.gear_icon import draw_gear, draw_medallion
 
 icons = ["play", "chest", "gear", "quit"]
 labels = ["START NEW GAME", "HOW TO PLAY", "SETTINGS", "QUIT"]
@@ -193,36 +194,12 @@ def _update_icon_anims(hover_map: dict, dt: float, speed: float = 8.0) -> None:
         current += (target - current) * min(1.0, speed * dt)
         _icon_anim[kind] = current
 
-def _draw_medallion(surf: pygame.Surface, center: tuple, radius: int, seed: int) -> None:
-    rng = random.Random(seed)
-    cx, cy = center
+# The medallion and gear artwork now lives in src/ui/gear_icon.py, so
+# the settings button inside the coding environment draws the exact
+# same wheel instead of keeping a second copy of it here.
+_draw_medallion = draw_medallion
 
-    # Outer metal ring
-    pygame.draw.circle(surf, METAL_FRAME, (cx, cy), radius + 4)
-    pygame.draw.circle(surf, STONE_DARK, (cx, cy), radius + 4, 2)
 
-    # Inner stone fill
-    pygame.draw.circle(surf, STONE_MID, (cx, cy), radius)
-
-    # Subtle stone texture speckles
-    for _ in range(14):
-        ang = rng.uniform(0, math.tau)
-        dist = rng.uniform(0, radius - 3)
-        x = cx + int(dist * math.cos(ang))
-        y = cy + int(dist * math.sin(ang))
-        c = rng.choice([STONE_DARK, STONE_LIGHT])
-        pygame.draw.circle(surf, c, (x, y), rng.randint(1, 2))
-
-    # Beveled highlight (top-left) and shadow (bottom-right)
-    hi = tuple(min(255, c + 40) for c in STONE_LIGHT)
-    lo = tuple(max(0, c - 25) for c in STONE_DARK)
-    bbox = (cx - radius, cy - radius, radius * 2, radius * 2)
-    pygame.draw.arc(surf, hi, bbox, math.radians(135), math.radians(225), 2)
-    pygame.draw.arc(surf, lo, bbox, math.radians(-45), math.radians(45), 2)
-
-    # Gold engraved ring accent
-    pygame.draw.circle(surf, YELLOW_GLOW, (cx, cy), radius, 1)
-    
 def _draw_menu_icon(surf: pygame.Surface, kind: str, rect: pygame.Rect, hovered: bool = False, t: float = 0.0) -> None:
     ix = rect.left + 34
     iy = rect.centery
@@ -271,33 +248,7 @@ def _draw_menu_icon(surf: pygame.Surface, kind: str, rect: pygame.Rect, hovered:
 
     elif kind == "gear":
         speed = 0.4 + anim * 3.5
-        base_angle = t * speed * 60
-
-        # Base metal ring with dark edge for depth
-        pygame.draw.circle(surf, SILVER_MID, (ix, iy), 13)
-        pygame.draw.circle(surf, SILVER_DARK, (ix, iy), 13, 2)
-
-        # Rotating spokes with light/dark faces to read as beveled metal
-        for a in range(0, 360, 60):
-            rad = math.radians(a + base_angle)
-            x1 = ix + int(6 * math.cos(rad))
-            y1 = iy + int(6 * math.sin(rad))
-            x2 = ix + int(13 * math.cos(rad))
-            y2 = iy + int(13 * math.sin(rad))
-            pygame.draw.line(surf, SILVER_LIGHT, (x1, y1), (x2, y2), 2)
-            pygame.draw.line(surf, SILVER_DARK, (x1 + 1, y1 + 1), (x2 + 1, y2 + 1), 1)
-
-        # Inner hub
-        pygame.draw.circle(surf, SILVER_DARK, (ix, iy), 7)
-        pygame.draw.circle(surf, SILVER_MID, (ix, iy), 6)
-        pygame.draw.circle(surf, SILVER_LIGHT, (ix, iy), 6, 1)
-
-        # Fixed highlight arc (doesn't rotate) to sell the "shiny metal" look
-        bbox = (ix - 12, iy - 12, 24, 24)
-        pygame.draw.arc(surf, SILVER_SHINE, bbox, math.radians(120), math.radians(200), 2)
-
-        # Center pin
-        pygame.draw.circle(surf, WHITE, (ix, iy), 2)
+        draw_gear(surf, (ix, iy), radius, spin_degrees=t * speed * 60)
 
     elif kind == "quit":
         doorway = pygame.Rect(ix - 10, iy - 14, 20, 28)

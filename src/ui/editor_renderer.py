@@ -34,6 +34,7 @@ from src.ui.output_panel import OutputPanel
 from src.ui.problem_panel import ProblemPanel
 from src.ui.editor_theme import *
 from src.ui.syntax_highlighter import highlight_line, compute_line_states
+from src.ui.gear_icon import draw_gear_medallion
 
 # Extra pixels around a divider that still count as "on" it, so the
 # player does not have to hit a 10px target exactly.
@@ -225,6 +226,23 @@ class EditorRenderer:
             inner_width,
             BUTTON_HEIGHT
         )
+
+        # Settings wheel, parked at the right end of the title bar.
+        # Sized to the header so it still fits if HEADER_HEIGHT changes.
+        gear_radius = max(10, HEADER_HEIGHT // 2 - 9)
+
+        self.settings_gear_center = (
+            self.header_rect.right - gear_radius - 16,
+            self.header_rect.centery
+        )
+
+        self.settings_gear_radius = gear_radius
+
+        # Clickable area, a little larger than the wheel so it is not
+        # fiddly to hit.
+        self.settings_gear_rect = pygame.Rect(0, 0, 0, 0)
+        self.settings_gear_rect.size = (gear_radius * 2 + 12, gear_radius * 2 + 12)
+        self.settings_gear_rect.center = self.settings_gear_center
 
         # ----------------------------------
         # Body: everything between them
@@ -478,6 +496,29 @@ class EditorRenderer:
             title,
             (self.header_rect.x + 20,
              self.header_rect.centery - title.get_height() // 2)
+        )
+
+        self.draw_settings_gear()
+
+    def draw_settings_gear(self):
+        """
+        Draw the settings wheel in the title bar.
+
+        Same artwork as the main menu's settings medallion (see
+        src/ui/gear_icon.py). It idles slowly and spins up on hover, so
+        it reads as a button rather than decoration.
+        """
+
+        hovered = self.settings_gear_rect.collidepoint(pygame.mouse.get_pos())
+
+        seconds = pygame.time.get_ticks() / 1000.0
+        speed = 3.9 if hovered else 0.4
+
+        draw_gear_medallion(
+            self.screen,
+            self.settings_gear_center,
+            self.settings_gear_radius,
+            spin_degrees=seconds * speed * 60
         )
 
     def draw_problem_panel(self):

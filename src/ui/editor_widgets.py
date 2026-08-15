@@ -72,7 +72,7 @@ class Button:
         label = TEXT_FONT.render(
             self.text,
             True,
-            TEXT_COLOR
+            BUTTON_TEXT_COLOR
         )
 
         screen.blit(

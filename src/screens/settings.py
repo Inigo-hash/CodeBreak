@@ -21,7 +21,7 @@ def settings_screen(screen):
     font_btn   = pygame.font.SysFont("consolas", 22, bold=True)
 
     # State
-    themes      = ["GREEN", "BLUE", "ORANGE", "PURPLE"]
+    themes      = ["BLUE", "DARK", "LIGHT"]
     theme_index = 0
     dragging_music = False
     dragging_sfx   = False
@@ -106,8 +106,8 @@ def settings_screen(screen):
         sx = sfx_bar.left + int((sfx_bar.width - 16) * _settings_state["sfx_vol"])
         pygame.draw.rect(screen, YELLOW_GLOW, (sx, sfx_bar.top - 2, 16, 18), border_radius=3)
 
-        # SYNTAX THEME
-        screen.blit(font_label.render("SYNTAX THEME", True, (200, 200, 210)), (pr.left + 28, pr.top + 300))
+        # COLOR THEME
+        screen.blit(font_label.render("COLOR THEME", True, (200, 200, 210)), (pr.left + 28, pr.top + 300))
 
         # Left arrow
         pygame.draw.rect(screen, (50, 55, 70), left_arrow, border_radius=4)
@@ -129,13 +129,12 @@ def settings_screen(screen):
 
         # Theme label
         theme_colors = {
-            "GREEN":  (60, 255, 140),
-            "BLUE":   (80, 180, 255),
-            "ORANGE": (255, 160, 60),
-            "PURPLE": (180, 100, 255),
+            "BLUE":  (80, 180, 255),
+            "DARK":  (150, 160, 180),
+            "LIGHT": (255, 248, 230),
         }
         current_theme = themes[theme_index]
-        th = font_btn.render(current_theme, True, theme_colors[current_theme])
+        th = font_btn.render(current_theme, True, theme_colors.get(current_theme, (200, 200, 210)))
         screen.blit(th, (pr.centerx - th.get_width() // 2, arrow_y + 4))
 
         # Back button

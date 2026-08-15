@@ -6,6 +6,23 @@ CodeBreak coding environment.
 
 Changing values here automatically updates the appearance
 of the entire editor.
+
+COLOR THEMES
+------------
+The editor ships with three color themes (see THEMES below), and the
+player picks one from the settings panel. A theme only ever restyles
+the coding environment - the dungeon, menus and the rest of the game
+are drawn from their own palettes and are never touched by this file.
+
+Every themeable color below is a `pygame.Color` object rather than a
+plain (r, g, b) tuple, and `apply_theme()` edits those objects IN PLACE
+instead of reassigning them. That detail matters: the editor modules
+pull these names in with `from src.ui.editor_theme import *`, which
+copies whatever each name pointed at *at import time*. Rebinding
+`PANEL_COLOR` here would leave all those modules holding the old value,
+so switching themes would appear to do nothing. Mutating the shared
+object means every module sees the new color on the very next frame,
+with no reimporting and no changes needed at the call sites.
 """
 
 import pygame
@@ -44,69 +61,247 @@ PANEL_MIN_HEIGHT = 460
 PANEL_SCREEN_MARGIN = 24
 
 # --------------------------------------------------
+# Color Themes
+# --------------------------------------------------
+#
+# Each theme is a plain dict mapping a color name to an (r, g, b)
+# tuple. Every theme must define every key - a missing one would
+# leave that color stuck on whatever the previous theme set it to.
+#
+#   BLUE  - CodeBreak's own palette, the editor's original look.
+#   DARK  - after Visual Studio Code's "Dark Modern".
+#   LIGHT - after Visual Studio Code's "Light Modern".
+
+THEMES = {
+
+    # ---------------- BLUE (CodeBreak original) ----------------
+    "BLUE": {
+        "BACKGROUND_COLOR": (24, 28, 36),
+        "HEADER_COLOR": (36, 41, 51),
+        "PANEL_COLOR": (46, 52, 64),
+        "EDITOR_COLOR": (30, 34, 42),
+        "OUTPUT_COLOR": (20, 22, 28),
+        "BUTTON_COLOR": (70, 110, 180),
+        "BUTTON_HOVER_COLOR": (90, 135, 210),
+        "BUTTON_TEXT_COLOR": (240, 240, 240),
+        "TEXT_COLOR": (240, 240, 240),
+        "SECONDARY_TEXT": (180, 180, 180),
+        "BORDER_COLOR": (85, 90, 100),
+        "SUCCESS_COLOR": (70, 200, 120),
+        "ERROR_COLOR": (220, 80, 80),
+        "SPLITTER_COLOR": (46, 52, 64),
+        "SPLITTER_HOVER_COLOR": (70, 110, 180),
+        "SPLITTER_GRIP_COLOR": (120, 128, 142),
+        "TAB_COLOR": (36, 41, 51),
+        "TAB_ACTIVE_COLOR": (46, 52, 64),
+        "SCROLLBAR_TRACK_COLOR": (52, 58, 70),
+        "SCROLLBAR_THUMB_COLOR": (120, 128, 142),
+
+        "SYNTAX_KEYWORD_COLOR": (198, 120, 221),    # def, if, return, for...
+        "SYNTAX_BUILTIN_COLOR": (86, 182, 194),     # print, len, range...
+        "SYNTAX_STRING_COLOR": (152, 195, 121),     # "text", 'text'
+        "SYNTAX_NUMBER_COLOR": (209, 154, 102),     # 18, 3.14
+        "SYNTAX_COMMENT_COLOR": (106, 115, 125),    # # comment
+        "SYNTAX_FUNCTION_COLOR": (229, 192, 123),   # name after def / class
+        "SYNTAX_SELF_COLOR": (224, 108, 117),       # self, cls
+        "SYNTAX_DECORATOR_COLOR": (209, 154, 102),  # @staticmethod
+    },
+
+    # ---------------- DARK (VS Code "Dark Modern") ----------------
+    "DARK": {
+        "BACKGROUND_COLOR": (24, 24, 24),
+        "HEADER_COLOR": (24, 24, 24),
+        "PANEL_COLOR": (31, 31, 31),
+        "EDITOR_COLOR": (31, 31, 31),
+        "OUTPUT_COLOR": (24, 24, 24),
+        "BUTTON_COLOR": (0, 120, 212),
+        "BUTTON_HOVER_COLOR": (0, 134, 239),
+        "BUTTON_TEXT_COLOR": (255, 255, 255),
+        "TEXT_COLOR": (204, 204, 204),
+        "SECONDARY_TEXT": (157, 157, 157),
+        "BORDER_COLOR": (43, 43, 43),
+        "SUCCESS_COLOR": (137, 209, 133),
+        "ERROR_COLOR": (248, 81, 73),
+        "SPLITTER_COLOR": (43, 43, 43),
+        "SPLITTER_HOVER_COLOR": (0, 120, 212),
+        "SPLITTER_GRIP_COLOR": (110, 110, 110),
+        "TAB_COLOR": (24, 24, 24),
+        "TAB_ACTIVE_COLOR": (31, 31, 31),
+        "SCROLLBAR_TRACK_COLOR": (31, 31, 31),
+        "SCROLLBAR_THUMB_COLOR": (79, 79, 79),
+
+        "SYNTAX_KEYWORD_COLOR": (86, 156, 214),     # def, if, return, for...
+        "SYNTAX_BUILTIN_COLOR": (220, 220, 170),    # print, len, range...
+        "SYNTAX_STRING_COLOR": (206, 145, 120),     # "text", 'text'
+        "SYNTAX_NUMBER_COLOR": (181, 206, 168),     # 18, 3.14
+        "SYNTAX_COMMENT_COLOR": (106, 153, 85),     # # comment
+        "SYNTAX_FUNCTION_COLOR": (220, 220, 170),   # name after def / class
+        "SYNTAX_SELF_COLOR": (86, 156, 214),        # self, cls
+        "SYNTAX_DECORATOR_COLOR": (220, 220, 170),  # @staticmethod
+    },
+
+    # ---------------- LIGHT (VS Code "Light Modern") ----------------
+    #
+    # The syntax colors here are darker than the other two themes on
+    # purpose. The BLUE/DARK token colors are tuned for a dark editor
+    # and would wash out badly against a white background.
+    "LIGHT": {
+        "BACKGROUND_COLOR": (248, 248, 248),
+        "HEADER_COLOR": (248, 248, 248),
+        "PANEL_COLOR": (255, 255, 255),
+        "EDITOR_COLOR": (255, 255, 255),
+        "OUTPUT_COLOR": (248, 248, 248),
+        "BUTTON_COLOR": (0, 95, 184),
+        "BUTTON_HOVER_COLOR": (26, 115, 199),
+        "BUTTON_TEXT_COLOR": (255, 255, 255),
+        "TEXT_COLOR": (59, 59, 59),
+        "SECONDARY_TEXT": (97, 97, 97),
+        "BORDER_COLOR": (229, 229, 229),
+        "SUCCESS_COLOR": (56, 138, 52),
+        "ERROR_COLOR": (205, 49, 49),
+        "SPLITTER_COLOR": (229, 229, 229),
+        "SPLITTER_HOVER_COLOR": (0, 95, 184),
+        "SPLITTER_GRIP_COLOR": (148, 148, 148),
+        "TAB_COLOR": (236, 236, 236),
+        "TAB_ACTIVE_COLOR": (255, 255, 255),
+        "SCROLLBAR_TRACK_COLOR": (248, 248, 248),
+        "SCROLLBAR_THUMB_COLOR": (193, 193, 193),
+
+        "SYNTAX_KEYWORD_COLOR": (0, 0, 255),        # def, if, return, for...
+        "SYNTAX_BUILTIN_COLOR": (121, 94, 38),      # print, len, range...
+        "SYNTAX_STRING_COLOR": (163, 21, 21),       # "text", 'text'
+        "SYNTAX_NUMBER_COLOR": (9, 134, 88),        # 18, 3.14
+        "SYNTAX_COMMENT_COLOR": (0, 128, 0),        # # comment
+        "SYNTAX_FUNCTION_COLOR": (121, 94, 38),     # name after def / class
+        "SYNTAX_SELF_COLOR": (0, 0, 255),           # self, cls
+        "SYNTAX_DECORATOR_COLOR": (121, 94, 38),    # @staticmethod
+    },
+}
+
+# Order the settings panel cycles through with its arrows.
+THEME_NAMES = ("BLUE", "DARK", "LIGHT")
+
+DEFAULT_THEME = "BLUE"
+
+# --------------------------------------------------
 # Colors
 # --------------------------------------------------
+#
+# Declared here so editors and readers can still see the full list of
+# color names at a glance. The values are placeholders - apply_theme()
+# at the bottom of this section fills in the real ones.
 
-BACKGROUND_COLOR = (24, 28, 36)
+BACKGROUND_COLOR = pygame.Color(0, 0, 0)
 
-HEADER_COLOR = (36, 41, 51)
+HEADER_COLOR = pygame.Color(0, 0, 0)
 
-PANEL_COLOR = (46, 52, 64)
+PANEL_COLOR = pygame.Color(0, 0, 0)
 
-EDITOR_COLOR = (30, 34, 42)
+EDITOR_COLOR = pygame.Color(0, 0, 0)
 
-OUTPUT_COLOR = (20, 22, 28)
+OUTPUT_COLOR = pygame.Color(0, 0, 0)
 
-BUTTON_COLOR = (70, 110, 180)
+BUTTON_COLOR = pygame.Color(0, 0, 0)
 
-BUTTON_HOVER_COLOR = (90, 135, 210)
+BUTTON_HOVER_COLOR = pygame.Color(0, 0, 0)
 
-TEXT_COLOR = (240, 240, 240)
+# Kept separate from TEXT_COLOR: button labels sit on a saturated blue
+# fill, not on the panel background, so in a light theme the ordinary
+# dark body text would be nearly unreadable there.
+BUTTON_TEXT_COLOR = pygame.Color(0, 0, 0)
 
-SECONDARY_TEXT = (180, 180, 180)
+TEXT_COLOR = pygame.Color(0, 0, 0)
 
-BORDER_COLOR = (85, 90, 100)
+SECONDARY_TEXT = pygame.Color(0, 0, 0)
 
-SUCCESS_COLOR = (70, 200, 120)
+BORDER_COLOR = pygame.Color(0, 0, 0)
 
-ERROR_COLOR = (220, 80, 80)
+SUCCESS_COLOR = pygame.Color(0, 0, 0)
+
+ERROR_COLOR = pygame.Color(0, 0, 0)
 
 # Draggable dividers between the objective / code / output panes.
-SPLITTER_COLOR = (46, 52, 64)
+SPLITTER_COLOR = pygame.Color(0, 0, 0)
 
-SPLITTER_HOVER_COLOR = (70, 110, 180)
+SPLITTER_HOVER_COLOR = pygame.Color(0, 0, 0)
 
-SPLITTER_GRIP_COLOR = (120, 128, 142)
+SPLITTER_GRIP_COLOR = pygame.Color(0, 0, 0)
 
 # Tab strip above the code area ("main.py").
-TAB_COLOR = (36, 41, 51)
+TAB_COLOR = pygame.Color(0, 0, 0)
 
-TAB_ACTIVE_COLOR = (46, 52, 64)
+TAB_ACTIVE_COLOR = pygame.Color(0, 0, 0)
 
 # Scrollbar track / thumb (shared by every scrollable pane).
-SCROLLBAR_TRACK_COLOR = (52, 58, 70)
+SCROLLBAR_TRACK_COLOR = pygame.Color(0, 0, 0)
 
-SCROLLBAR_THUMB_COLOR = (120, 128, 142)
+SCROLLBAR_THUMB_COLOR = pygame.Color(0, 0, 0)
 
 # --------------------------------------------------
 # Syntax Highlighting
 # --------------------------------------------------
 
-SYNTAX_KEYWORD_COLOR = (198, 120, 221)     # def, if, return, for...
+SYNTAX_KEYWORD_COLOR = pygame.Color(0, 0, 0)     # def, if, return, for...
 
-SYNTAX_BUILTIN_COLOR = (86, 182, 194)      # print, len, range...
+SYNTAX_BUILTIN_COLOR = pygame.Color(0, 0, 0)     # print, len, range...
 
-SYNTAX_STRING_COLOR = (152, 195, 121)      # "text", 'text'
+SYNTAX_STRING_COLOR = pygame.Color(0, 0, 0)      # "text", 'text'
 
-SYNTAX_NUMBER_COLOR = (209, 154, 102)      # 18, 3.14
+SYNTAX_NUMBER_COLOR = pygame.Color(0, 0, 0)      # 18, 3.14
 
-SYNTAX_COMMENT_COLOR = (106, 115, 125)     # # comment
+SYNTAX_COMMENT_COLOR = pygame.Color(0, 0, 0)     # # comment
 
-SYNTAX_FUNCTION_COLOR = (229, 192, 123)    # name after def / class
+SYNTAX_FUNCTION_COLOR = pygame.Color(0, 0, 0)    # name after def / class
 
-SYNTAX_SELF_COLOR = (224, 108, 117)        # self, cls
+SYNTAX_SELF_COLOR = pygame.Color(0, 0, 0)        # self, cls
 
-SYNTAX_DECORATOR_COLOR = (209, 154, 102)   # @staticmethod
+SYNTAX_DECORATOR_COLOR = pygame.Color(0, 0, 0)   # @staticmethod
+
+# --------------------------------------------------
+# Switching Themes
+# --------------------------------------------------
+
+_current_theme = None
+
+
+def apply_theme(name):
+    """
+    Repaints the editor in the theme called `name` (one of THEME_NAMES).
+
+    Each color object above is updated in place, so every module that
+    already imported these names picks up the new palette on its next
+    draw. Unknown names fall back to DEFAULT_THEME rather than raising,
+    so a stale saved setting can never crash the game on startup.
+
+    Returns the name of the theme actually applied.
+    """
+
+    global _current_theme
+
+    if name not in THEMES:
+        name = DEFAULT_THEME
+
+    palette = THEMES[name]
+
+    for color_name, (red, green, blue) in palette.items():
+        color = globals()[color_name]
+        color.r = red
+        color.g = green
+        color.b = blue
+        color.a = 255
+
+    _current_theme = name
+
+    return name
+
+
+def get_theme():
+    """Returns the name of the theme currently applied."""
+
+    return _current_theme
+
+
+apply_theme(DEFAULT_THEME)
 
 # --------------------------------------------------
 # Fonts

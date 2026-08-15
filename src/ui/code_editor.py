@@ -17,7 +17,12 @@ import pygame
 
 from src.ui.text_buffer import TextBuffer
 from src.ui.editor_renderer import EditorRenderer
-from src.ui.editor_theme import TEXT_COLOR, SUCCESS_COLOR, ERROR_COLOR
+from src.ui.editor_theme import (
+    TEXT_COLOR,
+    SUCCESS_COLOR,
+    ERROR_COLOR,
+    WHEEL_LINES,
+)
 from src.learning.sandbox import run_user_code
 from src.learning.challenge_manager import ChallengeManager
 
@@ -58,9 +63,22 @@ class CodeEditor:
 
         self.dragging_scrollbar = False
 
+        # Scrollbar drags for the two side panes. Each pane keeps
+        # its own scroll position, so each needs its own flag.
+        self.dragging_output_scrollbar = False
+        self.dragging_problem_scrollbar = False
+
+        # Which divider between the panes is being dragged
+        # ("left", "right" or None).
+        self.dragging_splitter = None
+
         # True while the user is holding the mouse button down
         # and dragging across the code to select text.
         self.dragging_text = False
+
+        # Mouse cursor shape currently set, so it is only changed
+        # when it actually needs to change.
+        self.current_mouse_cursor = None
 
         # Enables access to the OS clipboard for Ctrl+C / Ctrl+V.
         pygame.scrap.init()
@@ -79,6 +97,9 @@ class CodeEditor:
 
         # Reference to the Output Panel
         self.output_panel = self.renderer.get_output_panel()
+
+        # Reference to the Objective Panel (it scrolls too)
+        self.problem_panel = self.renderer.get_problem_panel()
 
         # UI Buttons
         self.run_button = self.renderer.get_run_button()
@@ -105,6 +126,8 @@ class CodeEditor:
 
             self.handle_events()
 
+            self.update_mouse_cursor()
+
             self.renderer.last_input_time = self.last_input_time
 
             self.renderer.draw()
@@ -112,6 +135,51 @@ class CodeEditor:
             pygame.display.flip()
 
             clock.tick(60)
+
+        # Hand the game back a normal arrow cursor, whatever shape
+        # the editor happened to leave it in.
+        self.set_mouse_cursor(pygame.SYSTEM_CURSOR_ARROW)
+
+    # ---------------------------------------------------------
+    # Mouse Cursor Shape
+    # ---------------------------------------------------------
+
+    def set_mouse_cursor(self, cursor):
+        """
+        Change the mouse cursor shape, but only when it differs
+        from the one already set.
+        """
+
+        if cursor == self.current_mouse_cursor:
+            return
+
+        try:
+            pygame.mouse.set_cursor(cursor)
+
+        except pygame.error:
+            # Some platforms/drivers don't provide system cursors.
+            # The editor works fine without them, so this is not
+            # worth interrupting the game for.
+            return
+
+        self.current_mouse_cursor = cursor
+
+    def update_mouse_cursor(self):
+        """
+        Show a resize cursor over the draggable dividers and a text
+        cursor over the code, so it is obvious what each area does.
+        """
+
+        position = pygame.mouse.get_pos()
+
+        if self.dragging_splitter or self.renderer.get_splitter_at(position):
+            self.set_mouse_cursor(pygame.SYSTEM_CURSOR_SIZEWE)
+
+        elif self.renderer.editor_rect.collidepoint(position):
+            self.set_mouse_cursor(pygame.SYSTEM_CURSOR_IBEAM)
+
+        else:
+            self.set_mouse_cursor(pygame.SYSTEM_CURSOR_ARROW)
 
     # ---------------------------------------------------------
     # Event Handling
@@ -138,10 +206,6 @@ class CodeEditor:
 
                 self.running = False
 
-            if self.leave_button.is_clicked(event):
-
-                self.running = False
-
             if self.run_button.is_clicked(event):
 
                 self.run_code()
@@ -153,15 +217,41 @@ class CodeEditor:
             # ==========================================================
             # Mouse Wheel Scrolling
             # ==========================================================
+            # Each pane scrolls on its own, so the wheel affects
+            # whichever pane the mouse is actually hovering over.
 
             if event.type == pygame.MOUSEWHEEL:
 
-                # Move the editor in the opposite direction
-                # of the mouse wheel movement.
-                self.renderer.scroll_offset -= event.y
+                mouse_position = pygame.mouse.get_pos()
 
-                # Prevent scrolling past the first or last line.
-                self.renderer.clamp_scroll_offset()
+                # ----------------------------------
+                # Output Pane
+                # ----------------------------------
+
+                if self.renderer.output_rect.collidepoint(mouse_position):
+
+                    self.output_panel.scroll(-event.y * WHEEL_LINES)
+
+                # ----------------------------------
+                # Objective Pane
+                # ----------------------------------
+
+                elif self.renderer.problem_rect.collidepoint(mouse_position):
+
+                    self.problem_panel.scroll(-event.y * WHEEL_LINES)
+
+                # ----------------------------------
+                # Code Editor
+                # ----------------------------------
+
+                else:
+
+                    # Move the editor in the opposite direction
+                    # of the mouse wheel movement.
+                    self.renderer.scroll_offset -= event.y
+
+                    # Prevent scrolling past the first or last line.
+                    self.renderer.clamp_scroll_offset()
 
 
             # ==========================================================
@@ -170,11 +260,22 @@ class CodeEditor:
 
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
 
+                splitter = self.renderer.get_splitter_at(event.pos)
+
+                # ----------------------------------
+                # Divider Between Panes
+                # ----------------------------------
+
+                if splitter:
+
+                    # Begin resizing the panes.
+                    self.dragging_splitter = splitter
+
                 # ----------------------------------
                 # Scrollbar Thumb
                 # ----------------------------------
 
-                if (
+                elif (
                     self.renderer.scrollbar_thumb_rect
                     and self.renderer.scrollbar_thumb_rect.collidepoint(event.pos)
                 ):
@@ -193,6 +294,34 @@ class CodeEditor:
 
                     # Jump the scrollbar to the clicked position.
                     self.renderer.set_scroll_from_mouse_y(
+                        event.pos[1]
+                    )
+
+                # ----------------------------------
+                # Output Pane Scrollbar
+                # ----------------------------------
+
+                elif self.output_panel.scrollbar.hit_thumb(event.pos):
+
+                    self.dragging_output_scrollbar = True
+
+                elif self.output_panel.scrollbar.hit_track(event.pos):
+
+                    self.output_panel.set_scroll_from_mouse_y(
+                        event.pos[1]
+                    )
+
+                # ----------------------------------
+                # Objective Pane Scrollbar
+                # ----------------------------------
+
+                elif self.problem_panel.scrollbar.hit_thumb(event.pos):
+
+                    self.dragging_problem_scrollbar = True
+
+                elif self.problem_panel.scrollbar.hit_track(event.pos):
+
+                    self.problem_panel.set_scroll_from_mouse_y(
                         event.pos[1]
                     )
 
@@ -237,8 +366,29 @@ class CodeEditor:
 
                 self.dragging_scrollbar = False
 
+                self.dragging_output_scrollbar = False
+
+                self.dragging_problem_scrollbar = False
+
+                # Stop resizing the panes.
+                self.dragging_splitter = None
+
                 # Stop tracking the drag-to-select gesture.
                 self.dragging_text = False
+
+            # ==========================================================
+            # Drag Divider Between Panes
+            # ==========================================================
+
+            if event.type == pygame.MOUSEMOTION and self.dragging_splitter:
+
+                # Resize the panes to follow the mouse. The renderer
+                # keeps every pane above its minimum width, so this
+                # can be fed raw mouse positions safely.
+                self.renderer.drag_splitter(
+                    self.dragging_splitter,
+                    event.pos[0]
+                )
 
             # ==========================================================
             # Drag Scrollbar
@@ -249,6 +399,18 @@ class CodeEditor:
                 # Update the scroll position while the mouse
                 # moves with the scrollbar held down.
                 self.renderer.set_scroll_from_mouse_y(
+                    event.pos[1]
+                )
+
+            if event.type == pygame.MOUSEMOTION and self.dragging_output_scrollbar:
+
+                self.output_panel.set_scroll_from_mouse_y(
+                    event.pos[1]
+                )
+
+            if event.type == pygame.MOUSEMOTION and self.dragging_problem_scrollbar:
+
+                self.problem_panel.set_scroll_from_mouse_y(
                     event.pos[1]
                 )
 

@@ -6,25 +6,39 @@ Draws the entire CodeBreak coding environment.
 Responsibilities:
 - Draw background
 - Draw header
-- Draw objective panel
-- Draw code editor panel
-- Draw output panel
+- Draw objective pane   (left)
+- Draw code editor pane (center)
+- Draw output pane      (right)
+- Draw the draggable dividers between those panes
 - Draw button area
 
-This class ONLY draws.
+Layout
+------
+The popup body is one horizontal row of three panes:
+
+    [ objective ] || [ code editor ] || [ output ]
+
+The two dividers ("||") can be dragged by the player, so the space
+each pane gets is not fixed. Their positions are stored as
+fractions of the body width - never as pixel values - so the layout
+stays correct on any window size and survives a window resize.
+
+This class ONLY draws (and works out where things go).
 It does not handle typing, validation, or game logic.
 """
 
 import pygame
 
-from src.ui.editor_widgets import Button
+from src.ui.editor_widgets import Button, VerticalScrollbar
 from src.ui.output_panel import OutputPanel
 from src.ui.problem_panel import ProblemPanel
 from src.ui.editor_theme import *
 from src.ui.syntax_highlighter import highlight_line, compute_line_states
 
-SCROLLBAR_WIDTH = 8
-SCROLLBAR_MARGIN = 4
+# Extra pixels around a divider that still count as "on" it, so the
+# player does not have to hit a 10px target exactly.
+SPLITTER_GRAB_MARGIN = 3
+
 
 class EditorRenderer:
     """
@@ -41,58 +55,266 @@ class EditorRenderer:
         self.last_input_time = 0
         self.scroll_offset = 0
 
+        # Horizontal scroll, in pixels. The editor pane is only one
+        # of three now, so a long line no longer always fits - this
+        # slides the code sideways to keep the cursor in view.
+        self.h_scroll_offset = 0
+
         # UI Components
         self.problem_panel = ProblemPanel(challenge)
         self.output_panel = OutputPanel()
 
-        # ----------------------------------
-        # Popup Panel Rect (centered, medium-sized)
-        # ----------------------------------
-
-        self.panel_rect = pygame.Rect(0, 0, PANEL_WIDTH, PANEL_HEIGHT)
-        self.panel_rect.center = self.screen.get_rect().center
+        # Scrollbar of the code editor itself. The objective and
+        # output panes own theirs, since they scroll independently.
+        self.editor_scrollbar = VerticalScrollbar()
 
         # ----------------------------------
-        # Layout Rectangles (relative to panel, not the whole screen)
+        # Divider Positions
         # ----------------------------------
+        # Stored as fractions of the body width:
+        # 0.0 is the far left edge, 1.0 the far right edge.
+
+        self.left_split = DEFAULT_LEFT_SPLIT
+        self.right_split = DEFAULT_RIGHT_SPLIT
+
+        # Name of the divider the mouse is currently over
+        # ("left", "right" or None). Only used for highlighting.
+        self.hovered_splitter = None
+
+        # ----------------------------------
+        # Buttons
+        # ----------------------------------
+        # Created once here and repositioned by the layout pass, so
+        # CodeEditor can safely hold on to these exact objects.
+
+        self.run_button = Button(0, 0, BUTTON_WIDTH, BUTTON_HEIGHT - 10, "Run")
+        self.submit_button = Button(0, 0, BUTTON_WIDTH, BUTTON_HEIGHT - 10, "Submit")
+        self.leave_button = Button(0, 0, BUTTON_WIDTH, BUTTON_HEIGHT - 10, "Leave")
+
+        # Window size the current layout was built for. Comparing
+        # against it each frame is what lets the editor survive the
+        # window being resized while it is open.
+        self._layout_screen_size = None
+
+        self.apply_layout()
+
+    # ==================================================
+    # Layout
+    # ==================================================
+
+    def _compute_panel_rect(self):
+        """
+        Work out how big the popup should be for the current window.
+
+        The popup takes up most of the window, but never grows past
+        the maximum bounds (so it stays readable on a big monitor)
+        and never spills outside a small window.
+        """
+
+        screen_width, screen_height = self.screen.get_size()
+
+        width = min(
+            PANEL_MAX_WIDTH,
+            max(
+                PANEL_MIN_WIDTH,
+                int(screen_width * PANEL_SCREEN_RATIO_X)
+            )
+        )
+
+        height = min(
+            PANEL_MAX_HEIGHT,
+            max(
+                PANEL_MIN_HEIGHT,
+                int(screen_height * PANEL_SCREEN_RATIO_Y)
+            )
+        )
+
+        # Never let the popup hang off the edge of a small window.
+        width = min(width, max(200, screen_width - PANEL_SCREEN_MARGIN))
+        height = min(height, max(200, screen_height - PANEL_SCREEN_MARGIN))
+
+        panel_rect = pygame.Rect(0, 0, width, height)
+        panel_rect.center = self.screen.get_rect().center
+
+        return panel_rect
+
+    def _clamp_splits(self, body_width):
+        """
+        Keep both dividers in a sane place:
+        - in order (left divider always left of the right one)
+        - far enough apart that no pane gets squashed to nothing
+        """
+
+        if body_width <= 0:
+            return
+
+        half = SPLITTER_WIDTH / 2
+
+        left_pixels = self.left_split * body_width
+        right_pixels = self.right_split * body_width
+
+        # Width the body needs before the minimum pane sizes can
+        # all be honored at once.
+        required_width = (
+            (MIN_SIDE_PANE_WIDTH * 2)
+            + MIN_EDITOR_PANE_WIDTH
+            + (SPLITTER_WIDTH * 2)
+        )
+
+        if body_width >= required_width:
+
+            leftmost = MIN_SIDE_PANE_WIDTH + half
+            rightmost = body_width - MIN_SIDE_PANE_WIDTH - half
+
+            left_pixels = max(
+                leftmost,
+                min(
+                    left_pixels,
+                    rightmost - MIN_EDITOR_PANE_WIDTH - SPLITTER_WIDTH
+                )
+            )
+
+            right_pixels = max(
+                left_pixels + MIN_EDITOR_PANE_WIDTH + SPLITTER_WIDTH,
+                min(right_pixels, rightmost)
+            )
+
+        else:
+
+            # Window too small for the minimums - just keep the
+            # dividers inside the body and in the right order.
+            left_pixels = max(half, min(left_pixels, body_width - half))
+
+            right_pixels = max(
+                left_pixels + SPLITTER_WIDTH,
+                min(right_pixels, body_width - half)
+            )
+
+        self.left_split = left_pixels / body_width
+        self.right_split = right_pixels / body_width
+
+    def apply_layout(self):
+        """
+        Rebuild every rectangle from the current window size and
+        divider positions.
+
+        Called on startup, whenever a divider is dragged, and
+        whenever the window size changes.
+        """
+
+        self._layout_screen_size = self.screen.get_size()
+
+        self.panel_rect = self._compute_panel_rect()
+
+        # ----------------------------------
+        # Header (top) and Buttons (bottom)
+        # ----------------------------------
+
+        inner_width = self.panel_rect.width - (PADDING * 2)
 
         self.header_rect = pygame.Rect(
             self.panel_rect.x + PADDING,
             self.panel_rect.y + PADDING,
-            PANEL_WIDTH - (PADDING * 2),
+            inner_width,
             HEADER_HEIGHT
-        )
-
-        self.problem_rect = pygame.Rect(
-            self.panel_rect.x + PADDING,
-            self.header_rect.bottom + PADDING,
-            PANEL_WIDTH - (PADDING * 2),
-            OBJECTIVE_HEIGHT
-        )
-
-        self.editor_rect = pygame.Rect(
-            self.panel_rect.x + PADDING,
-            self.problem_rect.bottom + PADDING,
-            PANEL_WIDTH - (PADDING * 2),
-            EDITOR_HEIGHT
-        )
-
-        self.output_rect = pygame.Rect(
-            self.panel_rect.x + PADDING,
-            self.editor_rect.bottom + PADDING,
-            PANEL_WIDTH - (PADDING * 2),
-            OUTPUT_HEIGHT
         )
 
         self.button_rect = pygame.Rect(
             self.panel_rect.x + PADDING,
-            self.output_rect.bottom + PADDING,
-            PANEL_WIDTH - (PADDING * 2),
+            self.panel_rect.bottom - PADDING - BUTTON_HEIGHT,
+            inner_width,
             BUTTON_HEIGHT
         )
 
         # ----------------------------------
-        # Buttons
+        # Body: everything between them
+        # ----------------------------------
+
+        body_top = self.header_rect.bottom + PADDING
+        body_bottom = self.button_rect.top - PADDING
+
+        self.body_rect = pygame.Rect(
+            self.panel_rect.x + PADDING,
+            body_top,
+            inner_width,
+            max(0, body_bottom - body_top)
+        )
+
+        self._clamp_splits(self.body_rect.width)
+
+        # ----------------------------------
+        # Dividers
+        # ----------------------------------
+
+        half = SPLITTER_WIDTH // 2
+
+        left_center = self.body_rect.x + int(
+            self.left_split * self.body_rect.width
+        )
+
+        right_center = self.body_rect.x + int(
+            self.right_split * self.body_rect.width
+        )
+
+        self.left_splitter_rect = pygame.Rect(
+            left_center - half,
+            self.body_rect.y,
+            SPLITTER_WIDTH,
+            self.body_rect.height
+        )
+
+        self.right_splitter_rect = pygame.Rect(
+            right_center - half,
+            self.body_rect.y,
+            SPLITTER_WIDTH,
+            self.body_rect.height
+        )
+
+        # ----------------------------------
+        # The Three Panes
+        # ----------------------------------
+
+        self.problem_rect = pygame.Rect(
+            self.body_rect.x,
+            self.body_rect.y,
+            max(0, self.left_splitter_rect.x - self.body_rect.x),
+            self.body_rect.height
+        )
+
+        self.editor_column_rect = pygame.Rect(
+            self.left_splitter_rect.right,
+            self.body_rect.y,
+            max(0, self.right_splitter_rect.x - self.left_splitter_rect.right),
+            self.body_rect.height
+        )
+
+        self.output_rect = pygame.Rect(
+            self.right_splitter_rect.right,
+            self.body_rect.y,
+            max(0, self.body_rect.right - self.right_splitter_rect.right),
+            self.body_rect.height
+        )
+
+        # The editor column is split again: a small file tab on top
+        # and the code area underneath. Every piece of cursor and
+        # scroll math works off editor_rect (the code area only).
+
+        self.tab_rect = pygame.Rect(
+            self.editor_column_rect.x,
+            self.editor_column_rect.y,
+            self.editor_column_rect.width,
+            EDITOR_TAB_HEIGHT
+        )
+
+        self.editor_rect = pygame.Rect(
+            self.editor_column_rect.x,
+            self.editor_column_rect.y + EDITOR_TAB_HEIGHT,
+            self.editor_column_rect.width,
+            max(0, self.editor_column_rect.height - EDITOR_TAB_HEIGHT)
+        )
+
+        # ----------------------------------
+        # Button Positions
         # ----------------------------------
 
         spacing = 25
@@ -100,40 +322,91 @@ class EditorRenderer:
         total_width = (BUTTON_WIDTH * 3) + (spacing * 2)
 
         start_x = self.panel_rect.x + (
-            PANEL_WIDTH - total_width
+            self.panel_rect.width - total_width
         ) // 2
 
-        self.run_button = Button(
-            start_x,
-            self.button_rect.y + 5,
-            BUTTON_WIDTH,
-            BUTTON_HEIGHT - 10,
-            "Run"
-        )
+        button_y = self.button_rect.y + 5
 
-        self.submit_button = Button(
+        self.run_button.rect.topleft = (start_x, button_y)
+
+        self.submit_button.rect.topleft = (
             start_x + BUTTON_WIDTH + spacing,
-            self.button_rect.y + 5,
-            BUTTON_WIDTH,
-            BUTTON_HEIGHT - 10,
-            "Submit"
+            button_y
         )
 
-        self.leave_button = Button(
+        self.leave_button.rect.topleft = (
             start_x + (BUTTON_WIDTH + spacing) * 2,
-            self.button_rect.y + 5,
-            BUTTON_WIDTH,
-            BUTTON_HEIGHT - 10,
-            "Leave"
+            button_y
         )
 
-        self.scrollbar_track_rect = None
-        self.scrollbar_thumb_rect = None
+        # Resizing the panes can invalidate both scroll positions
+        # (a shorter editor for the vertical one, a narrower editor
+        # for the horizontal one), so re-check both here.
+        self.clamp_scroll_offset()
+
+        self.clamp_horizontal_scroll()
+
+    # ==================================================
+    # Divider Dragging
+    # ==================================================
+
+    def get_splitter_at(self, position):
+        """
+        Return "left", "right" or None depending on which divider
+        (if any) the given point is on.
+        """
+
+        left = self.left_splitter_rect.inflate(
+            SPLITTER_GRAB_MARGIN * 2, 0
+        )
+
+        if left.collidepoint(position):
+            return "left"
+
+        right = self.right_splitter_rect.inflate(
+            SPLITTER_GRAB_MARGIN * 2, 0
+        )
+
+        if right.collidepoint(position):
+            return "right"
+
+        return None
+
+    def drag_splitter(self, name, mouse_x):
+        """
+        Move one divider to follow the mouse.
+
+        The new position is stored as a fraction of the body width,
+        then clamped by the layout pass so a pane can never be
+        dragged smaller than its minimum width.
+        """
+
+        if self.body_rect.width <= 0:
+            return
+
+        fraction = (mouse_x - self.body_rect.x) / self.body_rect.width
+
+        if name == "left":
+            self.left_split = fraction
+        else:
+            self.right_split = fraction
+
+        self.apply_layout()
+
     # ==================================================
     # Public Draw Function
     # ==================================================
 
     def draw(self):
+
+        # Rebuild the layout if the window changed size while
+        # the editor was open.
+        if self.screen.get_size() != self._layout_screen_size:
+            self.apply_layout()
+
+        self.hovered_splitter = self.get_splitter_at(
+            pygame.mouse.get_pos()
+        )
 
         self.draw_background()
 
@@ -146,6 +419,8 @@ class EditorRenderer:
         self.draw_editor_panel()
 
         self.draw_output_panel()
+
+        self.draw_splitters()
 
         self.draw_button_panel()
 
@@ -202,7 +477,7 @@ class EditorRenderer:
         self.screen.blit(
             title,
             (self.header_rect.x + 20,
-             self.header_rect.y + 15)
+             self.header_rect.centery - title.get_height() // 2)
         )
 
     def draw_problem_panel(self):
@@ -212,13 +487,110 @@ class EditorRenderer:
             self.problem_rect
         )
 
+    # ==========================================================
+    # Dividers
+    # ==========================================================
+
+    def draw_splitters(self):
+        """
+        Draw both draggable dividers, with a little grip in the
+        middle so it's obvious they can be moved.
+        """
+
+        for name, rect in (
+            ("left", self.left_splitter_rect),
+            ("right", self.right_splitter_rect),
+        ):
+
+            color = (
+                SPLITTER_HOVER_COLOR
+                if self.hovered_splitter == name
+                else SPLITTER_COLOR
+            )
+
+            # A slim bar down the middle of the divider's grab area,
+            # so the divider reads as a handle rather than a gap.
+            bar = rect.inflate(-2, -PADDING * 2)
+
+            pygame.draw.rect(
+                self.screen,
+                color,
+                bar,
+                border_radius=SPLITTER_WIDTH // 2
+            )
+
+            # Grip dots, centered.
+            for offset in (-12, -6, 0, 6, 12):
+
+                pygame.draw.circle(
+                    self.screen,
+                    SPLITTER_GRIP_COLOR,
+                    (rect.centerx, rect.centery + offset),
+                    2
+                )
+
+    # ==========================================================
+    # Code Editor
+    # ==========================================================
+
+    def draw_editor_tab(self):
+        """Draw the small file tab that sits above the code area."""
+
+        pygame.draw.rect(
+            self.screen,
+            TAB_COLOR,
+            self.tab_rect,
+            border_top_left_radius=PANEL_RADIUS,
+            border_top_right_radius=PANEL_RADIUS
+        )
+
+        # Skip the tab label itself if the pane got dragged so
+        # narrow that it would not fit.
+        if self.tab_rect.width < 60:
+            return
+
+        label_rect = pygame.Rect(
+            self.tab_rect.x + 8,
+            self.tab_rect.y + 4,
+            min(110, self.tab_rect.width - 16),
+            self.tab_rect.height - 4
+        )
+
+        pygame.draw.rect(
+            self.screen,
+            TAB_ACTIVE_COLOR,
+            label_rect,
+            border_top_left_radius=6,
+            border_top_right_radius=6
+        )
+
+        label = SMALL_FONT.render("main.py", True, TEXT_COLOR)
+
+        self.screen.blit(
+            label,
+            label.get_rect(center=label_rect.center)
+        )
+
     def draw_editor_panel(self):
         """Draw the code editor with automatic vertical scrolling."""
+
+        self.draw_editor_tab()
 
         pygame.draw.rect(
             self.screen,
             EDITOR_COLOR,
             self.editor_rect,
+            border_bottom_left_radius=PANEL_RADIUS,
+            border_bottom_right_radius=PANEL_RADIUS
+        )
+
+        # Outline around the tab and the code area together, so the
+        # editor is framed exactly like the panes either side of it.
+        pygame.draw.rect(
+            self.screen,
+            BORDER_COLOR,
+            self.editor_column_rect,
+            2,
             border_radius=PANEL_RADIUS
         )
 
@@ -226,11 +598,9 @@ class EditorRenderer:
         # Editor Settings
         # ----------------------------------
 
-        line_spacing = 20
+        line_spacing = LINE_SPACING
 
-        max_visible_lines = (
-            self.editor_rect.height - 30
-        ) // line_spacing
+        max_visible_lines = self.get_max_visible_lines()
 
         # ----------------------------------
         # Clamp scroll to valid range (does NOT force-follow cursor)
@@ -284,22 +654,29 @@ class EditorRenderer:
         )
 
         # ----------------------------------
+        # Clip everything code-related
+        # ----------------------------------
+        # The code area is now only as wide as the middle pane, so a
+        # long line has to be cut off at the pane's edge instead of
+        # being drawn straight over the output pane next to it.
+
+        previous_clip = self.screen.get_clip()
+
+        self.screen.set_clip(self.get_code_area_rect())
+
+        # ----------------------------------
         # Draw Selection Highlight
         # ----------------------------------
         # Drawn before the text so highlighted characters
         # remain fully readable on top of the highlight.
 
         self.draw_selection()
-        
+
         # ----------------------------------
         # Draw User Code (syntax highlighted)
         # ----------------------------------
 
-        text_x = (
-            self.editor_rect.x
-            + LINE_NUMBER_WIDTH
-            + 15
-        )
+        text_x = self.get_text_origin_x()
 
         text_y = self.editor_rect.y + 15
 
@@ -354,9 +731,7 @@ class EditorRenderer:
         ]
 
         cursor_x = (
-            self.editor_rect.x
-            + LINE_NUMBER_WIDTH
-            + 15
+            self.get_text_origin_x()
             + TEXT_FONT.size(text_before_cursor)[0]
         )
 
@@ -395,7 +770,78 @@ class EditorRenderer:
                 2
             )
 
+        self.screen.set_clip(previous_clip)
+
         self.draw_scrollbar()
+
+    def get_code_area_rect(self):
+        """
+        The part of the editor the code itself is drawn in:
+        everything right of the line-number gutter, minus the strip
+        the scrollbar lives in.
+
+        That strip is reserved whether or not a scrollbar is
+        currently showing, so code never appears to shift sideways
+        the moment one appears.
+        """
+
+        reserved = SCROLLBAR_WIDTH + (SCROLLBAR_MARGIN * 2)
+
+        return pygame.Rect(
+            self.editor_rect.x + LINE_NUMBER_WIDTH + 2,
+            self.editor_rect.y + 2,
+            max(0, self.editor_rect.width - LINE_NUMBER_WIDTH - 2 - reserved),
+            max(0, self.editor_rect.height - 4)
+        )
+
+    def get_text_origin_x(self):
+        """
+        Screen X where column 0 of a line of code is drawn.
+
+        Everything that has to line up with the code - the text
+        itself, the selection highlight, the blinking cursor and
+        the click-to-position math - goes through here, so they can
+        never disagree about where the horizontal scroll has put
+        the text.
+        """
+
+        return (
+            self.editor_rect.x
+            + LINE_NUMBER_WIDTH
+            + 15
+            - self.h_scroll_offset
+        )
+
+    def get_max_horizontal_scroll(self):
+        """
+        How far sideways the code can scroll: enough to bring the
+        end of the longest line into view, and no further.
+        """
+
+        if not self.text_buffer.lines:
+            return 0
+
+        widest_line = max(
+            TEXT_FONT.size(line)[0]
+            for line in self.text_buffer.lines
+        )
+
+        # A little breathing room past the last character.
+        return max(
+            0,
+            widest_line - self.get_code_area_rect().width + 20
+        )
+
+    def clamp_horizontal_scroll(self):
+        """Keep the horizontal scroll within the valid range."""
+
+        self.h_scroll_offset = max(
+            0,
+            min(
+                self.h_scroll_offset,
+                self.get_max_horizontal_scroll()
+            )
+        )
 
     # ==========================================================
     # Selection Highlight
@@ -415,10 +861,10 @@ class EditorRenderer:
             self.text_buffer.get_selection_range()
         )
 
-        line_spacing = 20
+        line_spacing = LINE_SPACING
         max_visible_lines = self.get_max_visible_lines()
 
-        text_x = self.editor_rect.x + LINE_NUMBER_WIDTH + 15
+        text_x = self.get_text_origin_x()
         text_y = self.editor_rect.y + 15
 
         # Only rows within this range are actually drawn on screen.
@@ -483,11 +929,10 @@ class EditorRenderer:
     def get_max_visible_lines(self):
         """Calculate how many code lines can fit inside the editor."""
 
-        line_spacing = 20
-
-        return (
-            self.editor_rect.height - 30
-        ) // line_spacing
+        return max(
+            1,
+            (self.editor_rect.height - 30) // LINE_SPACING
+        )
 
 
     def get_max_scroll_offset(self):
@@ -515,8 +960,10 @@ class EditorRenderer:
 
     def ensure_cursor_visible(self):
         """
-        Automatically scroll the editor when the cursor
-        moves outside the currently visible lines.
+        Automatically scroll the editor when the cursor moves
+        outside the visible area - vertically when it leaves the
+        visible lines, horizontally when it runs off the side of
+        the pane on a long line.
         """
 
         max_visible_lines = self.get_max_visible_lines()
@@ -539,6 +986,47 @@ class EditorRenderer:
         # Make sure the new scroll position is valid.
         self.clamp_scroll_offset()
 
+        self.ensure_cursor_visible_horizontally()
+
+
+    def ensure_cursor_visible_horizontally(self):
+        """
+        Slide the code sideways so the cursor stays inside the
+        editor pane while typing a long line.
+        """
+
+        view_width = self.get_code_area_rect().width
+
+        if view_width <= 0:
+            return
+
+        line = self.text_buffer.lines[self.text_buffer.cursor_row]
+
+        # How far the cursor sits from the start of the line.
+        cursor_pixels = TEXT_FONT.size(
+            line[:self.text_buffer.cursor_col]
+        )[0]
+
+        # Kept between the cursor and the pane edge, so the cursor
+        # never sits right up against the border.
+        edge_margin = 30
+
+        # Cursor ran off the left edge.
+        if cursor_pixels < self.h_scroll_offset + edge_margin:
+
+            self.h_scroll_offset = cursor_pixels - edge_margin
+
+        # Cursor ran off the right edge.
+        elif cursor_pixels > self.h_scroll_offset + view_width - edge_margin:
+
+            self.h_scroll_offset = (
+                cursor_pixels
+                - view_width
+                + edge_margin
+            )
+
+        self.clamp_horizontal_scroll()
+
 
     # ==========================================================
     # Mouse Cursor Position
@@ -552,14 +1040,13 @@ class EditorRenderer:
 
         mouse_x, mouse_y = mouse_pos
 
-        line_spacing = 20
+        line_spacing = LINE_SPACING
         max_visible_lines = self.get_max_visible_lines()
 
-        text_x = (
-            self.editor_rect.x
-            + LINE_NUMBER_WIDTH
-            + 15
-        )
+        # Uses the same origin the code is drawn from, so a click
+        # always lands on the character under the mouse even when
+        # the code is scrolled sideways.
+        text_x = self.get_text_origin_x()
 
         text_y = self.editor_rect.y + 15
 
@@ -628,40 +1115,30 @@ class EditorRenderer:
     # Scrollbar
     # ==========================================================
 
+    @property
+    def scrollbar_track_rect(self):
+        """Editor scrollbar track (None when everything fits)."""
+
+        return self.editor_scrollbar.track_rect
+
+
+    @property
+    def scrollbar_thumb_rect(self):
+        """Editor scrollbar thumb (None when everything fits)."""
+
+        return self.editor_scrollbar.thumb_rect
+
+
     def set_scroll_from_mouse_y(self, mouse_y):
         """Set the scroll position based on the mouse Y position."""
 
         # No scrollbar means there is nothing to scroll.
-        if not self.scrollbar_track_rect:
+        if not self.editor_scrollbar.track_rect:
             return
 
-        max_scroll_offset = self.get_max_scroll_offset()
-
-        # No scrolling is needed if all lines are visible.
-        if max_scroll_offset == 0:
-            return
-
-        # Convert the mouse position into a position
-        # relative to the scrollbar track.
-        relative_y = (
-            mouse_y
-            - self.scrollbar_track_rect.y
-        )
-
-        # Convert the position into a 0.0 - 1.0 ratio.
-        ratio = (
-            relative_y
-            / self.scrollbar_track_rect.height
-        )
-
-        ratio = max(
-            0,
-            min(1, ratio)
-        )
-
-        # Convert the ratio into an actual line offset.
-        self.scroll_offset = int(
-            max_scroll_offset * ratio
+        self.scroll_offset = self.editor_scrollbar.offset_from_mouse_y(
+            mouse_y,
+            self.get_max_scroll_offset()
         )
 
         self.clamp_scroll_offset()
@@ -670,93 +1147,14 @@ class EditorRenderer:
     def draw_scrollbar(self):
         """Draw the editor scrollbar and draggable thumb."""
 
-        max_visible_lines = self.get_max_visible_lines()
-        total_lines = len(self.text_buffer.lines)
-
-        # Hide the scrollbar when all lines fit
-        # inside the editor.
-        if total_lines <= max_visible_lines:
-
-            self.scrollbar_track_rect = None
-            self.scrollbar_thumb_rect = None
-
-            return
-
-        # ----------------------------------
-        # Scrollbar Track
-        # ----------------------------------
-
-        track_rect = pygame.Rect(
-            self.editor_rect.right
-            - SCROLLBAR_WIDTH
-            - SCROLLBAR_MARGIN,
-
-            self.editor_rect.y
-            + SCROLLBAR_MARGIN,
-
-            SCROLLBAR_WIDTH,
-
-            self.editor_rect.height
-            - (SCROLLBAR_MARGIN * 2)
+        self.editor_scrollbar.update(
+            self.editor_rect,
+            len(self.text_buffer.lines),
+            self.get_max_visible_lines(),
+            self.scroll_offset
         )
 
-        pygame.draw.rect(
-            self.screen,
-            BORDER_COLOR,
-            track_rect,
-            border_radius=SCROLLBAR_WIDTH // 2
-        )
-
-        # ----------------------------------
-        # Scrollbar Thumb
-        # ----------------------------------
-
-        max_scroll_offset = self.get_max_scroll_offset()
-
-        # Make the thumb smaller when there are
-        # more lines than can fit on screen.
-        thumb_height = max(
-            20,
-            int(
-                track_rect.height
-                * (max_visible_lines / total_lines)
-            )
-        )
-
-        # Determine the thumb's position based
-        # on the current scroll position.
-        scroll_ratio = (
-            self.scroll_offset / max_scroll_offset
-            if max_scroll_offset > 0
-            else 0
-        )
-
-        thumb_y = (
-            track_rect.y
-            + int(
-                (track_rect.height - thumb_height)
-                * scroll_ratio
-            )
-        )
-
-        thumb_rect = pygame.Rect(
-            track_rect.x,
-            thumb_y,
-            SCROLLBAR_WIDTH,
-            thumb_height
-        )
-
-        pygame.draw.rect(
-            self.screen,
-            TEXT_COLOR,
-            thumb_rect,
-            border_radius=SCROLLBAR_WIDTH // 2
-        )
-
-        # Store the rectangles so CodeEditor
-        # can detect mouse interaction with them.
-        self.scrollbar_track_rect = track_rect
-        self.scrollbar_thumb_rect = thumb_rect
+        self.editor_scrollbar.draw(self.screen)
 
 
     # ==========================================================
@@ -792,6 +1190,12 @@ class EditorRenderer:
         return self.output_panel
 
 
+    def get_problem_panel(self):
+        """Return the objective panel."""
+
+        return self.problem_panel
+
+
     def get_run_button(self):
         """Return the Run button."""
 
@@ -808,4 +1212,3 @@ class EditorRenderer:
         """Return the Leave button."""
 
         return self.leave_button
-    

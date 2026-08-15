@@ -6,8 +6,8 @@ Stores and edits the user's code.
 Responsibilities
 ----------------
 - Store lines of code.
-- Handle typing.
-- Handle backspace.
+- Handle typing (including auto-closing brackets/quotes).
+- Handle backspace (including deleting an empty auto-closed pair).
 - Handle Enter.
 - Handle cursor movement.
 
@@ -15,6 +15,28 @@ This class does NOT draw anything.
 """
 
 import pygame
+
+
+# ==========================================================
+# Auto-Closing Brackets / Quotes
+# ==========================================================
+#
+# Typing one of these opening characters inserts its closing
+# partner too, with the cursor left in between - the same
+# "auto-closing" behavior used by editors like Trinket and VS Code.
+
+AUTO_CLOSE_PAIRS = {
+    "(": ")",
+    "[": "]",
+    "{": "}",
+}
+
+# Quotes close themselves (there's no separate opening/closing
+# character), so they need slightly different handling than
+# bracket pairs - see TextBuffer._handle_auto_close().
+AUTO_CLOSE_QUOTES = {'"', "'"}
+
+CLOSING_BRACKETS = set(AUTO_CLOSE_PAIRS.values())
 
 
 class TextBuffer:
@@ -55,6 +77,16 @@ class TextBuffer:
         # ==========================================================
 
     def insert(self, character):
+        # Auto-closing only applies to a single typed character
+        # with no selection in the way (typing over a selection
+        # just replaces it, same as before this feature existed).
+        if (
+            len(character) == 1
+            and not self.has_selection()
+            and self._handle_auto_close(character)
+        ):
+            return
+
         # If a selection is active, restore the cursor to where it
         # was before selecting began, so undo restores it there.
         if self.has_selection():
@@ -66,6 +98,68 @@ class TextBuffer:
             self.delete_selection()
 
         self._insert_character(character)
+
+    def _handle_auto_close(self, char):
+        """
+        Implements auto-closing brackets and quotes.
+
+        - Typing an opening bracket ("(", "[", "{") inserts its
+          closing partner too, leaving the cursor in between.
+        - Typing a closing bracket right before its own matching
+          partner steps over it instead of inserting a duplicate,
+          so finishing a pair by hand doesn't leave "))" behind.
+        - Quotes behave the same way, but only pair up when they
+          aren't touching a word or number - typing a quote in the
+          middle of an identifier, or an apostrophe in a
+          contraction like "it's", just inserts a single character,
+          since there's no real string to pair there.
+
+        Returns True if this fully handled the keystroke (the
+        caller should skip the normal insert in that case).
+        """
+
+        line = self.lines[self.cursor_row]
+        col = self.cursor_col
+
+        next_char = line[col] if col < len(line) else ""
+        prev_char = line[col - 1] if col > 0 else ""
+
+        # ---- Closing bracket typed right before its match ----
+        if char in CLOSING_BRACKETS and next_char == char:
+            self.cursor_col += 1
+            return True
+
+        # ---- Quote character ----
+        if char in AUTO_CLOSE_QUOTES:
+
+            # The same quote already sits right after the cursor -
+            # step over it rather than inserting a duplicate.
+            if next_char == char:
+                self.cursor_col += 1
+                return True
+
+            def is_word_char(c):
+                return c.isalnum() or c == "_"
+
+            # Beside a word/number - a lone quote, not a pair.
+            if is_word_char(prev_char) or is_word_char(next_char):
+                return False
+
+            self.save_state()
+            self._insert_character(char)
+            self._insert_character(char)
+            self.cursor_col -= 1
+            return True
+
+        # ---- Opening bracket ----
+        if char in AUTO_CLOSE_PAIRS:
+            self.save_state()
+            self._insert_character(char)
+            self._insert_character(AUTO_CLOSE_PAIRS[char])
+            self.cursor_col -= 1
+            return True
+
+        return False
 
 
     def _insert_character(self, character):
@@ -91,6 +185,39 @@ class TextBuffer:
             self.save_state()
             self.delete_selection()
             return
+
+        # Deletes both sides of an empty auto-closed pair at once
+        # (cursor sitting inside "()", "''", etc. with nothing
+        # typed between them yet), instead of leaving the closing
+        # half behind with nothing left to pair it with.
+        if self.cursor_col > 0:
+
+            line = self.lines[self.cursor_row]
+
+            prev_char = line[self.cursor_col - 1]
+            next_char = (
+                line[self.cursor_col]
+                if self.cursor_col < len(line)
+                else ""
+            )
+
+            is_empty_pair = (
+                AUTO_CLOSE_PAIRS.get(prev_char) == next_char
+                or (prev_char in AUTO_CLOSE_QUOTES and next_char == prev_char)
+            )
+
+            if is_empty_pair:
+
+                self.save_state()
+
+                self.lines[self.cursor_row] = (
+                    line[:self.cursor_col - 1]
+                    + line[self.cursor_col + 1:]
+                )
+
+                self.cursor_col -= 1
+
+                return
 
         # Deletes the character immediately before the cursor.
         if self.cursor_col > 0:

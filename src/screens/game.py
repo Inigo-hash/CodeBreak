@@ -521,7 +521,7 @@ def game_screen(screen):
                                 show_pause_settings = True
                             elif btn["action"] == "main_menu":
                                 pygame.mixer.music.stop()
-                                return
+                                return "main_menu"
                 elif paused and show_pause_settings:
                     if music_bar.collidepoint(event.pos):
                         dragging_music = True

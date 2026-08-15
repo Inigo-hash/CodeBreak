@@ -2,6 +2,7 @@
 import ast
 
 from src.learning.validators.variable_validator import VariableValidator
+from src.learning.validators.print_validator import PrintValidator
 
 
 class ChallengeManager:
@@ -14,7 +15,9 @@ class ChallengeManager:
 
         self.validators = {
 
-            "variable": VariableValidator()
+            "variable": VariableValidator(),
+
+            "print": PrintValidator()
 
         }
 

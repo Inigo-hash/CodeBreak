@@ -40,7 +40,7 @@ class MainCharacter():
         for key, frames in raw_frames.items():
             content_heights[key] = max(self._robust_content_height(f) for f in frames)
 
-        target_content_height = content_heights['idle_right'] * (1 / 2.5)
+        target_content_height = content_heights['idle_right'] * (1 / 5)
 
         # self.scaled holds every direction's frames, cardinal and
         # diagonal alike, keyed by the same names used in frame_sets.

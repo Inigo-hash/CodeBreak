@@ -753,16 +753,26 @@ def game_screen(screen, slot_num=None, save_state=None):
                 continue
         # --- Movement ---
         keys = pygame.key.get_pressed()
-        dx, dy = 0, 0
 
-        if keys[pygame.K_w] or keys[pygame.K_UP]:
+        up = keys[pygame.K_w] or keys[pygame.K_UP]
+        down = keys[pygame.K_s] or keys[pygame.K_DOWN]
+        left = keys[pygame.K_a] or keys[pygame.K_LEFT]
+        right = keys[pygame.K_d] or keys[pygame.K_RIGHT]
+
+        if up and down:
+            up = down = False
+        if left and right:
+            left = right = False
+
+        dx, dy = 0, 0
+        if up:
             dy = -1
-        if keys[pygame.K_s] or keys[pygame.K_DOWN]:
-            dy =  1
-        if keys[pygame.K_a] or keys[pygame.K_LEFT]:
+        if down:
+            dy = 1
+        if left:
             dx = -1
-        if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
-            dx =  1
+        if right:
+            dx = 1
             
         
         # Normalize diagonal movement so it's the same speed as cardinal directions

@@ -92,6 +92,13 @@ class MainCharacter():
         left = keys[pygame.K_a] or keys[pygame.K_LEFT]
         right = keys[pygame.K_d] or keys[pygame.K_RIGHT]
 
+            # Cancel true opposites so a+d / w+s net to "not pressed" instead
+            # of one arbitrarily winning.
+        if up and down:
+            up = down = False
+        if left and right:
+            left = right = False
+
         # Diagonal combos are checked FIRST. If these ran after the
         # single-direction checks below, a diagonal would never be
         # reached since e.g. "up" alone would already match first.

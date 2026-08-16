@@ -16,6 +16,12 @@ class MainCharacter():
         frame_sets = {
             'idle_right': "assets/images/frames/main_character/idle/idle_right",
             'idle_left': "assets/images/frames/main_character/idle/idle_left",
+            'idle_forward': "assets/images/frames/main_character/idle/idle_forward",
+            'idle_backward': "assets/images/frames/main_character/idle/idle_backward",
+            'idle_northeast': "assets/images/frames/main_character/idle/idle_forward_right",
+            'idle_northwest': "assets/images/frames/main_character/idle/idle_forward_left",
+            'idle_southeast': "assets/images/frames/main_character/idle/idle_backward_right",
+            'idle_southwest': "assets/images/frames/main_character/idle/idle_backward_left",
             'walking_left': "assets/images/frames/main_character/walking/walking_left",
             'walking_right': "assets/images/frames/main_character/walking/walking_right",
             'walking_forward': "assets/images/frames/main_character/walking/walking_forward",
@@ -63,12 +69,12 @@ class MainCharacter():
 
         # Idle poses that have no dedicated asset are synthesized by
         # freezing on the first frame of that direction's walking set.
-        self.idle_forward_frames = [self.walking_forward_frames[0]] * 8
-        self.idle_backward_frames = [self.walking_backward_frames[0]] * 8
-        self.idle_northeast_frames = [self.walking_northeast_frames[0]] * 8
-        self.idle_northwest_frames = [self.walking_northwest_frames[0]] * 8
-        self.idle_southeast_frames = [self.walking_southeast_frames[0]] * 8
-        self.idle_southwest_frames = [self.walking_southwest_frames[0]] * 8
+        self.idle_forward_frames = self.scaled['idle_forward']
+        self.idle_backward_frames = self.scaled['idle_backward']
+        self.idle_northeast_frames = self.scaled['idle_northeast']
+        self.idle_northwest_frames = self.scaled['idle_northwest']
+        self.idle_southeast_frames = self.scaled['idle_southeast']
+        self.idle_southwest_frames = self.scaled['idle_southwest']
 
         self.current_frames = self.idle_right_frames
         self.pos_x, self.pos_y = map_width // 2, map_height // 2

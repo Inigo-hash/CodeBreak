@@ -25,10 +25,11 @@ from src.config import FULLSCREEN
 pygame.init()
 
 if FULLSCREEN:
-    screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+    
+    screen = pygame.display.set_mode((1580, 900), pygame.RESIZABLE)
     
 else:
-    screen = pygame.display.set_mode((1280, 720), pygame.RESIZABLE)
+    screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
     
     
 

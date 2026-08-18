@@ -68,7 +68,8 @@ STAGES = {
                 ("E (hold)", "Search an object"),
                 ("B", "Open your bag"),
                 ("1 - 5 / Wheel", "Pick a hotbar slot"),
-                ("M / J / K / O", "Manual, Enemies, Items, Objectives"),
+                ("M", "Open the island map"),
+                ("I / J / K / O", "Manual, Enemies, Items, Objectives"),
                 ("ESC", "Pause"),
             ],
 

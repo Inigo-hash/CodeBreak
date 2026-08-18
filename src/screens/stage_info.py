@@ -569,7 +569,7 @@ def open_stage_info(screen, stage, progress, background=None, tab="manual"):
                 if event.key == pygame.K_ESCAPE:
                     running = False
 
-                # The rail's own hotkeys keep working in here, so M/J/K/O
+                # The rail's own hotkeys keep working in here, so I/J/K/O
                 # jump between tabs instead of doing nothing.
                 for tab_id, _, _, key in TABS:
                     if event.key == key:

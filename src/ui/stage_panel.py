@@ -10,7 +10,7 @@ Stage Information screen (src/screens/stage_info.py).
     | [ ] Search anything you...  |
     | [x] Repair a terminal...    |
     +-----------------------------+
-    | (icon) STAGE MANUAL      M  |
+    | (icon) STAGE MANUAL      I  |
     | (icon) ENEMIES           J  |
     | (icon) ITEMS             K  |
     | (icon) OBJECTIVES        O  |
@@ -78,7 +78,9 @@ GROUP_GAP     = 10   # between the tracker and the rail
 # Tab id -> (button label, hotkey, pygame key). The order here is the
 # order the buttons appear in.
 RAIL_BUTTONS = [
-    ("manual",     "STAGE MANUAL", "M", pygame.K_m),
+    # M is the world map (src/screens/world_map.py), so the manual sits
+    # on I - "information" - rather than the initial of its own name.
+    ("manual",     "STAGE MANUAL", "I", pygame.K_i),
     ("enemies",    "ENEMIES",      "J", pygame.K_j),
     ("items",      "ITEMS",        "K", pygame.K_k),
     ("objectives", "OBJECTIVES",   "O", pygame.K_o),

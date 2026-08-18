@@ -14,10 +14,11 @@ from src.screens.game_over import game_over_screen
 from src.screens.profile import profile_screen
 from src.screens.inventory import PlayerInventory, Toolbar, open_inventory
 from src.screens.stage_info import open_stage_info
+from src.screens.world_map import open_world_map
 from src.systems import save_manager
 from src.systems.stage_progress import StageProgress
 from src.ui.stage_panel import StagePanel
-from src.data.zones import ZONES
+from src.data.zones import ZONES, get_zone_at
 from src.data.stages import get_stage
 
 def game_screen(screen, slot_num=None, save_state=None):
@@ -669,7 +670,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                 continue
 
             # The stage panel does not open its own screen - it reports
-            # which tab the player asked for (button click or M/J/K/O) and
+            # which tab the player asked for (button click or I/J/K/O) and
             # leaves the decision here, the same way the F5 editor and the
             # B inventory are opened from this loop.
             if not paused:
@@ -690,6 +691,28 @@ def game_screen(screen, slot_num=None, save_state=None):
                     # blur while it slides up.
                     background_snapshot = screen.copy()
                     open_inventory(screen, player_inventory, background_snapshot)
+
+                elif event.key == pygame.K_m and not paused:
+                    # M opens the full paper chart. It is handed the same
+                    # baked texture and zone rects the minimap draws from,
+                    # so the two can never name or place anything
+                    # differently - the map is just the uncropped view.
+                    background_snapshot = screen.copy()
+                    open_world_map(
+                        screen,
+                        minimap_base_surface,
+                        player_rect,
+                        map_width,
+                        map_height,
+                        zone_pixel_rects,
+                        heading=minimap_heading,
+                        background=background_snapshot,
+                        title=f"Map of the {stage.get('name', 'Island')}",
+                        subtitle="YOU ARE IN " + get_zone_at(
+                            player_rect.centerx, player_rect.centery,
+                            map_width, map_height
+                        ).upper(),
+                    )
 
                 elif event.key == pygame.K_ESCAPE:
                     if show_pause_settings:
@@ -1004,7 +1027,7 @@ def game_screen(screen, slot_num=None, save_state=None):
         stage_panel.draw(mouse_pos)
 
         # Key hints (top-right, out of the way of the profile HUD)
-        hint = font.render("ESC = Pause    B = Inventory", True, (255, 255, 255))
+        hint = font.render("ESC = Pause    B = Inventory    M = Map", True, (255, 255, 255))
         screen.blit(hint, (SCREEN_W - hint.get_width() - 10, 10))
 
         pygame.display.flip()

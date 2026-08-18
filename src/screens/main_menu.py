@@ -25,11 +25,14 @@ from src.config import FULLSCREEN
 pygame.init()
 
 if FULLSCREEN:
-    
-    screen = pygame.display.set_mode((1580, 900), pygame.RESIZABLE)
-    
-else:
+    # (0, 0) tells SDL to use whatever the desktop resolution is, so this
+    # fills the screen on any machine rather than assuming a size.
     screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+
+else:
+    # Windowed mode for development. Set FULLSCREEN = False in
+    # src/config.py to get this instead.
+    screen = pygame.display.set_mode((1580, 900), pygame.RESIZABLE)
     
     
 

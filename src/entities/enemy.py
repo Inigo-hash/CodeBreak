@@ -1,8 +1,13 @@
 import pygame
 
 class Enemy:
-	def __init__(self, screen, map_width, map_height, world_x=None, world_y=None):
+	def __init__(self, screen, map_width, map_height, world_x=None, world_y=None, enemy_id="duwende_mandurug"):
 		self.screen = screen
+
+		# Which bestiary entry in src/data/enemies.py this instance is.
+		# game.py uses it to record the enemy as "met" once the player
+		# gets close, which is what fills in its Enemies tab entry.
+		self.enemy_id = enemy_id
 
 		# Load backward walking frames from the duwende_mandurug folder
 		# There are 3 frames in this asset set

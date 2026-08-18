@@ -13,8 +13,12 @@ from src.ui.code_editor import CodeEditor
 from src.screens.game_over import game_over_screen
 from src.screens.profile import profile_screen
 from src.screens.inventory import PlayerInventory, Toolbar, open_inventory
+from src.screens.stage_info import open_stage_info
 from src.systems import save_manager
+from src.systems.stage_progress import StageProgress
+from src.ui.stage_panel import StagePanel
 from src.data.zones import ZONES
+from src.data.stages import get_stage
 
 def game_screen(screen, slot_num=None, save_state=None):
     clock = pygame.time.Clock()
@@ -91,6 +95,7 @@ def game_screen(screen, slot_num=None, save_state=None):
     save_stage = "Island"
     save_topics_completed = []
     save_challenges_passed = []
+    save_stage_progress = None
 
     if save_state:
         save_hearts = save_state.get("hearts", save_hearts)
@@ -98,6 +103,7 @@ def game_screen(screen, slot_num=None, save_state=None):
         save_stage = save_state.get("stage", save_stage)
         save_topics_completed = save_state.get("topics_completed", [])
         save_challenges_passed = save_state.get("challenges_passed", [])
+        save_stage_progress = save_state.get("stage_progress")
 
         map_position = save_state.get("map_position")
         if map_position:
@@ -105,6 +111,17 @@ def game_screen(screen, slot_num=None, save_state=None):
             player_rect.x, player_rect.y = int(player_x), int(player_y)
             player_rect.clamp_ip(pygame.Rect(0, 0, map_width, map_height))
             player_x, player_y = float(player_rect.x), float(player_rect.y)
+
+    # --- Stage information (right-hand HUD panel) ---
+    # `stage` is the static description of this stage - its manual, enemy
+    # and item lists, and objectives. `stage_progress` is what this player
+    # has found so far, and is what decides whether the panel prints a
+    # real entry or a "???" placeholder.
+    stage = get_stage(save_stage)
+    stage_progress = StageProgress.from_dict(save_stage_progress)
+    # Catches up on anything already satisfied by an older save (e.g. a
+    # challenge passed before objectives existed).
+    stage_progress.sync_objectives(stage, save_challenges_passed)
 
     def build_save_state():
         return {
@@ -115,6 +132,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             "challenges_passed": save_challenges_passed,
             "map_position": [player_x, player_y],
             "inventory": [],
+            "stage_progress": stage_progress.to_dict(),
         }
 
     # Feedback message shown briefly after SAVE is pressed. Frame-based
@@ -197,6 +215,11 @@ def game_screen(screen, slot_num=None, save_state=None):
     # later with player_inventory.add_item(Item("Name")).
     player_inventory = PlayerInventory()
     toolbar = Toolbar(screen, player_inventory)
+
+    # Objectives tracker + the rail of buttons that opens the full Stage
+    # Information screen. Holds `stage` and `stage_progress` by reference,
+    # so the tracker updates itself as objectives complete.
+    stage_panel = StagePanel(screen, stage, stage_progress)
 
     # --- Camera with zoom ---
     camera_x = 0
@@ -622,6 +645,9 @@ def game_screen(screen, slot_num=None, save_state=None):
     # Matches MainCharacter's own starting facing, so the arrow agrees with
     # the sprite before the player has moved at all.
     minimap_heading = (1, 0)
+    # How close (in unscaled world pixels) the player has to get before an
+    # enemy is written into the bestiary. Roughly "you have clearly seen it".
+    ENEMY_SIGHT_RANGE = 180
     main_character = MainCharacter(screen, map_width, map_height)
     # simple enemy instance for visual testing/animation
     enemy = Enemy(screen, map_width, map_height)
@@ -641,6 +667,21 @@ def game_screen(screen, slot_num=None, save_state=None):
             # returns True when it used the event, so we skip the rest below.
             if not paused and toolbar.handle_event(event):
                 continue
+
+            # The stage panel does not open its own screen - it reports
+            # which tab the player asked for (button click or M/J/K/O) and
+            # leaves the decision here, the same way the F5 editor and the
+            # B inventory are opened from this loop.
+            if not paused:
+                requested_tab = stage_panel.handle_event(event)
+                if requested_tab:
+                    background_snapshot = screen.copy()
+                    open_stage_info(
+                        screen, stage, stage_progress,
+                        background=background_snapshot,
+                        tab=requested_tab
+                    )
+                    continue
 
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_b and not paused:
@@ -743,6 +784,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                 # Draw the hotbar before the pause overlay so it gets blurred
                 # along with the rest of the scene instead of vanishing.
                 toolbar.draw()
+                stage_panel.draw()
                 if show_pause_settings:
                     draw_pause_settings(screen, mouse_pos)
                 else:
@@ -825,6 +867,14 @@ def game_screen(screen, slot_num=None, save_state=None):
         # --- Camera ---
         camera_x, camera_y = update_camera()
 
+        # --- Bestiary: getting close enough to see an enemy records it ---
+        # Compared squared to keep a sqrt out of the per-frame path.
+        enemy_dx = enemy.center_x - player_rect.centerx
+        enemy_dy = enemy.center_y - player_rect.centery
+        if enemy_dx * enemy_dx + enemy_dy * enemy_dy <= ENEMY_SIGHT_RANGE ** 2:
+            if stage_progress.discover_enemy(enemy.enemy_id):
+                stage_progress.sync_objectives(stage, save_challenges_passed)
+
         # --- Check if player is near an interactable ---
         near_interactable = None
         for item in interactables:
@@ -844,6 +894,17 @@ def game_screen(screen, slot_num=None, save_state=None):
                 near_interactable['inspect_progress'] = min(near_interactable['inspect_progress'], 1.0)
                 if near_interactable['inspect_progress'] >= 1.0:
                     near_interactable['inspecting'] = True
+
+                    # Finishing a search is what counts as discovering the
+                    # object, so it fills in its entry in the Items tab.
+                    # The action string ("search_vase") is the join between
+                    # the Tiled object and items.py.
+                    if stage_progress.discover_by_action(
+                        near_interactable.get('actions', '')
+                    ):
+                        stage_progress.sync_objectives(
+                            stage, save_challenges_passed
+                        )
             else:
                 near_interactable['inspect_progress'] = max(
                     0, near_interactable['inspect_progress'] - 1 / 60 / INSPECT_TIME
@@ -938,6 +999,9 @@ def game_screen(screen, slot_num=None, save_state=None):
         # Hotbar (bottom-centre). Drawn after the world and the HUD so it
         # always sits on top of everything else in the scene.
         toolbar.draw(mouse_pos)
+
+        # Objectives tracker + stage info rail (right side)
+        stage_panel.draw(mouse_pos)
 
         # Key hints (top-right, out of the way of the profile HUD)
         hint = font.render("ESC = Pause    B = Inventory", True, (255, 255, 255))

@@ -55,4 +55,8 @@ def new_game_state() -> dict:
         "challenges_passed": [],
         "map_position": None,
         "inventory": [],
+        # Discovered enemies/items and completed objectives for the stage
+        # information panel. Filled in by StageProgress.to_dict() on save;
+        # an empty dict here means "nothing discovered yet".
+        "stage_progress": {},
     }

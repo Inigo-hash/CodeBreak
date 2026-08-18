@@ -1,3 +1,4 @@
+#challenges.py
 """
 All coding challenges for the game.
 

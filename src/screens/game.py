@@ -20,6 +20,7 @@ from src.systems.stage_progress import StageProgress
 from src.ui.stage_panel import StagePanel
 from src.data.zones import ZONES, get_zone_at
 from src.data.stages import get_stage
+from src.screens.topic_found import open_topic_found
 
 def game_screen(screen, slot_num=None, save_state=None):
     clock = pygame.time.Clock()
@@ -53,18 +54,36 @@ def game_screen(screen, slot_num=None, save_state=None):
                         )
                     )
 
-    # --- Load interactive objects from Object Layer ---
+    # --- Load interactive objects from all object layers ---
     interactables = []
+
     for layer in tmx_data.visible_layers:
-        if hasattr(layer, 'name') and layer.name == "Object Layer 1":
-            for obj in layer:
-                if obj.properties.get('types') == 'interactive':
-                    interactables.append({
-                        'rect': pygame.Rect(int(obj.x), int(obj.y), int(obj.width), int(obj.height)),
-                        'actions': obj.properties.get('actions'),
-                        'inspecting': False,
-                        'inspect_progress': 0.0
-                    })
+
+        # Tile layers have "data", object layers do not
+        if hasattr(layer, 'data'):
+            continue
+
+        for obj in layer:
+
+            if obj.properties.get('types') != 'interactive':
+                continue
+
+            interactables.append({
+                'rect': pygame.Rect(
+                    int(obj.x),
+                    int(obj.y),
+                    int(obj.width),
+                    int(obj.height)
+                ),
+
+                'actions': obj.properties.get('actions'),
+                'topic_id': obj.properties.get('topic_id'),
+
+                'inspecting': False,
+                'inspect_progress': 0.0,
+
+                'topic_handled': False
+            })
 
     # --- Player Setup ---
     SCREEN_W, SCREEN_H = screen.get_size()
@@ -267,22 +286,34 @@ def game_screen(screen, slot_num=None, save_state=None):
     MINIMAP_SPAN_FACTOR = 1.5  # how much wider the minimap's view is than the player's own screen view
     minimap_px_per_unit = MINIMAP_SIZE / ((max(SCREEN_W, SCREEN_H) / ZOOM) * MINIMAP_SPAN_FACTOR)
 
-    # Object Layer 1 (trees, etc.) is drawn per-frame as depth-sorted
+    # Object layers containing trees, props, etc. are drawn per-frame
+    # as depth-sorted dynamic props rather than baked into raw_map_surface.
     # dynamic_props rather than baked into raw_map_surface, so on its own
     # raw_map_surface is missing those objects. Bake them into a separate
     # copy just for the minimap texture so the main game's map_surface
     # (which is derived from raw_map_surface) doesn't end up with a
     # duplicate, non-depth-sorted copy of every tree.
     minimap_base_surface = raw_map_surface.copy()
+
     for layer in tmx_data.visible_layers:
-        if hasattr(layer, 'name') and layer.name == "Object Layer 1":
-            for obj in layer:
-                gid = getattr(obj, 'gid', None)
-                if not gid:
-                    continue
-                tile_image = tmx_data.get_tile_image_by_gid(gid)
-                if tile_image:
-                    minimap_base_surface.blit(tile_image, (obj.x, obj.y - obj.height))
+        # Skip tile layers; we only want object layers here
+        if hasattr(layer, 'data'):
+            continue
+
+        for obj in layer:
+            gid = getattr(obj, 'gid', None)
+
+            # Ignore objects that don't have a tile image
+            if not gid:
+                continue
+
+            tile_image = tmx_data.get_tile_image_by_gid(gid)
+
+            if tile_image:
+                minimap_base_surface.blit(
+                    tile_image,
+                    (obj.x, obj.y - obj.height)
+                )
 
     minimap_texture = pygame.transform.smoothscale(
         minimap_base_surface,
@@ -418,25 +449,34 @@ def game_screen(screen, slot_num=None, save_state=None):
 
         pygame.draw.rect(surf, (90, 94, 110), panel_rect, 3)
 
-    # --- Dynamic props (tile objects requiring per-frame depth sorting) ---
+    # --- Dynamic props ---
     dynamic_props = []
+
     for layer in tmx_data.visible_layers:
-        if hasattr(layer, 'name') and layer.name == "Object Layer 1":
-            for obj in layer:
-                gid = getattr(obj, 'gid', None)
-                if not gid:
-                    continue
-                tile_image = tmx_data.get_tile_image_by_gid(gid)
-                if not tile_image:
-                    continue
-                dynamic_props.append({
-                    'image': pygame.transform.scale(
-                        tile_image, (int(obj.width * ZOOM), int(obj.height * ZOOM))
-                    ),
-                    'x': obj.x * ZOOM,
-                    'y': (obj.y - obj.height) * ZOOM,
-                    'sort_y': obj.y
-                })
+
+        if hasattr(layer, 'data'):
+            continue
+
+        for obj in layer:
+            gid = getattr(obj, 'gid', None)
+
+            if not gid:
+                continue
+
+            tile_image = tmx_data.get_tile_image_by_gid(gid)
+
+            if not tile_image:
+                continue
+
+            dynamic_props.append({
+                'image': pygame.transform.scale(
+                    tile_image,
+                    (int(obj.width * ZOOM), int(obj.height * ZOOM))
+                ),
+                'x': obj.x * ZOOM,
+                'y': (obj.y - obj.height) * ZOOM,
+                'sort_y': obj.y
+            })
 
     # --- Pause menu setup ---
     paused = False
@@ -918,6 +958,43 @@ def game_screen(screen, slot_num=None, save_state=None):
                 if near_interactable['inspect_progress'] >= 1.0:
                     near_interactable['inspecting'] = True
 
+                    topic_id = near_interactable.get('topic_id')
+
+                    if (
+                        topic_id
+                        and not near_interactable['topic_handled']
+                    ):
+
+                        # Prevent this barrel from opening the discovery popup
+                        # repeatedly.
+                        near_interactable['topic_handled'] = True
+
+                        background_snapshot = screen.copy()
+
+                        decision = open_topic_found(
+                            screen,
+                            topic_id,
+                            background_snapshot
+                        )
+
+                        if decision == "start":
+
+                            print(
+                                f"Start topic lesson: {topic_id}"
+                            )
+
+                            # NEXT STEP:
+                            # open_topic_lesson(...)
+
+                        elif decision == "store":
+
+                            print(
+                                f"Store topic in inventory: {topic_id}"
+                            )
+
+                            # NEXT STEP:
+                            # player_inventory.add_topic(...)
+                            
                     # Finishing a search is what counts as discovering the
                     # object, so it fills in its entry in the Items tab.
                     # The action string ("search_vase") is the join between
@@ -981,34 +1058,75 @@ def game_screen(screen, slot_num=None, save_state=None):
             else:
                 # Show message based on object type
                 action = near_interactable.get('actions', '')
-                if action == 'search_barrel':
-                    message = 'The barrel is empty.'
-                elif action == 'search_burrow':
-                    message = 'The burrow is empty.'
-                elif action == 'search_vase':
-                    message = 'The vase is empty.'
-                elif action == 'search_hay':
-                    message = 'The hay is empty.'
-                elif action == 'search_crate':
-                    message = 'The crate is empty.'
+                topic_id = near_interactable.get('topic_id')
+
+                if topic_id:
+                    message = ""
                 else:
-                    message = "Nothing here."
-                msg = inspect_font.render(message, True, (255, 255, 255))
-                box = pygame.Rect(
-                    SCREEN_W // 2 - msg.get_width() // 2 - 10,
-                    SCREEN_H // 2 - msg.get_height() // 2 - 10,
-                    msg.get_width() + 20,
-                    msg.get_height() + 20
-                )
-                pygame.draw.rect(screen, (20, 20, 20), box, border_radius=6)
-                pygame.draw.rect(screen, (200, 200, 100), box, 2, border_radius=6)
-                screen.blit(msg, (SCREEN_W // 2 - msg.get_width() // 2,
-                                  SCREEN_H // 2 - msg.get_height() // 2))
+                    object_name = (
+                        action
+                        .removeprefix("search_")
+                        .replace("_", " ")
+                    )
 
-                close_hint = font.render("Release E to close", True, (255, 0, 0))
-                screen.blit(close_hint, (SCREEN_W // 2 - close_hint.get_width() // 2,
-                                         SCREEN_H // 2 + msg.get_height()))
+                    if object_name:
+                        message = f"The {object_name} is empty."
+                    else:
+                        message = "Nothing here."
 
+                # Only draw the message box if there is actually a message
+                if message:
+                    msg = inspect_font.render(
+                        message,
+                        True,
+                        (255, 255, 255)
+                    )
+
+                    box = pygame.Rect(
+                        SCREEN_W // 2 - msg.get_width() // 2 - 10,
+                        SCREEN_H // 2 - msg.get_height() // 2 - 10,
+                        msg.get_width() + 20,
+                        msg.get_height() + 20
+                    )
+
+                    pygame.draw.rect(
+                        screen,
+                        (20, 20, 20),
+                        box,
+                        border_radius=6
+                    )
+
+                    pygame.draw.rect(
+                        screen,
+                        (200, 200, 100),
+                        box,
+                        2,
+                        border_radius=6
+                    )
+
+                    screen.blit(
+                        msg,
+                        (
+                            SCREEN_W // 2 - msg.get_width() // 2,
+                            SCREEN_H // 2 - msg.get_height() // 2
+                        )
+                    )
+
+                    close_hint = font.render(
+                        "Release E to close",
+                        True,
+                        (255, 0, 0)
+                    )
+
+                    screen.blit(
+                        close_hint,
+                        (
+                            SCREEN_W // 2 - close_hint.get_width() // 2,
+                            SCREEN_H // 2 + msg.get_height()
+                        )
+                    )
+
+                # Keep this OUTSIDE "if message"
                 if not keys[pygame.K_e]:
                     near_interactable['inspecting'] = False
                     near_interactable['inspect_progress'] = 0.0

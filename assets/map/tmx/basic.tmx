@@ -536,6 +536,7 @@
   <object id="26" x="18.3333" y="1506" width="27" height="28.3333">
    <properties>
     <property name="actions" value="search_barrel"/>
+    <property name="topic_id" value="python_syntax_basics"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>
@@ -1670,6 +1671,7 @@
   <object id="1489" x="400.364" y="896.182" width="31.4545" height="32">
    <properties>
     <property name="actions" value="search_barrel"/>
+    <property name="topic_id" value="data_types"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>
@@ -1683,6 +1685,7 @@
   <object id="1493" x="1440.18" y="1013" width="31.4545" height="27">
    <properties>
     <property name="actions" value="search_burrow"/>
+    <property name="topic_id" value="type_casting"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>
@@ -1737,6 +1740,7 @@
   <object id="1503" x="1984.25" y="196.5" width="31.5" height="27.25">
    <properties>
     <property name="actions" value="search_hay"/>
+    <property name="topic_id" value="variables"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>

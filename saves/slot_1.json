@@ -4,23 +4,7 @@
   "keys": 0,
   "topics_completed": [],
   "challenges_passed": [],
-  "map_position": [
-    984.0,
-    864.0
-  ],
+  "map_position": null,
   "inventory": [],
-  "stage_progress": {
-    "discovered_enemies": [
-      "duwende_mandurug"
-    ],
-    "discovered_items": [
-      "barrel",
-      "burrow",
-      "crate"
-    ],
-    "objectives_done": [
-      "island_burrow",
-      "island_search_first"
-    ]
-  }
+  "stage_progress": {}
 }

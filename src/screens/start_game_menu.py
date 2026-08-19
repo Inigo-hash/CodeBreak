@@ -5,30 +5,32 @@ from src.systems import save_manager
 from src.screens.game import game_screen
 from src.screens.tutorial import tutorial_screen
 
+SG_ICONS = ["play", "chest", "quit"]
+SG_LABELS = ["START NEW GAME", "LOAD SAVE DATA", "RETURN TO MAIN MENU"]
+SG_SEEDS = [55, 66, 77]
+
+
+def render_start_menu_buttons(surface, rects, t=0.0):
+    """Draw the start-game menu's buttons onto an OFFSCREEN surface —
+    used by main_menu.py to build the crumble-transition target."""
+    from src.screens.main_menu import _draw_stone_button
+    for rect, label, icon, seed in zip(rects, SG_LABELS, SG_ICONS, SG_SEEDS):
+        _draw_stone_button(surface, rect, label, icon, False, seed, t)
+
 
 def start_game_menu(screen):
     from src.screens.main_menu import (
         STONE_DARK, STONE_MID, STONE_LIGHT, METAL_FRAME, BLUE_GLOW, WHITE,
         _button_font, _small, _draw_stone_button, _update_icon_anims,
+        compute_menu_layout,
     )
     
 
     SCREEN_WIDTH, SCREEN_HEIGHT = screen.get_size()
     background = screen.copy()   # snapshot the main menu behind this screen
 
-    bw, bh = 380, 64
-    by0 = SCREEN_HEIGHT // 2 - 100
-    gap = 16
-    center_x = SCREEN_WIDTH // 2 - bw // 2
-
-    rects = [
-        pygame.Rect(center_x, by0 + 0 * (bh + gap), bw, bh),  # START NEW GAME
-        pygame.Rect(center_x, by0 + 1 * (bh + gap), bw, bh),  # LOAD SAVE DATA
-        pygame.Rect(center_x, by0 + 2 * (bh + gap), bw, bh),  # RETURN TO MAIN MENU
-    ]
-    icons = ["play", "chest", "quit"]
-    labels = ["START NEW GAME", "LOAD SAVE DATA", "RETURN TO MAIN MENU"]
-    seeds = [55, 66, 77]
+    rects, bw, bh, gap, center_x, by0 = compute_menu_layout(SCREEN_WIDTH, SCREEN_HEIGHT, 3)
+    icons, labels, seeds = SG_ICONS, SG_LABELS, SG_SEEDS
 
     show_slot_panel = None   # None | "new" | "load"
     confirm_slot = None      # slot number pending overwrite confirmation
@@ -123,6 +125,20 @@ def start_game_menu(screen):
         result = game_screen(screen, slot_num=slot_num, save_state=state)
         _resume_menu_music()
         return result
+    
+    def _transition_to_main_menu():
+        from src.ui.transitions import crumble_transition
+        from src.screens.main_menu import compute_menu_layout, render_main_menu_buttons
+
+        old_source = screen.copy()  # current frame, start-game buttons already on it
+
+        main_menu_rects, *_ = compute_menu_layout(SCREEN_WIDTH, SCREEN_HEIGHT, 4)
+        new_source = background.copy()  # clean main-menu backdrop, no buttons
+        render_main_menu_buttons(new_source, main_menu_rects, t)
+
+        crumble_transition(screen, background, old_source, rects,
+                            new_source, main_menu_rects, seed=101,
+                            burst_duration=0.3, assemble_duration=0.3)
 
     clock = pygame.time.Clock()
     running = True
@@ -146,6 +162,7 @@ def start_game_menu(screen):
                 elif show_slot_panel is not None:
                     show_slot_panel = None
                 else:
+                    _transition_to_main_menu()
                     return
 
             if event.type == pygame.MOUSEBUTTONDOWN:
@@ -188,16 +205,11 @@ def start_game_menu(screen):
                 if rects[1].collidepoint(event.pos):
                     show_slot_panel = "load"
                 if rects[2].collidepoint(event.pos):
+                    _transition_to_main_menu()
                     return
 
         # ---------------- DRAW ----------------
         screen.blit(background, (0, 0))
-        dim = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-        dim.fill((0, 0, 0, 200))
-        screen.blit(dim, (0, 0))
-
-        title = _button_font.render("START GAME", True, WHITE)
-        screen.blit(title, (SCREEN_WIDTH // 2 - title.get_width() // 2, by0 - 100))
 
         for rect, label, icon, h, seed in zip(rects, labels, icons, hovers, seeds):
             _draw_stone_button(screen, rect, label, icon, h, seed, t)

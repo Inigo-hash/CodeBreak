@@ -14,8 +14,17 @@ from src.screens.how_to_play import how_to_play_screen
 from src.screens.start_game_menu import start_game_menu
 from src.ui.gear_icon import draw_gear, draw_medallion
 
-icons = ["play", "chest", "gear", "quit"]
-labels = ["START NEW GAME", "HOW TO PLAY", "SETTINGS", "QUIT"]
+MM_ICONS = ["play", "book", "gear", "quit"]
+MM_LABELS = ["START NEW GAME", "HOW TO PLAY", "SETTINGS", "QUIT"]
+MM_SEEDS = [11, 22, 33, 44]
+
+
+def render_main_menu_buttons(surface, rects, t=0.0):
+    """Draw the main menu's buttons onto an OFFSCREEN surface — used by
+    start_game_menu.py to build the crumble-transition target when
+    returning to the main menu, without touching the visible screen."""
+    for rect, label, icon, seed in zip(rects, MM_LABELS, MM_ICONS, MM_SEEDS):
+        _draw_stone_button(surface, rect, label, icon, False, seed, t)
 
 # Import config first — it sets the SDL_VIDEO_MINIMIZE_ON_FOCUS_LOSS env var,
 # which must exist before pygame.init() brings up the video subsystem.
@@ -44,7 +53,6 @@ pygame.display.set_caption("CodeBreak - Main Menu")
 
 background = pygame.image.load("assets/images/backgrounds/mainMenuBg1.png").convert()
 background = pygame.transform.scale(background, (SCREEN_WIDTH, SCREEN_HEIGHT))
-screen.blit(background, (0, 0))
 
 # Palette
 STONE_DARK = (14, 14, 18)
@@ -67,7 +75,35 @@ SILVER_SHINE = (250, 252, 255)
 _CINZEL_BOLD_PATH = "assets/fonts/Cinzel-Bold.ttf"
 _CINZEL_PATH = "assets/fonts/Cinzel-VariableFont_wght.ttf"
 
+def compute_menu_layout(screen_w, screen_h, count):
+    """Shared button-layout math so every menu screen (main menu,
+    start-game menu, etc.) lines up under the logo identically."""
+    bw = int(screen_w * 0.20)
+    bh = int(screen_h * 0.075)
+    gap = int(screen_h * 0.02)
 
+    min_bh = int(_button_font.get_height() * 1.8)
+    min_gap = int(_button_font.get_height() * 0.3)
+    bh = max(bh, min_bh)
+    gap = max(gap, min_gap)
+
+    bottom_reserved = int(screen_h * 0.18)
+    available_top = int(screen_h * 0.5)
+    available_bottom = screen_h - bottom_reserved
+    available_height = max(1, available_bottom - available_top)
+
+    block_height = count * bh + (count - 1) * gap
+    if block_height > available_height:
+        shrink = available_height / block_height
+        bh = max(min_bh, int(bh * shrink))
+        gap = max(min_gap, int(gap * shrink))
+        block_height = count * bh + (count - 1) * gap
+
+    by0 = available_top + max(0, (available_height - block_height) // 2)
+    center_x = screen_w // 2 - bw // 2
+
+    rects = [pygame.Rect(center_x, by0 + i * (bh + gap), bw, bh) for i in range(count)]
+    return rects, bw, bh, gap, center_x, by0
 
 def _fallback_font(size, bold=False):
     return pygame.font.Font(None, size)
@@ -514,20 +550,16 @@ def main_menu():
         gap = max(min_gap, int(gap * shrink))  # never shrink below min_gap
         block_height = 4 * bh + 3 * gap
 
-    by0 = available_top + max(0, (available_height - block_height) // 2)
+    rects, bw, bh, gap, center_x, by0 = compute_menu_layout(SCREEN_WIDTH, SCREEN_HEIGHT, 4)
 
-    center_x = SCREEN_WIDTH // 2 - bw // 2   # horizontally centered
+    icons, labels, seeds = MM_ICONS, MM_LABELS, MM_SEEDS
 
-    rects = [
-        pygame.Rect(center_x, by0 + 0 * (bh + gap), bw, bh),  # START
-        pygame.Rect(center_x, by0 + 1 * (bh + gap), bw, bh),  # CONTINUE
-        pygame.Rect(center_x, by0 + 2 * (bh + gap), bw, bh),  # SETTINGS
-        pygame.Rect(center_x, by0 + 3 * (bh + gap), bw, bh),  # QUIT
-    ]
-
-    icons = ["play", "book", "gear", "quit"]
-    labels = ["START NEW GAME", "HOW TO PLAY", "SETTINGS", "QUIT"]
-    seeds = [11, 22, 33, 44]
+    # Clean backdrop (background + logo, no buttons) — captured once here,
+    # after the logo is loaded/positioned, reused every frame instead of
+    # re-copying the screen 60x/sec.
+    screen.blit(background, (0, 0))
+    screen.blit(logo, (SCREEN_WIDTH // 2 - logo.get_width() // 2, logo_top_offset))
+    menu_backdrop = screen.copy()
 
     clock = pygame.time.Clock()
     clock.tick(60)
@@ -551,6 +583,18 @@ def main_menu():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if not show_settings:
                     if rects[0].collidepoint(event.pos):
+                        from src.ui.transitions import crumble_transition
+                        from src.screens.start_game_menu import start_game_menu, render_start_menu_buttons
+
+                        old_source = screen.copy()  # current frame, main menu buttons already on it
+
+                        new_rects, *_ = compute_menu_layout(SCREEN_WIDTH, SCREEN_HEIGHT, 3)
+                        new_source = menu_backdrop.copy()
+                        render_start_menu_buttons(new_source, new_rects, t)
+
+                        crumble_transition(screen, menu_backdrop, old_source, rects,
+                                            new_source, new_rects, seed=99,
+                                            burst_duration=0.3, assemble_duration=0.3)
                         start_game_menu(screen)
                     if rects[1].collidepoint(event.pos):                      
                         how_to_play_screen(screen)
@@ -560,14 +604,8 @@ def main_menu():
                         pygame.quit()
                         sys.exit()
 
-        screen.blit(background, (0, 0))
-        screen.blit(
-            logo,
-            (
-                SCREEN_WIDTH // 2 - logo.get_width() // 2,
-                logo_top_offset
-            )
-        )
+        screen.blit(menu_backdrop, (0, 0))
+    
 
         for rect, label, icon, h, seed in zip(rects, labels, icons, hovers, seeds):
             _draw_stone_button(screen, rect, label, icon, h, seed, t)

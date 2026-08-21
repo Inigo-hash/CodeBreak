@@ -90,7 +90,9 @@ STAGES = {
         },
 
         "enemies": [
-            "duwende_mandurug",
+            "tiyanak_sinta",
+            "manananggal",
+            "tikbalang",
         ],
 
         "items": [

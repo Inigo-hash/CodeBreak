@@ -536,7 +536,6 @@
   <object id="26" x="18.3333" y="1506" width="27" height="28.3333">
    <properties>
     <property name="actions" value="search_barrel"/>
-    <property name="topic_id" value="python_syntax_basics"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>
@@ -1665,6 +1664,7 @@
   <object id="1488" x="1072.25" y="1488" width="31.25" height="31.5">
    <properties>
     <property name="actions" value="search_barrel"/>
+    <property name="topic_id" value="python_syntax_basics"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>

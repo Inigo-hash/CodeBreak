@@ -96,18 +96,69 @@ class ProblemPanel:
         rows.append(("", SMALL_FONT, SECONDARY_TEXT))
 
         # --------------------------------------
+        # Problem
+        # --------------------------------------
+
+        problem = self.challenge.get(
+            "problem",
+            ""
+        )
+
+        if problem:
+
+            rows.append(
+                ("Problem", SMALL_FONT, SECONDARY_TEXT)
+            )
+
+            for raw_line in problem.strip().splitlines():
+
+                if not raw_line.strip():
+
+                    rows.append(
+                        ("", TEXT_FONT, TEXT_COLOR)
+                    )
+
+                    continue
+
+                for line in wrap_text(
+                    raw_line,
+                    TEXT_FONT,
+                    max_width
+                ):
+
+                    rows.append(
+                        (
+                            line,
+                            TEXT_FONT,
+                            TEXT_COLOR
+                        )
+                    )
+
+            rows.append(
+                ("", SMALL_FONT, SECONDARY_TEXT)
+            )
+
+        # --------------------------------------
         # Objective
         # --------------------------------------
 
-        rows.append(("Objective", SMALL_FONT, SECONDARY_TEXT))
+        rows.append(
+            ("Objective", SMALL_FONT, SECONDARY_TEXT)
+        )
 
         for line in wrap_text(
             self.challenge.get("objective", ""),
             TEXT_FONT,
             max_width
         ):
-            rows.append((line, TEXT_FONT, TEXT_COLOR))
 
+            rows.append(
+                (
+                    line,
+                    TEXT_FONT,
+                    TEXT_COLOR
+                )
+            )
         return rows
 
     def _rows_for_width(self, max_width):

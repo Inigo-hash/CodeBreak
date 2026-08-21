@@ -2,6 +2,7 @@ import sys
 import pygame
 
 from src.settings_state import current_theme_name, cycle_theme, settings_state, swatch_color
+from src.ui.theme import UI_COLORS, body_font, draw_button, draw_panel, title_font
 
 
 class SettingsPanel:
@@ -11,9 +12,9 @@ class SettingsPanel:
         self.screen = screen
         self.is_open = True
         self.dragging_music = self.dragging_sfx = False
-        self.title_font = pygame.font.SysFont("consolas", 32, bold=True)
-        self.label_font = pygame.font.SysFont("consolas", 18)
-        self.button_font = pygame.font.SysFont("consolas", 22, bold=True)
+        self.title_font = title_font(32)
+        self.label_font = body_font(18)
+        self.button_font = title_font(22)
         self._layout()
 
     def _layout(self):
@@ -78,10 +79,8 @@ class SettingsPanel:
         overlay = pygame.Surface((width, height), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 120))
         self.screen.blit(overlay, (0, 0))
-        pygame.draw.rect(self.screen, (36, 38, 48), self.panel)
-        pygame.draw.rect(self.screen, (90, 94, 110), self.panel, 4)
-        pygame.draw.rect(self.screen, (26, 28, 36), self.panel.inflate(-24, -24))
-        self._text(self.title_font, "SETTINGS", (255, 255, 255), center=(self.panel.centerx, self.panel.top + 34))
+        draw_panel(self.screen, self.panel, radius=9)
+        self._text(self.title_font, "SETTINGS", UI_COLORS["gold"], center=(self.panel.centerx, self.panel.top + 34))
         self._text(self.label_font, "TEXT SPEED", (200, 200, 210), (self.panel.left + 28, self.panel.top + 70))
         self._text(self.label_font, "SLOW    NORMAL    INSTANT", (160, 170, 190), (self.panel.left + 28, self.panel.top + 96))
         self._draw_slider("MUSIC", self.music_bar, settings_state["music_vol"])
@@ -94,15 +93,16 @@ class SettingsPanel:
         pygame.draw.polygon(self.screen, (80, 180, 255), [(self.right_arrow.left + 8, self.right_arrow.top + 6), (self.right_arrow.left + 8, self.right_arrow.bottom - 6), (self.right_arrow.right - 6, self.right_arrow.centery)])
         theme = current_theme_name()
         self._text(self.button_font, theme, swatch_color(theme), center=(self.panel.centerx, self.left_arrow.centery))
-        pygame.draw.rect(self.screen, (24, 25, 31), self.back_button, border_radius=4)
-        pygame.draw.rect(self.screen, (62, 68, 82), self.back_button, 2, border_radius=4)
-        self._text(self.button_font, "BACK", (255, 255, 255), center=self.back_button.center)
+        draw_button(
+            self.screen, self.back_button, "BACK", self.button_font,
+            hovered=self.back_button.collidepoint(pygame.mouse.get_pos()),
+        )
 
     def _draw_slider(self, label, bar, value):
         self._text(self.label_font, label, (200, 200, 210), (bar.left, bar.top - 20))
-        pygame.draw.rect(self.screen, (30, 32, 40), bar, border_radius=4)
+        pygame.draw.rect(self.screen, UI_COLORS["stone_deep"], bar, border_radius=4)
         knob_x = bar.left + int((bar.width - 16) * value)
-        pygame.draw.rect(self.screen, (255, 220, 120), (knob_x, bar.top - 2, 16, 18), border_radius=3)
+        pygame.draw.rect(self.screen, UI_COLORS["gold"], (knob_x, bar.top - 2, 16, 18), border_radius=3)
 
     def _text(self, font, value, color, position=None, center=None):
         rendered = font.render(value, True, color)

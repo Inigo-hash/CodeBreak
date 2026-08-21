@@ -8,12 +8,17 @@ from src.entities.enemy import Enemy
 from src.ui.code_editor import CodeEditor
 from src.screens.game_over import game_over_screen
 from src.screens.profile import profile_screen
-from src.screens.inventory import PlayerInventory, Toolbar, open_inventory
+from src.screens.inventory import Item, PlayerInventory, Toolbar, open_inventory
 from src.screens.stage_info import open_stage_info
 from src.screens.world_map import open_world_map
 from src.systems import save_manager
 from src.systems.stage_progress import StageProgress
 from src.ui.stage_panel import StagePanel
+from src.ui.gameplay_hud import GameplayHUD
+from src.systems.combat import (
+    COMBAT_DEBUG, FACING_VECTORS, PLAYER_DODGE_SPEED,
+    PlayerCombat, attack_hitbox, move_rect, selected_weapon_damage,
+)
 from src.data.zones import ZONES, get_zone_at
 from src.data.stages import get_stage
 from src.screens.topic_found import open_topic_found
@@ -102,6 +107,7 @@ def game_screen(screen, slot_num=None, save_state=None):
     player_rect.clamp_ip(pygame.Rect(0, 0, map_width, map_height))
     player_x = float(player_rect.x)
     player_y = float(player_rect.y)
+    stage_spawn = player_rect.topleft
     player_speed = 2.50
 
     # --- Restore from a save slot, if one was passed in ---
@@ -109,18 +115,19 @@ def game_screen(screen, slot_num=None, save_state=None):
     # carried through so they round-trip on save/load, but nothing in
     # this loop drains hearts or grants keys yet; inventory items aren't
     # restored either, since Item icons aren't currently serializable.)
-    save_hearts = 5
-    save_keys = 0
+    gameplay_state = {
+        "hearts": 5, "keys": 0, "topics_completed": [], "bonus_time": 0,
+    }
     save_stage = "Island"
-    save_topics_completed = []
     save_challenges_passed = []
     save_stage_progress = None
 
     if save_state:
-        save_hearts = save_state.get("hearts", save_hearts)
-        save_keys = save_state.get("keys", save_keys)
+        gameplay_state["hearts"] = save_state.get("hearts", gameplay_state["hearts"])
+        gameplay_state["keys"] = save_state.get("keys", gameplay_state["keys"])
         save_stage = save_state.get("stage", save_stage)
-        save_topics_completed = save_state.get("topics_completed", [])
+        gameplay_state["topics_completed"] = list(save_state.get("topics_completed", []))
+        gameplay_state["bonus_time"] = save_state.get("bonus_time", 0)
         save_challenges_passed = save_state.get("challenges_passed", [])
         save_stage_progress = save_state.get("stage_progress")
 
@@ -145,9 +152,10 @@ def game_screen(screen, slot_num=None, save_state=None):
     def build_save_state():
         return {
             "stage": save_stage,
-            "hearts": save_hearts,
-            "keys": save_keys,
-            "topics_completed": save_topics_completed,
+            "hearts": gameplay_state["hearts"],
+            "keys": gameplay_state["keys"],
+            "topics_completed": gameplay_state["topics_completed"],
+            "bonus_time": gameplay_state["bonus_time"],
             "challenges_passed": save_challenges_passed,
             "map_position": [player_x, player_y],
             "inventory": [],
@@ -166,74 +174,24 @@ def game_screen(screen, slot_num=None, save_state=None):
     pause_button_font = pygame.font.SysFont("consolas", 24, bold=True)
     INSPECT_TIME = 2.0  # seconds to hold E
 
-    # --- Profile HUD (top-left portrait + HP/PP bars) ---
-    # Draft values — not wired to real damage/energy systems yet.
+    # --- Gameplay HUD (top-left live counters) ---
     profile_name = "Bobiles the explorer the great"
-    player_hp, player_max_hp = 100, 100
-    player_pp, player_max_pp = 100, 100
-
-    # Every dimension of the profile HUD is derived from this one factor, so
-    # the whole panel can be resized from a single line. 1 is the original
-    # size the layout numbers below were picked at.
-    HUD_SCALE = 1.5
-
-    def hud_px(value):
-        # Rounded because pygame needs whole pixels — font sizes, smoothscale
-        # dimensions and border radii all reject floats, so a fractional
-        # HUD_SCALE would otherwise blow up here.
-        return round(value * HUD_SCALE)
-
-    hud_font_name = pygame.font.SysFont("consolas", hud_px(16), bold=True)
-    hud_font_bar = pygame.font.SysFont("consolas", hud_px(12), bold=True)
-
     minimap_compass_font = pygame.font.SysFont("consolas", 14, bold=True)
-
-    HUD_MARGIN = 14
-    HUD_PORTRAIT_SIZE = hud_px(56)
-    HUD_FRAME_PAD = hud_px(6)
-    HUD_EDGE_WIDTH = hud_px(2)
-    HUD_RADIUS = hud_px(4)
-    hud_portrait = pygame.image.load("assets/images/logos/codebreakLogo.png").convert_alpha()
-    hud_portrait = pygame.transform.smoothscale(hud_portrait, (HUD_PORTRAIT_SIZE, HUD_PORTRAIT_SIZE))
-    hud_portrait_rect = pygame.Rect(HUD_MARGIN, HUD_MARGIN, HUD_PORTRAIT_SIZE, HUD_PORTRAIT_SIZE)
-
-    HUD_BAR_WIDTH = hud_px(180)
-    HUD_BAR_HEIGHT = hud_px(16)
-    hud_bars_left = hud_portrait_rect.right + hud_px(10)
-    hud_hp_rect = pygame.Rect(hud_bars_left, hud_portrait_rect.top + hud_px(22), HUD_BAR_WIDTH, HUD_BAR_HEIGHT)
-    hud_pp_rect = pygame.Rect(hud_bars_left, hud_hp_rect.bottom + hud_px(6), HUD_BAR_WIDTH, HUD_BAR_HEIGHT)
-
-    def draw_hud_bar(surf, rect, value, max_value, fill_color, edge_color):
-        pygame.draw.rect(surf, (20, 22, 28), rect, border_radius=HUD_RADIUS)
-        ratio = 0 if max_value <= 0 else max(0.0, min(1.0, value / max_value))
-        fill_rect = pygame.Rect(rect.left, rect.top, int(rect.width * ratio), rect.height)
-        if fill_rect.width > 0:
-            pygame.draw.rect(surf, fill_color, fill_rect, border_radius=HUD_RADIUS)
-        pygame.draw.rect(surf, edge_color, rect, HUD_EDGE_WIDTH, border_radius=HUD_RADIUS)
-        label = hud_font_bar.render(f"{value}/{max_value}", True, (255, 255, 255))
-        surf.blit(label, (rect.centerx - label.get_width() // 2, rect.centery - label.get_height() // 2))
-
-    def draw_profile_hud(surf, mouse_pos):
-        frame_rect = hud_portrait_rect.inflate(HUD_FRAME_PAD, HUD_FRAME_PAD)
-        pygame.draw.rect(surf, (20, 20, 26), frame_rect, border_radius=HUD_RADIUS)
-        surf.blit(hud_portrait, hud_portrait_rect)
-        hovered = hud_portrait_rect.collidepoint(mouse_pos)
-        frame_color = (255, 220, 120) if hovered else (90, 94, 110)
-        pygame.draw.rect(surf, frame_color, frame_rect, HUD_EDGE_WIDTH, border_radius=HUD_RADIUS)
-
-        name_surf = hud_font_name.render(profile_name, True, (240, 240, 240))
-        surf.blit(name_surf, (hud_bars_left, hud_portrait_rect.top))
-
-        draw_hud_bar(surf, hud_hp_rect, player_hp, player_max_hp, (200, 40, 40), (255, 90, 90))
-        draw_hud_bar(surf, hud_pp_rect, player_pp, player_max_pp, (210, 175, 40), (255, 220, 120))
-
     # --- Inventory system ---
     # One PlayerInventory object holds every item the player owns. The Toolbar
     # (bottom-centre hotbar) and the B-key bag screen both read from it, so
     # they can never fall out of sync. It starts empty for now; drop items in
     # later with player_inventory.add_item(Item("Name")).
     player_inventory = PlayerInventory()
+    player_inventory.add_item(Item(
+        "Base Sword", kind="weapon", damage=20,
+        description="A dependable starter blade.",
+    ))
     toolbar = Toolbar(screen, player_inventory)
+    gameplay_hud = GameplayHUD(
+        screen, gameplay_state, stage, player_inventory,
+        completed_stage_topics=save_challenges_passed,
+    )
 
     # Objectives tracker + the rail of buttons that opens the full Stage
     # Information screen. Holds `stage` and `stage_progress` by reference,
@@ -589,9 +547,14 @@ def game_screen(screen, slot_num=None, save_state=None):
     ENEMY_SIGHT_RANGE = 180
     main_character = MainCharacter(screen, map_width, map_height)
     # simple enemy instance for visual testing/animation
-    enemy = Enemy(screen, map_width, map_height)
+    enemies = [Enemy(screen, map_width, map_height)]
+    player_combat = PlayerCombat()
+    attack_key_ready = True
+    death_animation_complete = False
+    near_interactable = None
+    engaged = False
     while running:
-        clock.tick(60)
+        dt = clock.tick(60) / 1000.0
         mouse_pos = pygame.mouse.get_pos()
 
         # --- Events ---
@@ -623,7 +586,13 @@ def game_screen(screen, slot_num=None, save_state=None):
                     continue
 
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_b and not paused:
+                if (event.key == pygame.K_e and attack_key_ready and not paused
+                        and (near_interactable is None or engaged)):
+                    attack_key_ready = False
+                    player_combat.start_attack()
+                elif event.key in (pygame.K_LSHIFT, pygame.K_RSHIFT) and not paused:
+                    player_combat.start_dodge()
+                elif event.key == pygame.K_b and not paused:
                     # B opens the bag. Freeze the current frame and hand that
                     # snapshot to the inventory screen so it has something to
                     # blur while it slides up.
@@ -710,19 +679,22 @@ def game_screen(screen, slot_num=None, save_state=None):
                     settings_panel.handle_event(event)
                     show_pause_settings = settings_panel.is_open
                 elif not paused:
-                    if hud_portrait_rect.collidepoint(event.pos):
+                    if gameplay_hud.profile_rect.collidepoint(event.pos):
                         background_snapshot = screen.copy()
                         profile_screen(
                             screen,
                             background=background_snapshot,
                             name=profile_name,
-                            hp=player_hp, max_hp=player_max_hp,
-                            pp=player_pp, max_pp=player_max_pp,
+                            hp=player_combat.hp, max_hp=player_combat.max_hp,
+                            pp=0, max_pp=0,
                         )
 
             if event.type == pygame.MOUSEBUTTONUP:
                 if show_pause_settings:
                     settings_panel.handle_event(event)
+
+            if event.type == pygame.KEYUP and event.key == pygame.K_e:
+                attack_key_ready = True
 
             if show_pause_settings and event.type == pygame.MOUSEMOTION:
                 settings_panel.handle_event(event)
@@ -730,7 +702,7 @@ def game_screen(screen, slot_num=None, save_state=None):
         if paused:
             if paused:
                 screen.blit(map_surface, (-camera_x, -camera_y))
-                main_character.draw_frames(ZOOM, camera_x, camera_y)
+                main_character.draw_frames(ZOOM, camera_x, camera_y, dt=0)
                 # Draw the hotbar before the pause overlay so it gets blurred
                 # along with the rest of the scene instead of vanishing.
                 toolbar.draw()
@@ -743,7 +715,9 @@ def game_screen(screen, slot_num=None, save_state=None):
                         save_message_frames -= 1
                 pygame.display.flip()
                 continue
-        # --- Movement ---
+        # --- Movement / combat action state ---
+        player_combat.update(dt)
+        main_character.set_combat_state(player_combat.state)
         keys = pygame.key.get_pressed()
 
         up = keys[pygame.K_w] or keys[pygame.K_UP]
@@ -780,8 +754,14 @@ def game_screen(screen, slot_num=None, save_state=None):
         if dx or dy:
             minimap_heading = (dx, dy)
 
-        dx *= player_speed
-        dy *= player_speed
+        if player_combat.state in ("attacking", "flinch", "defeated"):
+            dx = dy = 0
+        elif player_combat.state == "dodging":
+            dodge_dx, dodge_dy = FACING_VECTORS.get(main_character.facing, (1, 0))
+            dx, dy = dodge_dx * PLAYER_DODGE_SPEED, dodge_dy * PLAYER_DODGE_SPEED
+        else:
+            dx *= player_speed
+            dy *= player_speed
 
         # --- Collision (horizontal) ---
         player_x += dx
@@ -817,13 +797,53 @@ def game_screen(screen, slot_num=None, save_state=None):
         # --- Camera ---
         camera_x, camera_y = update_camera()
 
-        # --- Bestiary: getting close enough to see an enemy records it ---
-        # Compared squared to keep a sqrt out of the per-frame path.
-        enemy_dx = enemy.center_x - player_rect.centerx
-        enemy_dy = enemy.center_y - player_rect.centery
-        if enemy_dx * enemy_dx + enemy_dy * enemy_dy <= ENEMY_SIGHT_RANGE ** 2:
-            if stage_progress.discover_enemy(enemy.enemy_id):
-                stage_progress.sync_objectives(stage, save_challenges_passed)
+        # --- Independent enemy AI and combat resolution ---
+        engaged = False
+        for enemy in enemies:
+            incoming_damage = enemy.update(
+                dt, player_rect, collision_rects, map_width, map_height
+            )
+            engaged = engaged or enemy.engaged
+            if incoming_damage:
+                player_combat.take_damage(incoming_damage)
+
+            enemy_dx = enemy.center_x - player_rect.centerx
+            enemy_dy = enemy.center_y - player_rect.centery
+            if enemy_dx * enemy_dx + enemy_dy * enemy_dy <= ENEMY_SIGHT_RANGE ** 2:
+                if stage_progress.discover_enemy(enemy.enemy_id):
+                    stage_progress.sync_objectives(stage, save_challenges_passed)
+
+        if player_combat.attack_active:
+            hitbox = attack_hitbox(player_rect, main_character.facing)
+            damage = selected_weapon_damage(player_inventory)
+            for enemy in enemies:
+                already_hit = getattr(enemy, "last_player_attack", -1) == player_combat.attack_id
+                path_blocked = any(wall.colliderect(player_rect.union(enemy.rect)) for wall in collision_rects)
+                if enemy.active and not already_hit and not path_blocked and hitbox.colliderect(enemy.rect):
+                    enemy.last_player_attack = player_combat.attack_id
+                    enemy.receive_damage(damage)
+
+        for enemy in enemies:
+            if enemy.state == "defeated" and not getattr(enemy, "rewarded", False):
+                enemy.rewarded = True
+                gameplay_state["bonus_time"] += enemy.stats.reward_time
+                stage_progress.defeat_enemy(enemy.enemy_id)
+
+        if player_combat.hp == 0 and death_animation_complete:
+            gameplay_state["hearts"] = max(0, gameplay_state["hearts"] - 1)
+            result = game_over_screen(screen, background=screen.copy())
+            if result == "main_menu":
+                pygame.mixer.music.stop()
+                return "main_menu"
+            if gameplay_state["hearts"] == 0:
+                gameplay_state["hearts"] = 5
+            player_combat.reset()
+            death_animation_complete = False
+            player_rect.topleft = stage_spawn
+            player_x, player_y = map(float, stage_spawn)
+            for enemy in enemies:
+                enemy.reset()
+                enemy.rewarded = False
 
         # --- Check if player is near an interactable ---
         near_interactable = None
@@ -836,6 +856,10 @@ def game_screen(screen, slot_num=None, save_state=None):
             if player_rect.colliderect(detection_rect):
                 near_interactable = item
                 break
+
+        # Combat takes input priority over environmental hold interactions.
+        if engaged:
+            near_interactable = None
 
         # --- Handle E key hold ---
         if near_interactable:
@@ -914,14 +938,17 @@ def game_screen(screen, slot_num=None, save_state=None):
 
                                         if editor.solved:
 
-                                            if (
-                                                challenge_id
-                                                not in save_challenges_passed
-                                            ):
-
+                                            first_completion = challenge_id not in save_challenges_passed
+                                            if first_completion:
                                                 save_challenges_passed.append(
                                                     challenge_id
                                                 )
+                                                gameplay_state["keys"] = min(
+                                                    5, gameplay_state["keys"] + 1
+                                                )
+
+                                            if topic_id not in gameplay_state["topics_completed"]:
+                                                gameplay_state["topics_completed"].append(topic_id)
 
                                             stage_progress.sync_objectives(
                                                 stage,
@@ -985,22 +1012,28 @@ def game_screen(screen, slot_num=None, save_state=None):
         # --- Draw ---
         screen.blit(map_surface, (-camera_x, -camera_y))
 
-        main_character.update_position(dx, dy, player_rect, player_x, player_y, collision_rects, map_width, map_height)   
+        # game.py already resolved movement/collision above; only synchronize
+        # the renderer here so the player is not moved a second time.
+        main_character.pos_x = player_x
+        main_character.pos_y = player_y
+        main_character.center_x, main_character.center_y = player_rect.center
         main_character.update_frames(keys)
 
         # --- Depth-sorted draw pass (painter's algorithm) ---
         draw_list = [('prop', p['sort_y'], p) for p in dynamic_props]
         draw_list.append(('player', player_rect.bottom, None))
-        draw_list.append(('enemy', enemy.center_y, None))
+        for enemy in enemies:
+            if enemy.active:
+                draw_list.append(('enemy', enemy.center_y, enemy))
         draw_list.sort(key=lambda entry: entry[1])
 
         for kind, _, prop in draw_list:
             if kind == 'prop':
                 screen.blit(prop['image'], (prop['x'] - camera_x, prop['y'] - camera_y))
             elif kind == 'player':
-                main_character.draw_frames(ZOOM, camera_x, camera_y)
+                main_character.draw_frames(ZOOM, camera_x, camera_y, dt=dt)
             elif kind == 'enemy':
-                enemy.draw_frames(ZOOM, camera_x, camera_y)
+                prop.draw_frames(ZOOM, camera_x, camera_y)
 
         # --- Draw interaction UI ---
         if near_interactable:
@@ -1009,17 +1042,14 @@ def game_screen(screen, slot_num=None, save_state=None):
             cam_y = near_interactable['rect'].y * ZOOM - camera_y - 30
 
             if not near_interactable['inspecting']:
-                # "Hold E" prompt
-                prompt = inspect_font.render("Hold E to search", True, (255, 255, 255))
-                screen.blit(prompt, (cam_x, cam_y))
-
-                # Progress bar background
+                # Keep progress anchored to the object; the contextual action
+                # text itself is rendered once by GameplayHUD at bottom-centre.
                 bar_w = 80
                 pygame.draw.rect(screen, (50, 50, 50),
-                                 (cam_x, cam_y + 22, bar_w, 8))
+                                 (cam_x, cam_y, bar_w, 8))
                 # Progress bar fill
                 pygame.draw.rect(screen, (255, 220, 50),
-                                 (cam_x, cam_y + 22,
+                                 (cam_x, cam_y,
                                   int(bar_w * near_interactable['inspect_progress']), 8))
             else:
                 # Show message based on object type
@@ -1097,8 +1127,53 @@ def game_screen(screen, slot_num=None, save_state=None):
                     near_interactable['inspecting'] = False
                     near_interactable['inspect_progress'] = 0.0
 
-        # Profile HUD (top-left)
-        draw_profile_hud(screen, mouse_pos)
+        interaction_prompt = None
+        if near_interactable and not near_interactable["inspecting"]:
+            action = near_interactable.get("actions", "")
+            if near_interactable.get("topic_id"):
+                interaction_prompt = "Read Topic"
+            elif action.startswith("search_"):
+                target = action.removeprefix("search_").replace("_", " ").title()
+                interaction_prompt = f"Search {target}" if target else "Interact"
+            else:
+                interaction_prompt = "Interact"
+
+        # HUD consumes existing state and nearby-interactable detection.
+        gameplay_hud.draw(
+            interaction_prompt=interaction_prompt,
+            in_combat=engaged,
+            current_hp=player_combat.hp,
+            max_hp=player_combat.max_hp,
+            bonus_time=gameplay_state["bonus_time"],
+        )
+
+        if COMBAT_DEBUG:
+            world_hitbox = attack_hitbox(player_rect, main_character.facing)
+            debug_hitbox = pygame.Rect(
+                world_hitbox.x * ZOOM - camera_x,
+                world_hitbox.y * ZOOM - camera_y,
+                world_hitbox.width * ZOOM,
+                world_hitbox.height * ZOOM,
+            )
+            pygame.draw.rect(screen, (255, 220, 40), debug_hitbox, 2)
+            for enemy in enemies:
+                enemy_debug_rect = pygame.Rect(
+                    enemy.rect.x * ZOOM - camera_x,
+                    enemy.rect.y * ZOOM - camera_y,
+                    enemy.rect.width * ZOOM,
+                    enemy.rect.height * ZOOM,
+                )
+                pygame.draw.rect(screen, (255, 80, 80), enemy_debug_rect, 1)
+                pygame.draw.circle(
+                    screen, (80, 180, 255),
+                    (round(enemy.rect.centerx * ZOOM - camera_x),
+                     round(enemy.rect.centery * ZOOM - camera_y)),
+                    round(enemy.stats.detection_range * ZOOM), 1,
+                )
+                pygame.draw.circle(
+                    screen, (255, 150, 60), enemy_debug_rect.center,
+                    round(enemy.stats.attack_range * ZOOM), 1,
+                )
 
         # Minimap (bottom-left)
         draw_minimap(screen, player_rect, minimap_heading)
@@ -1115,3 +1190,7 @@ def game_screen(screen, slot_num=None, save_state=None):
         screen.blit(hint, (SCREEN_W - hint.get_width() - 10, 10))
 
         pygame.display.flip()
+        if player_combat.state == "defeated" and player_combat.action_time == 0:
+            # The final defeated frame has now actually been presented. The
+            # next loop may safely deduct a heart and open Game Over.
+            death_animation_complete = True

@@ -3,6 +3,8 @@ import ast
 
 from src.learning.validators.variable_validator import VariableValidator
 from src.learning.validators.print_validator import PrintValidator
+from src.learning.validators.data_type_validator import DataTypeValidator
+from src.learning.validators.type_casting_validator import TypeCastingValidator
 
 
 class ChallengeManager:
@@ -17,7 +19,11 @@ class ChallengeManager:
 
             "variable": VariableValidator(),
 
-            "print": PrintValidator()
+            "print": PrintValidator(),
+
+            "data_type": DataTypeValidator(),
+
+            "type_casting": TypeCastingValidator()
 
         }
 
@@ -32,25 +38,17 @@ class ChallengeManager:
             return False, error.msg
 
         validator = self.validators.get(
-
             challenge["type"]
-
         )
 
         if validator is None:
 
             return (
-
                 False,
-
                 "No validator exists for this challenge."
-
             )
 
         return validator.validate(
-
             challenge,
-
             tree
-
         )

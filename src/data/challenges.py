@@ -10,6 +10,10 @@ No validation logic belongs here.
 
 CHALLENGES = {
 
+    # =========================================================
+    # Variables
+    # =========================================================
+
     "variables_001": {
 
         "id": "variables_001",
@@ -21,16 +25,12 @@ CHALLENGES = {
         "type": "variable",
 
         "problem": """
-Create a variable named
-
-age
-
-and assign the value
-
-18
+Create a variable named age
+and assign the value 18.
         """,
 
-        "objective": "Create a variable named age and assign it the value 18.",
+        "objective":
+            "Create a variable named age and assign it the value 18.",
 
         "requirements": [],
 
@@ -40,6 +40,10 @@ and assign the value
         }
     },
 
+
+    # =========================================================
+    # Print
+    # =========================================================
 
     "print_001": {
 
@@ -52,17 +56,145 @@ and assign the value
         "type": "print",
 
         "problem": """
-Use print() to display the message
+Use print() to display:
 
 Hello, World!
         """,
 
-        "objective": "Use print() to display: Hello, World!",
+        "objective":
+            "Use print() to display: Hello, World!",
 
         "requirements": [],
 
         "expected": {
             "value": "Hello, World!"
+        }
+    },
+
+
+    # =========================================================
+    # Python Syntax Basics
+    # =========================================================
+
+    "python_syntax_basics_001": {
+
+        "id": "python_syntax_basics_001",
+
+        "title": "Python Syntax Basics",
+
+        "difficulty": "Beginner",
+
+        # We can reuse your existing PrintValidator.
+        "type": "print",
+
+        "problem": """
+Use Python's print() function to display:
+
+Hello, Explorer!
+        """,
+
+        "objective":
+            'Display the message "Hello, Explorer!" using print().',
+
+        "requirements": [],
+
+        "expected": {
+            "value": "Hello, Explorer!"
+        }
+    },
+
+
+    # =========================================================
+    # Data Types
+    # =========================================================
+
+    "data_types_001": {
+
+        "id": "data_types_001",
+
+        "title": "Data Types",
+
+        "difficulty": "Beginner",
+
+        "type": "data_type",
+
+        "problem": """
+Create these four variables:
+
+age = 18
+
+height = 1.75
+
+name = "Alex"
+
+is_ready = True
+        """,
+
+        "objective":
+            "Create variables containing an int, float, string, and boolean.",
+
+        "requirements": [],
+
+        "expected": {
+
+            "age": {
+                "type": "int",
+                "value": 18
+            },
+
+            "height": {
+                "type": "float",
+                "value": 1.75
+            },
+
+            "name": {
+                "type": "str",
+                "value": "Alex"
+            },
+
+            "is_ready": {
+                "type": "bool",
+                "value": True
+            }
+        }
+    },
+
+
+    # =========================================================
+    # Type Casting
+    # =========================================================
+
+    "type_casting_001": {
+
+        "id": "type_casting_001",
+
+        "title": "Type Casting",
+
+        "difficulty": "Beginner",
+
+        "type": "type_casting",
+
+        "problem": """
+Create a variable:
+
+age_text = "18"
+
+Then convert age_text into an integer
+and store the result inside a variable named:
+
+age
+        """,
+
+        "objective":
+            "Convert age_text into an integer using int() and store it in age.",
+
+        "requirements": [],
+
+        "expected": {
+            "source": "age_text",
+            "source_value": "18",
+            "target": "age",
+            "function": "int"
         }
     }
 

@@ -8,6 +8,7 @@ from src.screens.settings import SettingsPanel
 from src.screens.how_to_play import how_to_play_screen
 from src.screens.start_game_menu import start_game_menu
 from src.ui.gear_icon import draw_gear, draw_medallion
+from src.ui.theme import draw_button
 
 MM_ICONS = ["play", "book", "gear", "quit"]
 MM_LABELS = ["START GAME", "HOW TO PLAY", "SETTINGS", "QUIT"]
@@ -333,17 +334,10 @@ def _draw_stone_button(
     seed: int,
     t: float = 0.0,
 ) -> None:
-    r = rect.inflate(4, 4) if hovered else rect
-    tmp = pygame.Surface((r.w, r.h))
-    _stone_texture(tmp, tmp.get_rect(), seed)
-    if hovered:
-        overlay = pygame.Surface((r.w, r.h), pygame.SRCALPHA)
-        overlay.fill((*BLUE_GLOW[:3], 40))
-        tmp.blit(overlay, (0, 0))
-    surf.blit(tmp, r.topleft)
+    r = draw_button(
+        surf, rect, label, _button_font, hovered=hovered, text_offset=18
+    )
     _draw_menu_icon(surf, icon, pygame.Rect(r.left, r.top, r.w, r.h), hovered, t)
-    txt = _button_font.render(label, True, WHITE)
-    surf.blit(txt, (r.left + 68, r.centery - txt.get_height() // 2))
 
 
 def _draw_robot_tip(surf: pygame.Surface, t: float) -> None:

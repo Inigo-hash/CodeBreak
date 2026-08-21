@@ -44,6 +44,18 @@ class EnemyStats:
 
 ENEMY_STATS = {
     "duwende_mandurug": EnemyStats(60, 8, 1.15, 32, 180, 1.15, 0.52, 10),
+    "tiyanak_sinta": EnemyStats(40, 6, 1.10, 30, 165, 1.30, 0.52, 6),
+    "manananggal": EnemyStats(70, 10, 1.25, 34, 195, 1.15, 0.55, 10),
+    "tikbalang": EnemyStats(110, 14, 1.05, 38, 215, 1.25, 0.60, 16),
+}
+
+# Feet-level combat bodies, deliberately smaller than the rendered artwork.
+# These drive movement collision and sword hurtbox overlap, not sprite bounds.
+ENEMY_BODY_SIZES = {
+    "duwende_mandurug": (26, 26),
+    "tiyanak_sinta": (20, 18),
+    "manananggal": (28, 28),
+    "tikbalang": (36, 38),
 }
 
 
@@ -125,14 +137,27 @@ class PlayerCombat:
 
 
 def attack_hitbox(player_rect, facing):
+    """Continuous sword sweep from the player's body to the blade tip.
+
+    Including the origin prevents a close enemy from becoming unhittable if
+    its AI reaches or slightly crosses the player's center during a swing.
+    """
     dx, dy = FACING_VECTORS.get(facing, (1, 0))
     center = (
         round(player_rect.centerx + dx * PLAYER_ATTACK_REACH),
         round(player_rect.centery + dy * PLAYER_ATTACK_REACH),
     )
-    rect = pygame.Rect(0, 0, PLAYER_ATTACK_WIDTH, PLAYER_ATTACK_WIDTH)
-    rect.center = center
-    return rect
+    blade_tip = pygame.Rect(0, 0, PLAYER_ATTACK_WIDTH, PLAYER_ATTACK_WIDTH)
+    blade_tip.center = center
+    blade_origin = pygame.Rect(0, 0, PLAYER_ATTACK_WIDTH, PLAYER_ATTACK_WIDTH)
+    blade_origin.center = player_rect.center
+    return blade_origin.union(blade_tip)
+
+
+def attack_path_blocked(player_rect, enemy_rect, blockers):
+    """True only when a solid wall crosses the actual sword-to-target line."""
+    start, end = player_rect.center, enemy_rect.center
+    return any(wall.clipline(start, end) for wall in blockers)
 
 
 def selected_weapon_damage(inventory):

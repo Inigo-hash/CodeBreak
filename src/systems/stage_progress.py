@@ -32,10 +32,11 @@ class StageProgress:
     """
 
     def __init__(self, discovered_enemies=None, discovered_items=None,
-                 objectives_done=None):
+                 objectives_done=None, defeated_enemies=None):
         self.discovered_enemies = set(discovered_enemies or ())
         self.discovered_items = set(discovered_items or ())
         self.objectives_done = set(objectives_done or ())
+        self.defeated_enemies = set(defeated_enemies or ())
 
     # -- discovery ----------------------------------------------------------
     # Each of these returns True only the *first* time an id is recorded,
@@ -62,6 +63,14 @@ class StageProgress:
 
     def knows_enemy(self, enemy_id):
         return enemy_id in self.discovered_enemies
+
+    def defeat_enemy(self, enemy_id):
+        """Persist that an enemy type has been defeated at least once."""
+        if not enemy_id or enemy_id in self.defeated_enemies:
+            return False
+        self.defeated_enemies.add(enemy_id)
+        self.discover_enemy(enemy_id)
+        return True
 
     def knows_item(self, item_id):
         return item_id in self.discovered_items
@@ -161,6 +170,7 @@ class StageProgress:
             "discovered_enemies": sorted(self.discovered_enemies),
             "discovered_items": sorted(self.discovered_items),
             "objectives_done": sorted(self.objectives_done),
+            "defeated_enemies": sorted(self.defeated_enemies),
         }
 
     @classmethod
@@ -178,4 +188,5 @@ class StageProgress:
             discovered_enemies=data.get("discovered_enemies", []),
             discovered_items=data.get("discovered_items", []),
             objectives_done=data.get("objectives_done", []),
+            defeated_enemies=data.get("defeated_enemies", []),
         )

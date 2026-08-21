@@ -27,6 +27,10 @@ with no reimporting and no changes needed at the call sites.
 
 import pygame
 
+# Aliased to a private name so `from editor_theme import *` (which the editor
+# modules use) does not re-export the loaders alongside the fonts themselves.
+from src.ui.theme import body_font as _body_font, title_font as _title_font
+
 # --------------------------------------------------
 # Window
 # --------------------------------------------------
@@ -309,15 +313,20 @@ apply_theme(DEFAULT_THEME)
 
 pygame.font.init()
 
-TITLE_FONT = pygame.font.SysFont("consolas", 28, bold=True)
+# Chrome (window title, panel headers) uses the display face so the editor
+# matches the menus; everything that has to line up with code — the buffer
+# itself, the gutter, the output log — stays monospace.
+TITLE_FONT = _title_font(28)
 
-HEADER_FONT = pygame.font.SysFont("consolas", 22)
+HEADER_FONT = _title_font(22, bold=False)
 
-TEXT_FONT = pygame.font.SysFont("consolas", 20)
+BUTTON_FONT = _title_font(20, bold=False)
 
-CODE_FONT = pygame.font.SysFont("consolas", 22)
+TEXT_FONT = _body_font(20)
 
-SMALL_FONT = pygame.font.SysFont("consolas", 16)
+CODE_FONT = _body_font(22)
+
+SMALL_FONT = _body_font(16)
 
 # --------------------------------------------------
 # Layout

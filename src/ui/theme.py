@@ -20,22 +20,60 @@ UI_COLORS = {
     "text_dim": (156, 161, 174),
 }
 
-CINZEL = "assets/fonts/Cinzel-VariableFont_wght.ttf"
-CINZEL_BOLD = "assets/fonts/Cinzel-Bold.ttf"
+# Every font in the game comes from here. Two families only: Exo 2 for
+# headings, buttons and menu chrome (it echoes the blocky sans of the
+# CodeBreak logo), JetBrains Mono for body copy and anything code-shaped.
+# Both are bundled under assets/fonts/ so the game looks identical on a
+# machine that has neither installed.
+DISPLAY_REGULAR = "assets/fonts/Exo2-Regular.ttf"
+DISPLAY_SEMIBOLD = "assets/fonts/Exo2-SemiBold.ttf"
+DISPLAY_BOLD = "assets/fonts/Exo2-Bold.ttf"
+# The "NL" (no-ligature) cut of JetBrains Mono on purpose: the ligature cut
+# draws `==` and `!=` as single arrow-like glyphs, which is the last thing a
+# player learning Python operators should be reading off the screen.
+MONO_REGULAR = "assets/fonts/JetBrainsMonoNL-Regular.ttf"
+MONO_BOLD = "assets/fonts/JetBrainsMonoNL-Bold.ttf"
+
+# The sizes passed in by callers were tuned against Cinzel and Consolas, and
+# these two families render taller at the same nominal size. Scaling the
+# request keeps the rendered pixel height where it was, so the panel and
+# button math scattered across the screens still lines up.
+_DISPLAY_RATIO = 1.11  # Exo 2 vs the Cinzel sizes the menus were built around
+_MONO_RATIO = 0.74     # JetBrains Mono vs Consolas
 
 
-@lru_cache(maxsize=24)
-def title_font(size, bold=True):
-    path = CINZEL_BOLD if bold else CINZEL
+def _load(path, size):
+    """Load a bundled face, falling back to pygame's built-in sans.
+
+    The fallback is deliberately the same everywhere: if an asset goes
+    missing the whole game degrades to one font rather than to a different
+    one per screen.
+    """
     try:
         return pygame.font.Font(path, size)
     except (FileNotFoundError, pygame.error):
         return pygame.font.Font(None, size)
 
 
-@lru_cache(maxsize=24)
+@lru_cache(maxsize=64)
+def title_font(size, bold=True):
+    """Display face for titles, headings and button labels."""
+    path = DISPLAY_BOLD if bold else DISPLAY_SEMIBOLD
+    return _load(path, max(8, int(size * _DISPLAY_RATIO)))
+
+
+@lru_cache(maxsize=64)
+def ui_font(size, bold=False):
+    """Display face at text weights, for menu chrome that is not a heading."""
+    path = DISPLAY_SEMIBOLD if bold else DISPLAY_REGULAR
+    return _load(path, max(8, int(size * _DISPLAY_RATIO)))
+
+
+@lru_cache(maxsize=64)
 def body_font(size, bold=False):
-    return pygame.font.SysFont("consolas", size, bold=bold)
+    """Monospace face for body copy, stats, and code."""
+    path = MONO_BOLD if bold else MONO_REGULAR
+    return _load(path, max(8, int(size * _MONO_RATIO)))
 
 
 def draw_panel(surface, rect, emphasized=False, radius=8, alpha=238):

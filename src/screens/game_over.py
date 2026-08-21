@@ -39,6 +39,8 @@ import random
 
 import pygame
 
+from src.ui.theme import body_font, title_font
+
 
 # ======================================================================
 # Palette
@@ -61,20 +63,13 @@ RIVET_COLOR  = (150, 150, 160)
 # Title: bold "written out" GAME OVER text
 # ======================================================================
 
-TITLE_FONT_PATH = "assets/fonts/Cinzel-Black.ttf"
-
-
 def _build_title_glyph(text, target_height, color):
     """
-    Renders `text` in the game's Cinzel display font — the same family
-    used for the stone buttons in main_menu.py — directly at full
-    size, so it stays crisp at any resolution instead of being
-    upscaled from a small render.
+    Renders `text` in the game's display font — the same family used for
+    the stone buttons in main_menu.py — directly at full size, so it stays
+    crisp at any resolution instead of being upscaled from a small render.
     """
-    try:
-        font = pygame.font.Font(TITLE_FONT_PATH, int(target_height))
-    except Exception:
-        font = pygame.font.SysFont("georgia", int(target_height), bold=True)
+    font = title_font(int(target_height))
 
     return font.render(text, True, color), font
 
@@ -330,8 +325,8 @@ def game_over_screen(screen, background=None, failed_snippet=None):
     vignette = _build_blood_vignette(SCREEN_W, SCREEN_H)
     title_assets = _build_title_surfaces("GAME OVER", int(SCREEN_H * 0.11))
 
-    label_font = pygame.font.SysFont("consolas", max(14, int(SCREEN_H * 0.026)), bold=True)
-    icon_font = pygame.font.SysFont("consolas", max(16, int(SCREEN_H * 0.03)), bold=True)
+    label_font = title_font(max(14, int(SCREEN_H * 0.026)))
+    icon_font = body_font(max(16, int(SCREEN_H * 0.03)), bold=True)
 
     title_text = "GAME OVER"
     LETTER_MS = 90                              # ms per letter of the typewriter reveal

@@ -21,7 +21,7 @@ touching any of the drawing code.
 
 Visual style deliberately matches the rest of the game's UI (profile.py,
 settings.py, the pause menu): dark stone panels, a metal-grey frame and the
-consolas font.
+shared fonts from src/ui/theme.py.
 
 A note on where this file lives: everything here sits in screens/ for now,
 even though Toolbar is really a passive widget of the kind that normally
@@ -39,6 +39,8 @@ src/ui/ alongside Toolbar.
 """
 
 import pygame
+
+from src.ui.theme import body_font, title_font
 
 
 # ---------------------------------------------------------------------------
@@ -288,9 +290,9 @@ class Toolbar:
         self.screen_w, self.screen_h = screen.get_size()
 
         # Fonts: one for the item letter/count, a smaller one for slot numbers.
-        self.font_item = pygame.font.SysFont("consolas", 20, bold=True)
-        self.font_index = pygame.font.SysFont("consolas", 12, bold=True)
-        self.font_label = pygame.font.SysFont("consolas", 14, bold=True)
+        self.font_item = body_font(20, bold=True)
+        self.font_index = body_font(12, bold=True)
+        self.font_label = title_font(14, bold=False)
 
         # --- Geometry -----------------------------------------------------
         # The row of slots is horizontally centred, and the backing panel is
@@ -410,12 +412,12 @@ class InventoryScreen:
         # Frozen snapshot of the game that we blur behind the panel.
         self.background = background if background is not None else screen.copy()
 
-        self.font_title = pygame.font.SysFont("consolas", 26, bold=True)
-        self.font_section = pygame.font.SysFont("consolas", 14, bold=True)
-        self.font_item = pygame.font.SysFont("consolas", 20, bold=True)
-        self.font_index = pygame.font.SysFont("consolas", 12, bold=True)
-        self.font_hint = pygame.font.SysFont("consolas", 14, bold=True)
-        self.font_empty = pygame.font.SysFont("consolas", 16, bold=True)
+        self.font_title = title_font(26)
+        self.font_section = title_font(14, bold=False)
+        self.font_item = body_font(20, bold=True)
+        self.font_index = body_font(12, bold=True)
+        self.font_hint = body_font(14, bold=True)
+        self.font_empty = body_font(16, bold=True)
 
         # --- Panel geometry ------------------------------------------------
         # Sized from the grid itself, so the slots are always perfectly centred

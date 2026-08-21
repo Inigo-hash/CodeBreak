@@ -1,5 +1,6 @@
 import pygame
 import sys
+from src.ui.theme import body_font, title_font
 
 STONE_DARK = (28, 30, 38)
 STONE_MID = (42, 46, 58)
@@ -44,10 +45,10 @@ def _wrap(font, text, max_width):
 def how_to_play_screen(screen):
     SCREEN_WIDTH, SCREEN_HEIGHT = screen.get_size()
 
-    title_font = pygame.font.SysFont("consolas", 30, bold=True)
-    header_font = pygame.font.SysFont("consolas", 20, bold=True)
-    line_font = pygame.font.SysFont("consolas", 17)
-    btn_font = pygame.font.SysFont("consolas", 22, bold=True)
+    heading_font = title_font(30)
+    header_font = title_font(20, bold=False)
+    line_font = body_font(17)
+    btn_font = title_font(22)
 
     panel_rect = pygame.Rect(SCREEN_WIDTH // 2 - 340, SCREEN_HEIGHT // 2 - 260, 680, 520)
     back_rect = pygame.Rect(panel_rect.centerx - 70, panel_rect.bottom - 56, 140, 36)
@@ -84,7 +85,7 @@ def how_to_play_screen(screen):
         pygame.draw.rect(screen, METAL_FRAME, panel_rect, 4, border_radius=8)
         pygame.draw.rect(screen, (26, 28, 36), panel_rect.inflate(-24, -24), border_radius=6)
 
-        title = title_font.render("HOW TO PLAY", True, WHITE)
+        title = heading_font.render("HOW TO PLAY", True, WHITE)
         screen.blit(title, (panel_rect.centerx - title.get_width() // 2, panel_rect.top + 24))
         pygame.draw.line(screen, YELLOW_GLOW,
                           (panel_rect.left + 40, panel_rect.top + 70),

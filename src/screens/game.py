@@ -192,7 +192,7 @@ def game_screen(screen, slot_num=None, save_state=None):
 
     # --- Gameplay HUD (top-left live counters) ---
     profile_name = "Bobiles the explorer the great"
-    minimap_compass_font = pygame.font.SysFont("consolas", 14, bold=True)
+    minimap_compass_font = title_font(14)
     # --- Inventory system ---
     # One PlayerInventory object holds every item the player owns. The Toolbar
     # (bottom-centre hotbar) and the B-key bag screen both read from it, so
@@ -319,7 +319,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             )
         })
 
-    zone_label_font = pygame.font.SysFont("consolas", 11, bold=True)
+    zone_label_font = title_font(11, bold=False)
 
     def draw_minimap(surf, player_rect, heading):
         panel_rect = pygame.Rect(

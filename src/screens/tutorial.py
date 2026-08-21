@@ -15,6 +15,7 @@ from src.screens.how_to_play import (
     STONE_LIGHT,
     BLUE_GLOW,
 )
+from src.ui.theme import body_font, title_font
 
 
 def tutorial_screen(screen, play_music=True):
@@ -30,14 +31,14 @@ def tutorial_screen(screen, play_music=True):
     BG_FLOOR = (34, 36, 44)
 
     # --- Fonts ---
-    name_font = pygame.font.SysFont("consolas", 22, bold=True)
-    dialogue_font = pygame.font.SysFont("consolas", 20)
-    hint_font = pygame.font.SysFont("consolas", 16)
-    prompt_font = pygame.font.SysFont("consolas", 18, bold=True)
-    manual_title_font = pygame.font.SysFont("consolas", 30, bold=True)
-    manual_header_font = pygame.font.SysFont("consolas", 20, bold=True)
-    manual_line_font = pygame.font.SysFont("consolas", 17)
-    manual_btn_font = pygame.font.SysFont("consolas", 22, bold=True)
+    name_font = title_font(22)
+    dialogue_font = body_font(20)
+    hint_font = body_font(16)
+    prompt_font = title_font(18, bold=False)
+    manual_title_font = title_font(30)
+    manual_header_font = title_font(20, bold=False)
+    manual_line_font = body_font(17)
+    manual_btn_font = title_font(22)
 
     # --- Music: reuse the main menu theme for the tutorial ---
     if play_music:

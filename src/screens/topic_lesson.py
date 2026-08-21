@@ -10,6 +10,7 @@ It simply displays the topic and returns the player's decision.
 import pygame
 
 from src.ui.editor_widgets import wrap_text
+from src.ui.theme import body_font, title_font
 
 
 # ---------------------------------------------------------
@@ -51,34 +52,15 @@ class TopicLessonScreen:
         # Fonts
         # -------------------------------------------------
 
-        self.title_font = pygame.font.SysFont(
-            "consolas",
-            28,
-            bold=True
-        )
+        self.title_font = title_font(28)
 
-        self.difficulty_font = pygame.font.SysFont(
-            "consolas",
-            14,
-            bold=True
-        )
+        self.difficulty_font = body_font(14, bold=True)
 
-        self.lesson_font = pygame.font.SysFont(
-            "consolas",
-            17
-        )
+        self.lesson_font = body_font(17)
 
-        self.button_font = pygame.font.SysFont(
-            "consolas",
-            16,
-            bold=True
-        )
+        self.button_font = title_font(16, bold=False)
 
-        self.confirm_font = pygame.font.SysFont(
-            "consolas",
-            18,
-            bold=True
-        )
+        self.confirm_font = title_font(18, bold=False)
 
         # -------------------------------------------------
         # Main panel

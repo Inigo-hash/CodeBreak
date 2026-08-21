@@ -8,7 +8,7 @@ from src.screens.settings import SettingsPanel
 from src.screens.how_to_play import how_to_play_screen
 from src.screens.start_game_menu import start_game_menu
 from src.ui.gear_icon import draw_gear, draw_medallion
-from src.ui.theme import draw_button
+from src.ui.theme import draw_button, title_font, ui_font
 
 MM_ICONS = ["play", "book", "gear", "quit"]
 MM_LABELS = ["START GAME", "HOW TO PLAY", "SETTINGS", "QUIT"]
@@ -67,10 +67,6 @@ SILVER_MID = (160, 165, 172)
 SILVER_DARK = (95, 98, 105)
 SILVER_SHINE = (250, 252, 255)
 
-# Fonts
-_CINZEL_BOLD_PATH = "assets/fonts/Cinzel-Bold.ttf"
-_CINZEL_PATH = "assets/fonts/Cinzel-VariableFont_wght.ttf"
-
 def compute_menu_layout(screen_w, screen_h, count):
     """Shared button-layout math so every menu screen (main menu,
     start-game menu, etc.) lines up under the logo identically."""
@@ -101,23 +97,13 @@ def compute_menu_layout(screen_w, screen_h, count):
     rects = [pygame.Rect(center_x, by0 + i * (bh + gap), bw, bh) for i in range(count)]
     return rects, bw, bh, gap, center_x, by0
 
-def _fallback_font(size, bold=False):
-    return pygame.font.Font(None, size)
-
-
 # Scale font sizes off screen height vs a 1080p reference, clamped so they
 # never go microscopic on small laptop screens or oversized on big monitors.
 _font_scale = max(0.65, min(1.25, SCREEN_HEIGHT / 1080))
 
-try:
-    _button_font = pygame.font.Font(_CINZEL_BOLD_PATH, max(14, int(26 * _font_scale)))
-    _small = pygame.font.Font(_CINZEL_PATH, max(12, int(16 * _font_scale)))
-    _tip_font = pygame.font.Font(_CINZEL_PATH, max(11, int(15 * _font_scale)))
-    _ = _button_font.render("x", True, WHITE)
-except Exception:
-    _button_font = _fallback_font(max(14, int(24 * _font_scale)), True)
-    _small = _fallback_font(max(12, int(18 * _font_scale)))
-    _tip_font = _fallback_font(max(11, int(17 * _font_scale)))
+_button_font = title_font(max(14, int(26 * _font_scale)))
+_small = ui_font(max(12, int(16 * _font_scale)))
+_tip_font = ui_font(max(11, int(15 * _font_scale)))
 
 
 def _stone_texture(surf: pygame.Surface, rect: pygame.Rect, seed: int) -> None:

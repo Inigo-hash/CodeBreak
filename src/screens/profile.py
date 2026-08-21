@@ -15,6 +15,7 @@ real damage/energy systems.
 
 import pygame
 import sys
+from src.ui.theme import body_font, title_font
 
 
 def profile_screen(screen, background=None, name="Bobiles the explorer the great",
@@ -36,10 +37,10 @@ def profile_screen(screen, background=None, name="Bobiles the explorer the great
     PP_FILL     = (210, 175, 40)
     PP_EDGE     = (255, 220, 120)
 
-    font_title = pygame.font.SysFont("consolas", 30, bold=True)
-    font_name  = pygame.font.SysFont("consolas", 22, bold=True)
-    font_tag   = pygame.font.SysFont("consolas", 15, bold=True)
-    font_bar   = pygame.font.SysFont("consolas", 16, bold=True)
+    font_title = title_font(30)
+    font_name  = title_font(22)
+    font_tag   = body_font(15, bold=True)
+    font_bar   = body_font(16, bold=True)
 
     # A bit bigger than the settings panel (380x480)
     panel_width, panel_height = 460, 560

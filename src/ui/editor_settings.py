@@ -315,7 +315,7 @@ class EditorSettingsPanel:
         # Plain body text rather than a per-theme swatch color: the
         # panel is already painted in the theme being previewed, so the
         # name only has to stay readable.
-        name = TEXT_FONT.render(current_theme_name(), True, TEXT_COLOR)
+        name = BUTTON_FONT.render(current_theme_name(), True, TEXT_COLOR)
         self.screen.blit(
             name,
             (
@@ -335,7 +335,7 @@ class EditorSettingsPanel:
             border_radius=BUTTON_RADIUS
         )
 
-        label = TEXT_FONT.render("CLOSE", True, BUTTON_TEXT_COLOR)
+        label = BUTTON_FONT.render("CLOSE", True, BUTTON_TEXT_COLOR)
         self.screen.blit(
             label,
             (

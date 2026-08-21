@@ -69,7 +69,7 @@ class Button:
             border_radius=BUTTON_RADIUS
         )
 
-        label = TEXT_FONT.render(
+        label = BUTTON_FONT.render(
             self.text,
             True,
             BUTTON_TEXT_COLOR

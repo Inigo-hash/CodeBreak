@@ -34,7 +34,7 @@ rail up and down underneath it, and buttons that move while you are
 reaching for them are worse than a little empty space.
 
 Icons are drawn with pygame primitives rather than loaded from files or
-typed as emoji: SysFont("consolas") has no emoji glyphs and would render
+typed as emoji: the bundled UI fonts have no emoji glyphs and would render
 empty boxes, and there is no icon art in assets/ yet.
 """
 

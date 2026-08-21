@@ -1,5 +1,7 @@
 import pygame
 
+from src.ui.theme import body_font, title_font
+
 
 # ---------------------------------------------------------
 # Colors
@@ -40,28 +42,13 @@ class TopicFoundScreen:
         # Fonts
         # -------------------------------------------------
 
-        self.title_font = pygame.font.SysFont(
-            "consolas",
-            30,
-            bold=True
-        )
+        self.title_font = title_font(30)
 
-        self.topic_font = pygame.font.SysFont(
-            "consolas",
-            25,
-            bold=True
-        )
+        self.topic_font = title_font(25)
 
-        self.text_font = pygame.font.SysFont(
-            "consolas",
-            17
-        )
+        self.text_font = body_font(17)
 
-        self.button_font = pygame.font.SysFont(
-            "consolas",
-            16,
-            bold=True
-        )
+        self.button_font = title_font(16, bold=False)
 
         # Temporary display name.
         #

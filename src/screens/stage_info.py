@@ -45,6 +45,7 @@ from src.ui.stage_panel import (
     TEXT_MAIN,
     draw_tab_icon,
 )
+from src.ui.theme import body_font, title_font
 
 
 # Tab order and titles come straight from the rail, so the two can never
@@ -99,13 +100,13 @@ class _Fonts:
     """The one set of fonts every tab renderer draws with."""
 
     def __init__(self):
-        self.title = pygame.font.SysFont("consolas", 24, bold=True)
-        self.subtitle = pygame.font.SysFont("consolas", 14, bold=True)
-        self.heading = pygame.font.SysFont("consolas", 17, bold=True)
-        self.entry = pygame.font.SysFont("consolas", 16, bold=True)
-        self.body = pygame.font.SysFont("consolas", 14)
-        self.small = pygame.font.SysFont("consolas", 12, bold=True)
-        self.tab = pygame.font.SysFont("consolas", 13, bold=True)
+        self.title = title_font(24)
+        self.subtitle = title_font(14, bold=False)
+        self.heading = title_font(17, bold=False)
+        self.entry = body_font(16, bold=True)
+        self.body = body_font(14)
+        self.small = body_font(12, bold=True)
+        self.tab = title_font(13, bold=False)
 
 
 # ===========================================================================

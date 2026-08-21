@@ -31,6 +31,9 @@ import sys
 
 import pygame
 
+# Aliased because this module uses `title_font` as a local variable name.
+from src.ui.theme import title_font as _display_font
+
 
 # ---------------------------------------------------------------------------
 # Palette - warm paper and brown ink rather than the stone/metal colours the
@@ -65,17 +68,13 @@ MARKER_SIZE    = 13    # matches the minimap arrow, scaled up a little
 
 def _paper_font(size):
     """
-    Cinzel if it is there, consolas if it is not.
+    The shared display face, at the sizes the map's engraved labels use.
 
-    The map is the one screen where a serif face is worth loading: it is
-    what makes the zone names read as engraved labels instead of UI text.
-    Missing art must never take the game down, hence the fallback.
+    The sepia paper and ink colours already carry the aged look, so the
+    labels only need to read as map lettering rather than UI text.
     """
 
-    try:
-        return pygame.font.Font("assets/fonts/Cinzel-Bold.ttf", size)
-    except (pygame.error, FileNotFoundError, OSError):
-        return pygame.font.SysFont("consolas", size, bold=True)
+    return _display_font(size)
 
 
 def _age_map(map_texture, size):

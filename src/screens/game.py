@@ -17,14 +17,19 @@ from src.ui.stage_panel import StagePanel
 from src.ui.gameplay_hud import GameplayHUD
 from src.systems.combat import (
     COMBAT_DEBUG, FACING_VECTORS, PLAYER_DODGE_SPEED,
-    PlayerCombat, attack_hitbox, move_rect, selected_weapon_damage,
+    PlayerCombat, attack_hitbox, attack_path_blocked, move_rect,
+    selected_weapon_damage,
 )
+from src.systems.audio import CombatAudio
 from src.data.zones import ZONES, get_zone_at
 from src.data.stages import get_stage
 from src.screens.topic_found import open_topic_found
 from src.data.topics import get_topic
 from src.data.challenges import get_challenge
 from src.screens.topic_lesson import open_topic_lesson
+from src.data.encounters import BEGINNER_PATH_GIDS, BEGINNER_STAGE_ENCOUNTERS
+from src.systems.enemy_spawns import resolve_encounter_spawns
+from src.ui.theme import UI_COLORS, body_font, draw_button, draw_panel, title_font
 
 def game_screen(screen, slot_num=None, save_state=None):
     clock = pygame.time.Clock()
@@ -40,13 +45,24 @@ def game_screen(screen, slot_num=None, save_state=None):
     map_width  = tmx_data.width  * TILE_SIZE
     map_height = tmx_data.height * TILE_SIZE
 
+    # Pytmx assigns its own runtime IDs to authored TMX gids. Convert the
+    # known dirt-path IDs before comparing them with layer iteration values.
+    runtime_path_gids = {
+        runtime_gid
+        for authored_gid in BEGINNER_PATH_GIDS
+        for runtime_gid, _flags in tmx_data.map_gid(authored_gid)
+    }
+
     # --- Build collision rects from tile custom properties ---
     collision_rects = []
+    path_cells = set()
     for layer in tmx_data.visible_layers:
         if hasattr(layer, 'data'):
             for x, y, gid in layer:
                 if gid == 0:
                     continue
+                if layer.name == "Ground Layer 1" and gid in runtime_path_gids:
+                    path_cells.add((x, y))
                 props = tmx_data.get_tile_properties_by_gid(gid)
                 if props and props.get('collidable'):
                     collision_rects.append(
@@ -168,10 +184,10 @@ def game_screen(screen, slot_num=None, save_state=None):
     save_message_frames = 0
 
     # --- Fonts ---
-    font = pygame.font.SysFont("consolas", 18)
-    inspect_font = pygame.font.SysFont("consolas", 20)
-    pause_title_font = pygame.font.SysFont("consolas", 40, bold=True)
-    pause_button_font = pygame.font.SysFont("consolas", 24, bold=True)
+    font = body_font(18)
+    inspect_font = body_font(20)
+    pause_title_font = title_font(40)
+    pause_button_font = title_font(24)
     INSPECT_TIME = 2.0  # seconds to hold E
 
     # --- Gameplay HUD (top-left live counters) ---
@@ -472,12 +488,7 @@ def game_screen(screen, slot_num=None, save_state=None):
         })
 
     def draw_pause_button(surf, rect, label, hovered):
-        color = (60, 90, 130) if hovered else (40, 42, 54)
-        border_color = (120, 180, 230) if hovered else (90, 94, 110)
-        pygame.draw.rect(surf, color, rect, border_radius=6)
-        pygame.draw.rect(surf, border_color, rect, 2, border_radius=6)
-        txt = pause_button_font.render(label, True, (255, 255, 255))
-        surf.blit(txt, (rect.centerx - txt.get_width() // 2, rect.centery - txt.get_height() // 2))
+        draw_button(surf, rect, label, pause_button_font, hovered=hovered)
 
     def draw_pause_menu(surf, mouse_pos):
         # ----- Blur the current game screen -----
@@ -507,11 +518,10 @@ def game_screen(screen, slot_num=None, save_state=None):
             panel_height
         )
 
-        pygame.draw.rect(surf, (36, 38, 48), panel, border_radius=10)
-        pygame.draw.rect(surf, (90, 94, 110), panel, 3, border_radius=10)
+        draw_panel(surf, panel, radius=10)
 
         # ----- Title -----
-        title = pause_title_font.render("PAUSED", True, (255, 255, 255))
+        title = pause_title_font.render("PAUSED", True, UI_COLORS["gold"])
         surf.blit(
             title,
             (
@@ -546,9 +556,19 @@ def game_screen(screen, slot_num=None, save_state=None):
     # enemy is written into the bestiary. Roughly "you have clearly seen it".
     ENEMY_SIGHT_RANGE = 180
     main_character = MainCharacter(screen, map_width, map_height)
-    # simple enemy instance for visual testing/animation
-    enemies = [Enemy(screen, map_width, map_height)]
+    enemy_spawns = resolve_encounter_spawns(
+        BEGINNER_STAGE_ENCOUNTERS, map_width, map_height,
+        collision_rects, path_cells, TILE_SIZE,
+        (stage_spawn[0] + player_size // 2, stage_spawn[1] + player_size),
+    )
+    enemies = [
+        Enemy(screen, map_width, map_height,
+              world_x=spawn["position"][0], world_y=spawn["position"][1],
+              enemy_id=spawn["enemy_id"])
+        for spawn in enemy_spawns
+    ]
     player_combat = PlayerCombat()
+    combat_audio = CombatAudio()
     attack_key_ready = True
     death_animation_complete = False
     near_interactable = None
@@ -589,9 +609,11 @@ def game_screen(screen, slot_num=None, save_state=None):
                 if (event.key == pygame.K_e and attack_key_ready and not paused
                         and (near_interactable is None or engaged)):
                     attack_key_ready = False
-                    player_combat.start_attack()
+                    if player_combat.start_attack():
+                        combat_audio.play("sword_swing")
                 elif event.key in (pygame.K_LSHIFT, pygame.K_RSHIFT) and not paused:
-                    player_combat.start_dodge()
+                    if player_combat.start_dodge():
+                        combat_audio.play("dodge")
                 elif event.key == pygame.K_b and not paused:
                     # B opens the bag. Freeze the current frame and hand that
                     # snapshot to the inventory screen so it has something to
@@ -803,9 +825,14 @@ def game_screen(screen, slot_num=None, save_state=None):
             incoming_damage = enemy.update(
                 dt, player_rect, collision_rects, map_width, map_height
             )
+            if enemy.just_started_attack:
+                combat_audio.play("enemy_attack")
             engaged = engaged or enemy.engaged
             if incoming_damage:
-                player_combat.take_damage(incoming_damage)
+                if player_combat.take_damage(incoming_damage):
+                    combat_audio.play(
+                        "player_death" if player_combat.hp == 0 else "player_hurt"
+                    )
 
             enemy_dx = enemy.center_x - player_rect.centerx
             enemy_dy = enemy.center_y - player_rect.centery
@@ -818,10 +845,16 @@ def game_screen(screen, slot_num=None, save_state=None):
             damage = selected_weapon_damage(player_inventory)
             for enemy in enemies:
                 already_hit = getattr(enemy, "last_player_attack", -1) == player_combat.attack_id
-                path_blocked = any(wall.colliderect(player_rect.union(enemy.rect)) for wall in collision_rects)
+                path_blocked = attack_path_blocked(
+                    player_rect, enemy.rect, collision_rects
+                )
                 if enemy.active and not already_hit and not path_blocked and hitbox.colliderect(enemy.rect):
                     enemy.last_player_attack = player_combat.attack_id
-                    enemy.receive_damage(damage)
+                    if enemy.receive_damage(damage):
+                        combat_audio.play("sword_hit")
+                        combat_audio.play(
+                            "enemy_death" if enemy.hp == 0 else "enemy_hurt"
+                        )
 
         for enemy in enemies:
             if enemy.state == "defeated" and not getattr(enemy, "rewarded", False):

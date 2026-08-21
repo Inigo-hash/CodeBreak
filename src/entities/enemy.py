@@ -1,10 +1,22 @@
+from pathlib import Path
+
 import pygame
 
-from src.systems.combat import ENEMY_STATS, move_rect, normalized_toward
+from src.systems.combat import (
+    ENEMY_BODY_SIZES, ENEMY_STATS, move_rect, normalized_toward,
+)
 
 
 class Enemy:
-    """Independent Duwende combatant with HP, AI, cooldowns, and animation."""
+    """Independent combatant with HP, AI, cooldowns, and animation."""
+
+    _frame_cache = {}
+    # (movement folder, attack folder, flinch filename, visible height, canvas)
+    _asset_config = {
+        "tiyanak_sinta": ("walking", "attacking", "{direction}.png", 40, (72, 50)),
+        "manananggal": ("flying", "attacking", "manananggal_{direction}.png", 76, (110, 88)),
+        "tikbalang": ("walking", "attacking", "{direction}.png", 88, (124, 98)),
+    }
 
     def __init__(self, screen, map_width, map_height, world_x=None, world_y=None,
                  enemy_id="duwende_mandurug"):
@@ -16,10 +28,12 @@ class Enemy:
             world_y if world_y is not None else map_height // 2,
         )
         self.center_x, self.center_y = map(float, self.spawn)
-        self.rect = pygame.Rect(0, 0, 26, 26)
+        self.rect = pygame.Rect(0, 0, *ENEMY_BODY_SIZES[enemy_id])
         self.rect.center = self.spawn
         self.x, self.y = float(self.rect.x), float(self.rect.y)
-        self.frames = self._load_frames()
+        if enemy_id not in self._frame_cache:
+            self._frame_cache[enemy_id] = self._load_frames()
+        self.frames = self._frame_cache[enemy_id]
         self.state = "idle"
         self.facing = "south"
         self.current = 0
@@ -30,9 +44,28 @@ class Enemy:
         self.hp = self.stats.max_hp
         self.active = True
         self.defeat_timer = 0.0
+        self.just_started_attack = False
 
     def _load_frames(self):
         result = {"walking": {}, "attack": {}, "flinch": {}}
+        if self.enemy_id in self._asset_config:
+            move_group, attack_group, flinch_name, target_height, canvas = (
+                self._asset_config[self.enemy_id]
+            )
+            root = Path("assets/images/frames") / self.enemy_id
+            paths = {"walking": {}, "attack": {}, "flinch": {}}
+            for direction in ("north", "south", "east", "west"):
+                paths["walking"][direction] = self._numbered_frames(
+                    root / move_group / direction
+                )
+                paths["attack"][direction] = self._numbered_frames(
+                    root / attack_group / direction
+                )
+                paths["flinch"][direction] = [
+                    str(root / "flinch" / flinch_name.format(direction=direction))
+                ]
+            return self._normalized_animations(paths, target_height, canvas)
+
         # In this authored set "forward" shows the Duwende's back (moving
         # away/up-screen), while "backward" shows its face (moving down).
         direction_paths = {"north": "forward", "south": "backward", "east": "right", "west": "left"}
@@ -51,16 +84,56 @@ class Enemy:
         return result
 
     @staticmethod
-    def _normalized_set(paths, target_content_height=62, canvas_size=(78, 70)):
+    def _numbered_frames(folder):
+        return [str(path) for path in sorted(
+            folder.glob("frame_*.png"),
+            key=lambda path: int(path.stem.rsplit("_", 1)[1]),
+        )]
+
+    @classmethod
+    def _normalized_animations(cls, animation_paths, target_height, canvas_size):
+        """Use one scale for every state/direction belonging to an enemy.
+
+        Shorter crouched or recoiling poses may occupy less height naturally,
+        but changing animation sets never applies a different character scale.
+        """
+        loaded = {}
+        tallest = 1
+        for group, directions in animation_paths.items():
+            loaded[group] = {}
+            for direction, paths in directions.items():
+                originals = [pygame.image.load(path).convert_alpha() for path in paths]
+                loaded[group][direction] = originals
+                tallest = max(tallest, *(frame.get_bounding_rect(min_alpha=8).height
+                                         for frame in originals))
+
+        scale = target_height / tallest
+        return {
+            group: {
+                direction: cls._normalized_set(
+                    frames, canvas_size=canvas_size, fixed_scale=scale
+                )
+                for direction, frames in directions.items()
+            }
+            for group, directions in loaded.items()
+        }
+
+    @staticmethod
+    def _normalized_set(paths, target_content_height=62, canvas_size=(78, 70),
+                        fixed_scale=None):
         """Scale a whole animation uniformly and bottom-anchor every frame.
 
         A direction gets one scale derived from its tallest visible frame;
         individual frame canvas dimensions never influence their own scale.
         """
-        originals = [pygame.image.load(path).convert_alpha() for path in paths]
+        originals = [
+            path if isinstance(path, pygame.Surface)
+            else pygame.image.load(path).convert_alpha()
+            for path in paths
+        ]
         bounds = [frame.get_bounding_rect(min_alpha=8) for frame in originals]
         tallest = max((bound.height for bound in bounds), default=1)
-        scale = target_content_height / max(1, tallest)
+        scale = fixed_scale if fixed_scale is not None else target_content_height / max(1, tallest)
         normalized = []
 
         for frame, bound in zip(originals, bounds):
@@ -87,6 +160,7 @@ class Enemy:
         return self.active and self.state in ("chase", "attack", "flinch")
 
     def update(self, dt, player_rect, collision_rects, map_width, map_height):
+        self.just_started_attack = False
         if not self.active:
             return 0
         self.attack_cooldown = max(0.0, self.attack_cooldown - dt)
@@ -120,6 +194,7 @@ class Enemy:
             self.action_timer = self.stats.attack_duration
             self.attack_cooldown = self.stats.attack_cooldown
             self.attack_connected = False
+            self.just_started_attack = True
         elif distance <= self.stats.detection_range:
             self.state = "chase"
             speed = self.stats.movement_speed

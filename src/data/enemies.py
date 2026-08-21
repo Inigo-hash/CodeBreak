@@ -24,6 +24,42 @@ description being duplicated.
 
 ENEMIES = {
 
+    "tiyanak_sinta": {
+        "id": "tiyanak_sinta",
+        "name": "Tiyanak",
+        "family": "Tiyanak",
+        "threat": "Low",
+        "portrait": "assets/images/frames/tiyanak_sinta/walking/south/frame_0.png",
+        "description": "A quick, common creature found along the island's outer paths.",
+        "behavior": "Closes in when approached and strikes at short range.",
+        "weakness": "Low endurance makes a clean sword combo effective.",
+        "drops": ["Small scraps"],
+    },
+
+    "manananggal": {
+        "id": "manananggal",
+        "name": "Manananggal",
+        "family": "Manananggal",
+        "threat": "Moderate",
+        "portrait": "assets/images/frames/manananggal/flying/south/frame_0.png",
+        "description": "A flying hunter that guards the island's deeper routes.",
+        "behavior": "Detects intruders from farther away and attacks aggressively.",
+        "weakness": "Dodge its committed strike, then counter during recovery.",
+        "drops": ["Corrupted fragments"],
+    },
+
+    "tikbalang": {
+        "id": "tikbalang",
+        "name": "Tikbalang",
+        "family": "Tikbalang",
+        "threat": "High",
+        "portrait": "assets/images/frames/tikbalang/walking/south/frame_0.png",
+        "description": "A powerful guardian encountered far from the island entrance.",
+        "behavior": "Pursues over a wide area and delivers heavy close-range blows.",
+        "weakness": "Its deliberate approach leaves room to reposition before attacking.",
+        "drops": ["Large corrupted fragments"],
+    },
+
     "duwende_mandurug": {
 
         "id": "duwende_mandurug",

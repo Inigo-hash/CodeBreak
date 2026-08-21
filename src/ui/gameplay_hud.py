@@ -2,19 +2,21 @@
 
 import pygame
 
+from src.ui.theme import UI_COLORS, body_font, draw_panel, title_font
+
 
 ICON_STRIP_PATH = "assets/images/ui/gameplay_hud_icons.png"
 PORTRAIT_PATH = "assets/images/characters/main_character/main_character_profile.png"
 MAX_HEARTS = 5
 
-PANEL = (18, 20, 28, 225)
-INNER = (28, 30, 38, 238)
-METAL = (90, 94, 110)
-GOLD = (210, 170, 74)
-TEXT = (240, 240, 235)
-DIM = (150, 155, 170)
-CRIMSON = (190, 42, 52)
-BLUE = (80, 180, 255)
+PANEL = (*UI_COLORS["stone_deep"], 225)
+INNER = (*UI_COLORS["stone"], 238)
+METAL = UI_COLORS["bronze_dark"]
+GOLD = UI_COLORS["gold"]
+TEXT = UI_COLORS["text"]
+DIM = UI_COLORS["text_dim"]
+CRIMSON = UI_COLORS["crimson"]
+BLUE = UI_COLORS["blue_bright"]
 
 
 class GameplayHUD:
@@ -28,9 +30,9 @@ class GameplayHUD:
         self.inventory = inventory
         self.completed_stage_topics = completed_stage_topics if completed_stage_topics is not None else ()
         self.bonus_time = bonus_time
-        self.font = pygame.font.Font("assets/fonts/Cinzel-VariableFont_wght.ttf", 15)
-        self.bold = pygame.font.Font("assets/fonts/Cinzel-Bold.ttf", 17)
-        self.small = pygame.font.Font("assets/fonts/Cinzel-Bold.ttf", 13)
+        self.font = body_font(15)
+        self.bold = title_font(17)
+        self.small = body_font(13, bold=True)
         self.icons = self._load_icons()
         self.portrait = self._load_portrait()
         self.profile_rect = pygame.Rect(0, 0, 0, 0)
@@ -172,24 +174,20 @@ class GameplayHUD:
         self.screen.blit(text, text.get_rect(center=rect.center))
 
     def _panel(self, rect, emphasized=False):
-        surface = pygame.Surface(rect.size, pygame.SRCALPHA)
-        pygame.draw.rect(surface, PANEL, surface.get_rect(), border_radius=7)
-        pygame.draw.rect(surface, INNER, surface.get_rect().inflate(-8, -8), border_radius=5)
-        pygame.draw.rect(surface, GOLD if emphasized else METAL, surface.get_rect(), 2, border_radius=7)
-        self.screen.blit(surface, rect)
+        draw_panel(self.screen, rect, emphasized=emphasized, radius=7, alpha=225)
 
     def _profile_panel(self, rect, emphasized=False):
         """Carved stone/bronze frame matching main_character_profile.png."""
         surface = pygame.Surface(rect.size, pygame.SRCALPHA)
         local = surface.get_rect()
-        pygame.draw.rect(surface, (15, 13, 12, 238), local, border_radius=5)
-        pygame.draw.rect(surface, (55, 48, 39, 255), local, 5, border_radius=5)
-        pygame.draw.rect(surface, (123, 78, 36, 255), local.inflate(-10, -10), 3, border_radius=4)
-        pygame.draw.rect(surface, (31, 27, 24, 245), local.inflate(-18, -18), border_radius=3)
+        pygame.draw.rect(surface, (*UI_COLORS["stone_deep"], 238), local, border_radius=5)
+        pygame.draw.rect(surface, UI_COLORS["stone_light"], local, 5, border_radius=5)
+        pygame.draw.rect(surface, UI_COLORS["bronze"], local.inflate(-10, -10), 3, border_radius=4)
+        pygame.draw.rect(surface, (*UI_COLORS["stone"], 245), local.inflate(-18, -18), border_radius=3)
         pygame.draw.rect(surface, (9, 23, 36, 235), local.inflate(-24, -24), border_radius=2)
         pygame.draw.rect(
             surface,
-            (235, 150, 56) if emphasized else (94, 67, 42),
+            UI_COLORS["blue"] if emphasized else UI_COLORS["bronze_dark"],
             local.inflate(-24, -24),
             2,
             border_radius=2,
@@ -200,15 +198,15 @@ class GameplayHUD:
         for x, y in ((3, 3), (local.width - cap - 3, 3),
                      (3, local.height - cap - 3),
                      (local.width - cap - 3, local.height - cap - 3)):
-            pygame.draw.rect(surface, (70, 61, 49), (x, y, cap, cap))
-            pygame.draw.rect(surface, (145, 91, 39), (x + 3, y + 3, cap - 6, cap - 6), 2)
+            pygame.draw.rect(surface, UI_COLORS["stone_light"], (x, y, cap, cap))
+            pygame.draw.rect(surface, UI_COLORS["bronze"], (x + 3, y + 3, cap - 6, cap - 6), 2)
 
         gem_center = (local.centerx, 8)
         pygame.draw.polygon(surface, (113, 70, 31), [
             (gem_center[0], 0), (gem_center[0] + 12, 8),
             (gem_center[0], 16), (gem_center[0] - 12, 8),
         ])
-        pygame.draw.polygon(surface, (54, 151, 211), [
+        pygame.draw.polygon(surface, UI_COLORS["blue"], [
             (gem_center[0], 3), (gem_center[0] + 6, 8),
             (gem_center[0], 13), (gem_center[0] - 6, 8),
         ])

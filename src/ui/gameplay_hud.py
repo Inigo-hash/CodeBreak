@@ -18,6 +18,113 @@ DIM = UI_COLORS["text_dim"]
 CRIMSON = UI_COLORS["crimson"]
 BLUE = UI_COLORS["blue_bright"]
 
+# Portrait framing, shared with the full profile screen so the small card and
+# the big one are trimmed the same way.
+PORTRAIT_FRAME = (80, 55, 32)
+PORTRAIT_INNER = (194, 126, 48)
+PORTRAIT_BACKING = (8, 16, 25)
+NAME_GOLD = (236, 205, 149)
+
+
+def load_hud_icons():
+    """Slice the three-cell icon strip: heart, key, topic."""
+    strip = pygame.image.load(ICON_STRIP_PATH).convert_alpha()
+    cell_width = strip.get_width() // 3
+    return [
+        strip.subsurface((index * cell_width, 0, cell_width, strip.get_height())).copy()
+        for index in range(3)
+    ]
+
+
+def load_portrait():
+    return pygame.image.load(PORTRAIT_PATH).convert_alpha()
+
+
+def draw_profile_frame(surface, rect, emphasized=False):
+    """Carved stone/bronze frame matching main_character_profile.png.
+
+    Lives at module level because profile.py draws the same frame at full
+    size — the small HUD card and the screen it opens have to be recognisably
+    the same object.
+    """
+    panel = pygame.Surface(rect.size, pygame.SRCALPHA)
+    local = panel.get_rect()
+    pygame.draw.rect(panel, (*UI_COLORS["stone_deep"], 238), local, border_radius=5)
+    pygame.draw.rect(panel, UI_COLORS["stone_light"], local, 5, border_radius=5)
+    pygame.draw.rect(panel, UI_COLORS["bronze"], local.inflate(-10, -10), 3, border_radius=4)
+    pygame.draw.rect(panel, (*UI_COLORS["stone"], 245), local.inflate(-18, -18), border_radius=3)
+    pygame.draw.rect(panel, (9, 23, 36, 235), local.inflate(-24, -24), border_radius=2)
+    pygame.draw.rect(
+        panel,
+        UI_COLORS["blue"] if emphasized else UI_COLORS["bronze_dark"],
+        local.inflate(-24, -24),
+        2,
+        border_radius=2,
+    )
+
+    # Blocky carved corner caps and central blue focus gem.
+    cap = 16
+    for x, y in ((3, 3), (local.width - cap - 3, 3),
+                 (3, local.height - cap - 3),
+                 (local.width - cap - 3, local.height - cap - 3)):
+        pygame.draw.rect(panel, UI_COLORS["stone_light"], (x, y, cap, cap))
+        pygame.draw.rect(panel, UI_COLORS["bronze"], (x + 3, y + 3, cap - 6, cap - 6), 2)
+
+    gem_center = (local.centerx, 8)
+    pygame.draw.polygon(panel, (113, 70, 31), [
+        (gem_center[0], 0), (gem_center[0] + 12, 8),
+        (gem_center[0], 16), (gem_center[0] - 12, 8),
+    ])
+    pygame.draw.polygon(panel, UI_COLORS["blue"], [
+        (gem_center[0], 3), (gem_center[0] + 6, 8),
+        (gem_center[0], 13), (gem_center[0] - 6, 8),
+    ])
+    surface.blit(panel, rect)
+
+
+def draw_framed_portrait(surface, portrait, rect):
+    """Bronze-trimmed portrait tile, at whatever size `rect` asks for."""
+    pygame.draw.rect(surface, PORTRAIT_BACKING, rect)
+    surface.blit(pygame.transform.scale(portrait, rect.size), rect)
+    pygame.draw.rect(surface, PORTRAIT_FRAME, rect, 4)
+    pygame.draw.rect(surface, PORTRAIT_INNER, rect.inflate(-8, -8), 2)
+
+
+def draw_heart_row(surface, icons, x, y, active, size=25, gap=29):
+    """The five-heart life row. Spent hearts stay in place, greyed out."""
+    heart = pygame.transform.scale(icons[0], (size, size))
+    empty = heart.copy()
+    empty.fill((58, 58, 66, 175), special_flags=pygame.BLEND_RGBA_MULT)
+    active = max(0, min(MAX_HEARTS, int(active)))
+    for index in range(MAX_HEARTS):
+        surface.blit(heart if index < active else empty, (x + index * gap, y))
+
+
+def draw_stat_bar(surface, font, x, y, width, label, current, maximum,
+                  fill_color=CRIMSON, emphasized=False, label_width=92):
+    """Label on the left, thin rounded bar on the right.
+
+    An unset maximum draws as "-- / --" rather than a full-looking 0/0 bar,
+    so a stat that is not wired up yet reads as unknown instead of broken.
+    """
+    ratio = 0.0
+    if current is not None and maximum:
+        current = max(0, min(current, maximum))
+        ratio = current / maximum
+        text = f"{label} {current} / {maximum}"
+    else:
+        text = f"{label} -- / --"
+    surface.blit(font.render(text, True, TEXT if maximum else DIM), (x, y - 1))
+
+    bar = pygame.Rect(x + label_width, y + 2, max(40, width - label_width), 13)
+    pygame.draw.rect(surface, (12, 13, 18), bar, border_radius=3)
+    fill = bar.copy()
+    fill.width = round(bar.width * ratio)
+    if fill.width:
+        pygame.draw.rect(surface, fill_color, fill, border_radius=3)
+    pygame.draw.rect(surface, (255, 90, 90) if emphasized else METAL, bar, 2,
+                     border_radius=3)
+
 
 class GameplayHUD:
     """Render gameplay data without owning or mutating it."""
@@ -38,15 +145,10 @@ class GameplayHUD:
         self.profile_rect = pygame.Rect(0, 0, 0, 0)
 
     def _load_icons(self):
-        strip = pygame.image.load(ICON_STRIP_PATH).convert_alpha()
-        cell_width = strip.get_width() // 3
-        return [
-            strip.subsurface((index * cell_width, 0, cell_width, strip.get_height())).copy()
-            for index in range(3)
-        ]
+        return load_hud_icons()
 
     def _load_portrait(self):
-        return pygame.image.load(PORTRAIT_PATH).convert_alpha()
+        return load_portrait()
 
     def draw(self, interaction_prompt=None, in_combat=False,
              current_hp=None, max_hp=None, bonus_time=None):
@@ -78,14 +180,10 @@ class GameplayHUD:
             106,
             106,
         )
-        pygame.draw.rect(self.screen, (8, 16, 25), portrait_rect)
-        portrait = pygame.transform.scale(self.portrait, portrait_rect.size)
-        self.screen.blit(portrait, portrait_rect)
-        pygame.draw.rect(self.screen, (80, 55, 32), portrait_rect, 4)
-        pygame.draw.rect(self.screen, (194, 126, 48), portrait_rect.inflate(-8, -8), 2)
+        draw_framed_portrait(self.screen, self.portrait, portrait_rect)
 
         text_left = portrait_rect.right + 13
-        self.screen.blit(self.bold.render("BOBILES THE EXPLORER", True, (236, 205, 149)),
+        self.screen.blit(self.bold.render("BOBILES THE EXPLORER", True, NAME_GOLD),
                          (text_left, self.profile_rect.top + 20))
         self.draw_hearts(text_left, self.profile_rect.top + 50)
         self.draw_hp_bar(text_left, self.profile_rect.top + 90,
@@ -93,29 +191,11 @@ class GameplayHUD:
                          current_hp, max_hp, in_combat)
 
     def draw_hearts(self, x, y):
-        active = max(0, min(MAX_HEARTS, int(self.state.get("hearts", 0))))
-        heart = pygame.transform.scale(self.icons[0], (25, 25))
-        empty = heart.copy()
-        empty.fill((58, 58, 66, 175), special_flags=pygame.BLEND_RGBA_MULT)
-        for index in range(MAX_HEARTS):
-            self.screen.blit(heart if index < active else empty, (x + index * 29, y))
+        draw_heart_row(self.screen, self.icons, x, y, self.state.get("hearts", 0))
 
     def draw_hp_bar(self, x, y, width, current_hp, max_hp, emphasized=False):
-        label = "HP -- / --"
-        ratio = 0.0
-        if current_hp is not None and max_hp:
-            current_hp = max(0, min(current_hp, max_hp))
-            ratio = current_hp / max_hp
-            label = f"HP {current_hp} / {max_hp}"
-        label_surface = self.small.render(label, True, TEXT if current_hp is not None else DIM)
-        self.screen.blit(label_surface, (x, y - 1))
-        bar = pygame.Rect(x + 92, y + 2, max(40, width - 92), 13)
-        pygame.draw.rect(self.screen, (12, 13, 18), bar, border_radius=3)
-        fill = bar.copy()
-        fill.width = round(bar.width * ratio)
-        if fill.width:
-            pygame.draw.rect(self.screen, CRIMSON, fill, border_radius=3)
-        pygame.draw.rect(self.screen, (255, 90, 90) if emphasized else METAL, bar, 2, border_radius=3)
+        draw_stat_bar(self.screen, self.small, x, y, width, "HP",
+                      current_hp, max_hp, emphasized=emphasized)
 
     def draw_stage_progress(self, rect):
         self._panel(rect)
@@ -177,40 +257,7 @@ class GameplayHUD:
         draw_panel(self.screen, rect, emphasized=emphasized, radius=7, alpha=225)
 
     def _profile_panel(self, rect, emphasized=False):
-        """Carved stone/bronze frame matching main_character_profile.png."""
-        surface = pygame.Surface(rect.size, pygame.SRCALPHA)
-        local = surface.get_rect()
-        pygame.draw.rect(surface, (*UI_COLORS["stone_deep"], 238), local, border_radius=5)
-        pygame.draw.rect(surface, UI_COLORS["stone_light"], local, 5, border_radius=5)
-        pygame.draw.rect(surface, UI_COLORS["bronze"], local.inflate(-10, -10), 3, border_radius=4)
-        pygame.draw.rect(surface, (*UI_COLORS["stone"], 245), local.inflate(-18, -18), border_radius=3)
-        pygame.draw.rect(surface, (9, 23, 36, 235), local.inflate(-24, -24), border_radius=2)
-        pygame.draw.rect(
-            surface,
-            UI_COLORS["blue"] if emphasized else UI_COLORS["bronze_dark"],
-            local.inflate(-24, -24),
-            2,
-            border_radius=2,
-        )
-
-        # Blocky carved corner caps and central blue focus gem.
-        cap = 16
-        for x, y in ((3, 3), (local.width - cap - 3, 3),
-                     (3, local.height - cap - 3),
-                     (local.width - cap - 3, local.height - cap - 3)):
-            pygame.draw.rect(surface, UI_COLORS["stone_light"], (x, y, cap, cap))
-            pygame.draw.rect(surface, UI_COLORS["bronze"], (x + 3, y + 3, cap - 6, cap - 6), 2)
-
-        gem_center = (local.centerx, 8)
-        pygame.draw.polygon(surface, (113, 70, 31), [
-            (gem_center[0], 0), (gem_center[0] + 12, 8),
-            (gem_center[0], 16), (gem_center[0] - 12, 8),
-        ])
-        pygame.draw.polygon(surface, UI_COLORS["blue"], [
-            (gem_center[0], 3), (gem_center[0] + 6, 8),
-            (gem_center[0], 13), (gem_center[0] - 6, 8),
-        ])
-        self.screen.blit(surface, rect)
+        draw_profile_frame(self.screen, rect, emphasized=emphasized)
 
     def _draw_sword_placeholder(self, x, y):
         pygame.draw.line(self.screen, (190, 195, 205), (x - 7, y + 8), (x + 9, y - 8), 5)

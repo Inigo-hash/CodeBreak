@@ -186,7 +186,7 @@ def game_screen(screen, slot_num=None, save_state=None):
     # --- Fonts ---
     font = body_font(18)
     inspect_font = body_font(20)
-    pause_title_font = title_font(40)
+    pause_title_font = title_font(max(28, int(SCREEN_H * 0.045)))
     pause_button_font = title_font(24)
     INSPECT_TIME = 2.0  # seconds to hold E
 
@@ -463,7 +463,13 @@ def game_screen(screen, slot_num=None, save_state=None):
         ("SETTINGS", "settings"),
         ("RETURN TO MAIN MENU", "main_menu"),
     ]
-    PAUSE_BTN_WIDTH = int(SCREEN_W * 0.25)
+    # Wide enough for the longest label with margin to spare, so "RETURN TO
+    # MAIN MENU" never ends up touching the button's rim on a small screen.
+    PAUSE_BTN_WIDTH = max(
+        int(SCREEN_W * 0.25),
+        max(pause_button_font.size(label)[0] for label, _ in PAUSE_MENU_OPTIONS)
+        + int(SCREEN_W * 0.05),
+    )
     PAUSE_BTN_HEIGHT = int(SCREEN_H * 0.07)
     PAUSE_BTN_GAP = int(SCREEN_H * 0.02)
     total_height = (
@@ -471,7 +477,31 @@ def game_screen(screen, slot_num=None, save_state=None):
         + (len(PAUSE_MENU_OPTIONS) - 1) * PAUSE_BTN_GAP
     )
 
-    pause_by0 = (SCREEN_H - total_height) // 2
+    # The panel is built around its contents rather than sized independently:
+    # title, then the button block, then room for the save message. Centring
+    # the panel and the buttons separately is what used to slide the first
+    # button up over the title.
+    pause_title_surface = pause_title_font.render("PAUSED", True, UI_COLORS["gold"])
+    PAUSE_PAD_TOP = int(SCREEN_H * 0.045)
+    PAUSE_TITLE_GAP = int(SCREEN_H * 0.035)
+    PAUSE_PAD_SIDE = int(SCREEN_W * 0.035)
+    # Bottom padding also has to clear the "Game saved." line, which draws
+    # 34px up from the panel floor.
+    PAUSE_PAD_BOTTOM = max(int(SCREEN_H * 0.05), font.get_height() + 26)
+
+    pause_panel = pygame.Rect(0, 0,
+        max(PAUSE_BTN_WIDTH, pause_title_surface.get_width()) + PAUSE_PAD_SIDE * 2,
+        PAUSE_PAD_TOP + pause_title_surface.get_height() + PAUSE_TITLE_GAP
+        + total_height + PAUSE_PAD_BOTTOM)
+    pause_panel.center = (SCREEN_W // 2, SCREEN_H // 2)
+
+    pause_title_pos = (
+        pause_panel.centerx - pause_title_surface.get_width() // 2,
+        pause_panel.top + PAUSE_PAD_TOP,
+    )
+
+    pause_by0 = (pause_panel.top + PAUSE_PAD_TOP
+                 + pause_title_surface.get_height() + PAUSE_TITLE_GAP)
     pause_center_x = SCREEN_W // 2 - PAUSE_BTN_WIDTH // 2
 
     pause_buttons = []
@@ -508,29 +538,12 @@ def game_screen(screen, slot_num=None, save_state=None):
         surf.blit(overlay, (0, 0))
 
         # ----- Center panel -----
-        panel_width = min(520, int(SCREEN_W * 0.42))
-        panel_height = min(420, int(SCREEN_H * 0.60))
-
-        panel = pygame.Rect(
-            (SCREEN_W - panel_width) // 2,
-            (SCREEN_H - panel_height) // 2,
-            panel_width,
-            panel_height
-        )
-
+        panel = pause_panel
         draw_panel(surf, panel, radius=10)
 
         # ----- Title -----
-        title = pause_title_font.render("PAUSED", True, UI_COLORS["gold"])
-        surf.blit(
-            title,
-            (
-                panel.centerx - title.get_width() // 2,
-                panel.top + 30
-            )
-        )
+        surf.blit(pause_title_surface, pause_title_pos)
 
-        # ----- Buttons -----
         # ----- Buttons -----
         for btn in pause_buttons:
             hovered = btn["rect"].collidepoint(mouse_pos)
@@ -709,6 +722,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                             name=profile_name,
                             hp=player_combat.hp, max_hp=player_combat.max_hp,
                             pp=0, max_pp=0,
+                            hearts=gameplay_state["hearts"],
                         )
 
             if event.type == pygame.MOUSEBUTTONUP:

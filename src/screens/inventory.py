@@ -417,7 +417,6 @@ class InventoryScreen:
         self.font_item = body_font(20, bold=True)
         self.font_index = body_font(12, bold=True)
         self.font_hint = body_font(14, bold=True)
-        self.font_empty = body_font(16, bold=True)
 
         # --- Panel geometry ------------------------------------------------
         # Sized from the grid itself, so the slots are always perfectly centred
@@ -522,19 +521,8 @@ class InventoryScreen:
             _draw_slot(self.screen, rect, self.inventory.bag[i],
                        self.font_item, border)
 
-        # "Your bag is empty" note, centred over the grid while it has no items.
-        if all(slot is None for slot in self.inventory.bag):
-            last_bag = self.bag_rects_local[-1]
-            grid_rect = pygame.Rect(
-                panel_rect.left + first_bag.left,
-                panel_rect.top + first_bag.top,
-                last_bag.right - first_bag.left,
-                last_bag.bottom - first_bag.top
-            )
-            note = self.font_empty.render("Your bag is empty", True, TEXT_DIM)
-            self.screen.blit(note,
-                             (grid_rect.centerx - note.get_width() // 2,
-                              grid_rect.centery - note.get_height() // 2))
+        # An empty bag needs no caption: the empty slots already say it, and a
+        # note floating across the middle of the grid only crowds them.
 
         # --- Divider between the bag and the equipped row --------------------
         first_eq = self.equipped_rects_local[0]

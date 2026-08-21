@@ -41,6 +41,7 @@ empty boxes, and there is no icon art in assets/ yet.
 import pygame
 
 from src.ui.editor_widgets import wrap_text
+from src.ui.theme import UI_COLORS, body_font, title_font
 
 
 # ---------------------------------------------------------------------------
@@ -49,18 +50,18 @@ from src.ui.editor_widgets import wrap_text
 # imports these rather than redefining them, so the rail and the screen it
 # opens can never drift apart.
 # ---------------------------------------------------------------------------
-PANEL_BG      = (36, 38, 48)
-PANEL_INNER   = (26, 28, 36)
+PANEL_BG      = UI_COLORS["stone"]
+PANEL_INNER   = UI_COLORS["stone_deep"]
 PANEL_ALPHA   = 205             # tracker/rail are see-through, like the hotbar
-METAL_FRAME   = (90, 94, 110)
-FRAME_HOVER   = (140, 146, 165)
-ACCENT        = (255, 220, 120)  # gold, matches the selected hotbar slot
-ACCENT_DIM    = (170, 148, 82)
-TEXT_MAIN     = (255, 255, 255)
-TEXT_DIM      = (150, 155, 170)
+METAL_FRAME   = UI_COLORS["bronze_dark"]
+FRAME_HOVER   = UI_COLORS["blue_bright"]
+ACCENT        = UI_COLORS["gold"]
+ACCENT_DIM    = UI_COLORS["bronze"]
+TEXT_MAIN     = UI_COLORS["text"]
+TEXT_DIM      = UI_COLORS["text_dim"]
 TEXT_DONE     = (120, 200, 140)
-BUTTON_BG     = (42, 46, 58)
-BUTTON_HOVER  = (60, 90, 130)
+BUTTON_BG     = UI_COLORS["stone_light"]
+BUTTON_HOVER  = (43, 73, 101)
 
 # ---------------------------------------------------------------------------
 # Layout
@@ -165,10 +166,10 @@ class StagePanel:
 
         screen_w, _ = screen.get_size()
 
-        self.font_title = pygame.font.SysFont("consolas", 14, bold=True)
-        self.font_row = pygame.font.SysFont("consolas", 13)
-        self.font_button = pygame.font.SysFont("consolas", 13, bold=True)
-        self.font_key = pygame.font.SysFont("consolas", 12, bold=True)
+        self.font_title = title_font(14)
+        self.font_row = body_font(13)
+        self.font_button = title_font(13)
+        self.font_key = body_font(12, bold=True)
 
         self.row_height = self.font_row.get_height()
 

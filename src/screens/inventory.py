@@ -82,7 +82,8 @@ class Item:
     slot renderer falls back to drawing the first letter of the item's name.
     """
 
-    def __init__(self, name, icon=None, count=1, description="", kind="item", topic_id=None):
+    def __init__(self, name, icon=None, count=1, description="", kind="item",
+                 topic_id=None, damage=None):
         self.name = name
         self.icon = icon
         self.count = count
@@ -94,6 +95,8 @@ class Item:
 
         # Only used when kind == "topic".
         self.topic_id = topic_id
+        # Used only by weapon items. Combat falls back safely when absent.
+        self.damage = damage
 
 
 class PlayerInventory:

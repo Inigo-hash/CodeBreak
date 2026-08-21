@@ -46,6 +46,12 @@ SILVER_DARK = (95, 98, 105)
 
 SILVER_SHINE = (250, 252, 255)
 
+BRONZE_LIGHT = (218, 177, 86)
+
+BRONZE_MID = (158, 105, 48)
+
+BRONZE_DARK = (78, 50, 29)
+
 WHITE = (255, 255, 255)
 
 
@@ -97,37 +103,51 @@ def draw_gear(surf, center, radius, spin_degrees=0.0):
 
     ix, iy = center
 
-    gear_ring = max(3, round(radius * 0.59))
-    hub_outer = max(2, round(radius * 0.32))
-    hub_inner = max(1, round(radius * 0.27))
-    arc_radius = max(2, round(radius * 0.55))
-    pin_radius = max(1, round(radius * 0.09))
+    root_radius = max(4, round(radius * 0.50))
+    tooth_radius = max(root_radius + 2, round(radius * 0.76))
+    hub_outer = max(3, round(radius * 0.31))
+    hole_radius = max(2, round(radius * 0.15))
 
-    # Base metal ring with dark edge for depth
-    pygame.draw.circle(surf, SILVER_MID, (ix, iy), gear_ring)
-    pygame.draw.circle(surf, SILVER_DARK, (ix, iy), gear_ring, 2)
+    # Twelve blocky teeth give the settings icon a clear cog silhouette.
+    teeth = []
+    tooth_count = 12
+    for tooth in range(tooth_count):
+        center_angle = math.radians(spin_degrees + tooth * 360 / tooth_count)
+        half_tooth = math.radians(5.5)
+        half_gap = math.radians(11.5)
+        for angle, distance in (
+            (center_angle - half_gap, root_radius),
+            (center_angle - half_tooth, tooth_radius),
+            (center_angle + half_tooth, tooth_radius),
+            (center_angle + half_gap, root_radius),
+        ):
+            teeth.append((ix + round(math.cos(angle) * distance),
+                          iy + round(math.sin(angle) * distance)))
+    pygame.draw.polygon(surf, BRONZE_DARK, teeth)
+    pygame.draw.polygon(surf, BRONZE_MID, teeth, 2)
+    pygame.draw.circle(surf, BRONZE_MID, (ix, iy), root_radius)
+    pygame.draw.circle(surf, BRONZE_DARK, (ix, iy), root_radius, 2)
 
-    # Rotating spokes with light/dark faces to read as beveled metal
+    # Six shaded spokes join the rim to a drilled center hub.
     for a in range(0, 360, 60):
         rad = math.radians(a + spin_degrees)
-        x1 = ix + int(hub_inner * math.cos(rad))
-        y1 = iy + int(hub_inner * math.sin(rad))
-        x2 = ix + int(gear_ring * math.cos(rad))
-        y2 = iy + int(gear_ring * math.sin(rad))
-        pygame.draw.line(surf, SILVER_LIGHT, (x1, y1), (x2, y2), 2)
-        pygame.draw.line(surf, SILVER_DARK, (x1 + 1, y1 + 1), (x2 + 1, y2 + 1), 1)
+        x1 = ix + round(hub_outer * math.cos(rad))
+        y1 = iy + round(hub_outer * math.sin(rad))
+        x2 = ix + round(root_radius * math.cos(rad))
+        y2 = iy + round(root_radius * math.sin(rad))
+        pygame.draw.line(surf, BRONZE_LIGHT, (x1, y1), (x2, y2), 3)
+        pygame.draw.line(surf, BRONZE_DARK, (x1 + 1, y1 + 1), (x2 + 1, y2 + 1), 1)
 
-    # Inner hub
-    pygame.draw.circle(surf, SILVER_DARK, (ix, iy), hub_outer)
-    pygame.draw.circle(surf, SILVER_MID, (ix, iy), hub_inner)
-    pygame.draw.circle(surf, SILVER_LIGHT, (ix, iy), hub_inner, 1)
-
-    # Fixed highlight arc (doesn't rotate) to sell the "shiny metal" look
-    bbox = (ix - arc_radius, iy - arc_radius, arc_radius * 2, arc_radius * 2)
-    pygame.draw.arc(surf, SILVER_SHINE, bbox, math.radians(120), math.radians(200), 2)
-
-    # Center pin
-    pygame.draw.circle(surf, WHITE, (ix, iy), pin_radius)
+    pygame.draw.circle(surf, BRONZE_DARK, (ix, iy), hub_outer)
+    pygame.draw.circle(surf, BRONZE_LIGHT, (ix, iy), hub_outer, 2)
+    pygame.draw.circle(surf, STONE_DARK, (ix, iy), hole_radius)
+    pygame.draw.circle(surf, BRONZE_DARK, (ix, iy), hole_radius, 1)
+    # Fixed upper-left glint keeps the aged metal readable while rotating.
+    glint_radius = max(3, root_radius - 2)
+    bbox = (ix - glint_radius, iy - glint_radius,
+            glint_radius * 2, glint_radius * 2)
+    pygame.draw.arc(surf, SILVER_SHINE, bbox,
+                    math.radians(125), math.radians(205), 1)
 
 
 def draw_gear_medallion(surf, center, radius, spin_degrees=0.0, seed=None):

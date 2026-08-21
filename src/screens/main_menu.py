@@ -1,6 +1,7 @@
 import math
 import random
 import sys
+from pathlib import Path
 import pygame
 from src.screens.game import game_screen
 from src.settings_state import settings_state as _settings_state
@@ -8,7 +9,7 @@ from src.screens.settings import SettingsPanel
 from src.screens.how_to_play import how_to_play_screen
 from src.screens.start_game_menu import start_game_menu
 from src.ui.gear_icon import draw_gear, draw_medallion
-from src.ui.theme import draw_button, title_font, ui_font
+from src.ui.theme import UI_COLORS, draw_button, draw_panel, title_font, ui_font
 
 MM_ICONS = ["play", "book", "gear", "quit"]
 MM_LABELS = ["START GAME", "HOW TO PLAY", "SETTINGS", "QUIT"]
@@ -61,11 +62,6 @@ GREEN_TIP = (60, 255, 140)
 GREEN_PLAY = (80, 220, 120)
 WHITE = (255, 255, 255)
 METAL_FRAME = (90, 94, 110)
-ROBOT_BLUE = (70, 140, 220)
-SILVER_LIGHT = (225, 228, 232)
-SILVER_MID = (160, 165, 172)
-SILVER_DARK = (95, 98, 105)
-SILVER_SHINE = (250, 252, 255)
 
 def compute_menu_layout(screen_w, screen_h, count):
     """Shared button-layout math so every menu screen (main menu,
@@ -228,29 +224,43 @@ def _draw_menu_icon(surf: pygame.Surface, kind: str, rect: pygame.Rect, hovered:
     radius = 22
     anim = _icon_anim.get(kind, 0.0)  # 0 = idle, 1 = fully hovered
 
+    if anim > 0.02:
+        glow = pygame.Surface((radius * 3, radius * 3), pygame.SRCALPHA)
+        pygame.draw.circle(
+            glow, (*BLUE_GLOW, round(42 * anim)), glow.get_rect().center,
+            round(radius * (1.15 + 0.08 * anim)),
+        )
+        surf.blit(glow, (ix - glow.get_width() // 2, iy - glow.get_height() // 2))
+
     _draw_medallion(surf, (ix, iy), radius, seed=sum(map(ord, kind)))
 
     if kind == "play":
+        # Animated dungeon torch retained as the adventure/start symbol.
         flicker = math.sin(t * 14) * (1 + anim * 4)
         sway = math.sin(t * 9) * anim * 3
-        pygame.draw.rect(surf, (90, 60, 40), (ix - 3, iy - 2, 6, 16), border_radius=2)
-        pygame.draw.rect(surf, (60, 40, 25), (ix - 3, iy - 2, 6, 16), 1, border_radius=2)
+        pygame.draw.rect(surf, (112, 72, 37),
+                         (ix - 3, iy - 1, 6, 17), border_radius=2)
+        pygame.draw.rect(surf, (61, 39, 24),
+                         (ix - 3, iy - 1, 6, 17), 1, border_radius=2)
+        pygame.draw.line(surf, (198, 137, 61),
+                         (ix - 7, iy + 1), (ix + 7, iy + 1), 3)
         flame_outer = [
             (ix + sway, iy - 20 - flicker),
-            (ix - 8, iy - 4),
-            (ix - 4, iy - 2),
-            (ix + sway * 0.5, iy - 6),
-            (ix + 4, iy - 2),
-            (ix + 8, iy - 4),
+            (ix - 8, iy - 5),
+            (ix - 3, iy - 1),
+            (ix + sway * 0.5, iy - 7),
+            (ix + 4, iy - 1),
+            (ix + 8, iy - 5),
         ]
-        pygame.draw.polygon(surf, (255, 140, 60), flame_outer)
+        pygame.draw.polygon(surf, (235, 105, 38), flame_outer)
         flame_inner = [
             (ix + sway * 0.6, iy - 15 - flicker * 0.6),
             (ix - 4, iy - 4),
-            (ix, iy - 7),
+            (ix, iy - 8),
             (ix + 4, iy - 4),
         ]
         pygame.draw.polygon(surf, YELLOW_GLOW, flame_inner)
+        pygame.draw.circle(surf, (255, 241, 178), (ix, iy - 6), 2)
 
     elif kind == "chest":
         half_w = 6 + int(6 * anim)
@@ -273,16 +283,22 @@ def _draw_menu_icon(surf: pygame.Surface, kind: str, rect: pygame.Rect, hovered:
         draw_gear(surf, (ix, iy), radius, spin_degrees=t * speed * 60)
 
     elif kind == "quit":
-        doorway = pygame.Rect(ix - 10, iy - 14, 20, 28)
-        pygame.draw.rect(surf, (15, 10, 8), doorway, border_radius=3)
-        pygame.draw.rect(surf, (30, 18, 15), doorway, 2, border_radius=3)
-        door_w = max(2, int(20 * (1 - 0.7 * anim)))
-        panel = pygame.Rect(ix - 10, iy - 14, door_w, 28)
-        pygame.draw.rect(surf, (60, 38, 30), panel, border_radius=2)
-        pygame.draw.rect(surf, (35, 22, 18), panel, 1, border_radius=2)
-        if door_w > 6:
-            knob_x = ix - 10 + door_w - 4
-            pygame.draw.circle(surf, YELLOW_GLOW, (knob_x, iy), 2)
+        doorway = pygame.Rect(ix - 11, iy - 15, 22, 30)
+        pygame.draw.rect(surf, (13, 12, 15), doorway, border_radius=2)
+        pygame.draw.rect(surf, (151, 100, 46), doorway, 3, border_radius=2)
+        door_w = max(5, round(19 * (1 - 0.45 * anim)))
+        door = pygame.Rect(ix - 9, iy - 12, door_w, 25)
+        pygame.draw.rect(surf, (72, 45, 31), door)
+        pygame.draw.rect(surf, (120, 76, 40), door, 2)
+        pygame.draw.line(surf, (190, 139, 66), (door.left + 3, door.top + 3),
+                         (door.right - 3, door.top + 3), 1)
+        if door_w > 9:
+            pygame.draw.circle(surf, YELLOW_GLOW, (door.right - 4, door.centery), 2)
+        # Small outward arrow clarifies that this doorway exits the game.
+        arrow_x = ix + 8 + round(3 * anim)
+        pygame.draw.line(surf, BLUE_GLOW, (ix, iy), (arrow_x, iy), 2)
+        pygame.draw.polygon(surf, BLUE_GLOW,
+                            [(arrow_x, iy - 4), (arrow_x + 5, iy), (arrow_x, iy + 4)])
             
     elif kind == "book":
         # Open book — pages spread wider on hover, text lines fade in once mostly open
@@ -290,9 +306,9 @@ def _draw_menu_icon(surf: pygame.Surface, kind: str, rect: pygame.Rect, hovered:
         left_page = pygame.Rect(ix - spread - 10, iy - 10, spread + 10, 20)
         right_page = pygame.Rect(ix, iy - 10, spread + 10, 20)
 
-        pygame.draw.rect(surf, (225, 205, 160), left_page,
+        pygame.draw.rect(surf, (218, 198, 151), left_page,
                           border_top_left_radius=2, border_bottom_left_radius=2)
-        pygame.draw.rect(surf, (225, 205, 160), right_page,
+        pygame.draw.rect(surf, (230, 211, 165), right_page,
                           border_top_right_radius=2, border_bottom_right_radius=2)
         pygame.draw.rect(surf, (140, 115, 80), left_page, 1,
                           border_top_left_radius=2, border_bottom_left_radius=2)
@@ -311,6 +327,11 @@ def _draw_menu_icon(surf: pygame.Surface, kind: str, rect: pygame.Rect, hovered:
 
         pygame.draw.circle(surf, YELLOW_GLOW, (ix, iy - 12), 2)  # gold bookmark clasp
 
+        # Blue Python-like rune gives the manual a CodeBreak-specific mark.
+        pygame.draw.line(surf, BLUE_GLOW, (ix + 5, iy - 5), (ix + 10, iy - 5), 1)
+        pygame.draw.line(surf, BLUE_GLOW, (ix + 5, iy - 5), (ix + 5, iy), 1)
+        pygame.draw.circle(surf, BLUE_GLOW, (ix + 9, iy), 1)
+
 def _draw_stone_button(
     surf: pygame.Surface,
     rect: pygame.Rect,
@@ -320,45 +341,117 @@ def _draw_stone_button(
     seed: int,
     t: float = 0.0,
 ) -> None:
+    preview_rect = rect.inflate(4, 4) if hovered else rect
+    text_width = _button_font.size(label)[0]
+    centered_left = preview_rect.centerx - text_width // 2
+    # Keep the label truly centered whenever there is room. Only narrow
+    # buttons receive the minimum shift needed to clear the medallion.
+    minimum_text_left = preview_rect.left + 68
+    text_offset = max(0, minimum_text_left - centered_left)
     r = draw_button(
-        surf, rect, label, _button_font, hovered=hovered, text_offset=18
+        surf, rect, label, _button_font, hovered=hovered,
+        text_offset=text_offset,
     )
     _draw_menu_icon(surf, icon, pygame.Rect(r.left, r.top, r.w, r.h), hovered, t)
 
 
-def _draw_robot_tip(surf: pygame.Surface, t: float) -> None:
-    rx, ry = SCREEN_WIDTH - 90, SCREEN_HEIGHT - 140
-    pygame.draw.rect(surf, ROBOT_BLUE, (rx - 36, ry - 50, 72, 70), border_radius=6)
-    pygame.draw.rect(surf, (40, 90, 150), (rx - 36, ry - 50, 72, 70), 2, border_radius=6)
-    pygame.draw.rect(surf, (20, 40, 70), (rx - 24, ry - 42, 48, 28))
-    eye_y = ry - 32
-    pygame.draw.rect(surf, (180, 220, 255), (rx - 16, eye_y, 12, 8))
-    pygame.draw.rect(surf, (180, 220, 255), (rx + 4, eye_y, 12, 8))
-    pygame.draw.rect(surf, (60, 80, 120), (rx - 6, eye_y + 12, 12, 3))
-    pygame.draw.rect(surf, ROBOT_BLUE, (rx - 50, ry - 30, 14, 36), border_radius=3)
-    pygame.draw.rect(surf, ROBOT_BLUE, (rx + 36, ry - 30, 14, 36), border_radius=3)
-    scr = pygame.Rect(rx + 44, ry - 38, 28, 40)
-    pygame.draw.rect(surf, (230, 210, 160), scr, border_radius=2)
-    pygame.draw.rect(surf, (120, 100, 70), scr, 1, border_radius=2)
-    pygame.draw.rect(surf, ROBOT_BLUE, (rx - 22, ry + 18, 16, 22), border_radius=3)
-    pygame.draw.rect(surf, ROBOT_BLUE, (rx + 6, ry + 18, 16, 22), border_radius=3)
+_mang_idle_cache = None
 
-    # Tip box anchored off the robot's own position (rx/ry) instead of a
-    # fixed SCREEN_WIDTH offset, so moving the robot moves the box with it.
-    robot_left_edge = rx - 50  # leftmost point of the robot (its arm)
+
+def _load_mang_tahimik_idle():
+    """Load authored idle frames when present, otherwise the existing portrait."""
+    global _mang_idle_cache
+    if _mang_idle_cache is not None:
+        return _mang_idle_cache
+
+    idle_root = Path("assets/images/characters/mang_tahimik/idle")
+    paths = sorted(
+        idle_root.rglob("frame_*.png"),
+        key=lambda path: int(path.stem.rsplit("_", 1)[1]),
+    ) if idle_root.exists() else []
+    if not paths:
+        paths = [Path("assets/images/characters/mang_tahimik/portrait.png")]
+
+    originals = [pygame.image.load(str(path)).convert_alpha() for path in paths]
+    target_height = max(96, min(136, round(SCREEN_HEIGHT * 0.145)))
+    scale = target_height / max(frame.get_height() for frame in originals)
+    scaled = [
+        pygame.transform.scale(
+            frame,
+            (max(1, round(frame.get_width() * scale)),
+             max(1, round(frame.get_height() * scale))),
+        )
+        for frame in originals
+    ]
+    canvas_size = (max(frame.get_width() for frame in scaled), target_height)
+    _mang_idle_cache = []
+    for frame in scaled:
+        canvas = pygame.Surface(canvas_size, pygame.SRCALPHA)
+        canvas.blit(frame, frame.get_rect(midbottom=canvas.get_rect().midbottom))
+        _mang_idle_cache.append(canvas)
+    return _mang_idle_cache
+
+
+def _draw_mang_tahimik_tip(surf: pygame.Surface, t: float) -> None:
+    frames = _load_mang_tahimik_idle()
+    frame = frames[int(t / 0.14) % len(frames)]
+    ground_y = SCREEN_HEIGHT - 98
+    center_x = SCREEN_WIDTH - 92
+    idle_bob = round(math.sin(t * 2.4) * 2)
+    character_rect = frame.get_rect(midbottom=(center_x, ground_y + idle_bob))
+
+    # A soft floor shadow keeps the transparent pixel art visually grounded.
+    shadow = pygame.Surface((frame.get_width(), 18), pygame.SRCALPHA)
+    pygame.draw.ellipse(shadow, (0, 0, 0, 105), shadow.get_rect().inflate(-16, -8))
+    surf.blit(shadow, (character_rect.centerx - shadow.get_width() // 2,
+                       ground_y - shadow.get_height() // 2 + 4))
+    surf.blit(frame, character_rect)
+
+    # Preserve the existing tip-box footprint, anchored just left of Mang.
+    character_left_edge = character_rect.left
     tip_gap = 20
-    tip_w, tip_h = 300, 72
-    tip_r = pygame.Rect(robot_left_edge - tip_gap - tip_w, ry + 22, tip_w, tip_h)
+    tip_lines = ["Think before you type...", "The dungeon punishes mistakes."]
+    minimum_tip_width = max(_tip_font.size(line)[0] for line in tip_lines) + 24
+    # The fixed menu column ends at 60% of the screen width. On smaller
+    # windows, narrow the tip rather than allowing it beneath a button.
+    menu_right = round(SCREEN_WIDTH * 0.60)
+    available_width = character_left_edge - tip_gap - (menu_right + 18)
+    tip_w = max(minimum_tip_width, min(300, available_width))
+    tip_h = 88
+    tip_r = pygame.Rect(character_left_edge - tip_gap - tip_w,
+                        ground_y - tip_h + 18, tip_w, tip_h)
 
-    pulse = int(80 + 40 * math.sin(t * 3))
-    pygame.draw.rect(surf, (10, 40, 20), tip_r, border_radius=4)
-    pygame.draw.rect(surf, (GREEN_TIP[0] // 2, GREEN_TIP[1] // 2, GREEN_TIP[2] // 2), tip_r, 2, border_radius=4)
-    glow_s = pygame.Surface((tip_r.w, tip_r.h), pygame.SRCALPHA)
-    pygame.draw.rect(glow_s, (*GREEN_TIP[:3], pulse // 4), glow_s.get_rect(), border_radius=4)
-    surf.blit(glow_s, tip_r.topleft)
-    tip_lines = ["TIP: Think before you type...", "The dungeon punishes mistakes."]
+    draw_panel(surf, tip_r, radius=7, alpha=246)
+
+    # Small bronze pins and a magical-blue gem echo the menu medallions.
+    for corner in (
+        (tip_r.left + 8, tip_r.top + 8),
+        (tip_r.right - 8, tip_r.top + 8),
+        (tip_r.left + 8, tip_r.bottom - 8),
+        (tip_r.right - 8, tip_r.bottom - 8),
+    ):
+        pygame.draw.circle(surf, UI_COLORS["bronze"], corner, 2)
+
+    gem_x = tip_r.centerx
+    pygame.draw.polygon(surf, UI_COLORS["bronze_dark"], [
+        (gem_x, tip_r.top - 3), (gem_x + 8, tip_r.top + 4),
+        (gem_x, tip_r.top + 11), (gem_x - 8, tip_r.top + 4),
+    ])
+    pygame.draw.circle(surf, UI_COLORS["blue_bright"],
+                       (gem_x, tip_r.top + 4), 3)
+
+    heading = _tip_font.render(
+        "MANG TAHIMIK'S WISDOM", True, UI_COLORS["gold"]
+    )
+    surf.blit(heading, (tip_r.left + 14, tip_r.top + 10))
+    divider_y = tip_r.top + 34
+    pygame.draw.line(surf, UI_COLORS["bronze_dark"],
+                     (tip_r.left + 12, divider_y),
+                     (tip_r.right - 12, divider_y), 1)
     for i, line in enumerate(tip_lines):
-        surf.blit(_tip_font.render(line, True, GREEN_TIP), (tip_r.left + 12, tip_r.top + 10 + i * 22))
+        color = UI_COLORS["parchment"] if i == 0 else UI_COLORS["text_dim"]
+        surf.blit(_tip_font.render(line, True, color),
+                  (tip_r.left + 14, tip_r.top + 42 + i * 20))
 
 
 def main_menu():
@@ -472,7 +565,7 @@ def main_menu():
         for rect, label, icon, h, seed in zip(rects, labels, icons, hovers, seeds):
             _draw_stone_button(screen, rect, label, icon, h, seed, t)
 
-        _draw_robot_tip(screen, t)
+        _draw_mang_tahimik_tip(screen, t)
         ver = _small.render("v1.0", True, WHITE)
         screen.blit(ver, (16, SCREEN_HEIGHT - ver.get_height() - 12))
 

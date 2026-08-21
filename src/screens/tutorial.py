@@ -2,6 +2,9 @@ import pygame
 import sys
 from src.settings_state import settings_state as _settings_state
 from src.entities.player import MainCharacter
+from src.entities.enemy import Enemy
+from src.systems.combat import PlayerCombat, attack_hitbox
+from src.systems.audio import CombatAudio
 from src.ui.code_editor import CodeEditor
 from src.data.challenges import CHALLENGES
 from src.screens.how_to_play import (
@@ -25,8 +28,6 @@ def tutorial_screen(screen, play_music=True):
     WHITE = (255, 255, 255)
     DIM_TEXT = (180, 180, 190)
     BG_FLOOR = (34, 36, 44)
-    DUMMY_FALLBACK_COLOR = (140, 90, 60)
-    DUMMY_HIT_TINT = (255, 140, 60)
 
     # --- Fonts ---
     name_font = pygame.font.SysFont("consolas", 22, bold=True)
@@ -68,29 +69,6 @@ def tutorial_screen(screen, play_music=True):
             pygame.draw.rect(surf, (220, 230, 220), (rect.left + 24, cy, rect.width - 48, 50), border_radius=10)
             pygame.draw.circle(surf, (30, 30, 38), (cx - 12, cy - 24), 4)
             pygame.draw.circle(surf, (30, 30, 38), (cx + 12, cy - 24), 4)
-
-    # --- Training dummy sprite: reuse the static enemy asset (yuunp) as a stand-in ---
-    # NOTE: I don't know the exact filename in your project — adjust this path.
-    # Falls back to the old brown placeholder box if it doesn't load.
-    DUMMY_SIZE = (64, 64)
-    dummy_sprite = None
-    try:
-        dummy_sprite = pygame.image.load("assets/images/enemies/static_enemy.png").convert_alpha()
-        dummy_sprite = pygame.transform.scale(dummy_sprite, DUMMY_SIZE)
-    except Exception:
-        dummy_sprite = None
-
-    def draw_dummy(surf, rect, hit, tint_color=DUMMY_HIT_TINT):
-        if dummy_sprite:
-            surf.blit(dummy_sprite, rect.topleft)
-            if hit:
-                tint = pygame.Surface(rect.size, pygame.SRCALPHA)
-                tint.fill((*tint_color, 120))
-                surf.blit(tint, rect.topleft)
-        else:
-            color = tint_color if hit else DUMMY_FALLBACK_COLOR
-            pygame.draw.rect(surf, color, rect, border_radius=4)
-            pygame.draw.rect(surf, METAL_FRAME, rect, 2, border_radius=4)
 
     # ------------------------------------------------------------------
     # Dialogue system: portrait + textbox, advance on click / E / SPACE
@@ -176,9 +154,15 @@ def tutorial_screen(screen, play_music=True):
     player_speed = 2.5
     main_character.center_x, main_character.center_y = player_rect.centerx, player_rect.centery
 
-    dummy_rect = pygame.Rect(SCREEN_WIDTH // 2 + 220, SCREEN_HEIGHT // 2 - 32, *DUMMY_SIZE)
-    dummy_flash_timer = 0.0
-    dummy_flash_color = DUMMY_HIT_TINT
+    training_enemy = Enemy(
+        screen, SCREEN_WIDTH, SCREEN_HEIGHT,
+        world_x=SCREEN_WIDTH // 2 + 220,
+        world_y=SCREEN_HEIGHT // 2,
+        enemy_id="tiyanak_sinta",
+    )
+    player_combat = PlayerCombat()
+    combat_audio = CombatAudio()
+    attack_has_hit = False
 
     has_moved = {"up": False, "down": False, "left": False, "right": False}
     has_attacked = False
@@ -202,7 +186,7 @@ def tutorial_screen(screen, play_music=True):
     intro_lines = [
         "Ah, a new soul in CodeBreak... I am Mang Tahimik, and I will guide you through these halls.",
         "Use W, A, S, D to move. Try walking in every direction so your legs remember the way.",
-        "When you're ready, press E near the training dummy to strike it. Combat will save your life down here.",
+        "When you're ready, face the training Tiyanak and press E to strike it. Combat will save your life down here.",
     ]
     movement_complete_lines = [
         "Good. Your body knows how to move, and your blade knows how to strike.",
@@ -234,7 +218,7 @@ def tutorial_screen(screen, play_music=True):
         used elsewhere in the codebase, e.g. game.py's F5 handler),
         then folds the result back into the tutorial's own state
         machine depending on whether the player actually solved it."""
-        nonlocal state, dialogue, has_solved, dummy_flash_timer, dummy_flash_color
+        nonlocal state, dialogue, has_solved
 
         challenge = CHALLENGES["print_001"]
         background_snapshot = screen.copy()
@@ -244,13 +228,9 @@ def tutorial_screen(screen, play_music=True):
 
         if editor.solved:
             has_solved = True
-            dummy_flash_timer = 0.25
-            dummy_flash_color = GREEN_OK
             dialogue = DialogueBox(challenge_complete_lines, on_finish=finish_challenge_complete)
             state = "challenge_complete_dialogue"
         else:
-            dummy_flash_timer = 0.15
-            dummy_flash_color = DUMMY_HIT_TINT
             dialogue = DialogueBox(retry_lines, on_finish=open_code_editor)
             state = "retry_dialogue"
 
@@ -344,10 +324,9 @@ def tutorial_screen(screen, play_music=True):
                 dialogue.handle_event(event)
 
             if state == "practice" and event.type == pygame.KEYDOWN and event.key == pygame.K_e:
-                if player_rect.colliderect(dummy_rect.inflate(30, 30)):
-                    has_attacked = True
-                    dummy_flash_timer = 0.15
-                    dummy_flash_color = DUMMY_HIT_TINT
+                if player_combat.start_attack():
+                    attack_has_hit = False
+                    combat_audio.play("sword_swing")
 
             if state == "stage_manual":
                 begin_pressed = (
@@ -363,6 +342,7 @@ def tutorial_screen(screen, play_music=True):
         keys = pygame.key.get_pressed()
 
         if state == "practice":
+            player_combat.update(dt)
             dx = dy = 0
             if keys[pygame.K_w] or keys[pygame.K_UP]:
                 dy = -1; has_moved["up"] = True
@@ -377,8 +357,11 @@ def tutorial_screen(screen, play_music=True):
                 dx *= 0.7071
                 dy *= 0.7071
 
-            dx *= player_speed
-            dy *= player_speed
+            if player_combat.locked:
+                dx = dy = 0
+            else:
+                dx *= player_speed
+                dy *= player_speed
 
             # No obstacles in the tutorial room, just screen-bound clamping,
             # handled inside update_position via map_width/map_height.
@@ -387,13 +370,30 @@ def tutorial_screen(screen, play_music=True):
             )
             player_x, player_y = main_character.pos_x, main_character.pos_y
 
-            if dummy_flash_timer > 0:
-                dummy_flash_timer -= dt
+            # Use the real enemy state machine and animations. Tutorial
+            # damage is intentionally ignored so no campaign hearts are lost.
+            training_enemy.update(
+                dt, player_rect, [], SCREEN_WIDTH, SCREEN_HEIGHT
+            )
 
-            if gate_complete():
+            if player_combat.attack_active and not attack_has_hit:
+                sword_box = attack_hitbox(player_rect, main_character.facing)
+                if sword_box.colliderect(training_enemy.rect):
+                    attack_has_hit = True
+                    training_enemy.receive_damage(20)
+                    combat_audio.play("sword_hit")
+                    if training_enemy.hp == 0:
+                        has_attacked = True
+                        combat_audio.play("enemy_death")
+                    else:
+                        combat_audio.play("enemy_hurt")
+
+            if (gate_complete() and not training_enemy.active
+                    and player_combat.state != "attacking"):
                 dialogue = DialogueBox(movement_complete_lines, on_finish=start_code_editor_intro)
                 state = "movement_complete_dialogue"
 
+            main_character.set_combat_state(player_combat.state)
             main_character.update_frames(keys)
 
         if state == "done":
@@ -409,7 +409,7 @@ def tutorial_screen(screen, play_music=True):
         for gy in range(0, SCREEN_HEIGHT, 64):
             pygame.draw.line(screen, (40, 42, 52), (0, gy), (SCREEN_WIDTH, gy), 1)
 
-        draw_dummy(screen, dummy_rect, dummy_flash_timer > 0, dummy_flash_color)
+        training_enemy.draw_frames(ZOOM, camera_x, camera_y)
 
         main_character.draw_frames(ZOOM, camera_x, camera_y)
 
@@ -419,7 +419,7 @@ def tutorial_screen(screen, play_music=True):
                 ("Move DOWN (S)", has_moved["down"]),
                 ("Move LEFT (A)", has_moved["left"]),
                 ("Move RIGHT (D)", has_moved["right"]),
-                ("Attack dummy (E)", has_attacked),
+                ("Defeat the Tiyanak (E)", has_attacked),
             ]
             panel = pygame.Rect(20, 20, 260, 30 + len(checklist) * 26)
             pygame.draw.rect(screen, STONE_MID, panel, border_radius=8)
@@ -432,9 +432,13 @@ def tutorial_screen(screen, play_music=True):
                 line = hint_font.render(f"{mark} {label}", True, color)
                 screen.blit(line, (panel.left + 14, panel.top + 38 + i * 24))
 
-            if not player_rect.colliderect(dummy_rect.inflate(30, 30)):
-                hint = hint_font.render("Walk up to the dummy and press E to attack", True, DIM_TEXT)
-                screen.blit(hint, (dummy_rect.centerx - hint.get_width() // 2, dummy_rect.top - 26))
+            sword_box = attack_hitbox(player_rect, main_character.facing)
+            if not sword_box.colliderect(training_enemy.rect):
+                hint = hint_font.render("Face the Tiyanak, move closer, and press E", True, DIM_TEXT)
+                screen.blit(hint, (
+                    training_enemy.rect.centerx - hint.get_width() // 2,
+                    training_enemy.rect.top - 36,
+                ))
 
         if state == "stage_manual":
             draw_stage_manual(screen, mouse_pos)

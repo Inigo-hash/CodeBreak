@@ -52,6 +52,7 @@ def new_game_state() -> dict:
         "hearts": 5,
         "keys": 0,
         "topics_completed": [],
+        "bonus_time": 0,
         "challenges_passed": [],
         "map_position": None,
         "inventory": [],

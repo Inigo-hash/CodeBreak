@@ -7,7 +7,8 @@ Each challenge is pure data.
 No validation logic belongs here.
 """
 
-CHALLENGES = { 
+
+CHALLENGES = {
 
     "variables_001": {
 
@@ -19,23 +20,7 @@ CHALLENGES = {
 
         "type": "variable",
 
-        "lesson":
-
-        """
-Variables are used to store information.
-
-Examples
-
-score = 100
-
-name = "John"
-
-age = 18
-        """,
-
-        "problem":
-
-        """
+        "problem": """
 Create a variable named
 
 age
@@ -50,14 +35,11 @@ and assign the value
         "requirements": [],
 
         "expected": {
-
             "name": "age",
-
             "value": 18
-
         }
-
     },
+
 
     "print_001": {
 
@@ -69,34 +51,29 @@ and assign the value
 
         "type": "print",
 
-        "lesson":
-
-        """
-print() displays text on the screen.
-
-Example
-
-print("I am a warrior")
-        """,
-
-        "problem":
-
-        """
+        "problem": """
 Use print() to display the message
 
 Hello, World!
         """,
 
-        "objective": 'Use print() to display: Hello, World!',
+        "objective": "Use print() to display: Hello, World!",
 
         "requirements": [],
 
         "expected": {
-
             "value": "Hello, World!"
-
         }
-
     }
 
 }
+
+
+def get_challenge(challenge_id):
+    """
+    Return a coding challenge by id.
+
+    Returns None if the challenge does not exist.
+    """
+
+    return CHALLENGES.get(challenge_id)

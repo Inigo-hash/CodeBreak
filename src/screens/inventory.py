@@ -82,11 +82,18 @@ class Item:
     slot renderer falls back to drawing the first letter of the item's name.
     """
 
-    def __init__(self, name, icon=None, count=1, description=""):
-        self.name = name                # display name, e.g. "Rusty Sword"
-        self.icon = icon                # optional pygame.Surface
-        self.count = count              # stack size, drawn in the corner
-        self.description = description  # reserved for a future tooltip
+    def __init__(self, name, icon=None, count=1, description="", kind="item", topic_id=None):
+        self.name = name
+        self.icon = icon
+        self.count = count
+        self.description = description
+
+        # "item" for normal inventory objects,
+        # "topic" for discovered learning topics.
+        self.kind = kind
+
+        # Only used when kind == "topic".
+        self.topic_id = topic_id
 
 
 class PlayerInventory:
@@ -143,6 +150,43 @@ class PlayerInventory:
         """True when the player carries nothing at all."""
         return all(s is None for s in self.toolbar + self.bag)
 
+    def add_topic(self, topic_id, topic_name, icon=None):
+        """
+        Store a discovered learning topic in the bag.
+
+        Topics never enter the toolbar because they are learning
+        resources, not equipable gameplay items.
+        """
+
+        # Don't add the same topic twice.
+        for slot in self.bag:
+
+            if (
+                slot is not None
+                and getattr(slot, "kind", None) == "topic"
+                and getattr(slot, "topic_id", None) == topic_id
+            ):
+
+                return False
+
+        topic_item = Item(
+            name=topic_name,
+            icon=icon,
+            count=1,
+            description="Learning Topic",
+            kind="topic",
+            topic_id=topic_id
+        )
+
+        for i, slot in enumerate(self.bag):
+
+            if slot is None:
+
+                self.bag[i] = topic_item
+
+                return True
+
+        return False
 
 # ===========================================================================
 #  SHARED DRAWING HELPERS

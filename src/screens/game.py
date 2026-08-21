@@ -21,6 +21,9 @@ from src.ui.stage_panel import StagePanel
 from src.data.zones import ZONES, get_zone_at
 from src.data.stages import get_stage
 from src.screens.topic_found import open_topic_found
+from src.data.topics import get_topic
+from src.data.challenges import get_challenge
+from src.screens.topic_lesson import open_topic_lesson
 
 def game_screen(screen, slot_num=None, save_state=None):
     clock = pygame.time.Clock()
@@ -979,18 +982,97 @@ def game_screen(screen, slot_num=None, save_state=None):
 
                         if decision == "start":
 
-                            print(
-                                f"Start topic lesson: {topic_id}"
-                            )
+                            topic = get_topic(topic_id)
 
-                            # NEXT STEP:
-                            # open_topic_lesson(...)
+                            if topic is None:
+
+                                print(
+                                    f"Unknown topic id: {topic_id}"
+                                )
+
+                            else:
+
+                                lesson_background = screen.copy()
+
+                                lesson_result = open_topic_lesson(
+                                    screen,
+                                    topic,
+                                    lesson_background
+                                )
+
+                                if lesson_result == "challenge":
+
+                                    challenge_id = topic.get(
+                                        "challenge_id"
+                                    )
+
+                                    challenge = get_challenge(
+                                        challenge_id
+                                    )
+
+                                    if challenge is None:
+
+                                        print(
+                                            f"Challenge not found: {challenge_id}"
+                                        )
+
+                                    else:
+
+                                        editor_background = screen.copy()
+
+                                        editor = CodeEditor(
+                                            screen,
+                                            challenge,
+                                            editor_background
+                                        )
+
+                                        editor.run()
+
+                                        if editor.solved:
+
+                                            if (
+                                                challenge_id
+                                                not in save_challenges_passed
+                                            ):
+
+                                                save_challenges_passed.append(
+                                                    challenge_id
+                                                )
+
+                                            stage_progress.sync_objectives(
+                                                stage,
+                                                save_challenges_passed
+                                            )
 
                         elif decision == "store":
 
-                            print(
-                                f"Store topic in inventory: {topic_id}"
-                            )
+                            topic = get_topic(topic_id)
+
+                            if topic is None:
+
+                                print(
+                                    f"Unknown topic id: {topic_id}"
+                                )
+
+                            else:
+
+                                stored = player_inventory.add_topic(
+                                    topic_id,
+                                    topic["title"]
+                                )
+
+                                if stored:
+
+                                    print(
+                                        f"Stored topic: {topic['title']}"
+                                    )
+
+                                else:
+
+                                    print(
+                                        f"Topic already stored or bag is full: "
+                                        f"{topic['title']}"
+                                    )
 
                             # NEXT STEP:
                             # player_inventory.add_topic(...)

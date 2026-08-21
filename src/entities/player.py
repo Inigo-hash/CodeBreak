@@ -2,6 +2,8 @@ import pygame
 import numpy as np
 import math
 
+from src.systems.combat import ATTACK_FRAME_DURATION, DEATH_FRAME_COUNT, DEATH_FRAME_DURATION
+
 
 class MainCharacter():
     def __init__(self, screen, map_width, map_height):
@@ -52,6 +54,60 @@ class MainCharacter():
                 for f in frames
             ]
 
+        combat_directions = {
+            'right': 'right', 'left': 'left',
+            'forward': 'forward', 'backward': 'backward',
+            'northeast': 'forward_right', 'northwest': 'forward_left',
+            'southeast': 'backward_right', 'southwest': 'backward_left',
+        }
+        compass_directions = {
+            'right': 'east', 'left': 'west',
+            'forward': 'north', 'backward': 'south',
+            'northeast': 'north-east', 'northwest': 'north-west',
+            'southeast': 'south-east', 'southwest': 'south-west',
+        }
+        self.attack_frames = {}
+        self.flinch_frames = {}
+        self.dodge_frames = {}
+        self.death_frames = {}
+        for facing, asset_direction in combat_directions.items():
+            attack_path = f"assets/images/frames/main_character/attacking/attacking_{asset_direction}"
+            attacks = [pygame.image.load(f"{attack_path}/frame_{i}.png").convert_alpha() for i in range(9)]
+            factor = target_content_height / max(self._robust_content_height(frame) for frame in attacks)
+            self.attack_frames[facing] = [
+                pygame.transform.scale(frame, (max(1, round(frame.get_width() * factor)),
+                                               max(1, round(frame.get_height() * factor))))
+                for frame in attacks
+            ]
+            flinch_name = compass_directions[facing]
+            flinch = pygame.image.load(
+                f"assets/images/frames/main_character/flinch_with_sword/{flinch_name}.png"
+            ).convert_alpha()
+            factor = target_content_height / self._robust_content_height(flinch)
+            self.flinch_frames[facing] = [pygame.transform.scale(
+                flinch, (max(1, round(flinch.get_width() * factor)),
+                         max(1, round(flinch.get_height() * factor)))
+            )]
+            upright = self.flinch_frames[facing][0]
+            # No authored death sheet exists. Build a deliberate fall from
+            # the authored defeated pose, ending horizontally on the ground.
+            self.death_frames[facing] = [
+                pygame.transform.rotate(
+                    upright, (-90 if facing not in ('left', 'northwest', 'southwest') else 90)
+                    * index / (DEATH_FRAME_COUNT - 1)
+                )
+                for index in range(DEATH_FRAME_COUNT)
+            ]
+            sword_direction = flinch_name
+            dodge_path = f"assets/images/frames/main_character/walking_with_sword/{sword_direction}"
+            dodges = [pygame.image.load(f"{dodge_path}/frame_{i}.png").convert_alpha() for i in range(8)]
+            factor = target_content_height / max(self._robust_content_height(frame) for frame in dodges)
+            self.dodge_frames[facing] = [
+                pygame.transform.scale(frame, (max(1, round(frame.get_width() * factor)),
+                                               max(1, round(frame.get_height() * factor))))
+                for frame in dodges
+            ]
+
         # Named attributes kept for the original four directions so
         # nothing else that references them directly breaks.
         self.idle_right_frames = self.scaled['idle_right']
@@ -81,6 +137,17 @@ class MainCharacter():
         self.center_x, self.center_y = self.pos_x, self.pos_y
         self.facing = 'right'
         self.current, self.timer = 0, 0
+        self.frame_elapsed = 0.0
+        self.combat_state = "idle"
+
+    def set_combat_state(self, state):
+        """Apply combat animation priority without letting movement cancel it."""
+        if state == self.combat_state:
+            return
+        self.combat_state = state
+        self.current = 0
+        self.timer = 0
+        self.frame_elapsed = 0.0
 
     @staticmethod
     def _robust_content_height(surf, min_pixels=3):
@@ -93,6 +160,24 @@ class MainCharacter():
         return int(rows.max() - rows.min() + 1)
 
     def update_frames(self, keys):
+        if self.combat_state == "attacking":
+            self.current_frames = self.attack_frames[self.facing]
+            self.is_idle = False
+            return
+        if self.combat_state == "defeated":
+            self.current_frames = self.death_frames[self.facing]
+            self.is_idle = False
+            return
+        if self.combat_state == "flinch":
+            self.current_frames = self.flinch_frames[self.facing]
+            self.is_idle = False
+            return
+        # No dedicated dodge art exists; walking-with-sword movement is the
+        # closest available authored animation and remains direction-correct.
+        if self.combat_state == "dodging":
+            self.current_frames = self.dodge_frames[self.facing]
+            self.is_idle = False
+            return
         up = keys[pygame.K_w] or keys[pygame.K_UP]
         down = keys[pygame.K_s] or keys[pygame.K_DOWN]
         left = keys[pygame.K_a] or keys[pygame.K_LEFT]
@@ -182,11 +267,26 @@ class MainCharacter():
         self.center_x = player_rect.centerx
         self.center_y = player_rect.centery
 
-    def draw_frames(self, ZOOM, camera_x, camera_y):
-        self.timer += 1
-        if self.timer >= 6:
-            self.timer = 0
-            self.current = (self.current + 1) % 8
+    def draw_frames(self, ZOOM, camera_x, camera_y, dt=1 / 60):
+        if self.combat_state == "attacking":
+            self.frame_elapsed += dt
+            while self.frame_elapsed >= ATTACK_FRAME_DURATION:
+                self.frame_elapsed -= ATTACK_FRAME_DURATION
+                # Attacks are committed, non-looping actions. Hold the final
+                # recovery frame until PlayerCombat releases the state.
+                self.current = min(self.current + 1, len(self.current_frames) - 1)
+        elif self.combat_state == "defeated":
+            self.frame_elapsed += dt
+            while self.frame_elapsed >= DEATH_FRAME_DURATION:
+                self.frame_elapsed -= DEATH_FRAME_DURATION
+                # Never loop: the last frame is the ground pose and remains
+                # visible for DEATH_FINAL_HOLD before Game Over.
+                self.current = min(self.current + 1, len(self.current_frames) - 1)
+        else:
+            self.timer += 1
+            if self.timer >= 6:
+                self.timer = 0
+                self.current = (self.current + 1) % len(self.current_frames)
 
         frame = self.current_frames[self.current]
         draw_x = self.center_x * ZOOM - camera_x - frame.get_width() // 2

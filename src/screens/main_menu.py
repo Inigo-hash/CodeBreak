@@ -542,8 +542,8 @@ def main_menu():
 
                         crumble_transition(screen, menu_backdrop, old_source, rects,
                                             new_source, new_rects, seed=99,
-                                            burst_duration=0.3, assemble_duration=0.3)
-                        start_game_menu(screen)
+                                            burst_duration=0.52, assemble_duration=0.56)
+                        start_game_menu(screen, clean_backdrop=menu_backdrop)
                     if rects[1].collidepoint(event.pos):                      
                         how_to_play_screen(screen)
                     if rects[2].collidepoint(event.pos):

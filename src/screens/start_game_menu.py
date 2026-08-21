@@ -18,7 +18,7 @@ def render_start_menu_buttons(surface, rects, t=0.0):
         _draw_stone_button(surface, rect, label, icon, False, seed, t)
 
 
-def start_game_menu(screen):
+def start_game_menu(screen, clean_backdrop=None):
     from src.screens.main_menu import (
         STONE_DARK, STONE_MID, STONE_LIGHT, METAL_FRAME, BLUE_GLOW, WHITE,
         _button_font, _small, _draw_stone_button, _update_icon_anims,
@@ -27,7 +27,10 @@ def start_game_menu(screen):
     
 
     SCREEN_WIDTH, SCREEN_HEIGHT = screen.get_size()
-    background = screen.copy()   # snapshot the main menu behind this screen
+    # The caller already owns a background+logo surface with no buttons.
+    # Re-capturing `screen` here would bake the assembled Start Game buttons
+    # into the backdrop and make them show beneath the return transition.
+    background = clean_backdrop.copy() if clean_backdrop is not None else screen.copy()
 
     rects, bw, bh, gap, center_x, by0 = compute_menu_layout(SCREEN_WIDTH, SCREEN_HEIGHT, 3)
     icons, labels, seeds = SG_ICONS, SG_LABELS, SG_SEEDS
@@ -138,7 +141,7 @@ def start_game_menu(screen):
 
         crumble_transition(screen, background, old_source, rects,
                             new_source, main_menu_rects, seed=101,
-                            burst_duration=0.3, assemble_duration=0.3)
+                            burst_duration=0.52, assemble_duration=0.56)
 
     clock = pygame.time.Clock()
     running = True

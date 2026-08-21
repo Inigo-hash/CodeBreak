@@ -10,7 +10,7 @@ from src.screens.start_game_menu import start_game_menu
 from src.ui.gear_icon import draw_gear, draw_medallion
 
 MM_ICONS = ["play", "book", "gear", "quit"]
-MM_LABELS = ["START NEW GAME", "HOW TO PLAY", "SETTINGS", "QUIT"]
+MM_LABELS = ["START GAME", "HOW TO PLAY", "SETTINGS", "QUIT"]
 MM_SEEDS = [11, 22, 33, 44]
 
 

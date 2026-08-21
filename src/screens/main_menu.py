@@ -3,13 +3,8 @@ import random
 import sys
 import pygame
 from src.screens.game import game_screen
-from src.settings_state import (
-    settings_state as _settings_state,
-    current_theme_name,
-    cycle_theme,
-    swatch_color,
-)
-from src.screens.settings import settings_screen
+from src.settings_state import settings_state as _settings_state
+from src.screens.settings import SettingsPanel
 from src.screens.how_to_play import how_to_play_screen
 from src.screens.start_game_menu import start_game_menu
 from src.ui.gear_icon import draw_gear, draw_medallion
@@ -386,132 +381,12 @@ def _draw_robot_tip(surf: pygame.Surface, t: float) -> None:
         surf.blit(_tip_font.render(line, True, GREEN_TIP), (tip_r.left + 12, tip_r.top + 10 + i * 22))
 
 
-def _draw_interactive_settings(surf: pygame.Surface, mouse_pos, show: bool) -> bool:
-    s = _settings_state
-    panel_width = 380
-    panel_height = 480
-
-    pr = pygame.Rect(
-        (SCREEN_WIDTH - panel_width) // 2,
-        (SCREEN_HEIGHT - panel_height) // 2,
-        panel_width,
-        panel_height
-    )
-
-    # Rects
-    music_bar   = pygame.Rect(pr.left + 28, pr.top + 160, pr.width - 56, 14)
-    sfx_bar     = pygame.Rect(pr.left + 28, pr.top + 240, pr.width - 56, 14)
-    arrow_y     = pr.top + 350
-    left_arrow  = pygame.Rect(pr.left + 60,   arrow_y, 40, 28)
-    right_arrow = pygame.Rect(pr.right - 100, arrow_y, 40, 28)
-    back_r      = pygame.Rect(pr.centerx - 70, pr.bottom - 56, 140, 36)
-
-    mouse_down = pygame.mouse.get_pressed()[0]
-    # Edge-triggered click: True only on the frame the button first goes
-    # down. Using the raw held state here made theme_index (and the back
-    # button) fire on every frame the mouse stayed down, cycling through
-    # color themes ~60x/sec and looking like a glitch/flicker.
-    mouse_clicked = mouse_down and not _draw_interactive_settings.prev_pressed
-    _draw_interactive_settings.prev_pressed = mouse_down
-
-    # Click handling
-    if mouse_down:
-        if music_bar.collidepoint(mouse_pos):
-            s["dragging_music"] = True
-        if sfx_bar.collidepoint(mouse_pos):
-            s["dragging_sfx"] = True
-    else:
-        s["dragging_music"] = False
-        s["dragging_sfx"]   = False
-
-    if mouse_clicked:
-        # cycle_theme() both moves the index and restyles the editor.
-        # Without that second half the arrows would only move a number
-        # nothing ever reads, which is exactly why the old theme picker
-        # appeared to do nothing.
-        if left_arrow.collidepoint(mouse_pos):
-            cycle_theme(-1)
-        if right_arrow.collidepoint(mouse_pos):
-            cycle_theme(1)
-
-        if back_r.collidepoint(mouse_pos):
-            return False  # close panel
-
-    if s["dragging_music"]:
-        s["music_vol"] = max(0.0, min(1.0, (mouse_pos[0] - music_bar.left) / music_bar.width))
-        pygame.mixer.music.set_volume(s["music_vol"]) # update volume immediately
-    if s["dragging_sfx"]:
-        s["sfx_vol"] = max(0.0, min(1.0, (mouse_pos[0] - sfx_bar.left) / sfx_bar.width))
-
-    # Draw panel
-    # ---------- Blur Background ----------
-    blur = pygame.transform.smoothscale(
-        surf,
-        (SCREEN_WIDTH // 8, SCREEN_HEIGHT // 8)
-    )
-
-    blur = pygame.transform.smoothscale(
-        blur,
-        (SCREEN_WIDTH, SCREEN_HEIGHT)
-    )
-
-    surf.blit(blur, (0, 0))
-
-    overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-    overlay.fill((0, 0, 0, 120))
-    surf.blit(overlay, (0, 0))
-    # -------------------------------------
-
-    pygame.draw.rect(surf, (36, 38, 48), pr)
-    pygame.draw.rect(surf, METAL_FRAME, pr, 4)
-    pygame.draw.rect(surf, (26, 28, 36), pr.inflate(-24, -24))
-
-    title = _button_font.render("SETTINGS", True, WHITE)
-    surf.blit(title, (pr.centerx - title.get_width() // 2, pr.top + 16))
-
-    # Text speed
-    surf.blit(_small.render("TEXT SPEED", True, (200, 200, 210)), (pr.left + 28, pr.top + 70))
-    surf.blit(_small.render("SLOW    NORMAL    INSTANT", True, (160, 170, 190)), (pr.left + 28, pr.top + 96))
-
-    # Music
-    surf.blit(_small.render("MUSIC", True, (200, 200, 210)), (pr.left + 28, pr.top + 140))
-    pygame.draw.rect(surf, (30, 32, 40), music_bar, border_radius=4)
-    mx = music_bar.left + int((music_bar.width - 16) * s["music_vol"])
-    pygame.draw.rect(surf, YELLOW_GLOW, (mx, music_bar.top - 2, 16, 18), border_radius=3)
-
-    # SFX
-    surf.blit(_small.render("SFX", True, (200, 200, 210)), (pr.left + 28, pr.top + 220))
-    pygame.draw.rect(surf, (30, 32, 40), sfx_bar, border_radius=4)
-    sx = sfx_bar.left + int((sfx_bar.width - 16) * s["sfx_vol"])
-    pygame.draw.rect(surf, YELLOW_GLOW, (sx, sfx_bar.top - 2, 16, 18), border_radius=3)
-
-    # Color theme (restyles the coding environment only)
-    surf.blit(_small.render("COLOR THEME", True, (200, 200, 210)), (pr.left + 28, pr.top + 300))
-    pygame.draw.rect(surf, (50, 55, 70), left_arrow, border_radius=4)
-    pygame.draw.rect(surf, (50, 55, 70), right_arrow, border_radius=4)
-    tri_l = [(left_arrow.right - 8, left_arrow.top + 6), (left_arrow.right - 8, left_arrow.bottom - 6), (left_arrow.left + 6, left_arrow.centery)]
-    tri_r = [(right_arrow.left + 8, right_arrow.top + 6), (right_arrow.left + 8, right_arrow.bottom - 6), (right_arrow.right - 6, right_arrow.centery)]
-    pygame.draw.polygon(surf, BLUE_GLOW, tri_l)
-    pygame.draw.polygon(surf, BLUE_GLOW, tri_r)
-    current = current_theme_name()
-    th = _button_font.render(current, True, swatch_color(current))
-    surf.blit(th, (pr.centerx - th.get_width() // 2, arrow_y + 4))
-
-    # Back button
-    pygame.draw.rect(surf, STONE_MID, back_r, border_radius=4)
-    pygame.draw.rect(surf, STONE_LIGHT, back_r, 2, border_radius=4)
-    bt = _button_font.render("BACK", True, WHITE)
-    surf.blit(bt, (back_r.centerx - bt.get_width() // 2, back_r.centery - bt.get_height() // 2))
-
-    return True  # keep panel open
-
-_draw_interactive_settings.prev_pressed = False
-
 def main_menu():
-    from src.screens.settings import settings_screen
     from src.screens.tutorial import tutorial_screen
 
     show_settings = False
+    settings_panel = SettingsPanel(screen)
+    settings_panel.close()
 
     # Load logo and compute its height FIRST
     logo = pygame.image.load("assets/images/logos/codebreakLogo.png").convert_alpha()
@@ -580,7 +455,7 @@ def main_menu():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
-            if event.type == pygame.MOUSEBUTTONDOWN:
+            if event.type == pygame.MOUSEBUTTONDOWN:    
                 if not show_settings:
                     if rects[0].collidepoint(event.pos):
                         from src.ui.transitions import crumble_transition
@@ -599,10 +474,17 @@ def main_menu():
                     if rects[1].collidepoint(event.pos):                      
                         how_to_play_screen(screen)
                     if rects[2].collidepoint(event.pos):
-                        show_settings = not show_settings
+                        show_settings = True
+                        settings_panel.open()
+                        # Do not pass the opening click into the panel. At
+                        # some resolutions it overlaps the panel's Back button.
+                        continue
                     if rects[3].collidepoint(event.pos):
                         pygame.quit()
                         sys.exit()
+            if show_settings:
+                settings_panel.handle_event(event)
+                show_settings = settings_panel.is_open
 
         screen.blit(menu_backdrop, (0, 0))
     
@@ -615,7 +497,6 @@ def main_menu():
         screen.blit(ver, (16, SCREEN_HEIGHT - ver.get_height() - 12))
 
         if show_settings:
-            show_settings = _draw_interactive_settings(screen, mouse_pos, show_settings)
+            settings_panel.draw()
 
         pygame.display.flip()
-        

@@ -1,147 +1,123 @@
-import pygame
 import sys
-from src.settings_state import settings_state as _settings_state
+import pygame
+
+from src.settings_state import current_theme_name, cycle_theme, settings_state, swatch_color
+
+
+class SettingsPanel:
+    """The shared Settings panel used by every screen."""
+
+    def __init__(self, screen):
+        self.screen = screen
+        self.is_open = True
+        self.dragging_music = self.dragging_sfx = False
+        self.title_font = pygame.font.SysFont("consolas", 32, bold=True)
+        self.label_font = pygame.font.SysFont("consolas", 18)
+        self.button_font = pygame.font.SysFont("consolas", 22, bold=True)
+        self._layout()
+
+    def _layout(self):
+        width, height = self.screen.get_size()
+        self.panel = pygame.Rect(0, 0, min(380, width - 40), min(480, height - 40))
+        self.panel.center = (width // 2, height // 2)
+        self.music_bar = pygame.Rect(self.panel.left + 28, self.panel.top + 160, self.panel.width - 56, 14)
+        self.sfx_bar = pygame.Rect(self.panel.left + 28, self.panel.top + 240, self.panel.width - 56, 14)
+        arrow_y = self.panel.top + 350
+        self.left_arrow = pygame.Rect(self.panel.left + 60, arrow_y, 40, 28)
+        self.right_arrow = pygame.Rect(self.panel.right - 100, arrow_y, 40, 28)
+        self.back_button = pygame.Rect(self.panel.centerx - 70, self.panel.bottom - 56, 140, 36)
+
+    def open(self):
+        self.is_open = True
+        self.dragging_music = self.dragging_sfx = False
+
+    def close(self):
+        self.is_open = False
+        self.dragging_music = self.dragging_sfx = False
+
+    def handle_event(self, event):
+        if not self.is_open:
+            return False
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            self.close()
+            return True
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            self.dragging_music = self.music_bar.collidepoint(event.pos)
+            self.dragging_sfx = self.sfx_bar.collidepoint(event.pos)
+            if self.left_arrow.collidepoint(event.pos):
+                cycle_theme(-1)
+            elif self.right_arrow.collidepoint(event.pos):
+                cycle_theme(1)
+            elif self.back_button.collidepoint(event.pos):
+                self.close()
+            self._update_volume(event.pos[0])
+            return True
+        if event.type == pygame.MOUSEMOTION:
+            self._update_volume(event.pos[0])
+            return self.dragging_music or self.dragging_sfx
+        if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+            self.dragging_music = self.dragging_sfx = False
+            return True
+        return False
+
+    def _update_volume(self, mouse_x):
+        if self.dragging_music:
+            settings_state["music_vol"] = max(0.0, min(1.0, (mouse_x - self.music_bar.left) / self.music_bar.width))
+            pygame.mixer.music.set_volume(settings_state["music_vol"])
+        if self.dragging_sfx:
+            settings_state["sfx_vol"] = max(0.0, min(1.0, (mouse_x - self.sfx_bar.left) / self.sfx_bar.width))
+
+    def draw(self):
+        if not self.is_open:
+            return
+        width, height = self.screen.get_size()
+        if self.panel.center != (width // 2, height // 2):
+            self._layout()
+        small = pygame.transform.smoothscale(self.screen, (max(1, width // 8), max(1, height // 8)))
+        self.screen.blit(pygame.transform.smoothscale(small, (width, height)), (0, 0))
+        overlay = pygame.Surface((width, height), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 120))
+        self.screen.blit(overlay, (0, 0))
+        pygame.draw.rect(self.screen, (36, 38, 48), self.panel)
+        pygame.draw.rect(self.screen, (90, 94, 110), self.panel, 4)
+        pygame.draw.rect(self.screen, (26, 28, 36), self.panel.inflate(-24, -24))
+        self._text(self.title_font, "SETTINGS", (255, 255, 255), center=(self.panel.centerx, self.panel.top + 34))
+        self._text(self.label_font, "TEXT SPEED", (200, 200, 210), (self.panel.left + 28, self.panel.top + 70))
+        self._text(self.label_font, "SLOW    NORMAL    INSTANT", (160, 170, 190), (self.panel.left + 28, self.panel.top + 96))
+        self._draw_slider("MUSIC", self.music_bar, settings_state["music_vol"])
+        self._draw_slider("SFX", self.sfx_bar, settings_state["sfx_vol"])
+        self._text(self.label_font, "COLOR THEME", (200, 200, 210), (self.panel.left + 28, self.panel.top + 300))
+        for rect in (self.left_arrow, self.right_arrow):
+            color = (60, 90, 130) if rect.collidepoint(pygame.mouse.get_pos()) else (50, 55, 70)
+            pygame.draw.rect(self.screen, color, rect, border_radius=4)
+        pygame.draw.polygon(self.screen, (80, 180, 255), [(self.left_arrow.right - 8, self.left_arrow.top + 6), (self.left_arrow.right - 8, self.left_arrow.bottom - 6), (self.left_arrow.left + 6, self.left_arrow.centery)])
+        pygame.draw.polygon(self.screen, (80, 180, 255), [(self.right_arrow.left + 8, self.right_arrow.top + 6), (self.right_arrow.left + 8, self.right_arrow.bottom - 6), (self.right_arrow.right - 6, self.right_arrow.centery)])
+        theme = current_theme_name()
+        self._text(self.button_font, theme, swatch_color(theme), center=(self.panel.centerx, self.left_arrow.centery))
+        pygame.draw.rect(self.screen, (24, 25, 31), self.back_button, border_radius=4)
+        pygame.draw.rect(self.screen, (62, 68, 82), self.back_button, 2, border_radius=4)
+        self._text(self.button_font, "BACK", (255, 255, 255), center=self.back_button.center)
+
+    def _draw_slider(self, label, bar, value):
+        self._text(self.label_font, label, (200, 200, 210), (bar.left, bar.top - 20))
+        pygame.draw.rect(self.screen, (30, 32, 40), bar, border_radius=4)
+        knob_x = bar.left + int((bar.width - 16) * value)
+        pygame.draw.rect(self.screen, (255, 220, 120), (knob_x, bar.top - 2, 16, 18), border_radius=3)
+
+    def _text(self, font, value, color, position=None, center=None):
+        rendered = font.render(value, True, color)
+        self.screen.blit(rendered, rendered.get_rect(center=center) if center else position)
+
 
 def settings_screen(screen):
-    SCREEN_WIDTH, SCREEN_HEIGHT = screen.get_size()
-
-    # Colors
-    STONE_DARK = (28, 30, 38)
-    STONE_MID = (42, 46, 58)
-    STONE_LIGHT = (62, 68, 82)
-    BLUE_GLOW = (80, 180, 255)
-    YELLOW_GLOW = (255, 220, 120)
-    GREEN_TIP = (60, 255, 140)
-    WHITE = (255, 255, 255)
-    METAL_FRAME = (90, 94, 110)
-
-    # Fonts
-    font_title = pygame.font.SysFont("consolas", 32, bold=True)
-    font_label = pygame.font.SysFont("consolas", 18)
-    font_btn   = pygame.font.SysFont("consolas", 22, bold=True)
-
-    # State
-    themes      = ["BLUE", "DARK", "LIGHT"]
-    theme_index = 0
-    dragging_music = False
-    dragging_sfx   = False
-
-    # Panel rect
-    pr = pygame.Rect(SCREEN_WIDTH // 2 - 190, SCREEN_HEIGHT // 2 - 240, 380, 480)
-
-    # Slider rects
-    music_bar = pygame.Rect(pr.left + 28, pr.top + 160, pr.width - 56, 14)
-    sfx_bar   = pygame.Rect(pr.left + 28, pr.top + 240, pr.width - 56, 14)
-
-    # Arrow rects
-    arrow_y     = pr.top + 320
-    left_arrow  = pygame.Rect(pr.left + 60,   arrow_y, 40, 28)
-    right_arrow = pygame.Rect(pr.right - 100, arrow_y, 40, 28)
-
-    # Back button rect
-    back_r = pygame.Rect(pr.centerx - 70, pr.bottom - 56, 140, 36)
-
+    panel = SettingsPanel(screen)
     clock = pygame.time.Clock()
-    running = True
-
-    while running:
-        mouse_pos = pygame.mouse.get_pos()
-
+    while panel.is_open:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
-
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if music_bar.collidepoint(event.pos):
-                    dragging_music = True
-                if sfx_bar.collidepoint(event.pos):
-                    dragging_sfx = True
-                if left_arrow.collidepoint(event.pos):
-                    theme_index = (theme_index - 1) % len(themes)
-                if right_arrow.collidepoint(event.pos):
-                    theme_index = (theme_index + 1) % len(themes)
-                if back_r.collidepoint(event.pos):
-                    return  # back to main menu
-
-            if event.type == pygame.MOUSEBUTTONUP:
-                dragging_music = False
-                dragging_sfx   = False
-
-            if event.type == pygame.MOUSEMOTION:
-                if dragging_music:
-                    _settings_state["music_vol"] = max(0.0, min(1.0, (event.pos[0] - music_bar.left) / music_bar.width))
-                    pygame.mixer.music.set_volume(_settings_state["music_vol"])
-                if dragging_sfx:
-                    _settings_state["sfx_vol"] = max(0.0, min(1.0, (event.pos[0] - sfx_bar.left) / sfx_bar.width))
-
-        # --- Draw ---
-        # Dim overlay
-        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 160))
-        screen.blit(overlay, (0, 0))
-
-        # Panel background
-        pygame.draw.rect(screen, (36, 38, 48), pr)
-        pygame.draw.rect(screen, METAL_FRAME, pr, 4)
-        pygame.draw.rect(screen, (26, 28, 36), pr.inflate(-24, -24))
-
-        # Title
-        title = font_title.render("SETTINGS", True, WHITE)
-        screen.blit(title, (pr.centerx - title.get_width() // 2, pr.top + 16))
-
-        # TEXT SPEED
-        screen.blit(font_label.render("TEXT SPEED", True, (200, 200, 210)), (pr.left + 28, pr.top + 70))
-        screen.blit(font_label.render("SLOW    NORMAL    INSTANT", True, (160, 170, 190)), (pr.left + 28, pr.top + 96))
-
-        # MUSIC slider
-        screen.blit(font_label.render("MUSIC", True, (200, 200, 210)), (pr.left + 28, pr.top + 140))
-        pygame.draw.rect(screen, (30, 32, 40), music_bar, border_radius=4)
-        mx = music_bar.left + int((music_bar.width - 16) * _settings_state["music_vol"])
-        pygame.draw.rect(screen, YELLOW_GLOW, (mx, music_bar.top - 2, 16, 18), border_radius=3)
-
-        # SFX slider
-        screen.blit(font_label.render("SFX", True, (200, 200, 210)), (pr.left + 28, pr.top + 220))
-        pygame.draw.rect(screen, (30, 32, 40), sfx_bar, border_radius=4)
-        sx = sfx_bar.left + int((sfx_bar.width - 16) * _settings_state["sfx_vol"])
-        pygame.draw.rect(screen, YELLOW_GLOW, (sx, sfx_bar.top - 2, 16, 18), border_radius=3)
-
-        # COLOR THEME
-        screen.blit(font_label.render("COLOR THEME", True, (200, 200, 210)), (pr.left + 28, pr.top + 300))
-
-        # Left arrow
-        pygame.draw.rect(screen, (50, 55, 70), left_arrow, border_radius=4)
-        tri_l = [
-            (left_arrow.right - 8,  left_arrow.top + 6),
-            (left_arrow.right - 8,  left_arrow.bottom - 6),
-            (left_arrow.left + 6,   left_arrow.centery),
-        ]
-        pygame.draw.polygon(screen, BLUE_GLOW, tri_l)
-
-        # Right arrow
-        pygame.draw.rect(screen, (50, 55, 70), right_arrow, border_radius=4)
-        tri_r = [
-            (right_arrow.left + 8,  right_arrow.top + 6),
-            (right_arrow.left + 8,  right_arrow.bottom - 6),
-            (right_arrow.right - 6, right_arrow.centery),
-        ]
-        pygame.draw.polygon(screen, BLUE_GLOW, tri_r)
-
-        # Theme label
-        theme_colors = {
-            "BLUE":  (80, 180, 255),
-            "DARK":  (150, 160, 180),
-            "LIGHT": (255, 248, 230),
-        }
-        current_theme = themes[theme_index]
-        th = font_btn.render(current_theme, True, theme_colors.get(current_theme, (200, 200, 210)))
-        screen.blit(th, (pr.centerx - th.get_width() // 2, arrow_y + 4))
-
-        # Back button
-        pygame.draw.rect(screen, STONE_MID, back_r, border_radius=4)
-        pygame.draw.rect(screen, STONE_LIGHT, back_r, 2, border_radius=4)
-        bt = font_btn.render("BACK", True, WHITE)
-        screen.blit(bt, (back_r.centerx - bt.get_width() // 2, back_r.centery - bt.get_height() // 2))
-
+            panel.handle_event(event)
+        panel.draw()
         pygame.display.flip()
         clock.tick(60)

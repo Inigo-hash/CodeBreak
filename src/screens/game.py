@@ -1,12 +1,8 @@
 from pytmx.util_pygame import load_pygame
 import pygame
 import sys
-from src.settings_state import (
-    settings_state as _settings_state,
-    current_theme_name,
-    cycle_theme,
-    swatch_color,
-)
+from src.settings_state import settings_state as _settings_state
+from src.screens.settings import SettingsPanel
 from src.entities.player import MainCharacter
 from src.entities.enemy import Enemy
 from src.ui.code_editor import CodeEditor
@@ -481,6 +477,8 @@ def game_screen(screen, slot_num=None, save_state=None):
     # --- Pause menu setup ---
     paused = False
     show_pause_settings = False
+    settings_panel = SettingsPanel(screen)
+    settings_panel.close()
 
     PAUSE_MENU_OPTIONS = [
         ("RESUME", "resume"),
@@ -511,49 +509,6 @@ def game_screen(screen, slot_num=None, save_state=None):
                 PAUSE_BTN_HEIGHT
             )
         })
-
-    panel_width = min(500, int(SCREEN_W * 0.40))
-    # Taller than the old two-slider panel so the COLOR THEME row below
-    # has room to sit between SFX and the BACK button.
-    panel_height = min(430, int(SCREEN_H * 0.58))
-
-    settings_panel_rect = pygame.Rect(
-        (SCREEN_W - panel_width) // 2,
-        (SCREEN_H - panel_height) // 2,
-        panel_width,
-        panel_height
-    )
-    padding = 30
-
-    music_bar = pygame.Rect(
-        settings_panel_rect.left + padding,
-        settings_panel_rect.top + int(settings_panel_rect.height * 0.28),
-        settings_panel_rect.width - padding * 2,
-        14
-    )
-
-    sfx_bar = pygame.Rect(
-        settings_panel_rect.left + padding,
-        settings_panel_rect.top + int(settings_panel_rect.height * 0.46),
-        settings_panel_rect.width - padding * 2,
-        14
-    )
-
-    # COLOR THEME row: a pair of arrows with the current theme's name
-    # between them, matching the picker in the main menu's settings.
-    theme_arrow_y = settings_panel_rect.top + int(settings_panel_rect.height * 0.66)
-
-    theme_left_rect = pygame.Rect(
-        settings_panel_rect.left + padding, theme_arrow_y, 40, 28
-    )
-
-    theme_right_rect = pygame.Rect(
-        settings_panel_rect.right - padding - 40, theme_arrow_y, 40, 28
-    )
-
-    settings_back_rect = pygame.Rect(settings_panel_rect.centerx - 70, settings_panel_rect.bottom - 56, 140, 36)
-    dragging_music = False
-    dragging_sfx = False
 
     def draw_pause_button(surf, rect, label, hovered):
         color = (60, 90, 130) if hovered else (40, 42, 54)
@@ -621,66 +576,6 @@ def game_screen(screen, slot_num=None, save_state=None):
                 msg_surf,
                 (panel.centerx - msg_surf.get_width() // 2, panel.bottom - 34)
             )
-
-    def draw_pause_settings(surf, mouse_pos):
-        overlay = pygame.Surface((SCREEN_W, SCREEN_H), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 160))
-        surf.blit(overlay, (0, 0))
-        pygame.draw.rect(surf, (36, 38, 48), settings_panel_rect, border_radius=8)
-        pygame.draw.rect(surf, (90, 94, 110), settings_panel_rect, 3, border_radius=8)
-        title = pause_button_font.render("SETTINGS", True, (255, 255, 255))
-        surf.blit(title, (settings_panel_rect.centerx - title.get_width() // 2, settings_panel_rect.top + 20))
-
-        surf.blit(font.render("MUSIC", True, (200, 200, 210)), (music_bar.left, music_bar.top - 26))
-        pygame.draw.rect(surf, (20, 22, 30), music_bar, border_radius=4)
-        mx = music_bar.left + int((music_bar.width - 16) * _settings_state["music_vol"])
-        pygame.draw.rect(surf, (255, 220, 120), (mx, music_bar.top - 2, 16, 18), border_radius=3)
-
-        surf.blit(font.render("SFX", True, (200, 200, 210)), (sfx_bar.left, sfx_bar.top - 26))
-        pygame.draw.rect(surf, (20, 22, 30), sfx_bar, border_radius=4)
-        sx = sfx_bar.left + int((sfx_bar.width - 16) * _settings_state["sfx_vol"])
-        pygame.draw.rect(surf, (255, 220, 120), (sx, sfx_bar.top - 2, 16, 18), border_radius=3)
-
-        # --- COLOR THEME (restyles the coding environment only) ---
-        surf.blit(
-            font.render("COLOR THEME", True, (200, 200, 210)),
-            (theme_left_rect.left, theme_arrow_y - 26)
-        )
-
-        for rect in (theme_left_rect, theme_right_rect):
-            hovered = rect.collidepoint(mouse_pos)
-            pygame.draw.rect(
-                surf,
-                (60, 90, 130) if hovered else (50, 55, 70),
-                rect,
-                border_radius=4
-            )
-
-        arrow_left = [
-            (theme_left_rect.right - 8, theme_left_rect.top + 6),
-            (theme_left_rect.right - 8, theme_left_rect.bottom - 6),
-            (theme_left_rect.left + 6, theme_left_rect.centery),
-        ]
-        arrow_right = [
-            (theme_right_rect.left + 8, theme_right_rect.top + 6),
-            (theme_right_rect.left + 8, theme_right_rect.bottom - 6),
-            (theme_right_rect.right - 6, theme_right_rect.centery),
-        ]
-        pygame.draw.polygon(surf, (80, 180, 255), arrow_left)
-        pygame.draw.polygon(surf, (80, 180, 255), arrow_right)
-
-        theme_name = current_theme_name()
-        theme_label = font.render(theme_name, True, swatch_color(theme_name))
-        surf.blit(
-            theme_label,
-            (
-                settings_panel_rect.centerx - theme_label.get_width() // 2,
-                theme_arrow_y + 14 - theme_label.get_height() // 2
-            )
-        )
-
-        back_hovered = settings_back_rect.collidepoint(mouse_pos)
-        draw_pause_button(surf, settings_back_rect, "BACK", back_hovered)
 
     running = True
     # Matches MainCharacter's own starting facing, so the arrow agrees with
@@ -756,7 +651,8 @@ def game_screen(screen, slot_num=None, save_state=None):
 
                 elif event.key == pygame.K_ESCAPE:
                     if show_pause_settings:
-                        show_pause_settings = False
+                        settings_panel.handle_event(event)
+                        show_pause_settings = settings_panel.is_open
                     elif paused:
                         paused = False
                     else:
@@ -803,22 +699,13 @@ def game_screen(screen, slot_num=None, save_state=None):
                                 save_message_frames = 96  # ~1.6s at 60fps
                             elif btn["action"] == "settings":
                                 show_pause_settings = True
+                                settings_panel.open()
                             elif btn["action"] == "main_menu":
                                 pygame.mixer.music.stop()
                                 return "main_menu"
                 elif paused and show_pause_settings:
-                    if music_bar.collidepoint(event.pos):
-                        dragging_music = True
-                    if sfx_bar.collidepoint(event.pos):
-                        dragging_sfx = True
-                    # Shared with the main menu's picker, so both panels
-                    # always agree on the selected theme.
-                    if theme_left_rect.collidepoint(event.pos):
-                        cycle_theme(-1)
-                    if theme_right_rect.collidepoint(event.pos):
-                        cycle_theme(1)
-                    if settings_back_rect.collidepoint(event.pos):
-                        show_pause_settings = False
+                    settings_panel.handle_event(event)
+                    show_pause_settings = settings_panel.is_open
                 elif not paused:
                     if hud_portrait_rect.collidepoint(event.pos):
                         background_snapshot = screen.copy()
@@ -831,14 +718,11 @@ def game_screen(screen, slot_num=None, save_state=None):
                         )
 
             if event.type == pygame.MOUSEBUTTONUP:
-                dragging_music = False
-                dragging_sfx = False
+                if show_pause_settings:
+                    settings_panel.handle_event(event)
 
-        if dragging_music:
-            _settings_state["music_vol"] = max(0.0, min(1.0, (mouse_pos[0] - music_bar.left) / music_bar.width))
-            pygame.mixer.music.set_volume(_settings_state["music_vol"])
-        if dragging_sfx:
-            _settings_state["sfx_vol"] = max(0.0, min(1.0, (mouse_pos[0] - sfx_bar.left) / sfx_bar.width))
+            if show_pause_settings and event.type == pygame.MOUSEMOTION:
+                settings_panel.handle_event(event)
 
         if paused:
             if paused:
@@ -849,7 +733,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                 toolbar.draw()
                 stage_panel.draw()
                 if show_pause_settings:
-                    draw_pause_settings(screen, mouse_pos)
+                    settings_panel.draw()
                 else:
                     draw_pause_menu(screen, mouse_pos)
                     if save_message_frames > 0:
@@ -1149,5 +1033,3 @@ def game_screen(screen, slot_num=None, save_state=None):
         screen.blit(hint, (SCREEN_W - hint.get_width() - 10, 10))
 
         pygame.display.flip()
-
-        

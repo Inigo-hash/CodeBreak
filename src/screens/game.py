@@ -1003,7 +1003,8 @@ def game_screen(screen, slot_num=None, save_state=None):
                 and other.state != "defeated"
             ]
             incoming_damage = enemy.update(
-                dt, player_rect, enemy_blockers, map_width, map_height
+                dt, player_rect, enemy_blockers, map_width, map_height,
+                navigation_rects=collision_rects,
             )
             if enemy.just_started_attack:
                 combat_audio.play("enemy_attack")

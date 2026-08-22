@@ -1,6 +1,6 @@
 from pathlib import Path
+import heapq
 import math
-import random
 
 import pygame
 
@@ -70,6 +70,7 @@ class Enemy:
         self.detour_direction = (0.0, 0.0)
         self._last_position = self.rect.center
         self._resume_state = "chase"
+        self.return_path = []
 
     def _load_frames(self):
         result = {"walking": {}, "attack": {}, "flinch": {}}
@@ -184,7 +185,8 @@ class Enemy:
     def engaged(self):
         return self.active and self.state in ("chase", "attack", "flinch")
 
-    def update(self, dt, player_rect, collision_rects, map_width, map_height):
+    def update(self, dt, player_rect, collision_rects, map_width, map_height,
+               navigation_rects=None):
         self.just_started_attack = False
         if not self.active:
             return 0
@@ -236,9 +238,30 @@ class Enemy:
                 self.state = "idle"
                 self.hp = self.stats.max_hp
                 self.stuck_time = 0.0
+                self.return_path.clear()
             else:
-                self._move(home_direction, self.stats.movement_speed * 0.7, dt,
-                           collision_rects, map_width, map_height)
+                if not self.return_path:
+                    self.detour_time = 0.0
+                    self.return_path = self._find_return_path(
+                        navigation_rects if navigation_rects is not None else collision_rects,
+                        map_width, map_height,
+                    )
+                target = self.return_path[0] if self.return_path else self.spawn
+                target_direction, target_distance = normalized_toward(
+                    self.rect.center, target
+                )
+                # Grid waypoints sit only eight pixels apart. Reaching each
+                # closely prevents cutting a corner with a large body rect.
+                if self.return_path and target_distance <= 2:
+                    self.return_path.pop(0)
+                    target = self.return_path[0] if self.return_path else self.spawn
+                    target_direction, _ = normalized_toward(self.rect.center, target)
+                return_blockers = (
+                    navigation_rects if navigation_rects is not None else collision_rects
+                )
+                self._move(target_direction, self.stats.movement_speed * 0.7, dt,
+                           return_blockers, map_width, map_height,
+                           allow_detour=False)
             return 0
 
         if self.state == "chase" and (not player_in_chase_zone
@@ -270,10 +293,11 @@ class Enemy:
                 self.state = "idle"
         return damage
 
-    def _move(self, direction, speed, dt, blockers, map_width, map_height):
+    def _move(self, direction, speed, dt, blockers, map_width, map_height,
+              allow_detour=True):
         """Move collision-safely, slide along corners, and escape dead ends."""
         bounds = pygame.Rect(0, 0, map_width, map_height)
-        if self.detour_time > 0:
+        if allow_detour and self.detour_time > 0:
             self.detour_time = max(0.0, self.detour_time - dt)
             direction = self.detour_direction
         self._face(direction)
@@ -284,11 +308,15 @@ class Enemy:
         moved = math.dist(before, self.rect.center)
         trying = abs(dx) + abs(dy) > 0.01
         self.stuck_time = self.stuck_time + dt if trying and moved < 0.25 else 0.0
-        if self.stuck_time >= 0.35:
+        if allow_detour and self.stuck_time >= 0.35:
             # Perpendicular choices preserve collision and create a short
             # wall-following detour instead of teleporting through geometry.
             choices = [(-direction[1], direction[0]), (direction[1], -direction[0])]
-            random.shuffle(choices)
+            choices.sort(key=lambda candidate: math.dist(
+                (self.rect.centerx + candidate[0] * speed * 8,
+                 self.rect.centery + candidate[1] * speed * 8),
+                self.spawn,
+            ))
             for candidate in choices:
                 probe = self.rect.copy()
                 move_rect(probe, float(probe.x), float(probe.y),
@@ -300,6 +328,57 @@ class Enemy:
                     break
             self.stuck_time = 0.0
         self.center_x, self.center_y = self.rect.center
+
+    def _find_return_path(self, blockers, map_width, map_height):
+        """Build deterministic collision-safe waypoints back to spawn."""
+        step = 8
+        start = (round(self.rect.centerx / step), round(self.rect.centery / step))
+        goal = (round(self.spawn[0] / step), round(self.spawn[1] / step))
+        margin = 24
+        min_x = max(0, min(start[0], goal[0]) - margin)
+        max_x = min(map_width // step, max(start[0], goal[0]) + margin)
+        min_y = max(0, min(start[1], goal[1]) - margin)
+        max_y = min(map_height // step, max(start[1], goal[1]) + margin)
+
+        def walkable(node):
+            if node in (start, goal):
+                return True
+            probe = pygame.Rect(0, 0, self.rect.width, self.rect.height)
+            probe.center = (node[0] * step, node[1] * step)
+            return (0 <= probe.left and probe.right <= map_width
+                    and 0 <= probe.top and probe.bottom <= map_height
+                    and probe.collidelist(blockers) == -1)
+
+        frontier = [(0, start)]
+        came_from = {start: None}
+        costs = {start: 0}
+        while frontier:
+            _priority, current = heapq.heappop(frontier)
+            if current == goal:
+                break
+            for dx, dy in ((1, 0), (0, 1), (-1, 0), (0, -1)):
+                nxt = (current[0] + dx, current[1] + dy)
+                if not (min_x <= nxt[0] <= max_x and min_y <= nxt[1] <= max_y):
+                    continue
+                if not walkable(nxt):
+                    continue
+                cost = costs[current] + 1
+                if cost < costs.get(nxt, 1_000_000):
+                    costs[nxt] = cost
+                    came_from[nxt] = current
+                    heuristic = abs(goal[0] - nxt[0]) + abs(goal[1] - nxt[1])
+                    heapq.heappush(frontier, (cost + heuristic, nxt))
+
+        if goal not in came_from:
+            return []
+        nodes = []
+        current = goal
+        while current != start:
+            nodes.append((current[0] * step, current[1] * step))
+            current = came_from[current]
+        nodes.reverse()
+        nodes.append(self.spawn)
+        return nodes
 
     def receive_damage(self, amount):
         if not self.active or self.state == "defeated":
@@ -325,6 +404,7 @@ class Enemy:
         self.attack_cooldown = 0
         self.stuck_time = 0.0
         self.detour_time = 0.0
+        self.return_path.clear()
 
     def _face(self, direction):
         dx, dy = direction

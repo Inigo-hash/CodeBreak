@@ -82,6 +82,107 @@ def draw_profile_frame(surface, rect, emphasized=False):
     surface.blit(panel, rect)
 
 
+MINIMAP_FRAME = 20     # thickness of the carved surround, in pixels
+
+
+def build_minimap_frame(size, thickness=MINIMAP_FRAME, radius=7):
+    """
+    The carved stone surround for the minimap, with the viewport punched
+    out of the middle and the cardinal letters inked into the band.
+
+    Returned as a pre-rendered surface with a transparent centre so the
+    per-frame job stays "blit terrain, blit this over it" - the frame has
+    no moving parts, and rebuilding this stack of rects sixty times a
+    second to draw the same pixels would be waste.
+
+    Same plate, bronze rim and corner caps as `draw_profile_frame`, minus
+    its focus gem: the gem sits top-centre on the profile card, which is
+    exactly where N has to go here.
+    """
+
+    frame = pygame.Surface(size, pygame.SRCALPHA)
+    local = frame.get_rect()
+    view = local.inflate(-thickness * 2, -thickness * 2)
+
+    pygame.draw.rect(frame, (5, 6, 9, 150), local.move(0, 5), border_radius=radius)
+    pygame.draw.rect(frame, (*UI_COLORS["stone_deep"], 242), local, border_radius=radius)
+    pygame.draw.rect(frame, UI_COLORS["stone_light"], local, 4, border_radius=radius)
+
+    # Stone face, lit along the top and shaded along the bottom so the
+    # band reads as a slab with depth rather than a printed border. Bronze
+    # is an accent line here, not the material - a band of solid bronze is
+    # what made the first pass look like a picture frame.
+    face = local.inflate(-6, -6)
+    pygame.draw.rect(frame, UI_COLORS["stone"], face, border_radius=max(2, radius - 3))
+    pygame.draw.line(frame, (69, 72, 84), (face.left + 4, face.top + 1),
+                     (face.right - 4, face.top + 1), 1)
+    pygame.draw.line(frame, UI_COLORS["bronze_dark"], (face.left + 4, face.bottom - 1),
+                     (face.right - 4, face.bottom - 1), 1)
+    pygame.draw.rect(frame, UI_COLORS["bronze"], face, 1, border_radius=max(2, radius - 3))
+
+    # The viewport sits in a recess: a dark step down into the stone, then
+    # a thin bronze lip right at the terrain.
+    pygame.draw.rect(frame, UI_COLORS["stone_deep"], view.inflate(10, 10), 5)
+    pygame.draw.rect(frame, UI_COLORS["bronze"], view.inflate(3, 3), 2)
+
+    # Punch the viewport. Everything drawn after this point has to stay
+    # inside the band, or it will hang over the map.
+    frame.fill((0, 0, 0, 0), view)
+
+    cap = thickness - 8
+    for x, y in ((2, 2), (local.width - cap - 2, 2),
+                 (2, local.height - cap - 2),
+                 (local.width - cap - 2, local.height - cap - 2)):
+        pygame.draw.rect(frame, UI_COLORS["stone_light"], (x, y, cap, cap))
+        pygame.draw.rect(frame, UI_COLORS["stone_deep"], (x, y, cap, cap), 1)
+        pygame.draw.rect(frame, UI_COLORS["bronze"], (x + 3, y + 3, cap - 6, cap - 6), 2)
+
+    # Cardinals on the band rather than floating over the terrain, where
+    # they used to compete with the zone names for the same pixels.
+    letter_font = title_font(max(9, thickness // 2))
+    band = thickness // 2
+    for text, center, along in (
+        ("N", (local.centerx, band), "h"),
+        ("S", (local.centerx, local.bottom - band), "h"),
+        ("W", (band, local.centery), "v"),
+        ("E", (local.right - band, local.centery), "v"),
+    ):
+        label = letter_font.render(text, True, GOLD)
+        frame.blit(label, label.get_rect(center=center))
+
+        # Bronze ticks flanking each letter, so the band reads as a scale.
+        for step in (-1, 1):
+            if along == "h":
+                x = center[0] + step * (label.get_width() // 2 + 6)
+                pygame.draw.line(frame, METAL, (x, center[1] - 3), (x, center[1] + 3), 2)
+            else:
+                y = center[1] + step * (label.get_height() // 2 + 5)
+                pygame.draw.line(frame, METAL, (center[0] - 3, y), (center[0] + 3, y), 2)
+
+    return frame
+
+
+def build_view_vignette(size, band=24, strength=135):
+    """
+    A dark gradient hugging the inside of the minimap viewport.
+
+    Two jobs: it settles the terrain into the frame instead of letting a
+    bright tile butt straight up against the stone, and it darkens the
+    busiest part of the crop - the edges, where zone names and the sea
+    tend to land - so the labels over it stay readable.
+
+    Drawn as concentric one-pixel rings, which is a gradient with no
+    blurring and no per-frame cost; the caller builds it once.
+    """
+
+    veil = pygame.Surface(size, pygame.SRCALPHA)
+    rect = veil.get_rect()
+    for step in range(band):
+        alpha = int(strength * ((band - step) / band) ** 2)
+        pygame.draw.rect(veil, (6, 8, 12, alpha), rect.inflate(-step * 2, -step * 2), 1)
+    return veil
+
+
 def draw_framed_portrait(surface, portrait, rect):
     """Bronze-trimmed portrait tile, at whatever size `rect` asks for."""
     pygame.draw.rect(surface, PORTRAIT_BACKING, rect)
@@ -155,16 +256,17 @@ class GameplayHUD:
         width, height = self.screen.get_size()
         margin = max(10, round(min(width, height) * 0.016))
         self.profile_rect = pygame.Rect(margin, margin, min(510, width // 2), 134)
-        progress_rect = pygame.Rect(0, margin, min(275, width // 3), 92)
-        # Leave the rightmost 314 px to the existing StagePanel rail.
-        progress_rect.right = width - margin - 314
-        if progress_rect.left <= self.profile_rect.right + 10:
-            progress_rect.topleft = (margin, self.profile_rect.bottom + 8)
+        # Everything stacks in one left-hand column under the profile card so
+        # the panels read as a single group instead of floating apart.
+        progress_rect = pygame.Rect(margin, self.profile_rect.bottom + 8,
+                                    min(275, width // 3), 92)
+        weapon_rect = pygame.Rect(margin, progress_rect.bottom + 8, 250, 42)
+        bonus_rect = pygame.Rect(margin, weapon_rect.bottom + 8, 112, 42)
 
         self.draw_character_profile(current_hp, max_hp, in_combat)
         self.draw_stage_progress(progress_rect)
-        self.draw_weapon(margin, self.profile_rect.bottom + 8)
-        self.draw_bonus_time(progress_rect.left, progress_rect.bottom + 8,
+        self.draw_weapon(weapon_rect.left, weapon_rect.top)
+        self.draw_bonus_time(bonus_rect.left, bonus_rect.top,
                              self.bonus_time if bonus_time is None else bonus_time)
 
         if interaction_prompt:

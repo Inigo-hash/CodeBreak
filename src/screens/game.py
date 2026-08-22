@@ -14,7 +14,9 @@ from src.screens.world_map import open_world_map
 from src.systems import save_manager
 from src.systems.stage_progress import StageProgress
 from src.ui.stage_panel import StagePanel
-from src.ui.gameplay_hud import GameplayHUD
+from src.ui.gameplay_hud import (
+    GameplayHUD, MINIMAP_FRAME, build_minimap_frame, build_view_vignette,
+)
 from src.systems.combat import (
     COMBAT_DEBUG, FACING_VECTORS, PLAYER_DODGE_SPEED,
     PlayerCombat, attack_hitbox, attack_path_blocked, move_rect,
@@ -192,7 +194,6 @@ def game_screen(screen, slot_num=None, save_state=None):
 
     # --- Gameplay HUD (top-left live counters) ---
     profile_name = "Bobiles the explorer the great"
-    minimap_compass_font = title_font(14)
     # --- Inventory system ---
     # One PlayerInventory object holds every item the player owns. The Toolbar
     # (bottom-centre hotbar) and the B-key bag screen both read from it, so
@@ -253,11 +254,16 @@ def game_screen(screen, slot_num=None, save_state=None):
     # a straight crop centered on the player, no texture rotation needed.
     MINIMAP_SIZE = max(150, min(220, int(SCREEN_H * 0.22)))
     MINIMAP_MARGIN = 14
+    # The carved frame eats into the panel rather than growing it, so the
+    # minimap keeps the screen footprint it always had.
+    MINIMAP_VIEW = MINIMAP_SIZE - MINIMAP_FRAME * 2
     # Taken from the map's own water tiles, so the area past the map edge
     # blends into the real coastline instead of reading as a flat backdrop.
     MINIMAP_SEA_COLOR = (44, 232, 244)
     MINIMAP_SPAN_FACTOR = 1.5  # how much wider the minimap's view is than the player's own screen view
-    minimap_px_per_unit = MINIMAP_SIZE / ((max(SCREEN_W, SCREEN_H) / ZOOM) * MINIMAP_SPAN_FACTOR)
+    # Scaled against the viewport, not the panel, so the frame costs
+    # resolution rather than changing how much world is on show.
+    minimap_px_per_unit = MINIMAP_VIEW / ((max(SCREEN_W, SCREEN_H) / ZOOM) * MINIMAP_SPAN_FACTOR)
 
     # Object layers containing trees, props, etc. are drawn per-frame
     # as depth-sorted dynamic props rather than baked into raw_map_surface.
@@ -302,6 +308,11 @@ def game_screen(screen, slot_num=None, save_state=None):
     # the arrow covers the diagonals (NE/NW/SE/SW) as well.
     MINIMAP_ARROW_SIZE = 8
 
+    # Chrome that never changes: the carved surround and the vignette that
+    # beds the terrain into it. Built here, blitted per frame.
+    minimap_frame = build_minimap_frame((MINIMAP_SIZE, MINIMAP_SIZE))
+    minimap_vignette = build_view_vignette((MINIMAP_VIEW, MINIMAP_VIEW))
+
     # --- Zone Labels ---
     # Converts each zone's fractional rect (from zones.py) into a
     # real pixel rect once, using this map's actual dimensions.
@@ -328,25 +339,28 @@ def game_screen(screen, slot_num=None, save_state=None):
             MINIMAP_SIZE,
             MINIMAP_SIZE
         )
+        # The terrain lives inside the frame; everything that used to be
+        # measured against the panel is measured against this instead.
+        view_rect = panel_rect.inflate(-MINIMAP_FRAME * 2, -MINIMAP_FRAME * 2)
 
         # Background shows through wherever the crop runs past the edge
         # of the map (e.g. the player standing near the map border).
         # Sampled straight from the map's own water tiles so the
         # out-of-bounds area reads as the sea continuing past the edge
         # instead of an obvious flat panel behind the map.
-        pygame.draw.rect(surf, MINIMAP_SEA_COLOR, panel_rect)
+        pygame.draw.rect(surf, MINIMAP_SEA_COLOR, view_rect)
 
         # The minimap-texture pixel the player is standing on, cropped so
         # that pixel lands dead-center in the panel — this is what makes
         # the minimap pan while keeping the player marker fixed in place.
         mm_x = player_rect.centerx * minimap_px_per_unit
         mm_y = player_rect.centery * minimap_px_per_unit
-        src_left = mm_x - MINIMAP_SIZE / 2
-        src_top = mm_y - MINIMAP_SIZE / 2
+        src_left = mm_x - MINIMAP_VIEW / 2
+        src_top = mm_y - MINIMAP_VIEW / 2
 
         prev_clip = surf.get_clip()
-        surf.set_clip(panel_rect)
-        surf.blit(minimap_texture, (panel_rect.left - src_left, panel_rect.top - src_top))
+        surf.set_clip(view_rect)
+        surf.blit(minimap_texture, (view_rect.left - src_left, view_rect.top - src_top))
         surf.set_clip(prev_clip)
 
         # ----------------------------------
@@ -356,46 +370,37 @@ def game_screen(screen, slot_num=None, save_state=None):
         # zone's label lines up with the terrain it's naming even
         # as the minimap pans with the player.
 
-        surf.set_clip(panel_rect)
+        surf.set_clip(view_rect)
+
+        # Terrain first, then the vignette, then the names: a label drawn
+        # under the vignette would be dimmed by it right where the crop is
+        # busiest, which is the opposite of what it is there for.
+        surf.blit(minimap_vignette, view_rect.topleft)
 
         for zone in zone_pixel_rects:
 
             zone_center_x = zone["rect"].centerx * minimap_px_per_unit
             zone_center_y = zone["rect"].centery * minimap_px_per_unit
 
-            label_x = panel_rect.left - src_left + zone_center_x
-            label_y = panel_rect.top - src_top + zone_center_y
+            label_x = view_rect.left - src_left + zone_center_x
+            label_y = view_rect.top - src_top + zone_center_y
 
             label_color = (
                 (255, 210, 90) if zone["is_boss_zone"] else (230, 230, 230)
             )
 
-            shadow = zone_label_font.render(zone["name"], True, (0, 0, 0))
             label = zone_label_font.render(zone["name"], True, label_color)
+            label_rect = label.get_rect(center=(label_x, label_y))
 
-            surf.blit(
-                shadow,
-                (label_x - label.get_width() // 2 + 1, label_y - label.get_height() // 2 + 1)
-            )
-            surf.blit(
-                label,
-                (label_x - label.get_width() // 2, label_y - label.get_height() // 2)
-            )
+            # A dark pill under each name. Plain drop-shadowed text was
+            # legible over grass and invisible over the tree canopy.
+            pill_rect = label_rect.inflate(8, 4)
+            pill = pygame.Surface(pill_rect.size, pygame.SRCALPHA)
+            pygame.draw.rect(pill, (10, 12, 17, 130), pill.get_rect(), border_radius=4)
+            surf.blit(pill, pill_rect.topleft)
+            surf.blit(label, label_rect.topleft)
 
         surf.set_clip(prev_clip)
-
-        # Compass letters fixed to the panel edges — the view never
-        # rotates, so N is always "up" here just like on the main screen.
-        for label, (lx, ly) in (
-            ("N", (panel_rect.centerx, panel_rect.top + 11)),
-            ("S", (panel_rect.centerx, panel_rect.bottom - 11)),
-            ("W", (panel_rect.left + 11, panel_rect.centery)),
-            ("E", (panel_rect.right - 11, panel_rect.centery)),
-        ):
-            shadow = minimap_compass_font.render(label, True, (0, 0, 0))
-            txt = minimap_compass_font.render(label, True, (235, 220, 180))
-            surf.blit(shadow, (lx - txt.get_width() // 2 + 1, ly - txt.get_height() // 2 + 1))
-            surf.blit(txt, (lx - txt.get_width() // 2, ly - txt.get_height() // 2))
 
         # Player marker — always dead-center, since the crop above keeps
         # the player's world position pinned to the middle of the panel.
@@ -405,7 +410,7 @@ def game_screen(screen, slot_num=None, save_state=None):
         # is unmistakable. Turns with the character's facing.
         hx, hy = heading
         px, py = -hy, hx  # perpendicular to the heading
-        cx, cy = panel_rect.center
+        cx, cy = view_rect.center
 
         def arrow_point(along, across):
             return (cx + (hx * along + px * across) * MINIMAP_ARROW_SIZE,
@@ -417,10 +422,16 @@ def game_screen(screen, slot_num=None, save_state=None):
             arrow_point(-0.42, 0),     # notch, pulled forward between them
             arrow_point(-0.7, -0.62),  # back corner
         )
+        # Dropped a pixel down-right first, so the marker holds its shape
+        # over pale sand as well as over the tree canopy.
+        pygame.draw.polygon(surf, (18, 20, 26),
+                            [(x + 1, y + 2) for x, y in arrow])
         pygame.draw.polygon(surf, (255, 255, 255), arrow)
         pygame.draw.polygon(surf, (30, 30, 30), arrow, 1)
 
-        pygame.draw.rect(surf, (90, 94, 110), panel_rect, 3)
+        # The surround goes on last: it is the thing the terrain is
+        # clipped into, so it has to cover the crop's edges.
+        surf.blit(minimap_frame, panel_rect.topleft)
 
     # --- Dynamic props ---
     dynamic_props = []

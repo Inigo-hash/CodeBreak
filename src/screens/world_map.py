@@ -53,17 +53,26 @@ SEPIA_LIFT     = (38, 28, 14)      # added back so the map is not muddy
 COLOR_HINT     = 62                # alpha of the original map blended back
 MAP_ON_PAPER   = 232               # alpha of the map itself, so paper shows
 
+# Fire and dirt along the margins.
+SCORCH_EDGE    = (36, 22, 13)      # near-black char right at the torn edge
+SCORCH_MID     = (94, 55, 26)      # brown scorch just inside it
+SCORCH_SOFT    = (154, 110, 60)    # toasted tone fading into clean paper
+GRIME          = (104, 84, 54)     # thumbed dirt worked into the margins
+
 # Paper geometry. The drawing sits inside a wide margin - a map printed
 # edge to edge would not read as a sheet of paper.
 SCREEN_MARGIN  = 36
-PAD_SIDE       = 34
-PAD_TOP        = 68    # room for the title
-PAD_BOTTOM     = 52    # room for the footer hint
+PAD_SIDE       = 40
+PAD_TOP        = 96    # room for the title and the compass rose beside it
+PAD_BOTTOM     = 58    # room for the footer hint
 
-TEAR_STEP      = 26    # distance between points along the torn edge
-TEAR_DEPTH     = 7     # how far inward a torn point can bite
+TEAR_STEP      = 18    # distance between points along the torn edge
+TEAR_DEPTH     = 8     # how far inward an ordinary torn point can bite
+TEAR_BITE      = 12    # extra depth on the occasional deeper bite
 
 MARKER_SIZE    = 13    # matches the minimap arrow, scaled up a little
+
+COMPASS_RADIUS = 16    # rose arm length; letters sit outside this
 
 
 def _paper_font(size):
@@ -133,6 +142,11 @@ def _tear_polygon(width, height, seed=7):
             y = y0 + (y1 - y0) * t
             # Bite inward only, so the sheet never grows past its rect.
             bite = rng.uniform(0, TEAR_DEPTH)
+            if rng.random() < 0.14:
+                # Every so often a chunk is missing outright - an edge that
+                # nibbles evenly all the way round reads as a deckle-cut
+                # border rather than a sheet that has been through something.
+                bite += rng.uniform(TEAR_DEPTH * 0.5, TEAR_BITE)
             if y0 == y1:                      # horizontal edge
                 y += bite if y0 == 0 else -bite
             else:                             # vertical edge
@@ -146,14 +160,23 @@ def _tear_polygon(width, height, seed=7):
     return points
 
 
-def _stain_layer(size, polygon, seed=11):
+def _clip_to_paper(layer, size, polygon):
     """
-    A few translucent blotches, masked to the paper's torn outline.
+    Multiply a layer's alpha by the sheet's silhouette.
 
-    The mask matters: the stain layer is a full rectangle, and blitting
-    it straight onto the sheet would leave blotches floating in the
-    corners the tear cut away.
+    Every layer here is built as a full rectangle, so without this the
+    stains, soot and ink would carry on into the corners the tear cut
+    away and the sheet would stop looking torn at all.
     """
+
+    mask = pygame.Surface(size, pygame.SRCALPHA)
+    pygame.draw.polygon(mask, (255, 255, 255, 255), polygon)
+    layer.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+    return layer
+
+
+def _stain_layer(size, polygon, seed=11):
+    """A few translucent blotches, masked to the paper's torn outline."""
 
     rng = random.Random(seed)
     stains = pygame.Surface(size, pygame.SRCALPHA)
@@ -165,10 +188,125 @@ def _stain_layer(size, polygon, seed=11):
         alpha = rng.randint(10, 26)
         pygame.draw.circle(stains, (*PARCHMENT_DARK, alpha), (cx, cy), radius)
 
-    mask = pygame.Surface(size, pygame.SRCALPHA)
-    pygame.draw.polygon(mask, (255, 255, 255, 255), polygon)
-    stains.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
-    return stains
+    return _clip_to_paper(stains, size, polygon)
+
+
+def _edge_weighted_point(rng, size, band):
+    """
+    A random point biased towards the edges of the sheet.
+
+    Dirt collects where a map is held and folded, so grime sampled
+    uniformly over the whole sheet would just look like fog over the
+    drawing. Rejection sampling keeps it in the margins.
+    """
+
+    width, height = size
+    x = y = 0
+    for _ in range(24):
+        x = rng.randint(0, width)
+        y = rng.randint(0, height)
+        distance = min(x, y, width - x, height - y)
+        if rng.random() > min(1.0, distance / band):
+            break
+    return x, y
+
+
+def _grime_layer(size, polygon, seed=29):
+    """Smudges and speckled dirt worked into the margins of the sheet."""
+
+    rng = random.Random(seed)
+    grime = pygame.Surface(size, pygame.SRCALPHA)
+    band = max(70, min(size) // 5)
+
+    for _ in range(30):
+        cx, cy = _edge_weighted_point(rng, size, band)
+        pygame.draw.circle(grime, (*GRIME, rng.randint(8, 20)),
+                           (cx, cy), rng.randint(18, 58))
+
+    # Fine grit on top of the smudges, so the dirt has texture up close
+    # instead of reading as a flat brown wash.
+    for _ in range(260):
+        cx, cy = _edge_weighted_point(rng, size, band)
+        pygame.draw.circle(grime, (*GRIME, rng.randint(20, 60)),
+                           (cx, cy), rng.randint(1, 2))
+
+    return _clip_to_paper(grime, size, polygon)
+
+
+def _burn_layer(size, polygon, seed=23):
+    """
+    The scorched border, as a **multiply** map: white where the sheet is
+    untouched, darkening to near-black char at the torn edge.
+
+    It has to multiply rather than paint. Scorching is the paper itself
+    going dark, so laying opaque brown over it just looks like a printed
+    border - and over the drawing, where the ink and terrain already
+    vary, only a multiply keeps what is underneath visible through the
+    burn.
+
+    Two consequences of that, both easy to get wrong: the map is white
+    outside the sheet (multiplying by white is a no-op, so the burn
+    cannot spill), and it must never be alpha-masked to the torn outline
+    the way the painted layers are - multiplying the paper's alpha by
+    zero would erase the sheet instead of charring it.
+
+    The gradient is built at a fraction of the size and scaled back up.
+    That upscale is the blur: drawn full size, the concentric outlines
+    read as contour lines on the paper rather than one scorch.
+    """
+
+    rng = random.Random(seed)
+    shrink = 3
+    small_size = (max(1, size[0] // shrink), max(1, size[1] // shrink))
+    small_poly = [(x / shrink, y / shrink) for x, y in polygon]
+
+    soft = pygame.Surface(small_size)
+    soft.fill((255, 255, 255))
+
+    # Widths are effectively halved: a stroke straddles the outline and
+    # only its inner half falls on the sheet. Widest and palest first -
+    # each stroke overwrites the middle of the one before it.
+    for width, color in (
+        (13, (231, 210, 176)),   # barely toasted
+        (8, (191, 155, 108)),
+        (5, (134, 92, 52)),
+        (2, (74, 46, 26)),       # char
+    ):
+        pygame.draw.polygon(soft, color, small_poly, width)
+
+    # Corners catch first and burn deepest; the rest of the char lands
+    # wherever the flame happened to linger.
+    corners = ((0, 0), (small_size[0], 0),
+               (small_size[0], small_size[1]), (0, small_size[1]))
+    for index in range(26):
+        if index < len(corners):
+            x, y = corners[index]
+        else:
+            x, y = small_poly[rng.randrange(len(small_poly))]
+        radius = rng.randint(3, 6)
+        pygame.draw.circle(soft, (170, 128, 82), (int(x), int(y)), radius * 2)
+        pygame.draw.circle(soft, (108, 70, 40), (int(x), int(y)), radius)
+        pygame.draw.circle(soft, (58, 34, 20), (int(x), int(y)),
+                           max(2, radius // 2))
+
+    # Two interpolation passes rather than one: a single jump from a third
+    # of the size leaves the gradient stepped in blocks the width of the
+    # scale factor.
+    burn = pygame.transform.smoothscale(soft, (size[0] * 2 // 3, size[1] * 2 // 3))
+    burn = pygame.transform.smoothscale(burn, size).convert_alpha()
+
+    # Pull the burn back towards white in patches, so its depth varies
+    # round the sheet - a scorch of even width reads as a border again.
+    lighten = pygame.Surface(size, pygame.SRCALPHA)
+    for _ in range(46):
+        x, y = polygon[rng.randrange(len(polygon))]
+        pygame.draw.circle(lighten, (255, 255, 255, rng.randint(60, 165)),
+                           (int(x), int(y)), rng.randint(20, 60))
+    burn.blit(lighten, (0, 0))
+
+    # The rim itself stays crisp - that is the line the paper burned to.
+    pygame.draw.polygon(burn, (26, 15, 9), polygon, 3)
+    return burn
 
 
 def _ink_text(surface, font, text, center, color, halo=True, clamp_rect=None):
@@ -204,6 +342,26 @@ def _ink_text(surface, font, text, center, color, halo=True, clamp_rect=None):
     return rect
 
 
+def _compass_extent(radius):
+    """
+    Half-height of the whole rose, letters included.
+
+    The letters sit outside the arms, so the rose needs noticeably more
+    room than its radius - sizing the margin by the radius alone is what
+    used to push N off the top edge and S down onto the map border.
+    """
+
+    return radius + _compass_gap(radius) + _paper_font(_compass_face(radius)).get_height() // 2
+
+
+def _compass_face(radius):
+    return max(11, int(radius * 0.72))
+
+
+def _compass_gap(radius):
+    return max(9, int(radius * 0.62))
+
+
 def _draw_compass(surface, center, radius):
     """A four-point star rose with N marked, drawn into the paper."""
 
@@ -224,12 +382,13 @@ def _draw_compass(surface, center, radius):
         pygame.draw.polygon(surface, INK_SOFT, star)
         pygame.draw.polygon(surface, INK, star, 1)
 
-    letter_font = _paper_font(13)
+    letter_font = _paper_font(_compass_face(radius))
+    gap = radius + _compass_gap(radius)
     for text, pos in (
-        ("N", (cx, cy - radius - 11)),
-        ("S", (cx, cy + radius + 11)),
-        ("W", (cx - radius - 11, cy)),
-        ("E", (cx + radius + 11, cy)),
+        ("N", (cx, cy - gap)),
+        ("S", (cx, cy + gap)),
+        ("W", (cx - gap, cy)),
+        ("E", (cx + gap, cy)),
     ):
         _ink_text(surface, letter_font, text, pos, INK, halo=False)
 
@@ -304,7 +463,17 @@ def _build_paper(map_texture, map_width, map_height, zone_rects,
     # The rose goes in the top-left margin, not on the drawing: every
     # corner of the island itself belongs to some zone, so a rose placed
     # on the plate lands on top of that zone's name.
-    _draw_compass(paper, (PAD_SIDE + 30, PAD_TOP // 2 + 4), 18)
+    #
+    # It is centred in the band actually available - between the torn top
+    # edge and the outer border of the plate - and shrunk if that band is
+    # tight, rather than being centred on PAD_TOP and trusting it to fit.
+    band_top = TEAR_DEPTH + TEAR_BITE + 4
+    band_bottom = map_rect.top - 14
+    radius = COMPASS_RADIUS
+    while radius > 9 and _compass_extent(radius) * 2 > band_bottom - band_top:
+        radius -= 1
+    _draw_compass(paper, (PAD_SIDE + _compass_extent(radius),
+                          (band_top + band_bottom) // 2), radius)
 
     # --- Title and footer --------------------------------------------------
     title_font = _paper_font(26)
@@ -322,10 +491,16 @@ def _build_paper(map_texture, map_width, map_height, zone_rects,
               (paper_size[0] // 2, paper_size[1] - PAD_BOTTOM // 2 - 4),
               INK_SOFT, halo=False)
 
-    # Aged edge: a soft wide stroke under a darker thin one, so the tear
-    # looks worn rather than cut.
-    pygame.draw.polygon(paper, (*INK_FADED, 70), polygon, 6)
-    pygame.draw.polygon(paper, (*INK_SOFT, 150), polygon, 2)
+    # --- Aging, over the top of everything --------------------------------
+    # Dirt first, then fire: soot sits on top of the grime it burned past.
+    paper.blit(_grime_layer(paper_size, polygon), (0, 0))
+    paper.blit(_burn_layer(paper_size, polygon), (0, 0),
+               special_flags=pygame.BLEND_RGBA_MULT)
+
+    # Trim the whole sheet - ink, grime and all - back to its silhouette.
+    # Without this the compass letters and the outer strokes spill into the
+    # bites the tear took out, and the missing chunks fill back in.
+    _clip_to_paper(paper, paper_size, polygon)
 
     return paper, polygon
 

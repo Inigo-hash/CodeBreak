@@ -417,6 +417,7 @@ class InventoryScreen:
         self.font_item = body_font(20, bold=True)
         self.font_index = body_font(12, bold=True)
         self.font_hint = body_font(14, bold=True)
+        self.font_topic_name = body_font(15, bold=True)
 
         # --- Panel geometry ------------------------------------------------
         # Sized from the grid itself, so the slots are always perfectly centred
@@ -514,12 +515,75 @@ class InventoryScreen:
                          (panel_rect.left + first_bag.left,
                           panel_rect.top + first_bag.top - 18))
 
+        hovered_topic = None
+
         for i, local in enumerate(self.bag_rects_local):
-            # Convert the panel-relative rect into screen coordinates.
-            rect = local.move(panel_rect.left, panel_rect.top)
-            border = SLOT_HOVER if rect.collidepoint(mouse_pos) else SLOT_BORDER
-            _draw_slot(self.screen, rect, self.inventory.bag[i],
-                       self.font_item, border)
+
+            rect = local.move(
+                panel_rect.left,
+                panel_rect.top
+            )
+
+            item = self.inventory.bag[i]
+
+            hovered = rect.collidepoint(mouse_pos)
+
+            # A stored topic is identified by having a topic_id.
+            is_topic = (
+                item is not None
+                and getattr(item, "topic_id", None)
+            )
+
+            # Make clickable topics MUCH more obvious on hover.
+            if hovered and is_topic:
+                border = SLOT_SELECTED      # gold
+
+            elif hovered:
+                border = SLOT_HOVER
+
+            else:
+                border = SLOT_BORDER
+
+            _draw_slot(
+                self.screen,
+                rect,
+                item,
+                self.font_item,
+                border
+            )
+
+            if hovered and is_topic:
+                hovered_topic = item
+
+
+        # ---------------------------------------------------------
+        # Hovered topic name
+        # ---------------------------------------------------------
+
+        if hovered_topic is not None:
+
+            topic_label = self.font_topic_name.render(
+                hovered_topic.name,
+                True,
+                SLOT_SELECTED
+            )
+
+            # Put the topic name just above the bag slots.
+            label_x = (
+                panel_rect.centerx
+                - topic_label.get_width() // 2
+            )
+
+            label_y = (
+                panel_rect.top
+                + first_bag.top
+                - 22
+            )
+
+            self.screen.blit(
+                topic_label,
+                (label_x, label_y)
+            )
 
         # An empty bag needs no caption: the empty slots already say it, and a
         # note floating across the middle of the grid only crowds them.
@@ -592,12 +656,63 @@ class InventoryScreen:
                 if event.type == pygame.MOUSEWHEEL and event.y != 0:
                     self.inventory.scroll_selection(-1 if event.y > 0 else 1)
 
-                # Clicking an equipped slot inside the panel selects it.
+                # ---------------------------------------------------------
+                # Mouse clicks
+                # ---------------------------------------------------------
+
                 if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+
                     panel_y = self._current_panel_y()
+
+                    # -----------------------------------------------------
+                    # Bag slots
+                    # -----------------------------------------------------
+
+                    for i, local in enumerate(self.bag_rects_local):
+
+                        rect = local.move(
+                            self.panel_x,
+                            panel_y
+                        )
+
+                        if not rect.collidepoint(event.pos):
+                            continue
+
+                        item = self.inventory.bag[i]
+
+                        if item is not None:
+
+                            topic_id = getattr(
+                                item,
+                                "topic_id",
+                                None
+                            )
+
+                            if topic_id:
+
+                                print(
+                                    f"Opening stored topic: {topic_id}"
+                                )
+
+                                return topic_id
+
+                        break
+
+                    # -----------------------------------------------------
+                    # Equipped slots
+                    # -----------------------------------------------------
+
                     for i, local in enumerate(self.equipped_rects_local):
-                        if local.move(self.panel_x, panel_y).collidepoint(event.pos):
+
+                        rect = local.move(
+                            self.panel_x,
+                            panel_y
+                        )
+
+                        if rect.collidepoint(event.pos):
+
                             self.inventory.select(i)
+                            break
 
             # Advance the slide animation - forwards while opening, backwards
             # while closing. Both directions reuse the same easing curve.
@@ -617,10 +732,21 @@ class InventoryScreen:
                 return
 
 
-def open_inventory(screen, inventory, background=None):
+def open_inventory(
+    screen,
+    inventory,
+    background=None
+):
     """
-    Convenience wrapper so the game loop can open the bag in one line:
+    Open the inventory.
 
-        open_inventory(screen, player_inventory, screen.copy())
+    Returns:
+        topic_id when a stored learning topic is clicked.
+        None when the inventory is closed normally.
     """
-    InventoryScreen(screen, inventory, background).run()
+
+    return InventoryScreen(
+        screen,
+        inventory,
+        background
+    ).run()

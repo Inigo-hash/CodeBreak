@@ -219,6 +219,119 @@ def game_screen(screen, slot_num=None, save_state=None):
     # so the tracker updates itself as objectives complete.
     stage_panel = StagePanel(screen, stage, stage_progress)
 
+    def open_topic_flow(
+        topic_id,
+        background
+    ):
+        """
+        Open a topic lesson and, if requested,
+        launch its coding challenge.
+
+        Used by both:
+            - newly discovered world topics
+            - stored inventory topics
+        """
+
+        topic = get_topic(
+            topic_id
+        )
+
+        if topic is None:
+
+            print(
+                f"Unknown topic id: {topic_id}"
+            )
+
+            return "close"
+
+        # -----------------------------------------------------
+        # Topic Lesson
+        # -----------------------------------------------------
+
+        lesson_result = open_topic_lesson(
+            screen,
+            topic,
+            background
+        )
+
+        if lesson_result != "challenge":
+
+            return "close"
+
+        # -----------------------------------------------------
+        # Find challenge belonging to topic
+        # -----------------------------------------------------
+
+        challenge_id = topic.get(
+            "challenge_id"
+        )
+
+        challenge = get_challenge(
+            challenge_id
+        )
+
+        if challenge is None:
+
+            print(
+                f"Challenge not found: {challenge_id}"
+            )
+
+            return "close"
+
+        # -----------------------------------------------------
+        # Coding Environment
+        # -----------------------------------------------------
+
+        editor_background = screen.copy()
+
+        editor = CodeEditor(
+            screen,
+            challenge,
+            editor_background
+        )
+
+        editor.run()
+
+        # -----------------------------------------------------
+        # Challenge completion
+        # -----------------------------------------------------
+
+        if editor.solved:
+
+            first_completion = (
+                challenge_id
+                not in save_challenges_passed
+            )
+
+            if first_completion:
+
+                save_challenges_passed.append(
+                    challenge_id
+                )
+
+                gameplay_state["keys"] = min(
+                    5,
+                    gameplay_state["keys"] + 1
+                )
+
+            if (
+                topic_id
+                not in gameplay_state["topics_completed"]
+            ):
+
+                gameplay_state[
+                    "topics_completed"
+                ].append(
+                    topic_id
+                )
+
+            stage_progress.sync_objectives(
+                stage,
+                save_challenges_passed
+            )
+
+        return "editor_closed"
+
     # --- Camera with zoom ---
     camera_x = 0
     camera_y = 0
@@ -650,11 +763,37 @@ def game_screen(screen, slot_num=None, save_state=None):
                     if player_combat.start_dodge():
                         combat_audio.play("dodge")
                 elif event.key == pygame.K_b and not paused:
-                    # B opens the bag. Freeze the current frame and hand that
-                    # snapshot to the inventory screen so it has something to
-                    # blur while it slides up.
-                    background_snapshot = screen.copy()
-                    open_inventory(screen, player_inventory, background_snapshot)
+
+                    # Keep the original game frame behind the inventory.
+                    inventory_background = screen.copy()
+
+                    while True:
+
+                        selected_topic_id = open_inventory(
+                            screen,
+                            player_inventory,
+                            inventory_background
+                        )
+
+                        # Inventory was closed normally with B / ESC.
+                        if selected_topic_id is None:
+                            break
+
+                        # -------------------------------------------------
+                        # Stored topic clicked
+                        # -------------------------------------------------
+
+                        # The inventory is currently visible on screen,
+                        # so use it as the lesson's background.
+                        lesson_background = screen.copy()
+
+                        open_topic_flow(
+                            selected_topic_id,
+                            lesson_background
+                        )
+
+                        # When the lesson/editor closes, this loop opens
+                        # the inventory again.
 
                 elif event.key == pygame.K_m and not paused:
                     # M opens the full paper chart. It is handed the same
@@ -964,70 +1103,10 @@ def game_screen(screen, slot_num=None, save_state=None):
 
                         if decision == "start":
 
-                            topic = get_topic(topic_id)
-
-                            if topic is None:
-
-                                print(
-                                    f"Unknown topic id: {topic_id}"
-                                )
-
-                            else:
-
-                                lesson_background = screen.copy()
-
-                                lesson_result = open_topic_lesson(
-                                    screen,
-                                    topic,
-                                    lesson_background
-                                )
-
-                                if lesson_result == "challenge":
-
-                                    challenge_id = topic.get(
-                                        "challenge_id"
-                                    )
-
-                                    challenge = get_challenge(
-                                        challenge_id
-                                    )
-
-                                    if challenge is None:
-
-                                        print(
-                                            f"Challenge not found: {challenge_id}"
-                                        )
-
-                                    else:
-
-                                        editor_background = screen.copy()
-
-                                        editor = CodeEditor(
-                                            screen,
-                                            challenge,
-                                            editor_background
-                                        )
-
-                                        editor.run()
-
-                                        if editor.solved:
-
-                                            first_completion = challenge_id not in save_challenges_passed
-                                            if first_completion:
-                                                save_challenges_passed.append(
-                                                    challenge_id
-                                                )
-                                                gameplay_state["keys"] = min(
-                                                    5, gameplay_state["keys"] + 1
-                                                )
-
-                                            if topic_id not in gameplay_state["topics_completed"]:
-                                                gameplay_state["topics_completed"].append(topic_id)
-
-                                            stage_progress.sync_objectives(
-                                                stage,
-                                                save_challenges_passed
-                                            )
+                            open_topic_flow(
+                                topic_id,
+                                background_snapshot
+                            )
 
                         elif decision == "store":
 

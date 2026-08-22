@@ -5,6 +5,9 @@ import os
 # instant it loses OS focus, which is what happens when a screenshot tool
 # (Snipping Tool, Game Bar, PrintScreen) briefly steals focus to capture.
 os.environ["SDL_VIDEO_MINIMIZE_ON_FOCUS_LOSS"] = "0"
+# Ask SDL for physical drawable pixels on Windows displays using 125%/150%
+# scaling, so letterbox math is based on the monitor rather than logical DPI.
+os.environ.setdefault("SDL_WINDOWS_DPI_AWARENESS", "permonitorv2")
 
 import pygame
 

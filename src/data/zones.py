@@ -80,3 +80,17 @@ def get_zone_at(world_x, world_y, map_width, map_height):
             return zone["name"]
 
     return "Wilderness"
+
+
+def get_zone_record_at(world_x, world_y, map_width, map_height):
+    """Return the authored zone record and its world-space rectangle."""
+    for zone in ZONES:
+        frac_x, frac_y, frac_w, frac_h = zone["rect"]
+        rect = (
+            round(frac_x * map_width), round(frac_y * map_height),
+            round(frac_w * map_width), round(frac_h * map_height),
+        )
+        if (rect[0] <= world_x <= rect[0] + rect[2]
+                and rect[1] <= world_y <= rect[1] + rect[3]):
+            return zone, rect
+    return None, None

@@ -60,7 +60,7 @@ TEXT_DIM      = (150, 155, 170)
 # ---------------------------------------------------------------------------
 # Layout constants
 # ---------------------------------------------------------------------------
-TOOLBAR_SLOTS   = 5    # number of equipped/hotbar slots (task requirement)
+TOOLBAR_SLOTS   = 5    # original five-box layout; only slot 1 accepts a weapon
 BAG_COLS        = 5    # bag grid columns - matches the toolbar so it lines up
 BAG_ROWS        = 4    # bag grid rows -> 5 x 4 = 20 bag slots
 
@@ -116,24 +116,34 @@ class PlayerInventory:
         # The 20 bag slots shown when the inventory screen is open.
         self.bag = [None] * (BAG_COLS * BAG_ROWS)
         # Which toolbar slot is currently active (0-based).
+        # There is only one usable weapon slot, so scrolling cannot switch
+        # weapons even though the original five-box layout is preserved.
         self.selected = 0
+        self.weapon_obtained = False
+        self.weapon_equipped = False
 
     # -- selection helpers --------------------------------------------------
     def select(self, index):
-        """Select a toolbar slot directly (used by the 1-5 number keys)."""
-        if 0 <= index < TOOLBAR_SLOTS:
-            self.selected = index
+        """Keep selection on the sole usable weapon slot."""
+        self.selected = 0
 
     def scroll_selection(self, direction):
-        """
-        Move the selection by ``direction`` steps, wrapping around at both
-        ends - this is what the mouse wheel calls. direction is -1 or +1.
-        """
-        self.selected = (self.selected + direction) % TOOLBAR_SLOTS
+        """A single weapon has no previous/next selection."""
+        self.selected = 0
 
     def get_selected_item(self):
         """Return the Item in the active toolbar slot, or None if empty."""
-        return self.toolbar[self.selected]
+        if not self.weapon_equipped:
+            return None
+        return self.toolbar[0]
+
+    def set_weapon_state(self, obtained, equipped):
+        self.weapon_obtained = bool(obtained)
+        self.weapon_equipped = bool(equipped and obtained)
+        self.toolbar[0] = (Item(
+            "Base Sword", kind="weapon", damage=20,
+            description="A dependable starter blade.",
+        ) if self.weapon_obtained else None)
 
     # -- item helpers -------------------------------------------------------
     def add_item(self, item):
@@ -318,9 +328,8 @@ class Toolbar:
         caller can skip its own handling for that event.
 
         Supported:
-          * number keys 1-5      -> select that slot directly
-          * mouse wheel up/down  -> cycle the selection, wrapping around
-          * left click on a slot -> select it
+          * number key 1         -> keep the single weapon slot selected
+          * left click on the slot -> select it
         """
         if event.type == pygame.KEYDOWN:
             # pygame.K_1 .. pygame.K_5 are consecutive keycodes, so subtracting

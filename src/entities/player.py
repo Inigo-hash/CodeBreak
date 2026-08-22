@@ -2,7 +2,10 @@ import pygame
 import numpy as np
 import math
 
-from src.systems.combat import ATTACK_FRAME_DURATION, DEATH_FRAME_COUNT, DEATH_FRAME_DURATION
+from src.systems.combat import (
+    ATTACK_FRAME_DURATION, DEATH_FRAME_COUNT, DEATH_FRAME_DURATION,
+    PLAYER_DODGE_DURATION,
+)
 
 
 class MainCharacter():
@@ -99,8 +102,8 @@ class MainCharacter():
                 for index in range(DEATH_FRAME_COUNT)
             ]
             sword_direction = flinch_name
-            dodge_path = f"assets/images/frames/main_character/walking_with_sword/{sword_direction}"
-            dodges = [pygame.image.load(f"{dodge_path}/frame_{i}.png").convert_alpha() for i in range(8)]
+            dodge_path = f"assets/images/frames/main_character/dodging/unsheathed/{sword_direction}"
+            dodges = [pygame.image.load(f"{dodge_path}/frame_{i}.png").convert_alpha() for i in range(4)]
             factor = target_content_height / max(self._robust_content_height(frame) for frame in dodges)
             self.dodge_frames[facing] = [
                 pygame.transform.scale(frame, (max(1, round(frame.get_width() * factor)),
@@ -172,8 +175,6 @@ class MainCharacter():
             self.current_frames = self.flinch_frames[self.facing]
             self.is_idle = False
             return
-        # No dedicated dodge art exists; walking-with-sword movement is the
-        # closest available authored animation and remains direction-correct.
         if self.combat_state == "dodging":
             self.current_frames = self.dodge_frames[self.facing]
             self.is_idle = False
@@ -281,6 +282,12 @@ class MainCharacter():
                 self.frame_elapsed -= DEATH_FRAME_DURATION
                 # Never loop: the last frame is the ground pose and remains
                 # visible for DEATH_FINAL_HOLD before Game Over.
+                self.current = min(self.current + 1, len(self.current_frames) - 1)
+        elif self.combat_state == "dodging":
+            self.frame_elapsed += dt
+            frame_duration = PLAYER_DODGE_DURATION / len(self.current_frames)
+            while self.frame_elapsed >= frame_duration:
+                self.frame_elapsed -= frame_duration
                 self.current = min(self.current + 1, len(self.current_frames) - 1)
         else:
             self.timer += 1

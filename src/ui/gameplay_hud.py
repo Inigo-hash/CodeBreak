@@ -162,14 +162,18 @@ def build_minimap_frame(size, thickness=MINIMAP_FRAME, radius=7):
     return frame
 
 
-def build_view_vignette(size, band=24, strength=135):
+def build_view_vignette(size, band=24, strength=135, color=(6, 8, 12)):
     """
     A dark gradient hugging the inside of the minimap viewport.
 
-    Two jobs: it settles the terrain into the frame instead of letting a
-    bright tile butt straight up against the stone, and it darkens the
-    busiest part of the crop - the edges, where zone names and the sea
-    tend to land - so the labels over it stay readable.
+    Two jobs: it settles what is inside the frame instead of letting it
+    butt straight up against the stone, and it darkens the busiest part
+    of the crop - the edges, where zone names and the sea tend to land -
+    so the labels over it stay readable.
+
+    ``color`` is worth setting to match what is being shaded: the default
+    cold near-black was picked against terrain art, and shading parchment
+    with it greys the paper out rather than tanning it.
 
     Drawn as concentric one-pixel rings, which is a gradient with no
     blurring and no per-frame cost; the caller builds it once.
@@ -179,7 +183,7 @@ def build_view_vignette(size, band=24, strength=135):
     rect = veil.get_rect()
     for step in range(band):
         alpha = int(strength * ((band - step) / band) ** 2)
-        pygame.draw.rect(veil, (6, 8, 12, alpha), rect.inflate(-step * 2, -step * 2), 1)
+        pygame.draw.rect(veil, (*color, alpha), rect.inflate(-step * 2, -step * 2), 1)
     return veil
 
 

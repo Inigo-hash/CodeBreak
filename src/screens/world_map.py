@@ -3,20 +3,25 @@ world_map.py
 
 The full-screen world map, opened with M from the gameplay loop.
 
-It is the minimap's big brother: same zone names (both read the pixel
-rects game.py builds from src/data/zones.py), same fixed birds-eye
-orientation, same "you are here" arrow that turns with the direction you
-last walked. The difference is the framing - instead of a small live
-panel cropped around the player, this shows the whole island at once,
-drawn as an aged paper chart.
+It is the minimap's big brother, and now literally so: the chart on this
+sheet and the chart in the minimap come from the same builder in
+src/ui/chart.py, so they share a palette, an ageing pass, an ink hand
+and a position marker. Both also read their zone rects from the same
+list game.py builds out of src/data/zones.py. The difference is only the
+framing - the minimap crops a window around the player, while this shows
+the whole island at once on a sheet of paper.
 
-The paper look is built once when the screen opens, not per frame:
+The sheet is built once when the screen opens, not per frame:
 
-    1. the map texture is desaturated and tinted sepia, with a little of
-       its original colour blended back so terrain is still readable,
-    2. that is laid onto a parchment sheet with a torn, uneven edge and
-       a few tea-stains,
-    3. zone names, the border and the compass rose are inked on top.
+    1. the chart is drawn by ui/chart.py - aged, sepia, on parchment,
+    2. that is laid onto a paper sheet with a torn, uneven edge and a
+       few tea-stains,
+    3. zone names, the border and the compass rose are inked on top,
+    4. grime and scorching are worked into the margins last.
+
+At night the whole sheet dims evenly - a map is read in whatever light
+there is, all of it at once - and only the position marker stays bright
+on top.
 
 Only the player marker is redrawn each frame (it pulses), so the loop
 itself is just two blits and a marker.
@@ -33,27 +38,20 @@ import pygame
 
 # Aliased because this module uses `title_font` as a local variable name.
 from src.ui.theme import title_font as _display_font
+# The chart look itself - palette, ageing, ink labels, marker, night -
+# lives in ui/chart.py, shared with the minimap in game.py. Only the
+# paper this module prints it on is local.
+from src.ui.chart import (
+    BOSS_INK, INK, INK_FADED, INK_SOFT, MARKER_INK, MARKER_SIZE, PARCHMENT,
+    PARCHMENT_DARK, build_chart_texture, build_night_veil, draw_marker,
+    ink_text as _ink_text,
+)
 
 
 # ---------------------------------------------------------------------------
-# Palette - warm paper and brown ink rather than the stone/metal colours the
-# rest of the HUD uses, because this is meant to read as a physical object
-# the character is holding, not another window of the interface.
+# Paper. Fire and dirt along the margins - the part of the look that is
+# about the sheet being a physical object rather than about the chart.
 # ---------------------------------------------------------------------------
-PARCHMENT      = (232, 209, 165)
-PARCHMENT_DARK = (206, 180, 134)
-INK            = (74, 52, 30)
-INK_SOFT       = (120, 96, 62)
-INK_FADED      = (150, 126, 92)
-BOSS_INK       = (140, 44, 32)
-MARKER_INK     = (176, 46, 34)
-
-SEPIA_TINT     = (214, 176, 118)   # multiplied over the greyscale map
-SEPIA_LIFT     = (38, 28, 14)      # added back so the map is not muddy
-COLOR_HINT     = 62                # alpha of the original map blended back
-MAP_ON_PAPER   = 232               # alpha of the map itself, so paper shows
-
-# Fire and dirt along the margins.
 SCORCH_EDGE    = (36, 22, 13)      # near-black char right at the torn edge
 SCORCH_MID     = (94, 55, 26)      # brown scorch just inside it
 SCORCH_SOFT    = (154, 110, 60)    # toasted tone fading into clean paper
@@ -70,8 +68,6 @@ TEAR_STEP      = 18    # distance between points along the torn edge
 TEAR_DEPTH     = 8     # how far inward an ordinary torn point can bite
 TEAR_BITE      = 12    # extra depth on the occasional deeper bite
 
-MARKER_SIZE    = 13    # matches the minimap arrow, scaled up a little
-
 COMPASS_RADIUS = 16    # rose arm length; letters sit outside this
 
 
@@ -84,41 +80,6 @@ def _paper_font(size):
     """
 
     return _display_font(size)
-
-
-def _age_map(map_texture, size):
-    """
-    Return the map texture scaled to ``size`` and aged into sepia.
-
-    Greyscale first, then a multiply/add pair to push the neutral tones
-    into brown, then a thin pass of the original colours so water still
-    looks like water. Doing it in that order keeps the whole image on one
-    tonal range - tinting the colour image directly leaves the greens
-    bright enough to fight the ink labels drawn over them.
-    """
-
-    scaled = pygame.transform.smoothscale(map_texture, size)
-
-    try:
-        aged = pygame.transform.grayscale(scaled)
-    except AttributeError:       # very old pygame - skip the desaturation
-        aged = scaled.copy()
-
-    tint = pygame.Surface(size)
-    tint.fill(SEPIA_TINT)
-    aged.blit(tint, (0, 0), special_flags=pygame.BLEND_MULT)
-
-    lift = pygame.Surface(size)
-    lift.fill(SEPIA_LIFT)
-    aged.blit(lift, (0, 0), special_flags=pygame.BLEND_ADD)
-
-    color_hint = scaled.copy()
-    color_hint.set_alpha(COLOR_HINT)
-    aged.blit(color_hint, (0, 0))
-
-    aged = aged.convert_alpha()
-    aged.set_alpha(MAP_ON_PAPER)
-    return aged
 
 
 def _tear_polygon(width, height, seed=7):
@@ -309,39 +270,6 @@ def _burn_layer(size, polygon, seed=23):
     return burn
 
 
-def _ink_text(surface, font, text, center, color, halo=True, clamp_rect=None):
-    """
-    Draw one inked label: a parchment halo, a soft bleed, then the text.
-
-    The halo is what keeps a zone name legible where it lands on dark
-    terrain, without resorting to the black drop-shadow the minimap uses
-    (which would look like UI text sitting on top of the paper rather
-    than ink soaked into it).
-
-    ``clamp_rect`` pulls a label back inside the drawing if its zone sits
-    hard against the coast - the names of the edge zones are long enough
-    to run off the plate otherwise.
-    """
-
-    label = font.render(text, True, color)
-    rect = label.get_rect(center=center)
-
-    if clamp_rect is not None:
-        rect.clamp_ip(clamp_rect)
-
-    if halo:
-        halo_rect = rect.inflate(14, 8)
-        halo_surf = pygame.Surface(halo_rect.size, pygame.SRCALPHA)
-        pygame.draw.rect(halo_surf, (*PARCHMENT, 120),
-                         halo_surf.get_rect(), border_radius=6)
-        surface.blit(halo_surf, halo_rect.topleft)
-
-    bleed = font.render(text, True, (*INK_SOFT, 90))
-    surface.blit(bleed, (rect.left + 1, rect.top + 1))
-    surface.blit(label, rect.topleft)
-    return rect
-
-
 def _compass_extent(radius):
     """
     Half-height of the whole rose, letters included.
@@ -409,8 +337,10 @@ def _build_paper(map_texture, map_width, map_height, zone_rects,
     pygame.draw.polygon(paper, PARCHMENT, polygon)
     paper.blit(_stain_layer(paper_size, polygon), (0, 0))
 
-    # The chart itself.
-    paper.blit(_age_map(map_texture, map_rect.size), map_rect.topleft)
+    # The chart itself - the same drawing, from the same builder, that
+    # the minimap crops its window out of.
+    paper.blit(build_chart_texture(map_texture, map_rect.size),
+               map_rect.topleft)
 
     # Double border around the drawing, the way printed charts frame the
     # plate: a heavy line just outside the map, a hairline outside that.
@@ -525,26 +455,12 @@ def _draw_marker(surface, center, heading, pulse):
                        (48, 48), radius, 2)
     surface.blit(glow, (cx - 48, cy - 48))
 
-    hx, hy = heading
-    px, py = -hy, hx      # perpendicular to the heading
-
-    def point(along, across):
-        return (cx + (hx * along + px * across) * MARKER_SIZE,
-                cy + (hy * along + py * across) * MARKER_SIZE)
-
-    arrow = (
-        point(1.15, 0),      # tip
-        point(-0.7, 0.62),   # back corner
-        point(-0.42, 0),     # notch, pulled forward between them
-        point(-0.7, -0.62),  # back corner
-    )
-    pygame.draw.polygon(surface, MARKER_INK, arrow)
-    pygame.draw.polygon(surface, INK, arrow, 1)
+    draw_marker(surface, center, heading, MARKER_SIZE)
 
 
 def open_world_map(screen, map_texture, player_rect, map_width, map_height,
                    zone_rects, heading=(1, 0), background=None,
-                   title="Map of the Island", subtitle=""):
+                   title="Map of the Island", subtitle="", night=False):
     """
     Show the world map and block until the player closes it.
 
@@ -556,6 +472,13 @@ def open_world_map(screen, map_texture, player_rect, map_width, map_height,
                      rects already converted to world pixels.
     ``heading``      the unit vector the player last moved along, so the
                      marker points the same way as the minimap arrow.
+    ``night``        whether the world is currently in night mode. The
+                     sheet is then lit by the player's own lantern rather
+                     than daylight, so the country around them is legible
+                     and the far corners fall into gloom.
+
+    Returns the night flag as the player left it - F1 still toggles it
+    from in here, and the caller needs to pick that up.
     """
 
     SCREEN_W, SCREEN_H = screen.get_size()
@@ -578,9 +501,10 @@ def open_world_map(screen, map_texture, player_rect, map_width, map_height,
     paper_pos = ((SCREEN_W - paper_size[0]) // 2,
                  (SCREEN_H - paper_size[1]) // 2)
 
-    paper, polygon = _build_paper(map_texture, map_width, map_height,
-                                  zone_rects, paper_size, map_rect, scale,
-                                  title, subtitle)
+    paper, polygon = _build_paper(
+        map_texture, map_width, map_height, zone_rects, paper_size,
+        map_rect, scale, title, subtitle
+    )
 
     # Silhouette of the sheet, offset behind it, so the paper reads as
     # lying on top of the scene rather than printed into it.
@@ -617,6 +541,16 @@ def open_world_map(screen, map_texture, player_rect, map_width, map_height,
     if heading == (0, 0):
         heading = (1, 0)
 
+    # --- Night ------------------------------------------------------------
+    # Clipped to the sheet: the veil is a full rectangle, so without the
+    # clip the dark would square off the torn edges and hang in the air
+    # beyond them.
+    def make_night_veil():
+        return _clip_to_paper(build_night_veil(paper_size),
+                              paper_size, polygon)
+
+    night_veil = make_night_veil() if night else None
+
     running = True
     while running:
         clock.tick(60)
@@ -630,6 +564,14 @@ def open_world_map(screen, map_texture, player_rect, map_width, map_height,
                 if event.key in (pygame.K_ESCAPE, pygame.K_m):
                     running = False
 
+                elif event.key == pygame.K_F1:
+                    # The day/night debug key keeps working with the map
+                    # open, and the caller is told what it was left on, so
+                    # the world behind the sheet cannot end up disagreeing
+                    # with the sheet about what time it is.
+                    night = not night
+                    night_veil = make_night_veil() if night else None
+
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 # Clicking off the sheet closes it, the way putting a map
                 # down does; clicking on the sheet does nothing.
@@ -641,6 +583,12 @@ def open_world_map(screen, map_texture, player_rect, map_width, map_height,
         screen.blit(backdrop, (0, 0))
         screen.blit(shadow, (paper_pos[0] + 7, paper_pos[1] + 9))
         screen.blit(paper, paper_pos)
+
+        # Over the whole sheet, but under the marker: where the player is
+        # standing is the one thing on the map that has to stay findable
+        # in the dark.
+        if night_veil is not None:
+            screen.blit(night_veil, paper_pos)
 
         # 0 -> 1 -> 0 over roughly a second and a half.
         ticks = pygame.time.get_ticks() % 1500
@@ -657,3 +605,6 @@ def open_world_map(screen, map_texture, player_rect, map_width, map_height,
         screen.blit(caption, caption_rect.topleft)
 
         pygame.display.flip()
+
+    # Handed back so the caller can pick up an F1 pressed in here.
+    return night

@@ -18,6 +18,10 @@ from src.ui.stage_panel import StagePanel
 from src.ui.gameplay_hud import (
     GameplayHUD, MINIMAP_FRAME, build_minimap_frame, build_view_vignette,
 )
+from src.ui.chart import (
+    BOSS_INK, INK, build_chart_texture, build_night_veil, build_sea_tile,
+    chart_sea_color, draw_marker, fill_sea, ink_text,
+)
 from src.systems.combat import (
     COMBAT_DEBUG, DEBUG_ENEMY_AI, FACING_VECTORS, PLAYER_DODGE_SPEED,
     PlayerCombat, attack_hitbox, attack_path_blocked, move_rect,
@@ -370,14 +374,16 @@ def game_screen(screen, slot_num=None, save_state=None):
     # blit rather than a rescale. The camera never rotates — it's the
     # same fixed birds-eye view as the main game — so "panning" is just
     # a straight crop centered on the player, no texture rotation needed.
+    #
+    # What gets baked is the *chart*, not the world art: parchment and
+    # sepia ink, from the same builder the paper map uses (ui/chart.py).
+    # The minimap is a piece of the map the character is carrying, so it
+    # should no more look like the ground than a real map does.
     MINIMAP_SIZE = max(150, min(220, int(SCREEN_H * 0.22)))
     MINIMAP_MARGIN = 14
     # The carved frame eats into the panel rather than growing it, so the
     # minimap keeps the screen footprint it always had.
     MINIMAP_VIEW = MINIMAP_SIZE - MINIMAP_FRAME * 2
-    # Taken from the map's own water tiles, so the area past the map edge
-    # blends into the real coastline instead of reading as a flat backdrop.
-    MINIMAP_SEA_COLOR = (44, 232, 244)
     MINIMAP_SPAN_FACTOR = 1.5  # how much wider the minimap's view is than the player's own screen view
     # Scaled against the viewport, not the panel, so the frame costs
     # resolution rather than changing how much world is on show.
@@ -412,7 +418,10 @@ def game_screen(screen, slot_num=None, save_state=None):
                     (obj.x, obj.y - obj.height)
                 )
 
-    minimap_texture = pygame.transform.smoothscale(
+    # No torn edge or margins on this one, unlike the sheet M opens: the
+    # minimap crops a window out of it, and a paper edge inside the stone
+    # frame would read as a gap rather than as a worn map.
+    minimap_texture = build_chart_texture(
         minimap_base_surface,
         (
             max(1, int(map_width * minimap_px_per_unit)),
@@ -420,16 +429,31 @@ def game_screen(screen, slot_num=None, save_state=None):
         )
     )
 
-    # Player marker: a GTA-style white arrowhead. It takes a heading vector
+    # Wherever the crop runs past the coast, the chart's own water
+    # carries on - the sea tone taken from the chart itself, hatched with
+    # the wave dashes an old map would use, so the paper appears to
+    # continue past the island instead of stopping at a panel colour.
+    minimap_sea_tile = build_sea_tile(chart_sea_color(minimap_texture))
+
+    # Player marker: a GTA-style arrowhead, in the map's red ink so it
+    # matches the one on the paper sheet. It takes a heading vector
     # straight off the movement input rather than the character's `facing`,
     # which only tracks the four cardinals it has sprite sets for — that way
     # the arrow covers the diagonals (NE/NW/SE/SW) as well.
     MINIMAP_ARROW_SIZE = 8
 
     # Chrome that never changes: the carved surround and the vignette that
-    # beds the terrain into it. Built here, blitted per frame.
+    # beds the terrain into it. Built here, blitted per frame. The vignette
+    # is warmed to a burnt brown, since it is now shading paper rather
+    # than the cold terrain art it was tuned against.
     minimap_frame = build_minimap_frame((MINIMAP_SIZE, MINIMAP_SIZE))
-    minimap_vignette = build_view_vignette((MINIMAP_VIEW, MINIMAP_VIEW))
+    minimap_vignette = build_view_vignette(
+        (MINIMAP_VIEW, MINIMAP_VIEW), color=(48, 30, 14), strength=110
+    )
+
+    # Nightfall on the minimap: the same even wash the paper map uses, so
+    # the two agree about how dark it is.
+    minimap_night_veil = build_night_veil((MINIMAP_VIEW, MINIMAP_VIEW))
 
     # --- Zone Labels ---
     # Converts each zone's fractional rect (from zones.py) into a
@@ -450,7 +474,7 @@ def game_screen(screen, slot_num=None, save_state=None):
 
     zone_label_font = title_font(11, bold=False)
 
-    def draw_minimap(surf, player_rect, heading):
+    def draw_minimap(surf, player_rect, heading, night=False):
         panel_rect = pygame.Rect(
             MINIMAP_MARGIN,
             SCREEN_H - MINIMAP_MARGIN - MINIMAP_SIZE,
@@ -461,13 +485,6 @@ def game_screen(screen, slot_num=None, save_state=None):
         # measured against the panel is measured against this instead.
         view_rect = panel_rect.inflate(-MINIMAP_FRAME * 2, -MINIMAP_FRAME * 2)
 
-        # Background shows through wherever the crop runs past the edge
-        # of the map (e.g. the player standing near the map border).
-        # Sampled straight from the map's own water tiles so the
-        # out-of-bounds area reads as the sea continuing past the edge
-        # instead of an obvious flat panel behind the map.
-        pygame.draw.rect(surf, MINIMAP_SEA_COLOR, view_rect)
-
         # The minimap-texture pixel the player is standing on, cropped so
         # that pixel lands dead-center in the panel — this is what makes
         # the minimap pan while keeping the player marker fixed in place.
@@ -475,6 +492,12 @@ def game_screen(screen, slot_num=None, save_state=None):
         mm_y = player_rect.centery * minimap_px_per_unit
         src_left = mm_x - MINIMAP_VIEW / 2
         src_top = mm_y - MINIMAP_VIEW / 2
+
+        # Open water first, wherever the crop runs past the coast (e.g.
+        # the player standing near the map border). Phased by the same
+        # crop offset as the chart, so the waves stay pinned to the world
+        # and hold still while the map pans over them.
+        fill_sea(surf, view_rect, minimap_sea_tile, (src_left, src_top))
 
         prev_clip = surf.get_clip()
         surf.set_clip(view_rect)
@@ -492,7 +515,9 @@ def game_screen(screen, slot_num=None, save_state=None):
 
         # Terrain first, then the vignette, then the names: a label drawn
         # under the vignette would be dimmed by it right where the crop is
-        # busiest, which is the opposite of what it is there for.
+        # busiest, which is the opposite of what it is there for. Night
+        # comes after all three — it is the light the whole chart is being
+        # read in, names included, not a filter on the terrain alone.
         surf.blit(minimap_vignette, view_rect.topleft)
 
         for zone in zone_pixel_rects:
@@ -503,49 +528,28 @@ def game_screen(screen, slot_num=None, save_state=None):
             label_x = view_rect.left - src_left + zone_center_x
             label_y = view_rect.top - src_top + zone_center_y
 
-            label_color = (
-                (255, 210, 90) if zone["is_boss_zone"] else (230, 230, 230)
+            # Same ink hand as the paper map: a parchment halo carrying
+            # brown ink, boss ground in red. The halo is tighter and
+            # thinner than the sheet's - at this size a full one covers
+            # most of the zone it is naming.
+            ink_text(
+                surf, zone_label_font, zone["name"], (label_x, label_y),
+                BOSS_INK if zone["is_boss_zone"] else INK,
+                halo_alpha=120, halo_pad=(8, 4)
             )
 
-            label = zone_label_font.render(zone["name"], True, label_color)
-            label_rect = label.get_rect(center=(label_x, label_y))
-
-            # A dark pill under each name. Plain drop-shadowed text was
-            # legible over grass and invisible over the tree canopy.
-            pill_rect = label_rect.inflate(8, 4)
-            pill = pygame.Surface(pill_rect.size, pygame.SRCALPHA)
-            pygame.draw.rect(pill, (10, 12, 17, 130), pill.get_rect(), border_radius=4)
-            surf.blit(pill, pill_rect.topleft)
-            surf.blit(label, label_rect.topleft)
+        if night:
+            surf.blit(minimap_night_veil, view_rect.topleft)
 
         surf.set_clip(prev_clip)
 
         # Player marker — always dead-center, since the crop above keeps
         # the player's world position pinned to the middle of the panel.
-        # Points are laid out along the heading vector (how far forward)
-        # and across it (how far out to the side): a long tip against a
-        # narrow tail, with a notch cut into the back so the pointed end
-        # is unmistakable. Turns with the character's facing.
-        hx, hy = heading
-        px, py = -hy, hx  # perpendicular to the heading
-        cx, cy = view_rect.center
-
-        def arrow_point(along, across):
-            return (cx + (hx * along + px * across) * MINIMAP_ARROW_SIZE,
-                    cy + (hy * along + py * across) * MINIMAP_ARROW_SIZE)
-
-        arrow = (
-            arrow_point(1.15, 0),      # tip
-            arrow_point(-0.7, 0.62),   # back corner
-            arrow_point(-0.42, 0),     # notch, pulled forward between them
-            arrow_point(-0.7, -0.62),  # back corner
-        )
-        # Dropped a pixel down-right first, so the marker holds its shape
-        # over pale sand as well as over the tree canopy.
-        pygame.draw.polygon(surf, (18, 20, 26),
-                            [(x + 1, y + 2) for x, y in arrow])
-        pygame.draw.polygon(surf, (255, 255, 255), arrow)
-        pygame.draw.polygon(surf, (30, 30, 30), arrow, 1)
+        # Drawn by the shared chart code, so it is the same arrowhead,
+        # pointing the same way, as the one on the paper map — and drawn
+        # over the night, since where you are has to stay findable after
+        # dark.
+        draw_marker(surf, view_rect.center, heading, MINIMAP_ARROW_SIZE)
 
         # The surround goes on last: it is the thing the terrain is
         # clipped into, so it has to cover the crop's edges.
@@ -582,6 +586,10 @@ def game_screen(screen, slot_num=None, save_state=None):
 
     # --- Pause menu setup ---
     paused = False
+    # The frame the world was on when the player paused, already blurred.
+    # The menu is drawn over this rather than over a freshly rendered
+    # scene - see the note in the paused branch of the loop below.
+    pause_snapshot = None
     show_pause_settings = False
     # Debug day/night preview.
     night_mode = False
@@ -793,17 +801,24 @@ def game_screen(screen, slot_num=None, save_state=None):
     def draw_pause_button(surf, rect, label, hovered):
         draw_button(surf, rect, label, pause_button_font, hovered=hovered)
 
-    def draw_pause_menu(surf, mouse_pos):
-        # ----- Blur the current game screen -----
+    def blur_frame(surf):
+        """
+        The given frame, softened - the backdrop the pause menu sits on.
+
+        Taken once when the player pauses, not every frame: the scene
+        behind a pause menu never changes, and two full-screen rescales
+        per frame to reproduce the same image is work for nothing.
+        """
+
         small = pygame.transform.smoothscale(
             surf,
             (SCREEN_W // 8, SCREEN_H // 8)
         )
-        blurred = pygame.transform.smoothscale(
-            small,
-            (SCREEN_W, SCREEN_H)
-        )
-        surf.blit(blurred, (0, 0))
+        return pygame.transform.smoothscale(small, (SCREEN_W, SCREEN_H))
+
+    def draw_pause_menu(surf, mouse_pos):
+        # The blurred scene is already on `surf` - the caller blits the
+        # snapshot taken at the moment of pausing.
 
         # ----- Dark transparent overlay -----
         overlay = pygame.Surface((SCREEN_W, SCREEN_H), pygame.SRCALPHA)
@@ -966,7 +981,10 @@ def game_screen(screen, slot_num=None, save_state=None):
                     # so the two can never name or place anything
                     # differently - the map is just the uncropped view.
                     background_snapshot = screen.copy()
-                    open_world_map(
+                    # Returns whether night was left on: F1 keeps working
+                    # while the sheet is open, so the world and the map
+                    # cannot end up disagreeing about the time of day.
+                    night_mode = open_world_map(
                         screen,
                         minimap_base_surface,
                         player_rect,
@@ -980,6 +998,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                             player_rect.centerx, player_rect.centery,
                             map_width, map_height
                         ).upper(),
+                        night=night_mode,
                     )
 
                 elif event.key == pygame.K_ESCAPE:
@@ -990,6 +1009,11 @@ def game_screen(screen, slot_num=None, save_state=None):
                         paused = False
                     else:
                         paused = True
+                        # `screen` still holds the last completed frame at
+                        # this point - events are pumped before anything
+                        # is drawn - so this is exactly what the player
+                        # was looking at when they hit pause.
+                        pause_snapshot = blur_frame(screen)
 
                 elif event.key == pygame.K_F5:
                     sample_challenge = {
@@ -1062,21 +1086,29 @@ def game_screen(screen, slot_num=None, save_state=None):
                 settings_panel.handle_event(event)
 
         if paused:
-            if paused:
-                screen.blit(map_surface, (-camera_x, -camera_y))
-                main_character.draw_frames(ZOOM, camera_x, camera_y, dt=0)
-                # Draw the hotbar before the pause overlay so it gets blurred
-                # along with the rest of the scene instead of vanishing.
-                toolbar.draw()
-                stage_panel.draw()
-                if show_pause_settings:
-                    settings_panel.draw()
-                else:
-                    draw_pause_menu(screen, mouse_pos)
-                    if save_message_frames > 0:
-                        save_message_frames -= 1
-                pygame.display.flip()
-                continue
+            # Show the frame the player paused on, and nothing else.
+            #
+            # This used to re-render the scene from scratch here - the
+            # base map, the character, the hotbar and the stage panel -
+            # which quietly dropped everything that draw pass did not
+            # know about: the trees and other props, the enemies, the
+            # profile HUD, the minimap, and the night and fog overlays.
+            # That is why pausing wiped the world back to bare ground and
+            # turned night into day. Anything added to the main draw pass
+            # in future would have gone the same way; a snapshot cannot
+            # fall behind like that, because it *is* the finished frame.
+            if pause_snapshot is None:
+                pause_snapshot = blur_frame(screen)
+            screen.blit(pause_snapshot, (0, 0))
+
+            if show_pause_settings:
+                settings_panel.draw()
+            else:
+                draw_pause_menu(screen, mouse_pos)
+                if save_message_frames > 0:
+                    save_message_frames -= 1
+            pygame.display.flip()
+            continue
         # --- Movement / combat action state ---
         player_combat.update(dt)
         main_character.set_combat_state(player_combat.state)
@@ -1579,7 +1611,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                 )
                 screen.blit(label, (center[0] + 10, center[1] - 24))
         # Minimap (bottom-left)
-        draw_minimap(screen, player_rect, minimap_heading)
+        draw_minimap(screen, player_rect, minimap_heading, night_mode)
 
         # Hotbar (bottom-centre). Drawn after the world and the HUD so it
         # always sits on top of everything else in the scene.

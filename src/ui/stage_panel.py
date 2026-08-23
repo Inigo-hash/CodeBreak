@@ -120,6 +120,48 @@ STONE = {
     "material": "stone",
 }
 
+# Painted button art, one trimmed PNG per tab, produced from the 2x2 reference
+# sheet by tools/prepare_rail_buttons.py. The labels are baked into the art, so
+# in sprite mode this widget draws no text of its own beyond the hotkey.
+# If any file is missing the rail silently falls back to the drawn plaques
+# below, so a checkout without the art still runs.
+RAIL_SPRITE_DIR = "assets/images/ui"
+# Buttons are matched on WIDTH, not height. The plaques are all about the same
+# size in the source sheet, but they carry different amounts of scenery hanging
+# off the top - the mushroom-and-hat cluster on ENEMIES most of all - so
+# matching heights would shrink the busiest plaque and leave the column ragged.
+RAIL_SPRITE_WIDTH = 205
+HOTKEY_GUTTER = 24          # space to the left of a button for its key badge
+
+
+def _load_rail_sprites():
+    """Return {tab: surface} at rail size, or None if the art is not present."""
+    sprites = {}
+    for tab, _, _, _ in RAIL_BUTTONS:
+        path = f"{RAIL_SPRITE_DIR}/rail_{tab}.png"
+        try:
+            image = pygame.image.load(path).convert_alpha()
+        except (pygame.error, FileNotFoundError, OSError):
+            return None
+
+        scale = RAIL_SPRITE_WIDTH / image.get_width()
+        size = (RAIL_SPRITE_WIDTH, max(1, round(image.get_height() * scale)))
+        sprites[tab] = pygame.transform.smoothscale(image, size)
+    return sprites
+
+
+def _highlight(sprite, accent):
+    """Hover version of a sprite: the tab's accent added as light.
+
+    BLEND_RGB_ADD rather than RGBA, so the plaque brightens without the
+    transparent margin around it picking up any colour.
+    """
+    lifted = sprite.copy()
+    lifted.fill(tuple(min(64, channel // 4) for channel in accent),
+                special_flags=pygame.BLEND_RGB_ADD)
+    return lifted
+
+
 RAIL_STYLES = {
     "manual":     dict(WOOD,  accent=(236, 205, 149)),   # parchment map
     "enemies":    dict(STONE, accent=(178, 132, 224)),   # cursed purple
@@ -279,26 +321,40 @@ class StagePanel:
         )
 
         # --- Rail ----------------------------------------------------------
-        # No enclosing panel: the plaques are placed straight onto the screen,
-        # each one its own object. tab id -> clickable rect, built once so
-        # hit-testing is a lookup.
-        self.button_rects = {}
-        rail_top = self.tracker_rect.bottom + GROUP_GAP
-        for i, (tab, _, _, _) in enumerate(RAIL_BUTTONS):
-            self.button_rects[tab] = pygame.Rect(
-                panel_left,
-                rail_top + i * (BUTTON_HEIGHT + BUTTON_GAP),
-                PANEL_WIDTH,
-                BUTTON_HEIGHT
-            )
-
-        # Both hover states of every plaque, rendered up front.
+        # No enclosing panel: the buttons are placed straight onto the screen,
+        # each one its own object. Painted art is used when it is available and
+        # the drawn plaques stand in when it is not; either way the result is
+        # both hover states of every button, rendered up front, plus a tab id
+        # -> clickable rect so hit-testing is a lookup.
+        self._sprites = _load_rail_sprites()
         self._plaques = {}
+        self.button_rects = {}
+
+        rail_top = self.tracker_rect.bottom + GROUP_GAP
+        y = rail_top
+
         for i, (tab, label, key_label, _) in enumerate(RAIL_BUTTONS):
-            for hovered in (False, True):
-                self._plaques[(tab, hovered)] = self._build_plaque(
-                    tab, label, key_label, hovered, seed=i
-                )
+            if self._sprites:
+                art = self._sprites[tab]
+                # Right-aligned with the tracker, so the column has one edge.
+                rect = pygame.Rect(0, y, art.get_width(), art.get_height())
+                rect.right = panel_left + PANEL_WIDTH
+                self._plaques[(tab, False)] = art
+                self._plaques[(tab, True)] = _highlight(
+                    art, RAIL_STYLES[tab]["accent"])
+            else:
+                rect = pygame.Rect(panel_left, y, PANEL_WIDTH, BUTTON_HEIGHT)
+                for hovered in (False, True):
+                    self._plaques[(tab, hovered)] = self._build_plaque(
+                        tab, label, key_label, hovered, seed=i
+                    )
+
+            self.button_rects[tab] = rect
+            y = rect.bottom + BUTTON_GAP
+
+        # The drawn plaques carry a bleed margin for their shadow; the painted
+        # ones are already trimmed to their own edges.
+        self._bleed = 0 if self._sprites else PLAQUE_BLEED
 
         # Wrapping width for objective text: panel minus padding minus the
         # checkbox column.
@@ -424,6 +480,31 @@ class StagePanel:
         # worst case, so the rail below never moves.
         return line_y + 6
 
+    def _draw_hotkey_badge(self, rect, key_label, tab, hovered):
+        """Small carved chip showing the hotkey, in the gutter beside a button.
+
+        The painted plaques have no clear space for it - every part of the
+        face is either lettering or scenery - so the badge sits just off the
+        left edge instead of being stamped on top of the artwork.
+        """
+        key_surf = self.font_key.render(
+            key_label, True,
+            RAIL_STYLES[tab]["accent"] if hovered else TEXT_DIM)
+
+        chip = pygame.Rect(0, 0, 20, 20)
+        # Anchored off the bottom: the plaque body sits at the foot of every
+        # sprite, whatever scenery overhangs the top.
+        chip.center = (rect.left - HOTKEY_GUTTER // 2 - 2, rect.bottom - 46)
+
+        badge = pygame.Surface(chip.size, pygame.SRCALPHA)
+        pygame.draw.rect(badge, (*PANEL_INNER, 210), badge.get_rect(),
+                         border_radius=5)
+        pygame.draw.rect(badge,
+                         RAIL_STYLES[tab]["accent"] if hovered else METAL_FRAME,
+                         badge.get_rect(), 2, border_radius=5)
+        self.screen.blit(badge, chip)
+        self.screen.blit(key_surf, key_surf.get_rect(center=chip.center))
+
     def _build_plaque(self, tab, label, key_label, hovered, seed):
         """Render one carved plaque, label and all, into its own surface.
 
@@ -516,8 +597,10 @@ class StagePanel:
         return surf
 
     def _draw_rail(self, mouse_pos):
-        for tab, _, _, _ in RAIL_BUTTONS:
+        for tab, _, key_label, _ in RAIL_BUTTONS:
             rect = self.button_rects[tab]
             hovered = rect.collidepoint(mouse_pos)
             self.screen.blit(self._plaques[(tab, hovered)],
-                             (rect.left - PLAQUE_BLEED, rect.top - PLAQUE_BLEED))
+                             (rect.left - self._bleed, rect.top - self._bleed))
+            if self._sprites:
+                self._draw_hotkey_badge(rect, key_label, tab, hovered)

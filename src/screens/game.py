@@ -1,6 +1,7 @@
 from pytmx.util_pygame import load_pygame
 import pygame
 import sys
+import random
 from src.settings_state import settings_state as _settings_state
 from src.screens.settings import SettingsPanel
 from src.entities.player import MainCharacter
@@ -591,7 +592,140 @@ def game_screen(screen, slot_num=None, save_state=None):
     )
 
     night_overlay.fill(
-        (8, 15, 40, 145)
+        (8, 15, 40, 200)
+    )
+
+    # ---------------------------------------------------------
+    # Debug fog preview
+    # ---------------------------------------------------------
+
+    fog_mode = False
+
+    # Fog movement through the world.
+    fog_drift_x = 0.0
+    fog_drift_y = 0.0
+
+    # Pixels per second.
+    fog_speed_x = 18.0
+    fog_speed_y = 4.0
+
+    def create_fog_texture(width, height, seed=7):
+        """
+        Creates a smoother, softer fog texture.
+
+        Uses two low-contrast noise layers and smoothscales them
+        multiple times so the fog looks more cloudy and less blotchy.
+        """
+
+        def build_layer(small_w, small_h, max_alpha, layer_seed):
+            rng = random.Random(layer_seed)
+
+            small = pygame.Surface(
+                (small_w, small_h),
+                pygame.SRCALPHA
+            )
+
+            for y in range(small_h):
+                for x in range(small_w):
+
+                    # Lower contrast = smoother fog
+                    alpha = rng.randint(0, max_alpha)
+
+                    small.set_at(
+                        (x, y),
+                        (205, 215, 220, alpha)
+                    )
+
+            # First upscale
+            layer = pygame.transform.smoothscale(
+                small,
+                (width, height)
+            )
+
+            # Smooth it even more by shrinking and enlarging again
+            layer = pygame.transform.smoothscale(
+                pygame.transform.smoothscale(
+                    layer,
+                    (
+                        max(1, width // 2),
+                        max(1, height // 2)
+                    )
+                ),
+                (width, height)
+            )
+
+            return layer
+
+        # Large soft fog shapes
+        base_layer = build_layer(
+            28,   # smaller = softer / broader fog
+            20,
+            26,   # lower alpha = smoother
+            seed
+        )
+
+        # Light secondary detail so it doesn't look too flat
+        detail_layer = build_layer(
+            52,
+            36,
+            14,
+            seed + 99
+        )
+
+        # Blend them together
+        base_layer.blit(
+            detail_layer,
+            (0, 0),
+            special_flags=pygame.BLEND_RGBA_ADD
+        )
+
+        # -----------------------------------------------------
+        # Create mirrored seamless texture
+        # -----------------------------------------------------
+
+        fog = pygame.Surface(
+            (width * 2, height * 2),
+            pygame.SRCALPHA
+        )
+
+        fog.blit(
+            base_layer,
+            (0, 0)
+        )
+
+        fog.blit(
+            pygame.transform.flip(
+                base_layer,
+                True,
+                False
+            ),
+            (width, 0)
+        )
+
+        fog.blit(
+            pygame.transform.flip(
+                base_layer,
+                False,
+                True
+            ),
+            (0, height)
+        )
+
+        fog.blit(
+            pygame.transform.flip(
+                base_layer,
+                True,
+                True
+            ),
+            (width, height)
+        )
+
+        return fog
+
+    # Create the fog texture once at startup.
+    fog_texture = create_fog_texture(
+        1100,
+        750
     )
     settings_panel = SettingsPanel(screen)
     settings_panel.close()
@@ -814,6 +948,16 @@ def game_screen(screen, slot_num=None, save_state=None):
                         "Night mode ON"
                         if night_mode
                         else "Night mode OFF"
+                    )
+
+                elif event.key == pygame.K_F2 and not paused:
+
+                    fog_mode = not fog_mode
+
+                    print(
+                        "Fog mode ON"
+                        if fog_mode
+                        else "Fog mode OFF"
                     )
 
                 elif event.key == pygame.K_m and not paused:
@@ -1222,6 +1366,54 @@ def game_screen(screen, slot_num=None, save_state=None):
                 (0, 0)
             )
 
+        # ---------------------------------------------------------
+        # Fog
+        # ---------------------------------------------------------
+
+        if fog_mode:
+
+            # Move fog independently through the world.
+            fog_drift_x += fog_speed_x * dt
+            fog_drift_y += fog_speed_y * dt
+
+            fog_w = fog_texture.get_width()
+            fog_h = fog_texture.get_height()
+
+            # World position + independent fog movement.
+            offset_x = int(
+                camera_x - fog_drift_x
+            )
+
+            offset_y = int(
+                camera_y - fog_drift_y
+            )
+
+            start_x = -(
+                offset_x % fog_w
+            )
+
+            start_y = -(
+                offset_y % fog_h
+            )
+
+            # Repeat fog across visible screen.
+            for fog_y in range(
+                start_y - fog_h,
+                SCREEN_H + fog_h,
+                fog_h
+            ):
+
+                for fog_x in range(
+                    start_x - fog_w,
+                    SCREEN_W + fog_w,
+                    fog_w
+                ):
+
+                    screen.blit(
+                        fog_texture,
+                        (fog_x, fog_y)
+                    )
+
         # --- Draw interaction UI ---
         if near_interactable:
             # Scale the interactable position to match the zoomed map
@@ -1398,7 +1590,7 @@ def game_screen(screen, slot_num=None, save_state=None):
 
         # Key hints (top-right, out of the way of the profile HUD)
         hint = font.render(
-            "ESC = Pause    B = Inventory    M = Map    F1 = Night",
+            "ESC = Pause    B = Inventory    M = Map    F1 = Night    F2 = Fog",
             True,
             (255, 255, 255)
         )

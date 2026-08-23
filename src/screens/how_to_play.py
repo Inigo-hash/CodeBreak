@@ -72,7 +72,9 @@ def how_to_play_screen(screen):
                 sys.exit()
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 return
-            if event.type == pygame.MOUSEBUTTONDOWN:
+            # Left button only - see the note in main_menu.py: the wheel
+            # and the right button raise this event as well.
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if back_rect.collidepoint(event.pos):
                     return
 

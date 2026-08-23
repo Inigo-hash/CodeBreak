@@ -168,7 +168,9 @@ def start_game_menu(screen, clean_backdrop=None):
                     _transition_to_main_menu()
                     return
 
-            if event.type == pygame.MOUSEBUTTONDOWN:
+            # Left button only - see the note in main_menu.py: the wheel
+            # and the right button raise this event as well.
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if confirm_slot is not None:
                     if confirm_yes.collidepoint(event.pos):
                         result = _start_game_with_slot(confirm_slot)

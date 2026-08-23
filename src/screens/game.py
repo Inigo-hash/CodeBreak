@@ -1044,7 +1044,10 @@ def game_screen(screen, slot_num=None, save_state=None):
                     background_snapshot = screen.copy()
                     game_over_screen(screen, background=background_snapshot)
 
-            if event.type == pygame.MOUSEBUTTONDOWN:
+            # Left button only - see the note in main_menu.py: the wheel
+            # and the right button raise this event as well, which had
+            # the pause menu firing on a scroll.
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if paused and not show_pause_settings:
                     for btn in pause_buttons:
                         if btn["rect"].collidepoint(event.pos):

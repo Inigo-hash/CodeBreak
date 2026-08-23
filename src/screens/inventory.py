@@ -60,7 +60,7 @@ TEXT_DIM      = (150, 155, 170)
 # ---------------------------------------------------------------------------
 # Layout constants
 # ---------------------------------------------------------------------------
-TOOLBAR_SLOTS   = 5    # original five-box layout; only slot 1 accepts a weapon
+TOOLBAR_SLOTS   = 5    # hotbar slots; any of them can be the one in hand
 BAG_COLS        = 5    # bag grid columns - matches the toolbar so it lines up
 BAG_ROWS        = 4    # bag grid rows -> 5 x 4 = 20 bag slots
 
@@ -71,6 +71,12 @@ TOOLBAR_BOTTOM_MARGIN = 16  # gap between the toolbar panel and screen bottom
 
 # Duration of the inventory slide-up animation, in seconds.
 SLIDE_DURATION = 0.28
+
+# How far the pointer has to travel with the button held before a press
+# counts as dragging an item rather than clicking it. Small enough that a
+# deliberate drag feels immediate, large enough that the shake in an
+# ordinary click does not lift the item out of its slot.
+DRAG_THRESHOLD = 6
 
 
 # ===========================================================================
@@ -116,34 +122,74 @@ class PlayerInventory:
         # The 20 bag slots shown when the inventory screen is open.
         self.bag = [None] * (BAG_COLS * BAG_ROWS)
         # Which toolbar slot is currently active (0-based).
-        # There is only one usable weapon slot, so scrolling cannot switch
-        # weapons even though the original five-box layout is preserved.
         self.selected = 0
         self.weapon_obtained = False
-        self.weapon_equipped = False
 
     # -- selection helpers --------------------------------------------------
     def select(self, index):
-        """Keep selection on the sole usable weapon slot."""
-        self.selected = 0
+        """Make toolbar slot ``index`` the active one, empty or not."""
+        if 0 <= index < TOOLBAR_SLOTS:
+            self.selected = index
 
     def scroll_selection(self, direction):
-        """A single weapon has no previous/next selection."""
-        self.selected = 0
+        """
+        Step the selection one slot along, wrapping round at both ends.
+
+        Empty slots are part of the cycle on purpose: scrolling onto one
+        is how the player puts what they are holding away, the same way
+        an empty hotbar slot leaves your hands free in Minecraft.
+        """
+
+        self.selected = (self.selected + direction) % TOOLBAR_SLOTS
 
     def get_selected_item(self):
         """Return the Item in the active toolbar slot, or None if empty."""
-        if not self.weapon_equipped:
-            return None
-        return self.toolbar[0]
+        return self.toolbar[self.selected]
+
+    @property
+    def weapon_equipped(self):
+        """
+        True when the slot in hand holds a weapon.
+
+        Derived rather than stored: with slots that can be scrolled past
+        and items that can be dragged out of the hotbar, a separate flag
+        is one more thing that can end up disagreeing with where the
+        sword actually is.
+        """
+
+        item = self.get_selected_item()
+        return item is not None and getattr(item, "kind", None) == "weapon"
 
     def set_weapon_state(self, obtained, equipped):
+        """
+        Give the player the starter sword, in hand or packed away.
+
+        ``equipped`` decides *where* it goes rather than setting a flag:
+        in hand means the first hotbar slot with that slot selected, put
+        away means the bag. That way loading a save lands the sword
+        somewhere real, and everything downstream can just look at what
+        is in the selected slot.
+        """
+
         self.weapon_obtained = bool(obtained)
-        self.weapon_equipped = bool(equipped and obtained)
-        self.toolbar[0] = (Item(
+        self.toolbar[0] = None
+
+        if not self.weapon_obtained:
+            return
+
+        sword = Item(
             "Base Sword", kind="weapon", damage=20,
             description="A dependable starter blade.",
-        ) if self.weapon_obtained else None)
+        )
+
+        if equipped:
+            self.toolbar[0] = sword
+            self.selected = 0
+        else:
+            for i, slot in enumerate(self.bag):
+                if slot is None:
+                    self.bag[i] = sword
+                    break
 
     # -- item helpers -------------------------------------------------------
     def add_item(self, item):
@@ -328,8 +374,12 @@ class Toolbar:
         caller can skip its own handling for that event.
 
         Supported:
-          * number key 1         -> keep the single weapon slot selected
-          * left click on the slot -> select it
+          * number keys 1-5        -> select that slot
+          * mouse wheel            -> step through the slots, wrapping
+          * left click on a slot   -> select it
+
+        Selecting an empty slot is allowed and means empty hands - it is
+        how the player puts their weapon away.
         """
         if event.type == pygame.KEYDOWN:
             # pygame.K_1 .. pygame.K_5 are consecutive keycodes, so subtracting
@@ -457,6 +507,80 @@ class InventoryScreen:
 
         # Animation state: 0.0 = fully off-screen, 1.0 = fully open.
         self.progress = 0.0
+
+        # Drag state. A press on a filled slot only *arms* a drag; the
+        # item is not lifted until the pointer has moved DRAG_THRESHOLD
+        # pixels. Without that, every click would be a one-pixel drag and
+        # tapping a stored topic to open it would stop working.
+        self.drag = None
+
+    # -- slots and dragging -------------------------------------------------
+    def _slot_at(self, pos):
+        """
+        Which slot is under ``pos``: ``(list_name, index)`` or None.
+
+        Rects are stored relative to the panel and the panel slides, so
+        they are resolved against wherever it is right now rather than
+        cached - a drop has to land on the slot the player can see.
+        """
+
+        panel_y = self._current_panel_y()
+
+        for name, locals_ in (("bag", self.bag_rects_local),
+                              ("toolbar", self.equipped_rects_local)):
+            for i, local in enumerate(locals_):
+                if local.move(self.panel_x, panel_y).collidepoint(pos):
+                    return name, i
+
+        return None
+
+    def _slots(self, name):
+        return self.inventory.bag if name == "bag" else self.inventory.toolbar
+
+    def _lift(self):
+        """Take the armed item out of its slot - the drag has begun."""
+
+        drag = self.drag
+        self._slots(drag["origin"][0])[drag["origin"][1]] = None
+        drag["lifted"] = True
+
+    def _return_dragged(self):
+        """Put the held item back in the slot it was lifted out of."""
+
+        origin_name, origin_index = self.drag["origin"]
+        self._slots(origin_name)[origin_index] = self.drag["item"]
+
+    def _drop(self, pos):
+        """
+        Put the held item down on the slot under ``pos``.
+
+        Landing on a filled slot swaps the two, which is what makes a bag
+        with no free space still rearrangeable. Anything else - a drop
+        outside the panel, or a topic aimed at the hotbar - sends the
+        item home, so nothing can be lost by a clumsy drag.
+        """
+
+        drag = self.drag
+        origin_name, origin_index = drag["origin"]
+        item = drag["item"]
+
+        target = self._slot_at(pos)
+
+        if target is not None:
+            target_name, target_index = target
+            is_topic = getattr(item, "kind", None) == "topic"
+
+            # Topics are learning resources, not equipment - the same rule
+            # add_topic() follows when it refuses to fill a hotbar slot.
+            if not (is_topic and target_name == "toolbar"):
+                slots = self._slots(target_name)
+                self._slots(origin_name)[origin_index] = slots[target_index]
+                slots[target_index] = item
+                self.drag = None
+                return
+
+        self._return_dragged()
+        self.drag = None
 
     # -- animation ----------------------------------------------------------
     @staticmethod
@@ -626,10 +750,23 @@ class InventoryScreen:
             self.screen.blit(num, (rect.left + 4, rect.top + 2))
 
         # --- Close hint ------------------------------------------------------
-        hint = self.font_hint.render("B or ESC to close", True, TEXT_DIM)
+        hint = self.font_hint.render(
+            "DRAG TO MOVE ITEMS      B or ESC to close", True, TEXT_DIM
+        )
         self.screen.blit(hint,
                          (panel_rect.centerx - hint.get_width() // 2,
                           panel_rect.bottom - hint.get_height() - 18))
+
+        # --- The item being dragged, riding the cursor ------------------------
+        # Last, so it passes over the slots rather than under them, and
+        # centred on the pointer so it is obvious which slot it will land
+        # in. The slot it came from is already drawn empty - it was taken
+        # out of the list the moment the drag began.
+        if self.drag is not None and self.drag["lifted"]:
+            held_rect = pygame.Rect(0, 0, SLOT_SIZE, SLOT_SIZE)
+            held_rect.center = mouse_pos
+            _draw_slot(self.screen, held_rect, self.drag["item"],
+                       self.font_item, SLOT_SELECTED, alpha=225)
 
     # -- main loop ----------------------------------------------------------
     def run(self):
@@ -656,6 +793,12 @@ class InventoryScreen:
 
                 if event.type == pygame.KEYDOWN:
                     if event.key in (pygame.K_b, pygame.K_ESCAPE):
+                        # Closing mid-drag puts the item back where it came
+                        # from. It is out of both lists while it rides the
+                        # cursor, so leaving it there would destroy it.
+                        if self.drag is not None and self.drag["lifted"]:
+                            self._return_dragged()
+                        self.drag = None
                         closing = True
                     # Number keys still change the equipped slot while open.
                     elif pygame.K_1 <= event.key <= pygame.K_1 + TOOLBAR_SLOTS - 1:
@@ -666,62 +809,57 @@ class InventoryScreen:
                     self.inventory.scroll_selection(-1 if event.y > 0 else 1)
 
                 # ---------------------------------------------------------
-                # Mouse clicks
+                # Mouse: click to use, press-and-drag to move
                 # ---------------------------------------------------------
+                # A press only arms a drag; what it turns out to be is
+                # decided on release. Move first and it is a drag, let go
+                # on the spot and it is a click.
 
                 if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    slot = self._slot_at(event.pos)
 
-                    panel_y = self._current_panel_y()
-
-                    # -----------------------------------------------------
-                    # Bag slots
-                    # -----------------------------------------------------
-
-                    for i, local in enumerate(self.bag_rects_local):
-
-                        rect = local.move(
-                            self.panel_x,
-                            panel_y
-                        )
-
-                        if not rect.collidepoint(event.pos):
-                            continue
-
-                        item = self.inventory.bag[i]
+                    if slot is not None:
+                        name, index = slot
+                        item = self._slots(name)[index]
 
                         if item is not None:
+                            self.drag = {
+                                "item": item,
+                                "origin": (name, index),
+                                "press": event.pos,
+                                "lifted": False,
+                            }
+                        elif name == "toolbar":
+                            # Empty hotbar slot: selecting it is how the
+                            # player ends up holding nothing.
+                            self.inventory.select(index)
 
-                            topic_id = getattr(
-                                item,
-                                "topic_id",
-                                None
-                            )
+                if event.type == pygame.MOUSEMOTION and self.drag is not None:
+                    if not self.drag["lifted"]:
+                        press = self.drag["press"]
+                        moved = (abs(event.pos[0] - press[0])
+                                 + abs(event.pos[1] - press[1]))
+                        if moved >= DRAG_THRESHOLD:
+                            self._lift()
 
+                if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                    if self.drag is not None and self.drag["lifted"]:
+                        self._drop(event.pos)
+
+                    elif self.drag is not None:
+                        # Never moved: treat it as a click on the slot it
+                        # started in.
+                        name, index = self.drag["origin"]
+                        item = self.drag["item"]
+                        self.drag = None
+
+                        if name == "toolbar":
+                            self.inventory.select(index)
+                        else:
+                            topic_id = getattr(item, "topic_id", None)
                             if topic_id:
-
-                                print(
-                                    f"Opening stored topic: {topic_id}"
-                                )
-
+                                print(f"Opening stored topic: {topic_id}")
                                 return topic_id
-
-                        break
-
-                    # -----------------------------------------------------
-                    # Equipped slots
-                    # -----------------------------------------------------
-
-                    for i, local in enumerate(self.equipped_rects_local):
-
-                        rect = local.move(
-                            self.panel_x,
-                            panel_y
-                        )
-
-                        if rect.collidepoint(event.pos):
-
-                            self.inventory.select(i)
-                            break
 
             # Advance the slide animation - forwards while opening, backwards
             # while closing. Both directions reuse the same easing curve.

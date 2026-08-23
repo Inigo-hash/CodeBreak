@@ -93,7 +93,9 @@ def tutorial_screen(screen, play_music=True):
                 return
             if event.type == pygame.KEYDOWN and event.key in (pygame.K_e, pygame.K_SPACE, pygame.K_RETURN):
                 self.advance()
-            elif event.type == pygame.MOUSEBUTTONDOWN:
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                # Left button only - see the note in main_menu.py. Without
+                # it a scroll of the wheel skipped a tutorial step.
                 self.advance()
 
         def wrap_text(self, text, font, max_width):
@@ -335,6 +337,7 @@ def tutorial_screen(screen, play_music=True):
                     and event.key in (pygame.K_e, pygame.K_SPACE, pygame.K_RETURN)
                 ) or (
                     event.type == pygame.MOUSEBUTTONDOWN
+                    and event.button == 1
                     and manual_begin_rect.collidepoint(event.pos)
                 )
                 if begin_pressed:

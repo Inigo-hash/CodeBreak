@@ -521,7 +521,13 @@ def main_menu():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
-            if event.type == pygame.MOUSEBUTTONDOWN:    
+            # Left button only. pygame reports a right-click, a middle
+            # click and each notch of the scroll wheel as MOUSEBUTTONDOWN
+            # too (the wheel arrives as buttons 4 and 5), so a handler
+            # that only checks the event type fires a menu button on all
+            # of them - including scrolling with the pointer resting on
+            # one.
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if not show_settings:
                     if rects[0].collidepoint(event.pos):
                         from src.ui.transitions import crumble_transition

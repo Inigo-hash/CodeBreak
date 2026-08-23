@@ -8,7 +8,7 @@ from src.entities.enemy import Enemy
 from src.ui.code_editor import CodeEditor
 from src.screens.game_over import game_over_screen
 from src.screens.profile import profile_screen
-from src.screens.inventory import Item, PlayerInventory, Toolbar, open_inventory
+from src.screens.inventory import PlayerInventory, Toolbar, open_inventory
 from src.screens.stage_info import open_stage_info
 from src.screens.world_map import open_world_map
 from src.systems import save_manager
@@ -18,7 +18,7 @@ from src.ui.gameplay_hud import (
     GameplayHUD, MINIMAP_FRAME, build_minimap_frame, build_view_vignette,
 )
 from src.systems.combat import (
-    COMBAT_DEBUG, FACING_VECTORS, PLAYER_DODGE_SPEED,
+    COMBAT_DEBUG, DEBUG_ENEMY_AI, FACING_VECTORS, PLAYER_DODGE_SPEED,
     PlayerCombat, attack_hitbox, attack_path_blocked, move_rect,
     selected_weapon_damage,
 )
@@ -177,6 +177,8 @@ def game_screen(screen, slot_num=None, save_state=None):
             "challenges_passed": save_challenges_passed,
             "map_position": [player_x, player_y],
             "inventory": [],
+            "weapon_obtained": player_inventory.weapon_obtained,
+            "weapon_equipped": player_inventory.weapon_equipped,
             "stage_progress": stage_progress.to_dict(),
         }
 
@@ -197,13 +199,15 @@ def game_screen(screen, slot_num=None, save_state=None):
     # --- Inventory system ---
     # One PlayerInventory object holds every item the player owns. The Toolbar
     # (bottom-centre hotbar) and the B-key bag screen both read from it, so
-    # they can never fall out of sync. It starts empty for now; drop items in
-    # later with player_inventory.add_item(Item("Name")).
+    # they can never fall out of sync. Equipment is intentionally limited to
+    # the game's single sword; discovered topics still use the bag.
     player_inventory = PlayerInventory()
-    player_inventory.add_item(Item(
-        "Base Sword", kind="weapon", damage=20,
-        description="A dependable starter blade.",
-    ))
+    # Existing saves predate these flags and already began with the sword, so
+    # they migrate as obtained/equipped. New-game state supplies them too.
+    player_inventory.set_weapon_state(
+        True if save_state is None else save_state.get("weapon_obtained", True),
+        True if save_state is None else save_state.get("weapon_equipped", True),
+    )
     toolbar = Toolbar(screen, player_inventory)
     gameplay_hud = GameplayHUD(
         screen, gameplay_state, stage, player_inventory,
@@ -214,6 +218,119 @@ def game_screen(screen, slot_num=None, save_state=None):
     # Information screen. Holds `stage` and `stage_progress` by reference,
     # so the tracker updates itself as objectives complete.
     stage_panel = StagePanel(screen, stage, stage_progress)
+
+    def open_topic_flow(
+        topic_id,
+        background
+    ):
+        """
+        Open a topic lesson and, if requested,
+        launch its coding challenge.
+
+        Used by both:
+            - newly discovered world topics
+            - stored inventory topics
+        """
+
+        topic = get_topic(
+            topic_id
+        )
+
+        if topic is None:
+
+            print(
+                f"Unknown topic id: {topic_id}"
+            )
+
+            return "close"
+
+        # -----------------------------------------------------
+        # Topic Lesson
+        # -----------------------------------------------------
+
+        lesson_result = open_topic_lesson(
+            screen,
+            topic,
+            background
+        )
+
+        if lesson_result != "challenge":
+
+            return "close"
+
+        # -----------------------------------------------------
+        # Find challenge belonging to topic
+        # -----------------------------------------------------
+
+        challenge_id = topic.get(
+            "challenge_id"
+        )
+
+        challenge = get_challenge(
+            challenge_id
+        )
+
+        if challenge is None:
+
+            print(
+                f"Challenge not found: {challenge_id}"
+            )
+
+            return "close"
+
+        # -----------------------------------------------------
+        # Coding Environment
+        # -----------------------------------------------------
+
+        editor_background = screen.copy()
+
+        editor = CodeEditor(
+            screen,
+            challenge,
+            editor_background
+        )
+
+        editor.run()
+
+        # -----------------------------------------------------
+        # Challenge completion
+        # -----------------------------------------------------
+
+        if editor.solved:
+
+            first_completion = (
+                challenge_id
+                not in save_challenges_passed
+            )
+
+            if first_completion:
+
+                save_challenges_passed.append(
+                    challenge_id
+                )
+
+                gameplay_state["keys"] = min(
+                    5,
+                    gameplay_state["keys"] + 1
+                )
+
+            if (
+                topic_id
+                not in gameplay_state["topics_completed"]
+            ):
+
+                gameplay_state[
+                    "topics_completed"
+                ].append(
+                    topic_id
+                )
+
+            stage_progress.sync_objectives(
+                stage,
+                save_challenges_passed
+            )
+
+        return "editor_closed"
 
     # --- Camera with zoom ---
     camera_x = 0
@@ -588,7 +705,13 @@ def game_screen(screen, slot_num=None, save_state=None):
     enemies = [
         Enemy(screen, map_width, map_height,
               world_x=spawn["position"][0], world_y=spawn["position"][1],
-              enemy_id=spawn["enemy_id"])
+              enemy_id=spawn["enemy_id"], zone_size=spawn["zone_size"],
+              zone_name=spawn["zone_name"], zone_rect=spawn["zone_rect"],
+              group_id=spawn["encounter_id"],
+              detection_range=spawn["detection_range"],
+              chase_range=spawn["chase_range"],
+              disengage_range=spawn["disengage_range"],
+              return_tolerance=spawn["return_tolerance"])
         for spawn in enemy_spawns
     ]
     player_combat = PlayerCombat()
@@ -633,17 +756,44 @@ def game_screen(screen, slot_num=None, save_state=None):
                 if (event.key == pygame.K_e and attack_key_ready and not paused
                         and (near_interactable is None or engaged)):
                     attack_key_ready = False
-                    if player_combat.start_attack():
+                    if (player_inventory.weapon_equipped
+                            and player_combat.start_attack()):
                         combat_audio.play("sword_swing")
                 elif event.key in (pygame.K_LSHIFT, pygame.K_RSHIFT) and not paused:
                     if player_combat.start_dodge():
                         combat_audio.play("dodge")
                 elif event.key == pygame.K_b and not paused:
-                    # B opens the bag. Freeze the current frame and hand that
-                    # snapshot to the inventory screen so it has something to
-                    # blur while it slides up.
-                    background_snapshot = screen.copy()
-                    open_inventory(screen, player_inventory, background_snapshot)
+
+                    # Keep the original game frame behind the inventory.
+                    inventory_background = screen.copy()
+
+                    while True:
+
+                        selected_topic_id = open_inventory(
+                            screen,
+                            player_inventory,
+                            inventory_background
+                        )
+
+                        # Inventory was closed normally with B / ESC.
+                        if selected_topic_id is None:
+                            break
+
+                        # -------------------------------------------------
+                        # Stored topic clicked
+                        # -------------------------------------------------
+
+                        # The inventory is currently visible on screen,
+                        # so use it as the lesson's background.
+                        lesson_background = screen.copy()
+
+                        open_topic_flow(
+                            selected_topic_id,
+                            lesson_background
+                        )
+
+                        # When the lesson/editor closes, this loop opens
+                        # the inventory again.
 
                 elif event.key == pygame.K_m and not paused:
                     # M opens the full paper chart. It is handed the same
@@ -847,8 +997,14 @@ def game_screen(screen, slot_num=None, save_state=None):
         # --- Independent enemy AI and combat resolution ---
         engaged = False
         for enemy in enemies:
+            enemy_blockers = collision_rects + [
+                other.rect for other in enemies
+                if other is not enemy and other.active
+                and other.state != "defeated"
+            ]
             incoming_damage = enemy.update(
-                dt, player_rect, collision_rects, map_width, map_height
+                dt, player_rect, enemy_blockers, map_width, map_height,
+                navigation_rects=collision_rects,
             )
             if enemy.just_started_attack:
                 combat_audio.play("enemy_attack")
@@ -873,7 +1029,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                 path_blocked = attack_path_blocked(
                     player_rect, enemy.rect, collision_rects
                 )
-                if enemy.active and not already_hit and not path_blocked and hitbox.colliderect(enemy.rect):
+                if damage and enemy.active and not already_hit and not path_blocked and hitbox.colliderect(enemy.rect):
                     enemy.last_player_attack = player_combat.attack_id
                     if enemy.receive_damage(damage):
                         combat_audio.play("sword_hit")
@@ -948,70 +1104,10 @@ def game_screen(screen, slot_num=None, save_state=None):
 
                         if decision == "start":
 
-                            topic = get_topic(topic_id)
-
-                            if topic is None:
-
-                                print(
-                                    f"Unknown topic id: {topic_id}"
-                                )
-
-                            else:
-
-                                lesson_background = screen.copy()
-
-                                lesson_result = open_topic_lesson(
-                                    screen,
-                                    topic,
-                                    lesson_background
-                                )
-
-                                if lesson_result == "challenge":
-
-                                    challenge_id = topic.get(
-                                        "challenge_id"
-                                    )
-
-                                    challenge = get_challenge(
-                                        challenge_id
-                                    )
-
-                                    if challenge is None:
-
-                                        print(
-                                            f"Challenge not found: {challenge_id}"
-                                        )
-
-                                    else:
-
-                                        editor_background = screen.copy()
-
-                                        editor = CodeEditor(
-                                            screen,
-                                            challenge,
-                                            editor_background
-                                        )
-
-                                        editor.run()
-
-                                        if editor.solved:
-
-                                            first_completion = challenge_id not in save_challenges_passed
-                                            if first_completion:
-                                                save_challenges_passed.append(
-                                                    challenge_id
-                                                )
-                                                gameplay_state["keys"] = min(
-                                                    5, gameplay_state["keys"] + 1
-                                                )
-
-                                            if topic_id not in gameplay_state["topics_completed"]:
-                                                gameplay_state["topics_completed"].append(topic_id)
-
-                                            stage_progress.sync_objectives(
-                                                stage,
-                                                save_challenges_passed
-                                            )
+                            open_topic_flow(
+                                topic_id,
+                                background_snapshot
+                            )
 
                         elif decision == "store":
 
@@ -1222,17 +1318,41 @@ def game_screen(screen, slot_num=None, save_state=None):
                     enemy.rect.height * ZOOM,
                 )
                 pygame.draw.rect(screen, (255, 80, 80), enemy_debug_rect, 1)
-                pygame.draw.circle(
-                    screen, (80, 180, 255),
-                    (round(enemy.rect.centerx * ZOOM - camera_x),
-                     round(enemy.rect.centery * ZOOM - camera_y)),
-                    round(enemy.stats.detection_range * ZOOM), 1,
-                )
-                pygame.draw.circle(
-                    screen, (255, 150, 60), enemy_debug_rect.center,
-                    round(enemy.stats.attack_range * ZOOM), 1,
-                )
 
+        if DEBUG_ENEMY_AI:
+            ai_font = body_font(12, bold=True)
+            for enemy in enemies:
+                if not enemy.active:
+                    continue
+                center = (
+                    round(enemy.rect.centerx * ZOOM - camera_x),
+                    round(enemy.rect.centery * ZOOM - camera_y),
+                )
+                home = (
+                    round(enemy.spawn[0] * ZOOM - camera_x),
+                    round(enemy.spawn[1] * ZOOM - camera_y),
+                )
+                zone = pygame.Rect(
+                    enemy.zone.x * ZOOM - camera_x,
+                    enemy.zone.y * ZOOM - camera_y,
+                    enemy.zone.width * ZOOM,
+                    enemy.zone.height * ZOOM,
+                )
+                pygame.draw.rect(screen, (80, 180, 255), zone, 2)
+                pygame.draw.circle(screen, (255, 80, 80), center,
+                                   round(enemy.stats.attack_range * ZOOM), 1)
+                pygame.draw.circle(screen, (255, 220, 70), center,
+                                   round(enemy.awareness_radius * ZOOM), 1)
+                pygame.draw.circle(screen, (80, 230, 120), center,
+                                   round(enemy.detection_range * ZOOM), 2)
+                pygame.draw.circle(screen, (210, 100, 255), home,
+                                   round(enemy.chase_range * ZOOM), 1)
+                pygame.draw.circle(screen, (255, 255, 255), home, 4)
+                label = ai_font.render(
+                    f"{enemy.state.upper()} | {enemy.zone_name} | {enemy.group_id}",
+                    True, (255, 255, 255),
+                )
+                screen.blit(label, (center[0] + 10, center[1] - 24))
         # Minimap (bottom-left)
         draw_minimap(screen, player_rect, minimap_heading)
 

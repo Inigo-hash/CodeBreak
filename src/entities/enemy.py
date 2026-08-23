@@ -1,4 +1,6 @@
 from pathlib import Path
+import heapq
+import math
 
 import pygame
 
@@ -19,9 +21,13 @@ class Enemy:
     }
 
     def __init__(self, screen, map_width, map_height, world_x=None, world_y=None,
-                 enemy_id="duwende_mandurug"):
+                 enemy_id="duwende_mandurug", zone_size=(360, 300),
+                 detection_range=None, chase_range=None, zone_rect=None,
+                 zone_name="Wilderness", group_id="ungrouped",
+                 disengage_range=None, return_tolerance=None):
         self.screen = screen
         self.enemy_id = enemy_id
+        self.group_id = group_id
         self.stats = ENEMY_STATS[enemy_id]
         self.spawn = (
             world_x if world_x is not None else map_width // 2 - 100,
@@ -45,6 +51,26 @@ class Enemy:
         self.active = True
         self.defeat_timer = 0.0
         self.just_started_attack = False
+        self.detection_range = detection_range or self.stats.detection_range
+        self.awareness_radius = self.stats.awareness_radius
+        self.disengage_range = disengage_range or self.stats.disengage_range
+        self.chase_range = chase_range or self.stats.max_chase_distance
+        self.assist_range = self.stats.assist_range
+        self.return_tolerance = return_tolerance or self.stats.return_tolerance
+        self.zone_name = zone_name
+        if zone_rect:
+            self.zone = pygame.Rect(zone_rect)
+        else:
+            self.zone = pygame.Rect(0, 0, *zone_size)
+            self.zone.center = self.spawn
+            self.zone.clamp_ip(pygame.Rect(0, 0, map_width, map_height))
+        self.return_buffer = 28
+        self.stuck_time = 0.0
+        self.detour_time = 0.0
+        self.detour_direction = (0.0, 0.0)
+        self._last_position = self.rect.center
+        self._resume_state = "chase"
+        self.return_path = []
 
     def _load_frames(self):
         result = {"walking": {}, "attack": {}, "flinch": {}}
@@ -159,7 +185,8 @@ class Enemy:
     def engaged(self):
         return self.active and self.state in ("chase", "attack", "flinch")
 
-    def update(self, dt, player_rect, collision_rects, map_width, map_height):
+    def update(self, dt, player_rect, collision_rects, map_width, map_height,
+               navigation_rects=None):
         self.just_started_attack = False
         if not self.active:
             return 0
@@ -167,6 +194,8 @@ class Enemy:
         self.action_timer = max(0.0, self.action_timer - dt)
         direction, distance = normalized_toward(self.rect.center, player_rect.center)
         self._face(direction)
+        home_distance = math.dist(self.rect.center, self.spawn)
+        player_in_chase_zone = self.zone.collidepoint(player_rect.center)
 
         if self.state == "defeated":
             self.defeat_timer -= dt
@@ -175,11 +204,22 @@ class Enemy:
             return 0
         if self.state == "flinch":
             if self.action_timer == 0:
+                self.state = self._resume_state
+            return 0
+        if self.state == "alert":
+            if not player_in_chase_zone:
+                self.state = "return"
+            elif self.action_timer == 0:
                 self.state = "chase"
             return 0
 
         damage = 0
         if self.state == "attack":
+            if (not player_in_chase_zone or home_distance > self.chase_range
+                    or distance > self.disengage_range):
+                self.state = "return"
+                self.action_timer = 0.0
+                return 0
             elapsed = self.stats.attack_duration - self.action_timer
             if elapsed >= self.stats.attack_duration * 0.52 and not self.attack_connected:
                 self.attack_connected = True
@@ -189,36 +229,156 @@ class Enemy:
                 self.state = "chase"
             return damage
 
-        if distance <= self.stats.attack_range and self.attack_cooldown == 0:
+        # RETURN is deliberately non-interruptible: an enemy must get home
+        # before it can detect the player again.
+        if self.state == "return":
+            self.hp = min(self.stats.max_hp, self.hp + self.stats.max_hp * 0.5 * dt)
+            home_direction, home_distance = normalized_toward(self.rect.center, self.spawn)
+            if home_distance <= self.return_tolerance:
+                self.state = "idle"
+                self.hp = self.stats.max_hp
+                self.stuck_time = 0.0
+                self.return_path.clear()
+            else:
+                if not self.return_path:
+                    self.detour_time = 0.0
+                    self.return_path = self._find_return_path(
+                        navigation_rects if navigation_rects is not None else collision_rects,
+                        map_width, map_height,
+                    )
+                target = self.return_path[0] if self.return_path else self.spawn
+                target_direction, target_distance = normalized_toward(
+                    self.rect.center, target
+                )
+                # Grid waypoints sit only eight pixels apart. Reaching each
+                # closely prevents cutting a corner with a large body rect.
+                if self.return_path and target_distance <= 2:
+                    self.return_path.pop(0)
+                    target = self.return_path[0] if self.return_path else self.spawn
+                    target_direction, _ = normalized_toward(self.rect.center, target)
+                return_blockers = (
+                    navigation_rects if navigation_rects is not None else collision_rects
+                )
+                self._move(target_direction, self.stats.movement_speed * 0.7, dt,
+                           return_blockers, map_width, map_height,
+                           allow_detour=False)
+            return 0
+
+        if self.state == "chase" and (not player_in_chase_zone
+                or home_distance > self.chase_range
+                or distance > self.disengage_range):
+            self.state = "return"
+            return 0
+
+        if distance <= self.stats.attack_range and self.attack_cooldown == 0 and self.state == "chase":
             self.state = "attack"
             self.action_timer = self.stats.attack_duration
             self.attack_cooldown = self.stats.attack_cooldown
             self.attack_connected = False
             self.just_started_attack = True
-        elif distance <= self.stats.detection_range:
+        elif self.state == "chase" and player_in_chase_zone:
             self.state = "chase"
-            speed = self.stats.movement_speed
-            self.x, self.y = move_rect(
-                self.rect, self.x, self.y, direction[0] * speed,
-                direction[1] * speed, collision_rects,
-                pygame.Rect(0, 0, map_width, map_height),
-            )
-            self.center_x, self.center_y = self.rect.center
+            self._move(direction, self.stats.movement_speed, dt,
+                       collision_rects, map_width, map_height)
+        elif distance <= self.detection_range and player_in_chase_zone:
+            # A short reaction makes detection readable and prevents an enemy
+            # outside melee range from attacking on the acquisition frame.
+            self.state = "alert"
+            self.action_timer = 0.18
         else:
             home_direction, home_distance = normalized_toward(self.rect.center, self.spawn)
             if home_distance > 4:
                 self.state = "return"
-                self._face(home_direction)
-                self.x, self.y = move_rect(
-                    self.rect, self.x, self.y,
-                    home_direction[0] * self.stats.movement_speed * 0.7,
-                    home_direction[1] * self.stats.movement_speed * 0.7,
-                    collision_rects, pygame.Rect(0, 0, map_width, map_height),
-                )
-                self.center_x, self.center_y = self.rect.center
             else:
                 self.state = "idle"
         return damage
+
+    def _move(self, direction, speed, dt, blockers, map_width, map_height,
+              allow_detour=True):
+        """Move collision-safely, slide along corners, and escape dead ends."""
+        bounds = pygame.Rect(0, 0, map_width, map_height)
+        if allow_detour and self.detour_time > 0:
+            self.detour_time = max(0.0, self.detour_time - dt)
+            direction = self.detour_direction
+        self._face(direction)
+        before = self.rect.center
+        dx, dy = direction[0] * speed, direction[1] * speed
+        self.x, self.y = move_rect(self.rect, self.x, self.y, dx, dy, blockers, bounds)
+
+        moved = math.dist(before, self.rect.center)
+        trying = abs(dx) + abs(dy) > 0.01
+        self.stuck_time = self.stuck_time + dt if trying and moved < 0.25 else 0.0
+        if allow_detour and self.stuck_time >= 0.35:
+            # Perpendicular choices preserve collision and create a short
+            # wall-following detour instead of teleporting through geometry.
+            choices = [(-direction[1], direction[0]), (direction[1], -direction[0])]
+            choices.sort(key=lambda candidate: math.dist(
+                (self.rect.centerx + candidate[0] * speed * 8,
+                 self.rect.centery + candidate[1] * speed * 8),
+                self.spawn,
+            ))
+            for candidate in choices:
+                probe = self.rect.copy()
+                move_rect(probe, float(probe.x), float(probe.y),
+                          candidate[0] * speed * 2, candidate[1] * speed * 2,
+                          blockers, bounds)
+                if probe.center != self.rect.center:
+                    self.detour_direction = candidate
+                    self.detour_time = 0.45
+                    break
+            self.stuck_time = 0.0
+        self.center_x, self.center_y = self.rect.center
+
+    def _find_return_path(self, blockers, map_width, map_height):
+        """Build deterministic collision-safe waypoints back to spawn."""
+        step = 8
+        start = (round(self.rect.centerx / step), round(self.rect.centery / step))
+        goal = (round(self.spawn[0] / step), round(self.spawn[1] / step))
+        margin = 24
+        min_x = max(0, min(start[0], goal[0]) - margin)
+        max_x = min(map_width // step, max(start[0], goal[0]) + margin)
+        min_y = max(0, min(start[1], goal[1]) - margin)
+        max_y = min(map_height // step, max(start[1], goal[1]) + margin)
+
+        def walkable(node):
+            if node in (start, goal):
+                return True
+            probe = pygame.Rect(0, 0, self.rect.width, self.rect.height)
+            probe.center = (node[0] * step, node[1] * step)
+            return (0 <= probe.left and probe.right <= map_width
+                    and 0 <= probe.top and probe.bottom <= map_height
+                    and probe.collidelist(blockers) == -1)
+
+        frontier = [(0, start)]
+        came_from = {start: None}
+        costs = {start: 0}
+        while frontier:
+            _priority, current = heapq.heappop(frontier)
+            if current == goal:
+                break
+            for dx, dy in ((1, 0), (0, 1), (-1, 0), (0, -1)):
+                nxt = (current[0] + dx, current[1] + dy)
+                if not (min_x <= nxt[0] <= max_x and min_y <= nxt[1] <= max_y):
+                    continue
+                if not walkable(nxt):
+                    continue
+                cost = costs[current] + 1
+                if cost < costs.get(nxt, 1_000_000):
+                    costs[nxt] = cost
+                    came_from[nxt] = current
+                    heuristic = abs(goal[0] - nxt[0]) + abs(goal[1] - nxt[1])
+                    heapq.heappush(frontier, (cost + heuristic, nxt))
+
+        if goal not in came_from:
+            return []
+        nodes = []
+        current = goal
+        while current != start:
+            nodes.append((current[0] * step, current[1] * step))
+            current = came_from[current]
+        nodes.reverse()
+        nodes.append(self.spawn)
+        return nodes
 
     def receive_damage(self, amount):
         if not self.active or self.state == "defeated":
@@ -229,6 +389,7 @@ class Enemy:
             self.state = "defeated"
             self.defeat_timer = 0.55
         else:
+            self._resume_state = "return" if self.state == "return" else "chase"
             self.state = "flinch"
             self.action_timer = 0.20
         return True
@@ -241,6 +402,9 @@ class Enemy:
         self.x, self.y = float(self.rect.x), float(self.rect.y)
         self.center_x, self.center_y = self.rect.center
         self.attack_cooldown = 0
+        self.stuck_time = 0.0
+        self.detour_time = 0.0
+        self.return_path.clear()
 
     def _face(self, direction):
         dx, dy = direction
@@ -254,7 +418,7 @@ class Enemy:
             return
         group = "attack" if self.state == "attack" else "flinch" if self.state in ("flinch", "defeated") else "walking"
         frames = self.frames[group][self.facing]
-        if self.state == "idle":
+        if self.state in ("idle", "alert"):
             self.current = 0
             self.animation_timer = 0
         else:

@@ -26,19 +26,12 @@ def render_main_menu_buttons(surface, rects, t=0.0):
 # Import config first — it sets the SDL_VIDEO_MINIMIZE_ON_FOCUS_LOSS env var,
 # which must exist before pygame.init() brings up the video subsystem.
 from src.config import FULLSCREEN
+from src.display import create_display
 
 # Initialize Pygame
 pygame.init()
 
-if FULLSCREEN:
-    # (0, 0) tells SDL to use whatever the desktop resolution is, so this
-    # fills the screen on any machine rather than assuming a size.
-    screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
-
-else:
-    # Windowed mode for development. Set FULLSCREEN = False in
-    # src/config.py to get this instead.
-    screen = pygame.display.set_mode((1580, 900), pygame.RESIZABLE)
+screen = create_display(FULLSCREEN)
     
     
 
@@ -49,7 +42,7 @@ SCREEN_WIDTH, SCREEN_HEIGHT = screen.get_size()
 pygame.display.set_caption("CodeBreak - Main Menu")
 
 background = pygame.image.load("assets/images/backgrounds/mainMenuBg1.png").convert()
-background = pygame.transform.scale(background, (SCREEN_WIDTH, SCREEN_HEIGHT))
+background = pygame.transform.smoothscale(background, (SCREEN_WIDTH, SCREEN_HEIGHT))
 
 # Palette
 STONE_DARK = (14, 14, 18)

@@ -28,6 +28,7 @@ PLAYER_ATTACK_REACH = 34
 PLAYER_ATTACK_WIDTH = 34
 BASE_SWORD_DAMAGE = 20
 COMBAT_DEBUG = False
+DEBUG_ENEMY_AI = False
 
 
 @dataclass(frozen=True)
@@ -37,16 +38,22 @@ class EnemyStats:
     movement_speed: float
     attack_range: float
     detection_range: float
+    awareness_radius: float
+    disengage_range: float
+    max_chase_distance: float
+    assist_range: float
+    return_tolerance: float
     attack_cooldown: float
     attack_duration: float
     reward_time: int
 
 
 ENEMY_STATS = {
-    "duwende_mandurug": EnemyStats(60, 8, 1.15, 32, 180, 1.15, 0.52, 10),
-    "tiyanak_sinta": EnemyStats(40, 6, 1.10, 30, 165, 1.30, 0.52, 6),
-    "manananggal": EnemyStats(70, 10, 1.25, 34, 195, 1.15, 0.55, 10),
-    "tikbalang": EnemyStats(110, 14, 1.05, 38, 215, 1.25, 0.60, 16),
+    # Ranges are unscaled world pixels (the map uses 16-pixel tiles).
+    "duwende_mandurug": EnemyStats(60, 8, 1.15, 32, 240, 96, 300, 340, 140, 4, 1.15, 0.52, 10),
+    "tiyanak_sinta": EnemyStats(40, 6, 1.10, 30, 256, 96, 320, 360, 140, 4, 1.30, 0.52, 6),
+    "manananggal": EnemyStats(70, 10, 1.25, 34, 320, 112, 400, 460, 170, 4, 1.15, 0.55, 10),
+    "tikbalang": EnemyStats(110, 14, 1.05, 42, 288, 112, 360, 420, 160, 5, 1.25, 0.60, 16),
 }
 
 # Feet-level combat bodies, deliberately smaller than the rendered artwork.
@@ -164,7 +171,7 @@ def selected_weapon_damage(inventory):
     item = inventory.get_selected_item()
     if item is not None and getattr(item, "kind", None) == "weapon":
         return max(1, int(getattr(item, "damage", BASE_SWORD_DAMAGE)))
-    return BASE_SWORD_DAMAGE
+    return 0
 
 
 def move_rect(rect, x, y, dx, dy, blockers, bounds):

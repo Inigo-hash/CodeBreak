@@ -582,6 +582,17 @@ def game_screen(screen, slot_num=None, save_state=None):
     # --- Pause menu setup ---
     paused = False
     show_pause_settings = False
+    # Debug day/night preview.
+    night_mode = False
+
+    night_overlay = pygame.Surface(
+        (SCREEN_W, SCREEN_H),
+        pygame.SRCALPHA
+    )
+
+    night_overlay.fill(
+        (8, 15, 40, 145)
+    )
     settings_panel = SettingsPanel(screen)
     settings_panel.close()
 
@@ -794,6 +805,16 @@ def game_screen(screen, slot_num=None, save_state=None):
 
                         # When the lesson/editor closes, this loop opens
                         # the inventory again.
+
+                elif event.key == pygame.K_F1 and not paused:
+
+                    night_mode = not night_mode
+
+                    print(
+                        "Night mode ON"
+                        if night_mode
+                        else "Night mode OFF"
+                    )
 
                 elif event.key == pygame.K_m and not paused:
                     # M opens the full paper chart. It is handed the same
@@ -1189,6 +1210,18 @@ def game_screen(screen, slot_num=None, save_state=None):
             elif kind == 'enemy':
                 prop.draw_frames(ZOOM, camera_x, camera_y)
 
+        # ---------------------------------------------------------
+        # Night Mode
+        # ---------------------------------------------------------
+        # F1 toggles a simple dark blue overlay over the world.
+        # UI is drawn afterwards, so it stays clearly visible.
+
+        if night_mode:
+            screen.blit(
+                night_overlay,
+                (0, 0)
+            )
+
         # --- Draw interaction UI ---
         if near_interactable:
             # Scale the interactable position to match the zoomed map
@@ -1364,7 +1397,11 @@ def game_screen(screen, slot_num=None, save_state=None):
         stage_panel.draw(mouse_pos)
 
         # Key hints (top-right, out of the way of the profile HUD)
-        hint = font.render("ESC = Pause    B = Inventory    M = Map", True, (255, 255, 255))
+        hint = font.render(
+            "ESC = Pause    B = Inventory    M = Map    F1 = Night",
+            True,
+            (255, 255, 255)
+        )
         screen.blit(hint, (SCREEN_W - hint.get_width() - 10, 10))
 
         pygame.display.flip()

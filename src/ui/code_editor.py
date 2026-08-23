@@ -576,6 +576,16 @@ class CodeEditor:
                     self.copy_selection()
 
                 # ----------------------------------
+                # Cut (Ctrl+X)
+                # ----------------------------------
+
+                elif (
+                    event.key == pygame.K_x
+                    and pygame.key.get_mods() & pygame.KMOD_CTRL
+                ):
+                    self.cut_selection()
+
+                # ----------------------------------
                 # Paste (Ctrl+V)
                 # ----------------------------------
 
@@ -825,6 +835,33 @@ class CodeEditor:
             pygame.SCRAP_TEXT,
             selected_text.encode("utf-8")
         )
+
+    # ---------------------------------------------------------
+    # Cut / Paste
+    # ---------------------------------------------------------
+    def cut_selection(self):
+        """
+        Copies the selected text to the system clipboard
+        and removes it from the editor.
+        """
+
+        # Ctrl+X should do nothing when nothing is selected.
+        if not self.text_buffer.has_selection():
+            return
+
+        # First copy the highlighted text.
+        self.copy_selection()
+
+        # Backspace already knows how to remove an active
+        # selection, so reuse the existing behavior.
+        self.text_buffer.backspace()
+
+        # Keep the cursor visible after the selected text
+        # has been removed.
+        self.renderer.ensure_cursor_visible()
+
+        # Reset cursor blinking.
+        self.last_input_time = pygame.time.get_ticks()
 
     def paste_clipboard(self):
         """

@@ -7,5 +7,7 @@
   "challenges_passed": [],
   "map_position": null,
   "inventory": [],
+  "weapon_obtained": true,
+  "weapon_equipped": true,
   "stage_progress": {}
 }

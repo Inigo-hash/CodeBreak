@@ -3,7 +3,11 @@
   "hearts": 5,
   "keys": 0,
   "topics_completed": [],
+  "bonus_time": 0,
   "challenges_passed": [],
   "map_position": null,
-  "inventory": []
+  "inventory": [],
+  "weapon_obtained": true,
+  "weapon_equipped": true,
+  "stage_progress": {}
 }

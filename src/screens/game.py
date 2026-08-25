@@ -2,6 +2,7 @@ from pytmx.util_pygame import load_pygame
 import pygame
 import sys
 import random
+from src.config import DEBUG
 from src.settings_state import settings_state as _settings_state
 from src.screens.settings import SettingsPanel
 from src.entities.player import MainCharacter
@@ -912,6 +913,14 @@ def game_screen(screen, slot_num=None, save_state=None):
                     )
                     continue
 
+            # The pause settings panel takes every key while it is open,
+            # not just Escape - it is arrow-key operable now, and a key
+            # meant for it must never reach the gameplay bindings below.
+            if event.type == pygame.KEYDOWN and show_pause_settings:
+                settings_panel.handle_event(event)
+                show_pause_settings = settings_panel.is_open
+                continue
+
             if event.type == pygame.KEYDOWN:
                 if (event.key == pygame.K_e and attack_key_ready and not paused
                         and (near_interactable is None or engaged)):
@@ -955,7 +964,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                         # When the lesson/editor closes, this loop opens
                         # the inventory again.
 
-                elif event.key == pygame.K_F1 and not paused:
+                elif event.key == pygame.K_F1 and not paused and DEBUG:
 
                     night_mode = not night_mode
 
@@ -965,7 +974,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                         else "Night mode OFF"
                     )
 
-                elif event.key == pygame.K_F2 and not paused:
+                elif event.key == pygame.K_F2 and not paused and DEBUG:
 
                     fog_mode = not fog_mode
 
@@ -1002,10 +1011,9 @@ def game_screen(screen, slot_num=None, save_state=None):
                     )
 
                 elif event.key == pygame.K_ESCAPE:
-                    if show_pause_settings:
-                        settings_panel.handle_event(event)
-                        show_pause_settings = settings_panel.is_open
-                    elif paused:
+                    # Settings-panel Escape is handled by the guard at the
+                    # top of this loop, so by here the panel is closed.
+                    if paused:
                         paused = False
                     else:
                         paused = True
@@ -1015,7 +1023,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                         # was looking at when they hit pause.
                         pause_snapshot = blur_frame(screen)
 
-                elif event.key == pygame.K_F5:
+                elif event.key == pygame.K_F5 and DEBUG:
                     sample_challenge = {
                         "title": "Variables",
                         "objective": "Create a variable called age and assign the value 18.",
@@ -1029,7 +1037,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                     editor = CodeEditor(screen, sample_challenge, background_snapshot)
                     editor.run()
 
-                elif event.key == pygame.K_F6:
+                elif event.key == pygame.K_F6 and DEBUG:
                     # Debug: prints the player's position as a
                     # fraction of the map, for placing zone rects
                     # in zones.py accurately.
@@ -1037,7 +1045,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                     frac_y = player_rect.centery / map_height
                     print(f"Zone debug position: ({frac_x:.2f}, {frac_y:.2f})")
                     
-                elif event.key == pygame.K_F8:
+                elif event.key == pygame.K_F8 and DEBUG:
                     # Dev-only preview: press F8 to see the Game Over screen,
                     # F8 again (or Esc/Enter/R/M/click) to leave it and resume
                     # gameplay right where you were.

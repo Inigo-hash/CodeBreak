@@ -29,6 +29,7 @@ wired up.
 """
 
 from src.data.challenges import CHALLENGES
+from src.data.controls import WORLD_CONTROLS
 
 
 DEFAULT_STAGE_ID = "island"
@@ -63,15 +64,11 @@ STAGES = {
                 "reloaded game remembers what you already found.",
             ],
 
-            "controls": [
-                ("W A S D / Arrows", "Move"),
-                ("E (hold)", "Search an object"),
-                ("B", "Open your bag"),
-                ("1 - 5 / Wheel", "Pick a hotbar slot"),
-                ("M", "Open the island map"),
-                ("I / J / K / O", "Manual, Enemies, Items, Objectives"),
-                ("ESC", "Pause"),
-            ],
+            # Shared with How To Play and the tutorial rather than
+            # retyped: this list used to be missing Attack and Dodge
+            # entirely. A stage that really does need its own set can
+            # still write one out here instead.
+            "controls": WORLD_CONTROLS,
 
             # Challenge ids from challenges.py. The panel prints each
             # one's real title and difficulty, so this list never falls

@@ -1,5 +1,6 @@
 import pygame
 import sys
+from src.settings_state import revealed_characters
 from src.settings_state import settings_state as _settings_state
 from src.entities.player import MainCharacter
 from src.entities.enemy import Enemy
@@ -8,12 +9,10 @@ from src.systems.audio import CombatAudio
 from src.ui.code_editor import CodeEditor
 from src.data.challenges import CHALLENGES
 from src.screens.how_to_play import (
-    CONTROLS_LINES,
-    RULES_LINES,
-    _wrap as _wrap_manual_text,
+    draw_manual_columns,
+    manual_layout,
     STONE_DARK,
     STONE_LIGHT,
-    BLUE_GLOW,
 )
 from src.ui.theme import body_font, title_font
 
@@ -37,7 +36,9 @@ def tutorial_screen(screen, play_music=True):
     prompt_font = title_font(18, bold=False)
     manual_title_font = title_font(30)
     manual_header_font = title_font(20, bold=False)
+    manual_key_font = body_font(17, bold=True)
     manual_line_font = body_font(17)
+    manual_note_font = body_font(15)
     manual_btn_font = title_font(22)
 
     # --- Music: reuse the main menu theme for the tutorial ---
@@ -75,14 +76,51 @@ def tutorial_screen(screen, play_music=True):
     # Dialogue system: portrait + textbox, advance on click / E / SPACE
     # ------------------------------------------------------------------
     class DialogueBox:
+        """
+        Mang Tahimik's textbox.
+
+        Lines type themselves out one character at a time, at whatever
+        pace the TEXT SPEED setting asks for - the setting used to be a
+        label in the settings panel with nothing behind it, and this is
+        what it now drives. On INSTANT the whole line is there on the
+        first frame and the typing never happens at all.
+        """
+
         def __init__(self, lines, on_finish=None):
             self.lines = lines
             self.index = 0
             self.on_finish = on_finish
             self.active = True
+            self.started_at = pygame.time.get_ticks()
+            # Set when the player asks to see the rest of the line now.
+            self.skipped = False
+
+        def visible_count(self):
+            """How many characters of the current line are on screen."""
+
+            if self.skipped:
+                return len(self.lines[self.index])
+
+            return revealed_characters(
+                len(self.lines[self.index]),
+                pygame.time.get_ticks() - self.started_at,
+            )
+
+        def line_complete(self):
+            return self.visible_count() >= len(self.lines[self.index])
 
         def advance(self):
+            # One press finishes the line, the next moves on. Anything
+            # else punishes a fast reader for pressing early by eating
+            # the line they had not finished reading.
+            if not self.line_complete():
+                self.skipped = True
+                return
+
             self.index += 1
+            self.started_at = pygame.time.get_ticks()
+            self.skipped = False
+
             if self.index >= len(self.lines):
                 self.active = False
                 if self.on_finish:
@@ -128,12 +166,24 @@ def tutorial_screen(screen, play_music=True):
             name_tag = name_font.render("Mang Tahimik", True, YELLOW_GLOW)
             surf.blit(name_tag, (text_rect.left + 18, text_rect.top + 14))
 
+            # Wrap the whole line first and reveal characters through the
+            # finished layout, rather than wrapping what is visible so
+            # far: wrapping a growing string makes words jump between
+            # rows as they appear.
             wrapped = self.wrap_text(self.lines[self.index], dialogue_font, text_rect.width - 36)
+            budget = self.visible_count()
             for i, line in enumerate(wrapped[:3]):
-                txt = dialogue_font.render(line, True, WHITE)
+                if budget <= 0:
+                    break
+                txt = dialogue_font.render(line[:budget], True, WHITE)
                 surf.blit(txt, (text_rect.left + 18, text_rect.top + 50 + i * 26))
+                # +1 for the space the wrapper dropped at the line break,
+                # so the reveal runs at an even pace across rows.
+                budget -= len(line) + 1
 
-            hint = hint_font.render("Click / E / SPACE to continue", True, DIM_TEXT)
+            hint_text = ("Click / E / SPACE to continue" if self.line_complete()
+                         else "Click / E / SPACE to skip")
+            hint = hint_font.render(hint_text, True, DIM_TEXT)
             surf.blit(hint, (text_rect.right - hint.get_width() - 16, text_rect.bottom - hint.get_height() - 10))
 
     # ------------------------------------------------------------------
@@ -245,21 +295,15 @@ def tutorial_screen(screen, play_music=True):
 
     # --- Stage manual layout (reuses the How To Play content so the
     # two stay in sync) ---
-    manual_panel_rect = pygame.Rect(
-        SCREEN_WIDTH // 2 - 340, SCREEN_HEIGHT // 2 - 260, 680, 520
+    # Same panel, same columns, same content as the How To Play screen -
+    # manual_layout() and draw_manual_columns() are shared so the sheet a
+    # player reads here and the one they open from the menu cannot say
+    # two different things.
+    manual_panel_rect, manual_left_col, manual_right_col, manual_footer = (
+        manual_layout(SCREEN_WIDTH, SCREEN_HEIGHT)
     )
     manual_begin_rect = pygame.Rect(
         manual_panel_rect.centerx - 110, manual_panel_rect.bottom - 56, 220, 40
-    )
-    manual_col_gap = 30
-    manual_col_width = (manual_panel_rect.width - 80 - manual_col_gap) // 2
-    manual_left_col = pygame.Rect(
-        manual_panel_rect.left + 40, manual_panel_rect.top + 100,
-        manual_col_width, manual_panel_rect.height - 180
-    )
-    manual_right_col = pygame.Rect(
-        manual_left_col.right + manual_col_gap, manual_panel_rect.top + 100,
-        manual_col_width, manual_panel_rect.height - 180
     )
 
     def draw_stage_manual(surf, mouse_pos):
@@ -279,19 +323,11 @@ def tutorial_screen(screen, play_music=True):
             (manual_panel_rect.right - 40, manual_panel_rect.top + 70), 1
         )
 
-        for col_rect, header, lines in (
-            (manual_left_col, "CONTROLS + MECHANICS", CONTROLS_LINES),
-            (manual_right_col, "PYTHON CHALLENGE RULES", RULES_LINES),
-        ):
-            h = manual_header_font.render(header, True, BLUE_GLOW)
-            surf.blit(h, (col_rect.left, col_rect.top))
-            y = col_rect.top + 36
-            for entry in lines:
-                for wrapped in _wrap_manual_text(manual_line_font, f"- {entry}", col_rect.width):
-                    txt = manual_line_font.render(wrapped, True, (215, 215, 220))
-                    surf.blit(txt, (col_rect.left, y))
-                    y += 24
-                y += 6
+        draw_manual_columns(
+            surf, manual_left_col, manual_right_col, manual_footer,
+            manual_header_font, manual_key_font, manual_line_font,
+            manual_note_font,
+        )
 
         begin_hovered = manual_begin_rect.collidepoint(mouse_pos)
         pygame.draw.rect(surf, (70, 140, 70) if begin_hovered else GREEN_OK, manual_begin_rect, border_radius=4)

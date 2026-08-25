@@ -18,9 +18,15 @@ import pygame
 
 from src.ui.editor_theme import *
 from src.settings_state import (
+    ROWS,
+    TEXT_SPEEDS,
+    VOLUME_STEP,
     settings_state,
+    current_text_speed,
     current_theme_name,
+    cycle_text_speed,
     cycle_theme,
+    set_text_speed,
 )
 
 # Height of a volume slider's track.
@@ -53,10 +59,16 @@ class EditorSettingsPanel:
         # Which slider, if any, the mouse is currently dragging.
         self.dragging = None
 
+        # Which row the arrow keys are pointing at, indexing
+        # settings_state.ROWS - the same rows, in the same order, as the
+        # menu and pause panel.
+        self.focus = 0
+
         # Rects are built in layout(), which the renderer calls with the
         # editor popup's own rect so the panel stays centered on it even
         # after the window is resized.
         self.panel_rect = pygame.Rect(0, 0, 0, 0)
+        self.speed_rects = []
         self.music_bar = pygame.Rect(0, 0, 0, 0)
         self.sfx_bar = pygame.Rect(0, 0, 0, 0)
         self.theme_left_rect = pygame.Rect(0, 0, 0, 0)
@@ -90,7 +102,10 @@ class EditorSettingsPanel:
         """
 
         width = max(340, min(440, int(editor_panel_rect.width * 0.55)))
-        height = max(280, min(340, int(editor_panel_rect.height * 0.62)))
+        # Taller than it used to be: TEXT SPEED joined the panel, and the
+        # four rows need the room to keep the same spacing as the menu
+        # version of this panel.
+        height = max(340, min(400, int(editor_panel_rect.height * 0.72)))
 
         self.panel_rect = pygame.Rect(
             editor_panel_rect.centerx - width // 2,
@@ -102,21 +117,33 @@ class EditorSettingsPanel:
         padding = 28
         inner_width = width - padding * 2
 
+        option_width = (inner_width - 20) // len(TEXT_SPEEDS)
+        speed_y = self.panel_rect.top + int(height * 0.26)
+        self.speed_rects = [
+            pygame.Rect(
+                self.panel_rect.left + padding + index * (option_width + 10),
+                speed_y,
+                option_width,
+                26
+            )
+            for index in range(len(TEXT_SPEEDS))
+        ]
+
         self.music_bar = pygame.Rect(
             self.panel_rect.left + padding,
-            self.panel_rect.top + int(height * 0.30),
+            self.panel_rect.top + int(height * 0.45),
             inner_width,
             BAR_HEIGHT
         )
 
         self.sfx_bar = pygame.Rect(
             self.panel_rect.left + padding,
-            self.panel_rect.top + int(height * 0.50),
+            self.panel_rect.top + int(height * 0.62),
             inner_width,
             BAR_HEIGHT
         )
 
-        arrow_y = self.panel_rect.top + int(height * 0.70)
+        arrow_y = self.panel_rect.top + int(height * 0.76)
 
         self.theme_left_rect = pygame.Rect(
             self.panel_rect.left + padding,
@@ -162,6 +189,15 @@ class EditorSettingsPanel:
                 self.close()
                 return False
 
+            # Same keyboard scheme as the menu panel: Up/Down pick a
+            # row, Left/Right change it.
+            if event.key in (pygame.K_UP, pygame.K_DOWN):
+                step = -1 if event.key == pygame.K_UP else 1
+                self.focus = (self.focus + step) % len(ROWS)
+
+            elif event.key in (pygame.K_LEFT, pygame.K_RIGHT):
+                self._adjust(-1 if event.key == pygame.K_LEFT else 1)
+
             return True
 
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -172,17 +208,27 @@ class EditorSettingsPanel:
 
             if self.music_bar.collidepoint(event.pos):
                 self.dragging = "music"
+                self.focus = ROWS.index("music")
                 self._set_volume_from_mouse(event.pos[0])
 
             elif self.sfx_bar.collidepoint(event.pos):
                 self.dragging = "sfx"
+                self.focus = ROWS.index("sfx")
                 self._set_volume_from_mouse(event.pos[0])
 
             elif self.theme_left_rect.collidepoint(event.pos):
                 cycle_theme(-1)
+                self.focus = ROWS.index("theme")
 
             elif self.theme_right_rect.collidepoint(event.pos):
                 cycle_theme(1)
+                self.focus = ROWS.index("theme")
+
+            else:
+                for index, rect in enumerate(self.speed_rects):
+                    if rect.collidepoint(event.pos):
+                        set_text_speed(TEXT_SPEEDS[index])
+                        self.focus = ROWS.index("text_speed")
 
             return True
 
@@ -195,6 +241,26 @@ class EditorSettingsPanel:
             return True
 
         return True
+
+    def _adjust(self, step):
+        """Move the focused row one notch, as the menu panel does."""
+
+        row = ROWS[self.focus]
+
+        if row == "text_speed":
+            cycle_text_speed(step)
+
+        elif row == "theme":
+            cycle_theme(step)
+
+        else:
+            key = "music_vol" if row == "music" else "sfx_vol"
+            settings_state[key] = max(
+                0.0, min(1.0, settings_state[key] + step * VOLUME_STEP)
+            )
+
+            if row == "music":
+                pygame.mixer.music.set_volume(settings_state["music_vol"])
 
     def _set_volume_from_mouse(self, mouse_x):
         """Maps a mouse x position onto the slider being dragged."""
@@ -249,12 +315,84 @@ class EditorSettingsPanel:
             )
         )
 
+        self._draw_text_speed_row(mouse_position)
+
         self._draw_slider("MUSIC", self.music_bar, settings_state["music_vol"])
         self._draw_slider("SFX", self.sfx_bar, settings_state["sfx_vol"])
 
         self._draw_theme_row(mouse_position)
 
+        self._draw_focus_ring()
+
         self._draw_close_button(mouse_position)
+
+    def _draw_text_speed_row(self, mouse_position):
+        """
+        The three speeds side by side, active one lit.
+
+        Shown as three buttons rather than the theme row's arrow picker
+        because there are only three of them, and a player who has never
+        opened this panel should be able to see what the options are
+        without clicking through them.
+        """
+
+        if not self.speed_rects:
+            return
+
+        self.screen.blit(
+            SMALL_FONT.render("TEXT SPEED", True, SECONDARY_TEXT),
+            (self.speed_rects[0].left, self.speed_rects[0].top - 22)
+        )
+
+        selected = current_text_speed()
+
+        for name, rect in zip(TEXT_SPEEDS, self.speed_rects):
+
+            active = name == selected
+            hovered = rect.collidepoint(mouse_position)
+
+            # Unselected speeds sit on the slider-track color rather than
+            # the button color: against a themed panel the two button
+            # shades are close enough that "which one is on" stopped
+            # being readable at a glance.
+            pygame.draw.rect(
+                self.screen,
+                BUTTON_HOVER_COLOR if active else (
+                    BUTTON_COLOR if hovered else SCROLLBAR_TRACK_COLOR
+                ),
+                rect,
+                border_radius=4
+            )
+
+            if active:
+                pygame.draw.rect(self.screen, TEXT_COLOR, rect, 2, border_radius=4)
+
+            label = SMALL_FONT.render(
+                name, True, BUTTON_TEXT_COLOR if active else SECONDARY_TEXT
+            )
+            self.screen.blit(
+                label,
+                (
+                    rect.centerx - label.get_width() // 2,
+                    rect.centery - label.get_height() // 2
+                )
+            )
+
+    def _draw_focus_ring(self):
+        """Marks the row the arrow keys will change."""
+
+        row = ROWS[self.focus]
+
+        if row == "text_speed" and self.speed_rects:
+            target = self.speed_rects[0].union(self.speed_rects[-1]).inflate(8, 8)
+        elif row == "music":
+            target = self.music_bar.inflate(10, 22)
+        elif row == "sfx":
+            target = self.sfx_bar.inflate(10, 22)
+        else:
+            target = self.theme_left_rect.union(self.theme_right_rect).inflate(10, 10)
+
+        pygame.draw.rect(self.screen, BUTTON_HOVER_COLOR, target, 2, border_radius=5)
 
     def _draw_slider(self, label, bar, value):
 

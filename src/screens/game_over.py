@@ -39,6 +39,7 @@ import random
 
 import pygame
 
+from src.settings_state import letter_delay_ms, revealed_characters
 from src.ui.theme import body_font, title_font
 
 
@@ -95,7 +96,7 @@ def _build_title_surfaces(text, target_height):
     return {"crisp": crisp, "glow": glow, "font": font, "pad": pad}
 
 
-def _draw_title(screen, assets, text, now_ms, letter_ms, screen_w, screen_h):
+def _draw_title(screen, assets, text, now_ms, screen_w, screen_h):
     """
     Draws the title, revealing one character at a time (a typewriter
     effect) until the whole thing is on screen, with a blinking block
@@ -104,7 +105,7 @@ def _draw_title(screen, assets, text, now_ms, letter_ms, screen_w, screen_h):
     crisp, glow = assets["crisp"], assets["glow"]
     font, pad = assets["font"], assets["pad"]
 
-    revealed_chars = min(len(text), now_ms // letter_ms + 1)
+    revealed_chars = revealed_characters(len(text), now_ms)
     shown = text[:revealed_chars]
 
     crop_w = min(crisp.get_width(), font.size(shown)[0])
@@ -329,7 +330,12 @@ def game_over_screen(screen, background=None, failed_snippet=None):
     icon_font = body_font(max(16, int(SCREEN_H * 0.03)), bold=True)
 
     title_text = "GAME OVER"
-    LETTER_MS = 90                              # ms per letter of the typewriter reveal
+    # Pace of the typewriter reveal, from the TEXT SPEED setting rather
+    # than a constant, so a player who set INSTANT because they read
+    # slowly is not made to sit through this one animation anyway.
+    # A speed of 0 means no reveal at all, and the buttons that wait for
+    # the title to finish then start immediately.
+    LETTER_MS = letter_delay_ms()
     TITLE_DONE_MS = len(title_text) * LETTER_MS
     BUTTON_STAGGER_MS = 220                      # delay between each button starting to appear
     BUTTON_FADE_MS = 260                         # how long each button takes to fully fade in
@@ -402,7 +408,7 @@ def game_over_screen(screen, background=None, failed_snippet=None):
         screen.blit(blurred_bg, (0, 0))
         screen.blit(vignette, (0, 0))
 
-        _draw_title(screen, title_assets, title_text, now, LETTER_MS, SCREEN_W, SCREEN_H)
+        _draw_title(screen, title_assets, title_text, now, SCREEN_W, SCREEN_H)
 
         if now >= TITLE_DONE_MS:
             _draw_divider(screen, SCREEN_W, int(SCREEN_H * 0.46))

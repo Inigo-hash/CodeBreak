@@ -1,7 +1,18 @@
 import sys
 import pygame
 
-from src.settings_state import current_theme_name, cycle_theme, settings_state, swatch_color
+from src.settings_state import (
+    ROWS,
+    TEXT_SPEEDS,
+    VOLUME_STEP,
+    current_text_speed,
+    current_theme_name,
+    cycle_text_speed,
+    cycle_theme,
+    set_text_speed,
+    settings_state,
+    swatch_color,
+)
 from src.ui.theme import UI_COLORS, body_font, draw_button, draw_panel, title_font
 
 
@@ -12,8 +23,13 @@ class SettingsPanel:
         self.screen = screen
         self.is_open = True
         self.dragging_music = self.dragging_sfx = False
+        # Which row the arrow keys are pointing at. The panel used to be
+        # mouse-only, which made it unusable for anyone who cannot work a
+        # click-and-drag slider.
+        self.focus = 0
         self.title_font = title_font(32)
         self.label_font = body_font(18)
+        self.option_font = body_font(16, bold=True)
         self.button_font = title_font(22)
         self._layout()
 
@@ -21,6 +37,17 @@ class SettingsPanel:
         width, height = self.screen.get_size()
         self.panel = pygame.Rect(0, 0, min(380, width - 40), min(480, height - 40))
         self.panel.center = (width // 2, height // 2)
+
+        # Three side-by-side buttons rather than one arrow picker: there
+        # are only three speeds, and showing all of them lets a player
+        # see what the choices are without clicking through them.
+        option_width = (self.panel.width - 56 - 20) // 3
+        self.speed_rects = [
+            pygame.Rect(self.panel.left + 28 + index * (option_width + 10),
+                        self.panel.top + 94, option_width, 26)
+            for index in range(len(TEXT_SPEEDS))
+        ]
+
         self.music_bar = pygame.Rect(self.panel.left + 28, self.panel.top + 160, self.panel.width - 56, 14)
         self.sfx_bar = pygame.Rect(self.panel.left + 28, self.panel.top + 240, self.panel.width - 56, 14)
         arrow_y = self.panel.top + 350
@@ -39,16 +66,25 @@ class SettingsPanel:
     def handle_event(self, event):
         if not self.is_open:
             return False
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-            self.close()
-            return True
+        if event.type == pygame.KEYDOWN:
+            return self._handle_key(event)
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             self.dragging_music = self.music_bar.collidepoint(event.pos)
             self.dragging_sfx = self.sfx_bar.collidepoint(event.pos)
+            if self.dragging_music:
+                self.focus = ROWS.index("music")
+            elif self.dragging_sfx:
+                self.focus = ROWS.index("sfx")
+            for index, rect in enumerate(self.speed_rects):
+                if rect.collidepoint(event.pos):
+                    set_text_speed(TEXT_SPEEDS[index])
+                    self.focus = ROWS.index("text_speed")
             if self.left_arrow.collidepoint(event.pos):
                 cycle_theme(-1)
+                self.focus = ROWS.index("theme")
             elif self.right_arrow.collidepoint(event.pos):
                 cycle_theme(1)
+                self.focus = ROWS.index("theme")
             elif self.back_button.collidepoint(event.pos):
                 self.close()
             self._update_volume(event.pos[0])
@@ -60,6 +96,38 @@ class SettingsPanel:
             self.dragging_music = self.dragging_sfx = False
             return True
         return False
+
+    def _handle_key(self, event):
+        """Up/Down pick a row, Left/Right change it, Escape closes."""
+
+        if event.key == pygame.K_ESCAPE:
+            self.close()
+            return True
+        if event.key in (pygame.K_UP, pygame.K_DOWN):
+            step = -1 if event.key == pygame.K_UP else 1
+            self.focus = (self.focus + step) % len(ROWS)
+            return True
+        if event.key in (pygame.K_LEFT, pygame.K_RIGHT):
+            self._adjust(-1 if event.key == pygame.K_LEFT else 1)
+            return True
+        if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+            self.close()
+            return True
+        return False
+
+    def _adjust(self, step):
+        """Move the focused row one notch."""
+
+        row = ROWS[self.focus]
+        if row == "text_speed":
+            cycle_text_speed(step)
+        elif row == "theme":
+            cycle_theme(step)
+        else:
+            key = "music_vol" if row == "music" else "sfx_vol"
+            settings_state[key] = max(0.0, min(1.0, settings_state[key] + step * VOLUME_STEP))
+            if row == "music":
+                pygame.mixer.music.set_volume(settings_state["music_vol"])
 
     def _update_volume(self, mouse_x):
         if self.dragging_music:
@@ -82,7 +150,7 @@ class SettingsPanel:
         draw_panel(self.screen, self.panel, radius=9)
         self._text(self.title_font, "SETTINGS", UI_COLORS["gold"], center=(self.panel.centerx, self.panel.top + 34))
         self._text(self.label_font, "TEXT SPEED", (200, 200, 210), (self.panel.left + 28, self.panel.top + 70))
-        self._text(self.label_font, "SLOW    NORMAL    INSTANT", (160, 170, 190), (self.panel.left + 28, self.panel.top + 96))
+        self._draw_text_speed()
         self._draw_slider("MUSIC", self.music_bar, settings_state["music_vol"])
         self._draw_slider("SFX", self.sfx_bar, settings_state["sfx_vol"])
         self._text(self.label_font, "COLOR THEME", (200, 200, 210), (self.panel.left + 28, self.panel.top + 300))
@@ -93,16 +161,56 @@ class SettingsPanel:
         pygame.draw.polygon(self.screen, (80, 180, 255), [(self.right_arrow.left + 8, self.right_arrow.top + 6), (self.right_arrow.left + 8, self.right_arrow.bottom - 6), (self.right_arrow.right - 6, self.right_arrow.centery)])
         theme = current_theme_name()
         self._text(self.button_font, theme, swatch_color(theme), center=(self.panel.centerx, self.left_arrow.centery))
+        self._draw_focus_ring()
+        self._text(body_font(13), "Arrow keys work here too", UI_COLORS["text_dim"],
+                   center=(self.panel.centerx, self.back_button.top - 16))
         draw_button(
             self.screen, self.back_button, "BACK", self.button_font,
             hovered=self.back_button.collidepoint(pygame.mouse.get_pos()),
         )
+
+    def _draw_text_speed(self):
+        """The three speeds, with the active one lit."""
+
+        selected = current_text_speed()
+        mouse_pos = pygame.mouse.get_pos()
+        for name, rect in zip(TEXT_SPEEDS, self.speed_rects):
+            active = name == selected
+            hovered = rect.collidepoint(mouse_pos)
+            pygame.draw.rect(self.screen,
+                             UI_COLORS["stone_light"] if (active or hovered) else (34, 36, 46),
+                             rect, border_radius=4)
+            pygame.draw.rect(self.screen,
+                             UI_COLORS["gold"] if active else UI_COLORS["bronze_dark"],
+                             rect, 2, border_radius=4)
+            self._text(self.option_font, name,
+                       UI_COLORS["text"] if active else UI_COLORS["text_dim"],
+                       center=rect.center)
+
+    def _draw_focus_ring(self):
+        """A blue rim around whichever row the arrow keys will change."""
+
+        row = ROWS[self.focus]
+        if row == "text_speed":
+            target = self.speed_rects[0].union(self.speed_rects[-1]).inflate(8, 8)
+        elif row == "music":
+            target = self.music_bar.inflate(10, 22)
+        elif row == "sfx":
+            target = self.sfx_bar.inflate(10, 22)
+        else:
+            target = self.left_arrow.union(self.right_arrow).inflate(10, 10)
+        pygame.draw.rect(self.screen, UI_COLORS["blue_bright"], target, 2, border_radius=5)
 
     def _draw_slider(self, label, bar, value):
         self._text(self.label_font, label, (200, 200, 210), (bar.left, bar.top - 20))
         pygame.draw.rect(self.screen, UI_COLORS["stone_deep"], bar, border_radius=4)
         knob_x = bar.left + int((bar.width - 16) * value)
         pygame.draw.rect(self.screen, UI_COLORS["gold"], (knob_x, bar.top - 2, 16, 18), border_radius=3)
+        # Percentage beside the track: the knob alone tells you roughly
+        # where the volume is, not what it is, and it is the only readout
+        # for someone changing it with the keyboard.
+        self._text(body_font(13), f"{round(value * 100)}%", UI_COLORS["text_dim"],
+                   (bar.right - 34, bar.top - 20))
 
     def _text(self, font, value, color, position=None, center=None):
         rendered = font.render(value, True, color)

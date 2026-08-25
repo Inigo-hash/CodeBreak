@@ -15,6 +15,12 @@ pygame.init()
 
 FULLSCREEN = True
 
+# Developer keys during gameplay: F1 night, F2 fog, F5 sample editor,
+# F6 zone position, F8 game over preview. Set this to False before
+# demoing or submitting - with it on, a stray F8 drops the Game Over
+# screen on top of a live playthrough.
+DEBUG = True
+
 DISPLAY = pygame.display.Info()
 
 NATIVE_WIDTH = DISPLAY.current_w

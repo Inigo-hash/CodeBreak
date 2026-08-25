@@ -37,6 +37,7 @@ import sys
 import pygame
 
 # Aliased because this module uses `title_font` as a local variable name.
+from src.config import DEBUG
 from src.ui.theme import title_font as _display_font
 # The chart look itself - palette, ageing, ink labels, marker, night -
 # lives in ui/chart.py, shared with the minimap in game.py. Only the
@@ -564,7 +565,7 @@ def open_world_map(screen, map_texture, player_rect, map_width, map_height,
                 if event.key in (pygame.K_ESCAPE, pygame.K_m):
                     running = False
 
-                elif event.key == pygame.K_F1:
+                elif event.key == pygame.K_F1 and DEBUG:
                     # The day/night debug key keeps working with the map
                     # open, and the caller is told what it was left on, so
                     # the world behind the sheet cannot end up disagreeing

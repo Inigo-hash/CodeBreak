@@ -5,23 +5,30 @@ from src.systems import save_manager
 from src.screens.game import game_screen
 from src.screens.tutorial import tutorial_screen
 
+from src.ui.theme import TIER_PRIMARY, TIER_SECONDARY, TIER_TERTIARY
+
 SG_ICONS = ["play", "chest", "quit"]
 SG_LABELS = ["START NEW GAME", "LOAD SAVE DATA", "RETURN TO MAIN MENU"]
 SG_SEEDS = [55, 66, 77]
+# Matches the main menu's emphasis order, so the crumble transition lands
+# the hero action in the same visual slot it left from.
+SG_TIERS = [TIER_PRIMARY, TIER_SECONDARY, TIER_TERTIARY]
 
 
 def render_start_menu_buttons(surface, rects, t=0.0):
     """Draw the start-game menu's buttons onto an OFFSCREEN surface —
     used by main_menu.py to build the crumble-transition target."""
     from src.screens.main_menu import _draw_stone_button
-    for rect, label, icon, seed in zip(rects, SG_LABELS, SG_ICONS, SG_SEEDS):
-        _draw_stone_button(surface, rect, label, icon, False, seed, t)
+    for rect, label, icon, seed, tier in zip(
+        rects, SG_LABELS, SG_ICONS, SG_SEEDS, SG_TIERS
+    ):
+        _draw_stone_button(surface, rect, label, icon, False, seed, t, tier)
 
 
 def start_game_menu(screen, clean_backdrop=None):
     from src.screens.main_menu import (
-        STONE_DARK, STONE_MID, STONE_LIGHT, METAL_FRAME, BLUE_GLOW, WHITE,
-        _button_font, _small, _draw_stone_button, _update_icon_anims,
+        SPARKLES, STONE_DARK, STONE_MID, STONE_LIGHT, METAL_FRAME, BLUE_GLOW,
+        WHITE, _button_font, _small, _draw_stone_button, _update_icon_anims,
         compute_menu_layout,
     )
     
@@ -33,7 +40,7 @@ def start_game_menu(screen, clean_backdrop=None):
     background = clean_backdrop.copy() if clean_backdrop is not None else screen.copy()
 
     rects, bw, bh, gap, center_x, by0 = compute_menu_layout(SCREEN_WIDTH, SCREEN_HEIGHT, 3)
-    icons, labels, seeds = SG_ICONS, SG_LABELS, SG_SEEDS
+    icons, labels, seeds, tiers = SG_ICONS, SG_LABELS, SG_SEEDS, SG_TIERS
 
     show_slot_panel = None   # None | "new" | "load"
     confirm_slot = None      # slot number pending overwrite confirmation
@@ -216,8 +223,15 @@ def start_game_menu(screen, clean_backdrop=None):
         # ---------------- DRAW ----------------
         screen.blit(background, (0, 0))
 
-        for rect, label, icon, h, seed in zip(rects, labels, icons, hovers, seeds):
-            _draw_stone_button(screen, rect, label, icon, h, seed, t)
+        # Same live mote field as the main menu, so the wall keeps breathing
+        # across the transition instead of freezing on this screen.
+        SPARKLES.update(dt)
+        SPARKLES.draw(screen)
+
+        for rect, label, icon, h, seed, tier in zip(
+            rects, labels, icons, hovers, seeds, tiers
+        ):
+            _draw_stone_button(screen, rect, label, icon, h, seed, t, tier)
 
         if show_slot_panel is not None:
             _draw_slot_panel(screen, show_slot_panel)

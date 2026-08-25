@@ -9,19 +9,28 @@ from src.screens.settings import SettingsPanel
 from src.screens.how_to_play import how_to_play_screen
 from src.screens.start_game_menu import start_game_menu
 from src.ui.gear_icon import draw_gear, draw_medallion
-from src.ui.theme import UI_COLORS, draw_button, draw_panel, title_font, ui_font
+from src.ui.particles import ParticleField, extract_sparkles
+from src.ui.theme import (
+    TIER_PRIMARY, TIER_SECONDARY, TIER_TERTIARY,
+    UI_COLORS, draw_button, draw_panel, title_font, ui_font,
+)
 
 MM_ICONS = ["play", "book", "gear", "quit"]
 MM_LABELS = ["START GAME", "HOW TO PLAY", "SETTINGS", "QUIT"]
 MM_SEEDS = [11, 22, 33, 44]
+# Start is the hero action, Quit should recede. Four identically weighted
+# rows give the eye nothing to lock onto.
+MM_TIERS = [TIER_PRIMARY, TIER_SECONDARY, TIER_SECONDARY, TIER_TERTIARY]
 
 
 def render_main_menu_buttons(surface, rects, t=0.0):
     """Draw the main menu's buttons onto an OFFSCREEN surface — used by
     start_game_menu.py to build the crumble-transition target when
     returning to the main menu, without touching the visible screen."""
-    for rect, label, icon, seed in zip(rects, MM_LABELS, MM_ICONS, MM_SEEDS):
-        _draw_stone_button(surface, rect, label, icon, False, seed, t)
+    for rect, label, icon, seed, tier in zip(
+        rects, MM_LABELS, MM_ICONS, MM_SEEDS, MM_TIERS
+    ):
+        _draw_stone_button(surface, rect, label, icon, False, seed, t, tier)
 
 # Import config first — it sets the SDL_VIDEO_MINIMIZE_ON_FOCUS_LOSS env var,
 # which must exist before pygame.init() brings up the video subsystem.
@@ -43,6 +52,37 @@ pygame.display.set_caption("CodeBreak - Main Menu")
 
 background = pygame.image.load("assets/images/backgrounds/mainMenuBg1.png").convert()
 background = pygame.transform.smoothscale(background, (SCREEN_WIDTH, SCREEN_HEIGHT))
+
+
+def _dim_code_wall(surf: pygame.Surface) -> None:
+    """Knock the painted code column on the right back into being texture.
+
+    In the source art it sits at nearly full brightness, so the eye reads it
+    as content and tries to parse it — which puts it in direct competition
+    with the logo and pulls attention off the buttons. It is baked into the
+    background image, so it gets dimmed here with a horizontal gradient
+    scrim rather than by re-exporting the asset.
+    """
+    w, h = surf.get_size()
+    start_x = round(w * 0.56)   # left edge of the painted code column
+    max_alpha = 165             # opacity at the far right edge
+    scrim = pygame.Surface((w - start_x, h), pygame.SRCALPHA)
+    for x in range(scrim.get_width()):
+        # Ease in so there is no visible seam where the scrim begins.
+        blend = x / max(1, scrim.get_width() - 1)
+        alpha = round(max_alpha * (blend ** 1.5))
+        pygame.draw.line(scrim, (8, 9, 14, alpha), (x, 0), (x, h))
+    surf.blit(scrim, (start_x, 0))
+
+
+# The painted gold/blue motes are lifted out of the plate and handed to a
+# live particle field, so they breathe and drift instead of sitting dead.
+# Order matters: extract from the untouched plate first, then dim the code
+# wall, so the scrim never fights the detector.
+background, _sparkle_seeds = extract_sparkles(background)
+_dim_code_wall(background)
+
+SPARKLES = ParticleField(_sparkle_seeds, SCREEN_WIDTH, SCREEN_HEIGHT)
 
 # Palette
 STONE_DARK = (14, 14, 18)
@@ -333,8 +373,10 @@ def _draw_stone_button(
     hovered: bool,
     seed: int,
     t: float = 0.0,
+    tier: str = TIER_SECONDARY,
 ) -> None:
-    preview_rect = rect.inflate(4, 4) if hovered else rect
+    grow = (4 if hovered else 0) + (3 if tier == TIER_PRIMARY else 0)
+    preview_rect = rect.inflate(grow, grow) if grow else rect
     text_width = _button_font.size(label)[0]
     centered_left = preview_rect.centerx - text_width // 2
     # Keep the label truly centered whenever there is room. Only narrow
@@ -343,7 +385,7 @@ def _draw_stone_button(
     text_offset = max(0, minimum_text_left - centered_left)
     r = draw_button(
         surf, rect, label, _button_font, hovered=hovered,
-        text_offset=text_offset,
+        text_offset=text_offset, tier=tier,
     )
     _draw_menu_icon(surf, icon, pygame.Rect(r.left, r.top, r.w, r.h), hovered, t)
 
@@ -493,7 +535,7 @@ def main_menu():
 
     rects, bw, bh, gap, center_x, by0 = compute_menu_layout(SCREEN_WIDTH, SCREEN_HEIGHT, 4)
 
-    icons, labels, seeds = MM_ICONS, MM_LABELS, MM_SEEDS
+    icons, labels, seeds, tiers = MM_ICONS, MM_LABELS, MM_SEEDS, MM_TIERS
 
     # Clean backdrop (background + logo, no buttons) — captured once here,
     # after the logo is loaded/positioned, reused every frame instead of
@@ -559,10 +601,15 @@ def main_menu():
                 show_settings = settings_panel.is_open
 
         screen.blit(menu_backdrop, (0, 0))
-    
 
-        for rect, label, icon, h, seed in zip(rects, labels, icons, hovers, seeds):
-            _draw_stone_button(screen, rect, label, icon, h, seed, t)
+        # Behind the UI: the motes are wall atmosphere, not chrome.
+        SPARKLES.update(dt)
+        SPARKLES.draw(screen)
+
+        for rect, label, icon, h, seed, tier in zip(
+            rects, labels, icons, hovers, seeds, tiers
+        ):
+            _draw_stone_button(screen, rect, label, icon, h, seed, t, tier)
 
         _draw_mang_tahimik_tip(screen, t)
         ver = _small.render("v1.0", True, WHITE)

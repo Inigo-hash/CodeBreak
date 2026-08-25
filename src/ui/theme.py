@@ -1,5 +1,6 @@
 """Shared visual language for CodeBreak menus and compact gameplay UI."""
 
+import math
 from functools import lru_cache
 
 import pygame
@@ -18,7 +19,22 @@ UI_COLORS = {
     "parchment": (226, 207, 164),
     "text": (240, 237, 224),
     "text_dim": (156, 161, 174),
+    # Buttons pull their fill from these rather than from "stone". The menu
+    # art is entirely warm gold and cool blue, so a near-neutral grey button
+    # reads as unstyled placeholder UI sitting on top of finished artwork.
+    # A deep navy belongs to the same world the background does.
+    "button_fill": (20, 26, 42),
+    "button_fill_hover": (34, 45, 69),
+    "gold_deep": (139, 105, 20),
+    "gold_bright": (226, 186, 96),
+    "gold_text_dark": (26, 19, 6),
 }
+
+# Button emphasis tiers. A menu where every row looks identical gives the eye
+# nothing to land on, so the primary action is filled and the exit recedes.
+TIER_PRIMARY = "primary"
+TIER_SECONDARY = "secondary"
+TIER_TERTIARY = "tertiary"
 
 # Every font in the game comes from here. Two families only: Exo 2 for
 # headings, buttons and menu chrome (it echoes the blocky sans of the
@@ -94,29 +110,87 @@ def draw_panel(surface, rect, emphasized=False, radius=8, alpha=238):
     surface.blit(panel, rect.topleft)
 
 
-def draw_button(surface, rect, label, font, hovered=False, text_offset=0):
-    """Shared carved stone button used by the Main and Pause menus."""
-    draw_rect = rect.inflate(4, 4) if hovered else rect
-    glow = pygame.Surface((draw_rect.w + 14, draw_rect.h + 14), pygame.SRCALPHA)
-    if hovered:
-        pygame.draw.rect(glow, (*UI_COLORS["blue"], 55), glow.get_rect(),
+def _rounded_vgradient(surface, rect, top_color, bottom_color, radius):
+    """Fill a rounded rect with a vertical gradient.
+
+    pygame has no gradient primitive and no cheap way to mask one into a
+    rounded shape, so each row is drawn as a single line inset by however
+    much the corner arc eats into it at that height. Exact corners, no
+    per-frame surface allocation.
+    """
+    height = max(1, rect.height)
+    for y in range(height):
+        blend = y / (height - 1) if height > 1 else 0.0
+        color = tuple(
+            round(top_color[i] + (bottom_color[i] - top_color[i]) * blend)
+            for i in range(3)
+        )
+        # Distance into the corner arc, if this row is inside one.
+        dy = 0
+        if y < radius:
+            dy = radius - y
+        elif y >= height - radius:
+            dy = y - (height - radius - 1)
+        inset = radius - round(math.sqrt(max(0, radius * radius - dy * dy))) if dy else 0
+        pygame.draw.line(
+            surface, color,
+            (rect.left + inset, rect.top + y),
+            (rect.right - 1 - inset, rect.top + y),
+        )
+
+
+def draw_button(surface, rect, label, font, hovered=False, text_offset=0,
+                tier=TIER_SECONDARY):
+    """Shared carved stone button used by the Main and Pause menus.
+
+    `tier` controls emphasis only — geometry, hit area and the returned rect
+    are unchanged, so callers that do their own layout math stay correct.
+    """
+    grow = 4 if hovered else 0
+    if tier == TIER_PRIMARY:
+        grow += 3  # the hero action sits slightly proud of the rest
+    draw_rect = rect.inflate(grow, grow) if grow else rect
+
+    # Outer glow: always lit on the primary action, hover-only elsewhere.
+    if tier == TIER_PRIMARY or hovered:
+        glow_color = UI_COLORS["gold"] if tier == TIER_PRIMARY else UI_COLORS["blue"]
+        glow_alpha = 70 if (tier == TIER_PRIMARY and hovered) else (
+            46 if tier == TIER_PRIMARY else 55)
+        glow = pygame.Surface((draw_rect.w + 14, draw_rect.h + 14), pygame.SRCALPHA)
+        pygame.draw.rect(glow, (*glow_color, glow_alpha), glow.get_rect(),
                          border_radius=10)
         surface.blit(glow, (draw_rect.x - 7, draw_rect.y - 7))
 
     pygame.draw.rect(surface, (6, 7, 10), draw_rect.move(0, 4), border_radius=7)
-    pygame.draw.rect(surface,
-                     UI_COLORS["stone_light"] if hovered else UI_COLORS["stone"],
-                     draw_rect, border_radius=7)
-    pygame.draw.rect(surface,
-                     UI_COLORS["blue_bright"] if hovered else UI_COLORS["bronze"],
-                     draw_rect, 2, border_radius=7)
+
+    if tier == TIER_PRIMARY:
+        top = UI_COLORS["gold_bright"] if hovered else UI_COLORS["gold"]
+        _rounded_vgradient(surface, draw_rect, top, UI_COLORS["gold_deep"], 7)
+        border = UI_COLORS["gold_bright"] if hovered else UI_COLORS["bronze"]
+        text_color = UI_COLORS["gold_text_dark"]
+        inner_line = UI_COLORS["gold_bright"]
+    else:
+        fill = (UI_COLORS["button_fill_hover"] if hovered
+                else UI_COLORS["button_fill"])
+        pygame.draw.rect(surface, fill, draw_rect, border_radius=7)
+        if tier == TIER_TERTIARY:
+            border = UI_COLORS["blue_bright"] if hovered else UI_COLORS["bronze_dark"]
+            text_color = UI_COLORS["text_dim"]
+        else:
+            border = UI_COLORS["blue_bright"] if hovered else UI_COLORS["bronze"]
+            text_color = UI_COLORS["text"]
+        inner_line = (69, 76, 96)
+
+    # Thicker rim than the old 1px hairline — it has to hold its own against
+    # the beveled logo directly above it.
+    pygame.draw.rect(surface, border, draw_rect, 3, border_radius=7)
     inner = draw_rect.inflate(-8, -8)
     pygame.draw.rect(surface, UI_COLORS["bronze_dark"], inner, 1, border_radius=4)
-    pygame.draw.line(surface, (69, 72, 84),
+    pygame.draw.line(surface, inner_line,
                      (inner.left + 5, inner.top + 2),
                      (inner.right - 5, inner.top + 2), 1)
 
-    text = font.render(label, True, UI_COLORS["text"])
+    text = font.render(label, True, text_color)
     text_rect = text.get_rect(center=(draw_rect.centerx + text_offset, draw_rect.centery))
     surface.blit(text, text_rect)
     return draw_rect

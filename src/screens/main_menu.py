@@ -9,7 +9,6 @@ from src.screens.settings import SettingsPanel
 from src.screens.how_to_play import how_to_play_screen
 from src.screens.start_game_menu import start_game_menu
 from src.ui.gear_icon import draw_gear, draw_medallion
-from src.ui.particles import ParticleField, extract_sparkles
 from src.ui.theme import (
     TIER_PRIMARY, TIER_SECONDARY, TIER_TERTIARY,
     UI_COLORS, draw_button, draw_panel, title_font, ui_font,
@@ -75,14 +74,7 @@ def _dim_code_wall(surf: pygame.Surface) -> None:
     surf.blit(scrim, (start_x, 0))
 
 
-# The painted gold/blue motes are lifted out of the plate and handed to a
-# live particle field, so they breathe and drift instead of sitting dead.
-# Order matters: extract from the untouched plate first, then dim the code
-# wall, so the scrim never fights the detector.
-background, _sparkle_seeds = extract_sparkles(background)
 _dim_code_wall(background)
-
-SPARKLES = ParticleField(_sparkle_seeds, SCREEN_WIDTH, SCREEN_HEIGHT)
 
 # Palette
 STONE_DARK = (14, 14, 18)
@@ -601,10 +593,6 @@ def main_menu():
                 show_settings = settings_panel.is_open
 
         screen.blit(menu_backdrop, (0, 0))
-
-        # Behind the UI: the motes are wall atmosphere, not chrome.
-        SPARKLES.update(dt)
-        SPARKLES.draw(screen)
 
         for rect, label, icon, h, seed, tier in zip(
             rects, labels, icons, hovers, seeds, tiers

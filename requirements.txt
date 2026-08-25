@@ -1,6 +1,5 @@
 pygame>=2.6.1
-# Used by src/ui/particles.py to lift the painted motes out of the main menu
-# background plate. The menu degrades gracefully without it (static plate,
-# procedurally scattered particles), but it is wanted for the intended look.
+# Used by src/entities/player.py for per-pixel alpha work, and by
+# tools/prepare_rail_buttons.py when regenerating button art.
 numpy>=2.0
 pytmx>=3.32

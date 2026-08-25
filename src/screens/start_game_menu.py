@@ -27,8 +27,8 @@ def render_start_menu_buttons(surface, rects, t=0.0):
 
 def start_game_menu(screen, clean_backdrop=None):
     from src.screens.main_menu import (
-        SPARKLES, STONE_DARK, STONE_MID, STONE_LIGHT, METAL_FRAME, BLUE_GLOW,
-        WHITE, _button_font, _small, _draw_stone_button, _update_icon_anims,
+        STONE_DARK, STONE_MID, STONE_LIGHT, METAL_FRAME, BLUE_GLOW, WHITE,
+        _button_font, _small, _draw_stone_button, _update_icon_anims,
         compute_menu_layout,
     )
     
@@ -222,11 +222,6 @@ def start_game_menu(screen, clean_backdrop=None):
 
         # ---------------- DRAW ----------------
         screen.blit(background, (0, 0))
-
-        # Same live mote field as the main menu, so the wall keeps breathing
-        # across the transition instead of freezing on this screen.
-        SPARKLES.update(dt)
-        SPARKLES.draw(screen)
 
         for rect, label, icon, h, seed, tier in zip(
             rects, labels, icons, hovers, seeds, tiers

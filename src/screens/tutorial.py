@@ -30,9 +30,9 @@ def tutorial_screen(screen, play_music=True):
     BG_FLOOR = (34, 36, 44)
 
     # --- Fonts ---
-    name_font = title_font(22)
-    dialogue_font = body_font(20)
-    hint_font = body_font(16)
+    name_font = title_font(26)
+    dialogue_font = body_font(28)
+    hint_font = body_font(20)
     prompt_font = title_font(18, bold=False)
     manual_title_font = title_font(30)
     manual_header_font = title_font(20, bold=False)
@@ -40,6 +40,12 @@ def tutorial_screen(screen, play_music=True):
     manual_line_font = body_font(17)
     manual_note_font = body_font(15)
     manual_btn_font = title_font(22)
+
+    # Rows of dialogue the textbox reserves room for. Every tutorial line
+    # fits well inside this at the current width; the cap only exists so an
+    # over-long line cannot grow the box off the bottom of the screen.
+    MAX_DIALOGUE_LINES = 3
+    PORTRAIT_SIDE = 190
 
     # --- Music: reuse the main menu theme for the tutorial ---
     if play_music:
@@ -55,13 +61,21 @@ def tutorial_screen(screen, play_music=True):
     portrait = None
     try:
         portrait = pygame.image.load("assets/images/characters/mang_tahimik/portrait.png").convert_alpha()
-        portrait = pygame.transform.scale(portrait, (160, 160))
     except Exception:
         portrait = None
 
+    # The textbox sizes itself from its fonts, so the portrait is scaled to
+    # whatever square it ends up asking for rather than to a fixed size here.
+    _portrait_cache = {}
+
+    def _portrait_at(size):
+        if size not in _portrait_cache:
+            _portrait_cache[size] = pygame.transform.smoothscale(portrait, (size, size))
+        return _portrait_cache[size]
+
     def draw_portrait(surf, rect):
         if portrait:
-            surf.blit(portrait, rect.topleft)
+            surf.blit(_portrait_at(rect.width), rect.topleft)
             pygame.draw.rect(surf, METAL_FRAME, rect, 3, border_radius=6)
         else:
             pygame.draw.rect(surf, (60, 70, 60), rect, border_radius=6)
@@ -94,6 +108,17 @@ def tutorial_screen(screen, play_music=True):
             self.started_at = pygame.time.get_ticks()
             # Set when the player asks to see the rest of the line now.
             self.skipped = False
+
+            # The box is as tall as its longest line needs and no taller,
+            # measured once here rather than per frame: a box that resized
+            # itself as the text typed out would jump on every character.
+            self.text_width = (SCREEN_WIDTH - 120 - PORTRAIT_SIDE - 24) - 36
+            self.rows = max(
+                (len(self.wrap_text(line, dialogue_font, self.text_width))
+                 for line in lines),
+                default=1
+            )
+            self.rows = max(1, min(MAX_DIALOGUE_LINES, self.rows))
 
         def visible_count(self):
             """How many characters of the current line are on screen."""
@@ -153,13 +178,24 @@ def tutorial_screen(screen, play_music=True):
         def draw(self, surf):
             if not self.active:
                 return
-            box_h = 170
+
+            # The box is measured from the fonts rather than given a fixed
+            # height, so bumping a font size up for readability cannot push
+            # the last line of dialogue out under the hint.
+            line_height = dialogue_font.get_height() + 6
+            box_h = (18 + name_font.get_height() + 10
+                     + self.rows * line_height
+                     + 10 + hint_font.get_height() + 14)
             box = pygame.Rect(60, SCREEN_HEIGHT - box_h - 40, SCREEN_WIDTH - 120, box_h)
 
-            portrait_rect = pygame.Rect(box.left, box.top - 20, 160, 160)
+            # Bottom-aligned with the box, so a short box means more of him
+            # standing above it rather than a portrait hanging below it.
+            portrait_rect = pygame.Rect(box.left, box.bottom - PORTRAIT_SIDE,
+                                        PORTRAIT_SIDE, PORTRAIT_SIDE)
             draw_portrait(surf, portrait_rect)
 
-            text_rect = pygame.Rect(portrait_rect.right + 24, box.top, box.width - 160 - 24, box.height)
+            text_rect = pygame.Rect(portrait_rect.right + 24, box.top,
+                                    self.text_width + 36, box.height)
             pygame.draw.rect(surf, STONE_MID, text_rect, border_radius=8)
             pygame.draw.rect(surf, METAL_FRAME, text_rect, 3, border_radius=8)
 
@@ -170,13 +206,15 @@ def tutorial_screen(screen, play_music=True):
             # finished layout, rather than wrapping what is visible so
             # far: wrapping a growing string makes words jump between
             # rows as they appear.
-            wrapped = self.wrap_text(self.lines[self.index], dialogue_font, text_rect.width - 36)
+            wrapped = self.wrap_text(self.lines[self.index], dialogue_font,
+                                     self.text_width)
+            text_top = text_rect.top + 18 + name_font.get_height() + 10
             budget = self.visible_count()
-            for i, line in enumerate(wrapped[:3]):
+            for i, line in enumerate(wrapped[:MAX_DIALOGUE_LINES]):
                 if budget <= 0:
                     break
                 txt = dialogue_font.render(line[:budget], True, WHITE)
-                surf.blit(txt, (text_rect.left + 18, text_rect.top + 50 + i * 26))
+                surf.blit(txt, (text_rect.left + 18, text_top + i * line_height))
                 # +1 for the space the wrapper dropped at the line break,
                 # so the reveal runs at an even pace across rows.
                 budget -= len(line) + 1

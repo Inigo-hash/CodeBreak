@@ -57,6 +57,9 @@ TAB_IDS = [tab for tab, _, _, _ in TABS]
 CARD_BG      = (32, 35, 44)
 DIVIDER      = (58, 62, 76)
 SCROLL_STEP  = 48   # pixels per mouse-wheel notch
+# Extra leading between wrapped lines. The mono face sets its lines tight
+# enough that a paragraph of it turns into a grey block at this size.
+LINE_GAP     = 3
 
 THREAT_COLORS = {
     "Low": (120, 200, 140),
@@ -100,13 +103,13 @@ class _Fonts:
     """The one set of fonts every tab renderer draws with."""
 
     def __init__(self):
-        self.title = title_font(24)
-        self.subtitle = title_font(14, bold=False)
-        self.heading = title_font(17, bold=False)
-        self.entry = body_font(16, bold=True)
-        self.body = body_font(14)
-        self.small = body_font(12, bold=True)
-        self.tab = title_font(13, bold=False)
+        self.title = title_font(30)
+        self.subtitle = title_font(17, bold=False)
+        self.heading = title_font(21, bold=False)
+        self.entry = body_font(21, bold=True)
+        self.body = body_font(20)
+        self.small = body_font(18, bold=True)
+        self.tab = title_font(16, bold=False)
 
 
 # ===========================================================================
@@ -118,9 +121,9 @@ class _Fonts:
 def _heading(surface, fonts, text, x, y, width):
     label = fonts.heading.render(text, True, ACCENT)
     surface.blit(label, (x, y))
-    y += label.get_height() + 4
+    y += label.get_height() + 6
     pygame.draw.line(surface, DIVIDER, (x, y), (x + width, y), 1)
-    return y + 10
+    return y + 12
 
 
 def _paragraph(surface, fonts, text, x, y, width, color=TEXT_MAIN,
@@ -128,19 +131,24 @@ def _paragraph(surface, fonts, text, x, y, width, color=TEXT_MAIN,
     font = font or fonts.body
     for line in wrap_text(text, font, width):
         surface.blit(font.render(line, True, color), (x, y))
-        y += font.get_height()
+        y += font.get_height() + LINE_GAP
     return y
 
 
 def _bullet(surface, fonts, text, x, y, width, color=TEXT_MAIN):
+    indent = fonts.body.size("-  ")[0]
     surface.blit(fonts.body.render("-", True, ACCENT_DIM), (x, y))
-    return _paragraph(surface, fonts, text, x + 16, y, width - 16, color)
+    return _paragraph(surface, fonts, text, x + indent, y, width - indent,
+                      color)
 
 
 def _key_row(surface, fonts, key, description, x, y, width):
     """A control row: the key on the left, what it does on the right."""
 
-    key_col = 150
+    # Wide enough for the longest key string the manuals use, measured
+    # rather than guessed so the two columns cannot collide once the
+    # fonts change size.
+    key_col = fonts.small.size("SHIFT + CLICK      ")[0]
     surface.blit(fonts.small.render(key, True, ACCENT), (x, y + 2))
     return _paragraph(surface, fonts, description, x + key_col, y,
                       width - key_col, TEXT_MAIN)
@@ -157,7 +165,7 @@ def _text_block_height(fonts, texts, width, font=None):
     lines = 0
     for text in texts:
         lines += len(wrap_text(text, font, width))
-    return lines * font.get_height()
+    return lines * (font.get_height() + LINE_GAP)
 
 
 # ===========================================================================
@@ -234,8 +242,8 @@ def _render_enemies(surface, fonts, stage, progress, x, y, width):
 
 
 def _render_enemy_card(surface, fonts, enemy, known, x, y, width):
-    portrait_size = 72
-    pad = 12
+    portrait_size = 104
+    pad = 14
     text_x = x + pad + portrait_size + pad
     text_width = width - (text_x - x) - pad
 
@@ -368,8 +376,9 @@ def _render_item_row(surface, fonts, item, known, x, y, width):
                                    TEXT_DONE if known else ACCENT_DIM),
                  (x, y + 2))
 
-    text_x = x + 34
-    text_width = width - 34
+    indent = fonts.body.size("[ ]  ")[0]
+    text_x = x + indent
+    text_width = width - indent
 
     name = item["name"] if known else "???"
     surface.blit(fonts.entry.render(name, True,
@@ -412,8 +421,9 @@ def _render_objectives(surface, fonts, stage, progress, x, y, width):
                                         TEXT_DONE if finished else ACCENT),
                      (x, y))
 
-        text_x = x + 40
-        text_width = width - 40
+        indent = fonts.entry.size("[ ]  ")[0]
+        text_x = x + indent
+        text_width = width - indent
 
         y = _paragraph(surface, fonts, objective["text"], text_x, y,
                        text_width, TEXT_DIM if finished else TEXT_MAIN,
@@ -508,15 +518,15 @@ def open_stage_info(screen, stage, progress, background=None, tab="manual"):
         tab = "manual"
 
     # ---- Geometry ----
-    panel_w = min(840, SCREEN_W - 100)
-    panel_h = min(620, SCREEN_H - 80)
+    panel_w = min(1180, SCREEN_W - 100)
+    panel_h = min(880, SCREEN_H - 80)
     panel = pygame.Rect((SCREEN_W - panel_w) // 2, (SCREEN_H - panel_h) // 2,
                         panel_w, panel_h)
 
-    header_h = 56
-    tab_h = 38
-    footer_h = 54
-    inner_pad = 16
+    header_h = 70
+    tab_h = 48
+    footer_h = 62
+    inner_pad = 20
 
     tab_bar = pygame.Rect(panel.left + inner_pad, panel.top + header_h,
                           panel.width - inner_pad * 2, tab_h)
@@ -535,11 +545,11 @@ def open_stage_info(screen, stage, progress, background=None, tab="manual"):
         panel.bottom - footer_h - (tab_bar.bottom + 12) - 8
     )
 
-    content_pad = 14
-    content_width = view.width - content_pad * 2 - 12  # 12 = scrollbar gutter
+    content_pad = 18
+    content_width = view.width - content_pad * 2 - 14  # 14 = scrollbar gutter
 
-    back_rect = pygame.Rect(panel.right - inner_pad - 130,
-                            panel.bottom - footer_h + 8, 130, 34)
+    back_rect = pygame.Rect(panel.right - inner_pad - 160,
+                            panel.bottom - footer_h + 8, 160, 42)
 
     # ---- Content, rebuilt only when the tab changes ----
     content = _build_content(tab, fonts, stage, progress, content_width)
@@ -641,7 +651,7 @@ def open_stage_info(screen, stage, progress, background=None, tab="manual"):
                              (METAL_FRAME if hovered else DIVIDER),
                              rect, 2, border_radius=6)
 
-            icon_rect = pygame.Rect(rect.left + 10, rect.centery - 8, 16, 16)
+            icon_rect = pygame.Rect(rect.left + 12, rect.centery - 10, 20, 20)
             draw_tab_icon(screen, icon_rect, tab_id,
                           ACCENT if active else TEXT_DIM)
 
@@ -663,7 +673,7 @@ def open_stage_info(screen, stage, progress, background=None, tab="manual"):
         # ---- Scrollbar (only when there is something to scroll) ----
         limit = max_scroll()
         if limit > 0:
-            track = pygame.Rect(view.right - 12, view.top + 6, 6,
+            track = pygame.Rect(view.right - 14, view.top + 6, 8,
                                 view.height - 12)
             pygame.draw.rect(screen, (22, 24, 30), track, border_radius=3)
 

@@ -18,7 +18,6 @@ import pygame
 
 from src.ui.editor_theme import *
 from src.settings_state import (
-    ROWS,
     TEXT_SPEEDS,
     VOLUME_STEP,
     settings_state,
@@ -28,6 +27,12 @@ from src.settings_state import (
     cycle_theme,
     set_text_speed,
 )
+from src.systems.audio import apply_music_volume
+
+# Font size is changed from the full Settings screen. Editor fonts and pane
+# geometry are constructed together, so this compact in-editor overlay keeps
+# the four settings that can safely update without rebuilding the editor.
+ROWS = ("text_speed", "music", "sfx", "theme")
 
 # Height of a volume slider's track.
 BAR_HEIGHT = 14
@@ -260,7 +265,7 @@ class EditorSettingsPanel:
             )
 
             if row == "music":
-                pygame.mixer.music.set_volume(settings_state["music_vol"])
+                apply_music_volume()
 
     def _set_volume_from_mouse(self, mouse_x):
         """Maps a mouse x position onto the slider being dragged."""
@@ -272,7 +277,7 @@ class EditorSettingsPanel:
 
         if self.dragging == "music":
             settings_state["music_vol"] = ratio
-            pygame.mixer.music.set_volume(ratio)
+            apply_music_volume()
         else:
             settings_state["sfx_vol"] = ratio
 
@@ -318,7 +323,7 @@ class EditorSettingsPanel:
         self._draw_text_speed_row(mouse_position)
 
         self._draw_slider("MUSIC", self.music_bar, settings_state["music_vol"])
-        self._draw_slider("SFX", self.sfx_bar, settings_state["sfx_vol"])
+        self._draw_slider("SOUND EFFECTS (SFX)", self.sfx_bar, settings_state["sfx_vol"])
 
         self._draw_theme_row(mouse_position)
 

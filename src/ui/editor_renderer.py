@@ -88,9 +88,15 @@ class EditorRenderer:
         # Created once here and repositioned by the layout pass, so
         # CodeEditor can safely hold on to these exact objects.
 
-        self.run_button = Button(0, 0, BUTTON_WIDTH, BUTTON_HEIGHT - 10, "Run")
-        self.submit_button = Button(0, 0, BUTTON_WIDTH, BUTTON_HEIGHT - 10, "Submit")
-        self.leave_button = Button(0, 0, BUTTON_WIDTH, BUTTON_HEIGHT - 10, "Leave")
+        self.run_button = Button(
+            0, 0, BUTTON_WIDTH, BUTTON_HEIGHT - 10, "2  RUN", "secondary"
+        )
+        self.submit_button = Button(
+            0, 0, BUTTON_WIDTH, BUTTON_HEIGHT - 10, "3  SUBMIT", "primary"
+        )
+        self.leave_button = Button(
+            0, 0, BUTTON_WIDTH, BUTTON_HEIGHT - 10, "LEAVE", "tertiary"
+        )
 
         # Window size the current layout was built for. Comparing
         # against it each frame is what lets the editor survive the
@@ -498,6 +504,19 @@ class EditorRenderer:
              self.header_rect.centery - title.get_height() // 2)
         )
 
+        # A persistent three-step map answers the beginner's most common
+        # question before they need to ask it: what do I do after typing?
+        guide_text = "1  TYPE CODE    >    2  RUN    >    3  SUBMIT"
+        guide = SMALL_FONT.render(guide_text, True, SECONDARY_TEXT)
+        guide_rect = guide.get_rect(center=self.header_rect.center)
+        title_right = self.header_rect.x + 20 + title.get_width() + 24
+        if guide_rect.left >= title_right and guide_rect.right < self.settings_gear_rect.left - 12:
+            badge = guide_rect.inflate(22, 12)
+            pygame.draw.rect(self.screen, PANEL_COLOR, badge, border_radius=badge.height // 2)
+            pygame.draw.rect(self.screen, BORDER_COLOR, badge, 1,
+                             border_radius=badge.height // 2)
+            self.screen.blit(guide, guide_rect)
+
         self.draw_settings_gear()
 
     def draw_settings_gear(self):
@@ -758,6 +777,14 @@ class EditorRenderer:
                 segment_x += rendered.get_width()
 
             text_y += line_spacing
+
+        # Empty code panes used to look inactive. This placeholder makes it
+        # explicit that the center pane is where keyboard input belongs.
+        if len(self.text_buffer.lines) == 1 and not self.text_buffer.lines[0]:
+            placeholder = SMALL_FONT.render(
+                "Start typing your Python code here...", True, SECONDARY_TEXT
+            )
+            self.screen.blit(placeholder, (text_x + 3, self.editor_rect.y + 42))
 
         # ----------------------------------
         # Draw Cursor

@@ -8,6 +8,7 @@ It simply displays the topic and returns the player's decision.
 """
 
 import pygame
+from src.systems.audio import handle_music_shortcut
 
 from src.ui.editor_widgets import wrap_text
 from src.ui.theme import body_font, title_font
@@ -210,6 +211,8 @@ class TopicLessonScreen:
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     raise SystemExit
+                if handle_music_shortcut(event):
+                    continue
 
                 # -----------------------------------------
                 # Confirmation popup

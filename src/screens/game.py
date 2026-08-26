@@ -1,9 +1,6 @@
 from pytmx.util_pygame import load_pygame
 import pygame
 import sys
-import random
-from src.config import DEBUG
-from src.settings_state import settings_state as _settings_state
 from src.screens.settings import SettingsPanel
 from src.entities.player import MainCharacter
 from src.entities.enemy import Enemy
@@ -28,7 +25,7 @@ from src.systems.combat import (
     PlayerCombat, attack_hitbox, attack_path_blocked, move_rect,
     selected_weapon_damage,
 )
-from src.systems.audio import CombatAudio
+from src.systems.audio import CombatAudio, apply_music_volume, handle_music_shortcut
 from src.data.zones import ZONES, get_zone_at
 from src.data.stages import get_stage
 from src.screens.topic_found import open_topic_found
@@ -38,12 +35,14 @@ from src.screens.topic_lesson import open_topic_lesson
 from src.data.encounters import BEGINNER_PATH_GIDS, BEGINNER_STAGE_ENCOUNTERS
 from src.systems.enemy_spawns import resolve_encounter_spawns
 from src.ui.theme import UI_COLORS, body_font, draw_button, draw_panel, title_font
+from src.ui.night_lighting import WORLD_IS_NIGHT, draw_night_and_torch
+from src.ui.fog import build_fog_texture, draw_fog
 
 def game_screen(screen, slot_num=None, save_state=None):
     clock = pygame.time.Clock()
 
     pygame.mixer.music.load("assets/audios/gameStage1Bgm.mp3")  
-    pygame.mixer.music.set_volume(_settings_state["music_vol"])  # ← use saved volume                  
+    apply_music_volume()
     pygame.mixer.music.play(-1)
 
     # --- Load Map ---
@@ -145,6 +144,7 @@ def game_screen(screen, slot_num=None, save_state=None):
     save_stage = "Island"
     save_challenges_passed = []
     save_stage_progress = None
+    save_security = None
 
     if save_state:
         gameplay_state["hearts"] = save_state.get("hearts", gameplay_state["hearts"])
@@ -154,6 +154,7 @@ def game_screen(screen, slot_num=None, save_state=None):
         gameplay_state["bonus_time"] = save_state.get("bonus_time", 0)
         save_challenges_passed = save_state.get("challenges_passed", [])
         save_stage_progress = save_state.get("stage_progress")
+        save_security = save_state.get("_security")
 
         map_position = save_state.get("map_position")
         if map_position:
@@ -174,7 +175,7 @@ def game_screen(screen, slot_num=None, save_state=None):
     stage_progress.sync_objectives(stage, save_challenges_passed)
 
     def build_save_state():
-        return {
+        state = {
             "stage": save_stage,
             "hearts": gameplay_state["hearts"],
             "keys": gameplay_state["keys"],
@@ -187,6 +188,9 @@ def game_screen(screen, slot_num=None, save_state=None):
             "weapon_equipped": player_inventory.weapon_equipped,
             "stage_progress": stage_progress.to_dict(),
         }
+        if save_security:
+            state["_security"] = save_security
+        return state
 
     # Feedback message shown briefly after SAVE is pressed. Frame-based
     # (this loop doesn't track dt / delta-time), so this counts down once
@@ -592,150 +596,20 @@ def game_screen(screen, slot_num=None, save_state=None):
     # scene - see the note in the paused branch of the loop below.
     pause_snapshot = None
     show_pause_settings = False
-    # Debug day/night preview.
-    night_mode = False
+    # Night is the authored starting atmosphere. F1 can temporarily preview
+    # the same scene in daylight.
+    night_mode = WORLD_IS_NIGHT
 
-    night_overlay = pygame.Surface(
-        (SCREEN_W, SCREEN_H),
-        pygame.SRCALPHA
-    )
-
-    night_overlay.fill(
-        (8, 15, 40, 200)
-    )
-
-    # ---------------------------------------------------------
-    # Debug fog preview
-    # ---------------------------------------------------------
-
+    # F2 restores the optional atmospheric fog preview.
     fog_mode = False
-
-    # Fog movement through the world.
     fog_drift_x = 0.0
     fog_drift_y = 0.0
-
-    # Pixels per second.
     fog_speed_x = 18.0
     fog_speed_y = 4.0
+    # Built lazily on the first F2 press so normal play pays no fog startup
+    # cost when the preview is left off.
+    fog_texture = None
 
-    def create_fog_texture(width, height, seed=7):
-        """
-        Creates a smoother, softer fog texture.
-
-        Uses two low-contrast noise layers and smoothscales them
-        multiple times so the fog looks more cloudy and less blotchy.
-        """
-
-        def build_layer(small_w, small_h, max_alpha, layer_seed):
-            rng = random.Random(layer_seed)
-
-            small = pygame.Surface(
-                (small_w, small_h),
-                pygame.SRCALPHA
-            )
-
-            for y in range(small_h):
-                for x in range(small_w):
-
-                    # Lower contrast = smoother fog
-                    alpha = rng.randint(0, max_alpha)
-
-                    small.set_at(
-                        (x, y),
-                        (205, 215, 220, alpha)
-                    )
-
-            # First upscale
-            layer = pygame.transform.smoothscale(
-                small,
-                (width, height)
-            )
-
-            # Smooth it even more by shrinking and enlarging again
-            layer = pygame.transform.smoothscale(
-                pygame.transform.smoothscale(
-                    layer,
-                    (
-                        max(1, width // 2),
-                        max(1, height // 2)
-                    )
-                ),
-                (width, height)
-            )
-
-            return layer
-
-        # Large soft fog shapes
-        base_layer = build_layer(
-            28,   # smaller = softer / broader fog
-            20,
-            26,   # lower alpha = smoother
-            seed
-        )
-
-        # Light secondary detail so it doesn't look too flat
-        detail_layer = build_layer(
-            52,
-            36,
-            14,
-            seed + 99
-        )
-
-        # Blend them together
-        base_layer.blit(
-            detail_layer,
-            (0, 0),
-            special_flags=pygame.BLEND_RGBA_ADD
-        )
-
-        # -----------------------------------------------------
-        # Create mirrored seamless texture
-        # -----------------------------------------------------
-
-        fog = pygame.Surface(
-            (width * 2, height * 2),
-            pygame.SRCALPHA
-        )
-
-        fog.blit(
-            base_layer,
-            (0, 0)
-        )
-
-        fog.blit(
-            pygame.transform.flip(
-                base_layer,
-                True,
-                False
-            ),
-            (width, 0)
-        )
-
-        fog.blit(
-            pygame.transform.flip(
-                base_layer,
-                False,
-                True
-            ),
-            (0, height)
-        )
-
-        fog.blit(
-            pygame.transform.flip(
-                base_layer,
-                True,
-                True
-            ),
-            (width, height)
-        )
-
-        return fog
-
-    # Create the fog texture once at startup.
-    fog_texture = create_fog_texture(
-        1100,
-        750
-    )
     settings_panel = SettingsPanel(screen)
     settings_panel.close()
 
@@ -890,6 +764,8 @@ def game_screen(screen, slot_num=None, save_state=None):
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
+            if handle_music_shortcut(event):
+                continue
 
             # Let the hotbar claim its own input first (number keys 1-5, mouse
             # wheel and clicks on a slot). Only while actually playing - the
@@ -900,8 +776,8 @@ def game_screen(screen, slot_num=None, save_state=None):
 
             # The stage panel does not open its own screen - it reports
             # which tab the player asked for (button click or I/J/K/O) and
-            # leaves the decision here, the same way the F5 editor and the
-            # B inventory are opened from this loop.
+            # leaves the decision here, the same way the B inventory is
+            # opened from this loop.
             if not paused:
                 requested_tab = stage_panel.handle_event(event)
                 if requested_tab:
@@ -964,25 +840,13 @@ def game_screen(screen, slot_num=None, save_state=None):
                         # When the lesson/editor closes, this loop opens
                         # the inventory again.
 
-                elif event.key == pygame.K_F1 and not paused and DEBUG:
-
+                elif event.key == pygame.K_F1 and not paused:
                     night_mode = not night_mode
 
-                    print(
-                        "Night mode ON"
-                        if night_mode
-                        else "Night mode OFF"
-                    )
-
-                elif event.key == pygame.K_F2 and not paused and DEBUG:
-
+                elif event.key == pygame.K_F2 and not paused:
                     fog_mode = not fog_mode
-
-                    print(
-                        "Fog mode ON"
-                        if fog_mode
-                        else "Fog mode OFF"
-                    )
+                    if fog_mode and fog_texture is None:
+                        fog_texture = build_fog_texture(1100, 750)
 
                 elif event.key == pygame.K_m and not paused:
                     # M opens the full paper chart. It is handed the same
@@ -990,9 +854,6 @@ def game_screen(screen, slot_num=None, save_state=None):
                     # so the two can never name or place anything
                     # differently - the map is just the uncropped view.
                     background_snapshot = screen.copy()
-                    # Returns whether night was left on: F1 keeps working
-                    # while the sheet is open, so the world and the map
-                    # cannot end up disagreeing about the time of day.
                     night_mode = open_world_map(
                         screen,
                         minimap_base_surface,
@@ -1023,34 +884,25 @@ def game_screen(screen, slot_num=None, save_state=None):
                         # was looking at when they hit pause.
                         pause_snapshot = blur_frame(screen)
 
-                elif event.key == pygame.K_F5 and DEBUG:
+                elif event.key == pygame.K_F5 and not paused:
                     sample_challenge = {
                         "title": "Variables",
-                        "objective": "Create a variable called age and assign the value 18.",
+                        "objective": (
+                            "Create a variable called age and assign the value 18."
+                        ),
                         "type": "variable",
-                        "expected": {
-                            "name": "age",
-                            "value": 18
-                        }
+                        "expected": {"name": "age", "value": 18},
                     }
-                    background_snapshot = screen.copy()
-                    editor = CodeEditor(screen, sample_challenge, background_snapshot)
+                    editor = CodeEditor(screen, sample_challenge, screen.copy())
                     editor.run()
 
-                elif event.key == pygame.K_F6 and DEBUG:
-                    # Debug: prints the player's position as a
-                    # fraction of the map, for placing zone rects
-                    # in zones.py accurately.
+                elif event.key == pygame.K_F6 and not paused:
                     frac_x = player_rect.centerx / map_width
                     frac_y = player_rect.centery / map_height
-                    print(f"Zone debug position: ({frac_x:.2f}, {frac_y:.2f})")
-                    
-                elif event.key == pygame.K_F8 and DEBUG:
-                    # Dev-only preview: press F8 to see the Game Over screen,
-                    # F8 again (or Esc/Enter/R/M/click) to leave it and resume
-                    # gameplay right where you were.
-                    background_snapshot = screen.copy()
-                    game_over_screen(screen, background=background_snapshot)
+                    print(f"Zone position: ({frac_x:.2f}, {frac_y:.2f})")
+
+                elif event.key == pygame.K_F8 and not paused:
+                    game_over_screen(screen, background=screen.copy())
 
             # Left button only - see the note in main_menu.py: the wheel
             # and the right button raise this event as well, which had
@@ -1398,64 +1250,29 @@ def game_screen(screen, slot_num=None, save_state=None):
                 prop.draw_frames(ZOOM, camera_x, camera_y)
 
         # ---------------------------------------------------------
-        # Night Mode
+        # Nighttime and player torch
         # ---------------------------------------------------------
-        # F1 toggles a simple dark blue overlay over the world.
-        # UI is drawn afterwards, so it stays clearly visible.
-
+        # The player and world are darkened together, then the torch is drawn
+        # above the veil. Interface panels are drawn later and remain clear.
+        player_screen_center = (
+            player_rect.centerx * ZOOM - camera_x,
+            player_rect.centery * ZOOM - camera_y,
+        )
         if night_mode:
-            screen.blit(
-                night_overlay,
-                (0, 0)
+            draw_night_and_torch(
+                screen,
+                player_screen_center,
+                main_character.facing,
+                pygame.time.get_ticks() / 1000.0,
             )
-
-        # ---------------------------------------------------------
-        # Fog
-        # ---------------------------------------------------------
 
         if fog_mode:
-
-            # Move fog independently through the world.
             fog_drift_x += fog_speed_x * dt
             fog_drift_y += fog_speed_y * dt
-
-            fog_w = fog_texture.get_width()
-            fog_h = fog_texture.get_height()
-
-            # World position + independent fog movement.
-            offset_x = int(
-                camera_x - fog_drift_x
+            draw_fog(
+                screen, fog_texture, camera_x, camera_y,
+                fog_drift_x, fog_drift_y,
             )
-
-            offset_y = int(
-                camera_y - fog_drift_y
-            )
-
-            start_x = -(
-                offset_x % fog_w
-            )
-
-            start_y = -(
-                offset_y % fog_h
-            )
-
-            # Repeat fog across visible screen.
-            for fog_y in range(
-                start_y - fog_h,
-                SCREEN_H + fog_h,
-                fog_h
-            ):
-
-                for fog_x in range(
-                    start_x - fog_w,
-                    SCREEN_W + fog_w,
-                    fog_w
-                ):
-
-                    screen.blit(
-                        fog_texture,
-                        (fog_x, fog_y)
-                    )
 
         # --- Draw interaction UI ---
         if near_interactable:
@@ -1633,7 +1450,7 @@ def game_screen(screen, slot_num=None, save_state=None):
 
         # Key hints (top-right, out of the way of the profile HUD)
         hint = font.render(
-            "ESC = Pause    B = Inventory    M = Map    F1 = Night    F2 = Fog",
+            "ESC = Pause    B = Inventory    M = Map    F10 = Mute music",
             True,
             (255, 255, 255)
         )

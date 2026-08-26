@@ -1,4 +1,5 @@
 import pygame
+from src.systems.audio import handle_music_shortcut
 
 from src.ui.theme import body_font, title_font
 
@@ -128,6 +129,8 @@ class TopicFoundScreen:
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     raise SystemExit
+                if handle_music_shortcut(event):
+                    continue
 
                 if (
                     event.type == pygame.MOUSEBUTTONDOWN

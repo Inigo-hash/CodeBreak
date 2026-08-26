@@ -1,11 +1,10 @@
 import pygame
 import sys
 from src.settings_state import revealed_characters
-from src.settings_state import settings_state as _settings_state
 from src.entities.player import MainCharacter
 from src.entities.enemy import Enemy
 from src.systems.combat import PlayerCombat, attack_hitbox
-from src.systems.audio import CombatAudio
+from src.systems.audio import CombatAudio, apply_music_volume, handle_music_shortcut
 from src.ui.code_editor import CodeEditor
 from src.data.challenges import CHALLENGES
 from src.screens.how_to_play import (
@@ -40,6 +39,7 @@ def tutorial_screen(screen, play_music=True):
     manual_line_font = body_font(17)
     manual_note_font = body_font(15)
     manual_btn_font = title_font(22)
+    exit_title_font = title_font(26)
 
     # Rows of dialogue the textbox reserves room for. Every tutorial line
     # fits well inside this at the current width; the cap only exists so an
@@ -50,7 +50,7 @@ def tutorial_screen(screen, play_music=True):
     # --- Music: reuse the main menu theme for the tutorial ---
     if play_music:
         pygame.mixer.music.load("assets/audios/tutorial_background_music.mp3")
-        pygame.mixer.music.set_volume(_settings_state["music_vol"])
+        apply_music_volume()
         pygame.mixer.music.play(-1)
 
     def _stop_tutorial_music():
@@ -87,7 +87,8 @@ def tutorial_screen(screen, play_music=True):
             pygame.draw.circle(surf, (30, 30, 38), (cx + 12, cy - 24), 4)
 
     # ------------------------------------------------------------------
-    # Dialogue system: portrait + textbox, advance on click / E / SPACE
+    # Dialogue system: one consistent key. A beginner should not have to
+    # remember three equivalent inputs while also learning the game.
     # ------------------------------------------------------------------
     class DialogueBox:
         """
@@ -154,11 +155,7 @@ def tutorial_screen(screen, play_music=True):
         def handle_event(self, event):
             if not self.active:
                 return
-            if event.type == pygame.KEYDOWN and event.key in (pygame.K_e, pygame.K_SPACE, pygame.K_RETURN):
-                self.advance()
-            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                # Left button only - see the note in main_menu.py. Without
-                # it a scroll of the wheel skipped a tutorial step.
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_e:
                 self.advance()
 
         def wrap_text(self, text, font, max_width):
@@ -219,8 +216,8 @@ def tutorial_screen(screen, play_music=True):
                 # so the reveal runs at an even pace across rows.
                 budget -= len(line) + 1
 
-            hint_text = ("Click / E / SPACE to continue" if self.line_complete()
-                         else "Click / E / SPACE to skip")
+            hint_text = ("Press E to continue" if self.line_complete()
+                         else "Press E to show the full line")
             hint = hint_font.render(hint_text, True, DIM_TEXT)
             surf.blit(hint, (text_rect.right - hint.get_width() - 16, text_rect.bottom - hint.get_height() - 10))
 
@@ -305,9 +302,8 @@ def tutorial_screen(screen, play_music=True):
         state = "code_editor_intro_dialogue"
 
     def open_code_editor():
-        """Opens the CodeEditor as a blocking sub-loop (same pattern
-        used elsewhere in the codebase, e.g. game.py's F5 handler),
-        then folds the result back into the tutorial's own state
+        """Opens the CodeEditor as a blocking sub-loop, then folds the
+        result back into the tutorial's own state
         machine depending on whether the player actually solved it."""
         nonlocal state, dialogue, has_solved
 
@@ -343,6 +339,38 @@ def tutorial_screen(screen, play_music=True):
     manual_begin_rect = pygame.Rect(
         manual_panel_rect.centerx - 110, manual_panel_rect.bottom - 56, 220, 40
     )
+
+    # Escape opens a decision instead of silently skipping into gameplay.
+    # Keeping the destructive/navigation choice mouse-only means repeated
+    # Escape presses can only open/close this box; they cannot confirm it.
+    show_exit_confirm = False
+    exit_rect = pygame.Rect(0, 0, min(620, SCREEN_WIDTH - 60), 280)
+    exit_rect.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
+    keep_learning_rect = pygame.Rect(exit_rect.left + 48, exit_rect.bottom - 76, 220, 46)
+    return_menu_rect = pygame.Rect(exit_rect.right - 268, exit_rect.bottom - 76, 220, 46)
+
+    def draw_exit_confirmation(surf):
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 190))
+        surf.blit(overlay, (0, 0))
+        pygame.draw.rect(surf, STONE_MID, exit_rect, border_radius=10)
+        pygame.draw.rect(surf, METAL_FRAME, exit_rect, 3, border_radius=10)
+        heading = exit_title_font.render("LEAVE THE TUTORIAL?", True, YELLOW_GLOW)
+        surf.blit(heading, heading.get_rect(center=(exit_rect.centerx, exit_rect.top + 48)))
+        copy = hint_font.render("Your new adventure will not start until the tutorial is completed.", True, WHITE)
+        surf.blit(copy, copy.get_rect(center=(exit_rect.centerx, exit_rect.top + 105)))
+        note = prompt_font.render("Press ESC to keep learning, or choose an option below.", True, DIM_TEXT)
+        surf.blit(note, note.get_rect(center=(exit_rect.centerx, exit_rect.top + 145)))
+        mouse = pygame.mouse.get_pos()
+        for rect, label, color in (
+            (keep_learning_rect, "KEEP LEARNING", GREEN_OK),
+            (return_menu_rect, "RETURN TO MENU", (115, 75, 75)),
+        ):
+            fill = tuple(min(255, channel + 20) for channel in color) if rect.collidepoint(mouse) else color
+            pygame.draw.rect(surf, fill, rect, border_radius=5)
+            pygame.draw.rect(surf, STONE_LIGHT, rect, 2, border_radius=5)
+            rendered = prompt_font.render(label, True, WHITE)
+            surf.blit(rendered, rendered.get_rect(center=rect.center))
 
     def draw_stage_manual(surf, mouse_pos):
         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
@@ -387,9 +415,25 @@ def tutorial_screen(screen, play_music=True):
                 pygame.quit()
                 sys.exit()
 
+            if handle_music_shortcut(event):
+                continue
+
+            if show_exit_confirm:
+                if event.type == pygame.KEYDOWN and event.key in (
+                    pygame.K_ESCAPE, pygame.K_e, pygame.K_RETURN, pygame.K_KP_ENTER
+                ):
+                    show_exit_confirm = False
+                elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    if keep_learning_rect.collidepoint(event.pos):
+                        show_exit_confirm = False
+                    elif return_menu_rect.collidepoint(event.pos):
+                        _stop_tutorial_music()
+                        return "cancelled"
+                continue
+
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                _stop_tutorial_music()
-                return  # bail back to caller at any point
+                show_exit_confirm = True
+                continue
 
             if state in (
                 "intro_dialogue",
@@ -419,7 +463,7 @@ def tutorial_screen(screen, play_music=True):
 
         keys = pygame.key.get_pressed()
 
-        if state == "practice":
+        if state == "practice" and not show_exit_confirm:
             player_combat.update(dt)
             dx = dy = 0
             if keys[pygame.K_w] or keys[pygame.K_UP]:
@@ -476,7 +520,7 @@ def tutorial_screen(screen, play_music=True):
 
         if state == "done":
             _stop_tutorial_music()
-            return  # Full tutorial gate cleared, hand control back to caller
+            return "completed"  # Full tutorial gate cleared.
 
         # --- draw ---
         mouse_pos = pygame.mouse.get_pos()
@@ -521,8 +565,11 @@ def tutorial_screen(screen, play_music=True):
         if state == "stage_manual":
             draw_stage_manual(screen, mouse_pos)
         else:
-            esc_hint = hint_font.render("ESC = Skip tutorial for now", True, DIM_TEXT)
+            esc_hint = hint_font.render("ESC = Tutorial options", True, DIM_TEXT)
             screen.blit(esc_hint, (SCREEN_WIDTH - esc_hint.get_width() - 16, 16))
             dialogue.draw(screen)
+
+        if show_exit_confirm:
+            draw_exit_confirmation(screen)
 
         pygame.display.flip()

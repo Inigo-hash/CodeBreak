@@ -14,6 +14,7 @@ src/data/controls.py, which is checked against the actual key handlers.
 """
 
 import pygame
+from src.systems.audio import handle_music_shortcut
 import sys
 
 from src.data.controls import CONTROL_NOTES, CONTROL_SECTIONS
@@ -198,6 +199,8 @@ def how_to_play_screen(screen):
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
+            if handle_music_shortcut(event):
+                continue
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 return
             # Left button only - see the note in main_menu.py: the wheel

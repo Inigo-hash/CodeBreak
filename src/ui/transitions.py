@@ -11,6 +11,8 @@ import math
 import random
 import pygame
 
+from src.systems.audio import play_crumble_sfx
+
 CHIP_SIZE = 18
 
 
@@ -138,6 +140,7 @@ def crumble_transition(screen, backdrop, old_source, old_rects, new_source, new_
     new_rects   : rects where the new buttons will assemble (within new_source)
     """
     rng = random.Random(seed)
+    play_crumble_sfx("break")
     clock = pygame.time.Clock()
     screen_w, screen_h = screen.get_size()
 
@@ -178,6 +181,7 @@ def crumble_transition(screen, backdrop, old_source, old_rects, new_source, new_
     for r in new_rects:
         chips.extend(_spawn_converge_chips(r, new_source, screen_w, screen_h, rng))
 
+    play_crumble_sfx("settle")
     duration, elapsed = max(0.52, assemble_duration), 0.0
     while elapsed < duration:
         dt = clock.tick(60) / 1000.0

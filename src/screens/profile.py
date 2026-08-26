@@ -20,6 +20,7 @@ render as "-- / --" instead of a full-looking empty bar.
 
 import pygame
 import sys
+from src.systems.audio import handle_music_shortcut
 
 from src.ui.gameplay_hud import (
     NAME_GOLD,
@@ -107,6 +108,8 @@ def profile_screen(screen, background=None, name="Bobiles the explorer the great
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
+            if handle_music_shortcut(event):
+                continue
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 running = False
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:

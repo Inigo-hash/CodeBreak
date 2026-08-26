@@ -27,6 +27,7 @@ screen that only changes when you scroll it.
 import sys
 
 import pygame
+from src.systems.audio import handle_music_shortcut
 
 from src.data.challenges import CHALLENGES
 from src.data.enemies import get_enemy
@@ -575,6 +576,8 @@ def open_stage_info(screen, stage, progress, background=None, tab="manual"):
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
+            if handle_music_shortcut(event):
+                continue
 
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:

@@ -12,8 +12,7 @@ pixel rects once, at load time.
 
 To adjust a zone: nudge x, y (top-left corner) or width, height,
 all as values between 0.0 and 1.0, then reload and check the minimap.
-Use the F6 debug key in game.py to print your current position as a
-fraction, so you can walk to a landmark and read off exact numbers.
+F6 prints the player's current fractional position for placement work.
 """
 
 ZONES = [

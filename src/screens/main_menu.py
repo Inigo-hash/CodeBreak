@@ -4,22 +4,24 @@ import sys
 from pathlib import Path
 import pygame
 from src.screens.game import game_screen
-from src.settings_state import settings_state as _settings_state
 from src.screens.settings import SettingsPanel
 from src.screens.how_to_play import how_to_play_screen
 from src.screens.start_game_menu import start_game_menu
 from src.ui.gear_icon import draw_gear, draw_medallion
+from src.systems.audio import (
+    apply_music_volume, handle_music_shortcut, music_shortcut_label,
+)
 from src.ui.theme import (
     TIER_PRIMARY, TIER_SECONDARY, TIER_TERTIARY,
     UI_COLORS, draw_button, draw_panel, title_font, ui_font,
 )
 
-MM_ICONS = ["play", "book", "gear", "quit"]
-MM_LABELS = ["START GAME", "HOW TO PLAY", "SETTINGS", "QUIT"]
-MM_SEEDS = [11, 22, 33, 44]
+MM_ICONS = ["play", "book", "quit"]
+MM_LABELS = ["START GAME", "HOW TO PLAY", "QUIT"]
+MM_SEEDS = [11, 22, 44]
 # Start is the hero action, Quit should recede. Four identically weighted
 # rows give the eye nothing to lock onto.
-MM_TIERS = [TIER_PRIMARY, TIER_SECONDARY, TIER_SECONDARY, TIER_TERTIARY]
+MM_TIERS = [TIER_PRIMARY, TIER_SECONDARY, TIER_TERTIARY]
 
 
 def render_main_menu_buttons(surface, rects, t=0.0):
@@ -482,7 +484,11 @@ def _draw_mang_tahimik_tip(surf: pygame.Surface, t: float) -> None:
 
 
 def main_menu():
-    from src.screens.tutorial import tutorial_screen
+    from src.screens.intro import opening_walkthrough
+
+    # Consultation requirement: orient a first-time player before asking
+    # them to make sense of a menu. HELP can replay the same guide later.
+    opening_walkthrough(screen)
 
     show_settings = False
     settings_panel = SettingsPanel(screen)
@@ -518,14 +524,20 @@ def main_menu():
     available_bottom = SCREEN_HEIGHT - bottom_reserved
     available_height = max(1, available_bottom - available_top)
 
-    block_height = 4 * bh + 3 * gap
+    button_count = len(MM_LABELS)
+    block_height = button_count * bh + (button_count - 1) * gap
     if block_height > available_height:
         shrink = available_height / block_height
         bh = max(min_bh, int(bh * shrink))   # never shrink below min_bh
         gap = max(min_gap, int(gap * shrink))  # never shrink below min_gap
-        block_height = 4 * bh + 3 * gap
+        block_height = button_count * bh + (button_count - 1) * gap
 
-    rects, bw, bh, gap, center_x, by0 = compute_menu_layout(SCREEN_WIDTH, SCREEN_HEIGHT, 4)
+    rects, bw, bh, gap, center_x, by0 = compute_menu_layout(
+        SCREEN_WIDTH, SCREEN_HEIGHT, button_count
+    )
+
+    gear_rect = pygame.Rect(SCREEN_WIDTH - 74, 18, 54, 54)
+    help_rect = pygame.Rect(gear_rect.left - 150, 23, 132, 44)
 
     icons, labels, seeds, tiers = MM_ICONS, MM_LABELS, MM_SEEDS, MM_TIERS
 
@@ -539,9 +551,10 @@ def main_menu():
     clock = pygame.time.Clock()
     clock.tick(60)
     running = True
+    pulse_layer = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
 
     pygame.mixer.music.load("assets/audios/mainMenuBgm.mp3")
-    pygame.mixer.music.set_volume(_settings_state["music_vol"])
+    apply_music_volume()
     pygame.mixer.music.play(-1)  # -1 means loop forever
 
     while running:
@@ -555,6 +568,8 @@ def main_menu():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
+            if handle_music_shortcut(event):
+                continue
             # Left button only. pygame reports a right-click, a middle
             # click and each notch of the scroll wheel as MOUSEBUTTONDOWN
             # too (the wheel arrives as buttons 4 and 5), so a handler
@@ -563,6 +578,13 @@ def main_menu():
             # one.
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if not show_settings:
+                    if gear_rect.collidepoint(event.pos):
+                        show_settings = True
+                        settings_panel.open()
+                        continue
+                    if help_rect.collidepoint(event.pos):
+                        opening_walkthrough(screen, replay=True)
+                        continue
                     if rects[0].collidepoint(event.pos):
                         from src.ui.transitions import crumble_transition
                         from src.screens.start_game_menu import start_game_menu, render_start_menu_buttons
@@ -580,12 +602,6 @@ def main_menu():
                     if rects[1].collidepoint(event.pos):                      
                         how_to_play_screen(screen)
                     if rects[2].collidepoint(event.pos):
-                        show_settings = True
-                        settings_panel.open()
-                        # Do not pass the opening click into the panel. At
-                        # some resolutions it overlaps the panel's Back button.
-                        continue
-                    if rects[3].collidepoint(event.pos):
                         pygame.quit()
                         sys.exit()
             if show_settings:
@@ -594,14 +610,32 @@ def main_menu():
 
         screen.blit(menu_backdrop, (0, 0))
 
+        # A slow, low-contrast pulse makes the dungeon feel alive without
+        # rapid flashing.  The 3.2-second period stays far below seizure-risk
+        # flash rates and never hides menu text.
+        pulse = (math.sin(t * math.tau / 3.2) + 1.0) * 0.5
+        pulse_layer.fill((24, 72, 115, round(6 + pulse * 16)))
+        screen.blit(pulse_layer, (0, 0))
+
         for rect, label, icon, h, seed, tier in zip(
             rects, labels, icons, hovers, seeds, tiers
         ):
             _draw_stone_button(screen, rect, label, icon, h, seed, t, tier)
 
         _draw_mang_tahimik_tip(screen, t)
+        # Persistent top-right help and settings controls are easier to find
+        # than a settings row mixed into the primary menu actions.
+        gear_hover = gear_rect.collidepoint(mouse_pos)
+        pygame.draw.circle(screen, UI_COLORS["stone"], gear_rect.center, 27)
+        pygame.draw.circle(screen, UI_COLORS["blue_bright"] if gear_hover else UI_COLORS["bronze"],
+                           gear_rect.center, 27, 2)
+        draw_gear(screen, gear_rect.center, 25, spin_degrees=t * (80 if gear_hover else 18))
+        draw_button(screen, help_rect, "HELP  ?", title_font(17),
+                    hovered=help_rect.collidepoint(mouse_pos))
         ver = _small.render("v1.0", True, WHITE)
         screen.blit(ver, (16, SCREEN_HEIGHT - ver.get_height() - 12))
+        mute_hint = _small.render(music_shortcut_label(), True, UI_COLORS["text_dim"])
+        screen.blit(mute_hint, (16, SCREEN_HEIGHT - ver.get_height() - mute_hint.get_height() - 20))
 
         if show_settings:
             settings_panel.draw()

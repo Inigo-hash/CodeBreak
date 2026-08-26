@@ -35,9 +35,9 @@ import random
 import sys
 
 import pygame
+from src.systems.audio import handle_music_shortcut
 
 # Aliased because this module uses `title_font` as a local variable name.
-from src.config import DEBUG
 from src.ui.theme import title_font as _display_font
 # The chart look itself - palette, ageing, ink labels, marker, night -
 # lives in ui/chart.py, shared with the minimap in game.py. Only the
@@ -478,8 +478,8 @@ def open_world_map(screen, map_texture, player_rect, map_width, map_height,
                      than daylight, so the country around them is legible
                      and the far corners fall into gloom.
 
-    Returns the night flag as the player left it - F1 still toggles it
-    from in here, and the caller needs to pick that up.
+    Returns the current night flag because F1 can also change it while this
+    screen is open.
     """
 
     SCREEN_W, SCREEN_H = screen.get_size()
@@ -560,16 +560,14 @@ def open_world_map(screen, map_texture, player_rect, map_width, map_height,
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
+            if handle_music_shortcut(event):
+                continue
 
             if event.type == pygame.KEYDOWN:
                 if event.key in (pygame.K_ESCAPE, pygame.K_m):
                     running = False
 
-                elif event.key == pygame.K_F1 and DEBUG:
-                    # The day/night debug key keeps working with the map
-                    # open, and the caller is told what it was left on, so
-                    # the world behind the sheet cannot end up disagreeing
-                    # with the sheet about what time it is.
+                elif event.key == pygame.K_F1:
                     night = not night
                     night_veil = make_night_veil() if night else None
 
@@ -607,5 +605,5 @@ def open_world_map(screen, map_texture, player_rect, map_width, map_height,
 
         pygame.display.flip()
 
-    # Handed back so the caller can pick up an F1 pressed in here.
+    # Let the gameplay scene inherit any F1 change made while viewing the map.
     return night

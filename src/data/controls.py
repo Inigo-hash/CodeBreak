@@ -23,8 +23,8 @@ Binding a new key in the game means adding it here as well, or the
 manuals start drifting again - which is the whole reason this file
 exists.
 
-Debug keys (F1, F2, F5, F6, F8) are deliberately absent. They are
-developer tools gated behind config.DEBUG, not player controls.
+The F1/F2/F5/F6/F8 preview tools are intentionally kept out of the beginner
+manual; F10 is the only function-key action needed for normal play.
 """
 
 
@@ -56,6 +56,7 @@ CONTROL_SECTIONS = [
         ("K", "Items you have found"),
         ("O", "Objectives"),
         ("ESC", "Pause"),
+        ("F10", "Mute / unmute music"),
     ]),
 
     ("IN THE CODE EDITOR", [

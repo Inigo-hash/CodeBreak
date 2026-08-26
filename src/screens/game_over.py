@@ -38,6 +38,7 @@ import math
 import random
 
 import pygame
+from src.systems.audio import handle_music_shortcut
 
 from src.settings_state import letter_delay_ms, revealed_characters
 from src.ui.theme import body_font, title_font
@@ -373,10 +374,10 @@ def game_over_screen(screen, background=None, failed_snippet=None):
             if event.type == pygame.QUIT:
                 pygame.quit()
                 raise SystemExit
+            if handle_music_shortcut(event):
+                continue
 
-            # F8 is the dev/debug toggle used to preview this screen from
-            # game.py (press F8 to open, F8 again to close) — it works even
-            # mid-animation so you're not stuck waiting to back out of it.
+            # F8 closes the preview immediately, even while it is animating.
             if event.type == pygame.KEYDOWN and event.key == pygame.K_F8:
                 result = "debug_close"
                 running = False

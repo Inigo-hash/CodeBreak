@@ -47,9 +47,8 @@ SEPIA_LIFT     = (38, 28, 14)      # added back so the map is not muddy
 COLOR_HINT     = 62                # alpha of the original map blended back
 MAP_ON_PAPER   = 232               # alpha of the map itself, so paper shows
 
-# Night. One chart texture serves both times of day - darkness is a veil
-# laid over the paper rather than a second bake of it, so F1 toggles
-# instantly and there is only ever one chart to keep in memory.
+# Night. One chart texture serves both modes - darkness is a veil laid over
+# the paper rather than a second bake, so F1 switches without reloading it.
 #
 # Evenly, across the whole sheet: a sheet of paper held at arm's length
 # is lit all at once or not at all, so a pool of light around the

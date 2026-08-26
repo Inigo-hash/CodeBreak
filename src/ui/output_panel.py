@@ -42,7 +42,8 @@ class OutputPanel:
         # info, printed output, success, and error lines all in
         # their own color.
         self.messages = [
-            ("Waiting for execution...", SECONDARY_TEXT)
+            ("Your program's result appears here.", SECONDARY_TEXT),
+            ("Use RUN to test, then SUBMIT to check the objective.", SECONDARY_TEXT),
         ]
 
         # First wrapped line currently shown.

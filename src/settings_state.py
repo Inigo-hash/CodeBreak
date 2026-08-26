@@ -7,6 +7,7 @@
 settings_state = {
     "music_vol": 0.55,
     "sfx_vol": 0.45,
+    "music_muted": False,
     "themes": ["BLUE", "DARK", "LIGHT"],
     "theme_index": 0,
     "dragging_music": False,
@@ -16,6 +17,10 @@ settings_state = {
     # read it, and nothing in the game revealed text a character at a
     # time for it to control either.
     "text_speed": "NORMAL",
+    # PC games should launch with text that is at least 18 physical pixels
+    # high at 1080p and let the player enlarge it.  The shared font loaders
+    # read this multiplier, so the choice reaches menus, dialogue and HUDs.
+    "font_size": "RECOMMENDED",
 }
 
 
@@ -35,7 +40,15 @@ TEXT_SPEED_MS = {
 # src/screens/settings.py and the one inside the code editor - build
 # their rows from this, so neither can end up offering a setting the
 # other does not.
-ROWS = ("text_speed", "music", "sfx", "theme")
+FONT_SIZES = ("RECOMMENDED", "LARGE", "EXTRA LARGE")
+
+FONT_SCALE = {
+    "RECOMMENDED": 1.0,
+    "LARGE": 1.35,
+    "EXTRA LARGE": 2.0,
+}
+
+ROWS = ("font_size", "text_speed", "music", "sfx", "theme")
 
 VOLUME_STEP = 0.05
 
@@ -140,3 +153,22 @@ def revealed_characters(total, elapsed_ms):
         return total
 
     return min(total, int(max(0, elapsed_ms) // delay) + 1)
+
+
+def current_font_size():
+    return settings_state.get("font_size", "RECOMMENDED")
+
+
+def font_scale():
+    return FONT_SCALE.get(current_font_size(), 1.0)
+
+
+def cycle_font_size(step):
+    index = FONT_SIZES.index(current_font_size())
+    settings_state["font_size"] = FONT_SIZES[(index + step) % len(FONT_SIZES)]
+
+    # Existing cached faces must be discarded before a screen rebuilds its
+    # local fonts.  Imported lazily to keep settings_state dependency-light.
+    from src.ui.theme import clear_font_cache
+    clear_font_cache()
+    return current_font_size()

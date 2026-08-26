@@ -5,6 +5,8 @@ from functools import lru_cache
 
 import pygame
 
+from src.settings_state import font_scale
+
 
 UI_COLORS = {
     "stone_deep": (12, 13, 18),
@@ -71,25 +73,45 @@ def _load(path, size):
         return pygame.font.Font(None, size)
 
 
-@lru_cache(maxsize=64)
-def title_font(size, bold=True):
-    """Display face for titles, headings and button labels."""
+@lru_cache(maxsize=128)
+def _title_font(size, bold=True):
     path = DISPLAY_BOLD if bold else DISPLAY_SEMIBOLD
     return _load(path, max(8, int(size * _DISPLAY_RATIO)))
 
 
-@lru_cache(maxsize=64)
-def ui_font(size, bold=False):
-    """Display face at text weights, for menu chrome that is not a heading."""
+def title_font(size, bold=True):
+    """Display face for titles, headings and button labels."""
+    return _title_font(max(8, round(size * font_scale())), bold)
+
+
+@lru_cache(maxsize=128)
+def _ui_font(size, bold=False):
     path = DISPLAY_SEMIBOLD if bold else DISPLAY_REGULAR
     return _load(path, max(8, int(size * _DISPLAY_RATIO)))
 
 
-@lru_cache(maxsize=64)
-def body_font(size, bold=False):
-    """Monospace face for body copy, stats, and code."""
+def ui_font(size, bold=False):
+    """Display face at text weights, for menu chrome that is not a heading."""
+    return _ui_font(max(8, round(size * font_scale())), bold)
+
+
+@lru_cache(maxsize=128)
+def _body_font(size, bold=False):
     path = MONO_BOLD if bold else MONO_REGULAR
     return _load(path, max(8, int(size * _MONO_RATIO)))
+
+
+def body_font(size, bold=False):
+    """Monospace face for body copy, stats, and code."""
+    return _body_font(max(8, round(size * font_scale())), bold)
+
+
+def clear_font_cache():
+    """Discard loaded faces after the accessibility scale changes."""
+
+    _title_font.cache_clear()
+    _ui_font.cache_clear()
+    _body_font.cache_clear()
 
 
 def draw_panel(surface, rect, emphasized=False, radius=8, alpha=238):

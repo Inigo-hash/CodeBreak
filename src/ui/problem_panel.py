@@ -84,9 +84,8 @@ class ProblemPanel:
         # --------------------------------------
         # Difficulty (optional)
         # --------------------------------------
-        # Some challenges are defined inline (e.g. the dev-only F5
-        # challenge in game.py) and have no difficulty field, so it
-        # is only drawn when it actually exists.
+        # Some challenges can be defined inline without a difficulty field,
+        # so it is only drawn when it actually exists.
 
         difficulty = self.challenge.get("difficulty")
 
@@ -159,6 +158,20 @@ class ProblemPanel:
                     TEXT_COLOR
                 )
             )
+
+        hint = self.challenge.get("hint")
+        if not hint:
+            hint = {
+                "print": 'A print statement looks like: print("your message")',
+                "variable": "A variable follows this pattern: name = value",
+                "data_type": "Create one clearly named variable on each line.",
+                "type_casting": "Functions such as int(), float(), and str() convert values.",
+            }.get(self.challenge.get("type"))
+        if hint:
+            rows.append(("", SMALL_FONT, SECONDARY_TEXT))
+            rows.append(("Need a hint?", SMALL_FONT, SUCCESS_COLOR))
+            for line in wrap_text(hint, SMALL_FONT, max_width):
+                rows.append((line, SMALL_FONT, SECONDARY_TEXT))
         return rows
 
     def _rows_for_width(self, max_width):

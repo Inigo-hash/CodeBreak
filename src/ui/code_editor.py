@@ -14,12 +14,25 @@ Validation is handled by the ChallengeManager.
 """
 
 import pygame
+from src.systems.audio import handle_music_shortcut
 
 from src.ui.text_buffer import TextBuffer
 from src.ui.editor_renderer import EditorRenderer
 from src.ui.editor_settings import EditorSettingsPanel
+from src.ui.editor_widgets import wrap_text
 from src.ui.editor_theme import (
+    BACKGROUND_COLOR,
+    BORDER_COLOR,
+    BUTTON_COLOR,
+    BUTTON_FONT,
+    BUTTON_HOVER_COLOR,
+    BUTTON_TEXT_COLOR,
     TEXT_COLOR,
+    TEXT_FONT,
+    HEADER_FONT,
+    PANEL_COLOR,
+    SECONDARY_TEXT,
+    SMALL_FONT,
     SUCCESS_COLOR,
     ERROR_COLOR,
     WHEEL_LINES,
@@ -58,6 +71,8 @@ class CodeEditor:
         # to know whether the challenge was actually passed, not just
         # that the editor was closed.
         self.solved = False
+        self.submission_feedback = None
+        self.submission_attempts = 0
 
         # Cursor blinking
         self.last_input_time = pygame.time.get_ticks()
@@ -82,7 +97,15 @@ class CodeEditor:
         self.current_mouse_cursor = None
 
         # Enables access to the OS clipboard for Ctrl+C / Ctrl+V.
-        pygame.scrap.init()
+        self.clipboard_available = False
+        try:
+            pygame.scrap.init()
+            self.clipboard_available = True
+        except pygame.error:
+            # Headless sessions, remote desktops, and a few Linux display
+            # backends do not expose an OS clipboard. Typing and editing must
+            # remain usable even when copy/paste integration is unavailable.
+            pass
 
         # Routes submitted code to the correct validator
         # based on the current challenge's "type" field.
@@ -126,6 +149,13 @@ class CodeEditor:
 
         self.running = True
 
+        # Password entry and other modal inputs deliberately stop pygame's
+        # TEXTINPUT stream when they close. The editor must own its own input
+        # lifecycle instead of assuming the previous screen left it enabled.
+        # Without this call the editor still receives arrows/Escape, but every
+        # printable character silently disappears.
+        pygame.key.start_text_input()
+
         clock = pygame.time.Clock()
 
         while self.running:
@@ -138,6 +168,9 @@ class CodeEditor:
 
             self.renderer.draw()
 
+            if self.submission_feedback:
+                self.draw_submission_feedback()
+
             # Drawn after the editor so it sits on top, and laid out
             # from the popup's current rect so it stays centered even
             # if the window was resized while it was open.
@@ -147,6 +180,8 @@ class CodeEditor:
             pygame.display.flip()
 
             clock.tick(60)
+
+        pygame.key.stop_text_input()
 
         # Hand the game back a normal arrow cursor, whatever shape
         # the editor happened to leave it in.
@@ -214,6 +249,35 @@ class CodeEditor:
 
                 pygame.quit()
                 raise SystemExit
+            if handle_music_shortcut(event):
+                continue
+
+            # A submission result is deliberately outside the output pane and
+            # owns focus until acknowledged. Repeated clicks cannot resubmit
+            # the challenge underneath it.
+            if self.submission_feedback:
+                primary, secondary, _panel = self._feedback_layout()
+                passed = self.submission_feedback["passed"]
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        self.submission_feedback = None
+                    elif event.key in (
+                        pygame.K_e, pygame.K_RETURN, pygame.K_KP_ENTER,
+                        pygame.K_SPACE,
+                    ):
+                        if passed:
+                            self.running = False
+                        self.submission_feedback = None
+                    continue
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    if primary.collidepoint(event.pos):
+                        if passed:
+                            self.running = False
+                        self.submission_feedback = None
+                    elif secondary and secondary.collidepoint(event.pos):
+                        self.submission_feedback = None
+                    continue
+                continue
 
             # -------------------------------
             # Settings Overlay
@@ -773,9 +837,15 @@ class CodeEditor:
                 self.output_panel.add(line, TEXT_COLOR)
 
         if result["success"]:
-            self.output_panel.add("Ran successfully.", SUCCESS_COLOR)
+            self.output_panel.add(
+                "Code ran successfully. Check the result, then select SUBMIT.",
+                SUCCESS_COLOR,
+            )
         else:
             self.output_panel.add(result["error"], ERROR_COLOR)
+            self.output_panel.add(
+                "Fix the error above, then use RUN again.", ERROR_COLOR
+            )
 
     def submit_code(self):
         """
@@ -783,6 +853,7 @@ class CodeEditor:
         it against the challenge's expected solution.
         """
 
+        self.submission_attempts += 1
         code = "\n".join(self.text_buffer.lines)
 
         result = run_user_code(code)
@@ -798,6 +869,13 @@ class CodeEditor:
         # challenge, since there's nothing valid to check yet.
         if not result["success"]:
             self.output_panel.add(result["error"], ERROR_COLOR)
+            self.output_panel.add("Submission not completed.", ERROR_COLOR)
+            self._show_submission_feedback(
+                False,
+                "CODE COULD NOT RUN",
+                "Your answer was not submitted because Python found an error.",
+                result["error"],
+            )
             return
 
         # Passes the raw source code (not the sandbox's runtime
@@ -813,6 +891,131 @@ class CodeEditor:
 
         color = SUCCESS_COLOR if passed else ERROR_COLOR
         self.output_panel.add(feedback, color)
+        if passed:
+            self.output_panel.add(
+                "Challenge complete. Select CONTINUE in the message.",
+                SUCCESS_COLOR,
+            )
+            self._show_submission_feedback(
+                True,
+                "CHALLENGE COMPLETE!",
+                "Great work—your code ran and met the objective.",
+                feedback,
+            )
+        else:
+            self.output_panel.add(
+                "Edit your code and submit again when ready.", ERROR_COLOR
+            )
+            self._show_submission_feedback(
+                False,
+                "NOT COMPLETE YET",
+                "Your code ran, but it does not meet the objective yet.",
+                feedback,
+            )
+
+    # ---------------------------------------------------------
+    # Submission result overlay
+    # ---------------------------------------------------------
+
+    def _show_submission_feedback(self, passed, title, message, detail):
+        self.submission_feedback = {
+            "passed": bool(passed),
+            "title": title,
+            "message": message,
+            "detail": str(detail or ""),
+        }
+
+    def _feedback_layout(self):
+        width, height = self.screen.get_size()
+        panel = pygame.Rect(0, 0, min(720, width - 70), min(440, height - 70))
+        panel.center = (width // 2, height // 2)
+        if self.submission_feedback and self.submission_feedback["passed"]:
+            primary = pygame.Rect(panel.centerx - 190, panel.bottom - 72, 180, 46)
+            secondary = pygame.Rect(panel.centerx + 10, panel.bottom - 72, 180, 46)
+        else:
+            primary = pygame.Rect(panel.centerx - 100, panel.bottom - 72, 200, 46)
+            secondary = None
+        return primary, secondary, panel
+
+    def draw_submission_feedback(self):
+        feedback = self.submission_feedback
+        if not feedback:
+            return
+        primary, secondary, panel = self._feedback_layout()
+        passed = feedback["passed"]
+        accent = SUCCESS_COLOR if passed else ERROR_COLOR
+
+        overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 190))
+        self.screen.blit(overlay, (0, 0))
+        pygame.draw.rect(self.screen, BACKGROUND_COLOR, panel, border_radius=12)
+        pygame.draw.rect(self.screen, accent, panel, 3, border_radius=12)
+        pygame.draw.rect(
+            self.screen, accent,
+            (panel.left, panel.top, panel.width, 9),
+            border_top_left_radius=12, border_top_right_radius=12,
+        )
+
+        icon_center = (panel.centerx, panel.top + 66)
+        pygame.draw.circle(self.screen, accent, icon_center, 28, 3)
+        if passed:
+            pygame.draw.line(self.screen, accent,
+                             (icon_center[0] - 12, icon_center[1]),
+                             (icon_center[0] - 3, icon_center[1] + 10), 5)
+            pygame.draw.line(self.screen, accent,
+                             (icon_center[0] - 3, icon_center[1] + 10),
+                             (icon_center[0] + 15, icon_center[1] - 12), 5)
+        else:
+            pygame.draw.line(self.screen, accent,
+                             (icon_center[0], icon_center[1] - 13),
+                             (icon_center[0], icon_center[1] + 6), 5)
+            pygame.draw.circle(self.screen, accent,
+                               (icon_center[0], icon_center[1] + 15), 3)
+
+        title = HEADER_FONT.render(feedback["title"], True, accent)
+        self.screen.blit(title, title.get_rect(center=(panel.centerx, panel.top + 118)))
+
+        y = panel.top + 153
+        for line in wrap_text(feedback["message"], TEXT_FONT, panel.width - 80)[:2]:
+            rendered = TEXT_FONT.render(line, True, TEXT_COLOR)
+            self.screen.blit(rendered, rendered.get_rect(center=(panel.centerx, y)))
+            y += TEXT_FONT.get_height() + 5
+
+        detail_box = pygame.Rect(panel.left + 46, panel.top + 226,
+                                 panel.width - 92, 92)
+        pygame.draw.rect(self.screen, PANEL_COLOR, detail_box, border_radius=7)
+        pygame.draw.rect(self.screen, BORDER_COLOR, detail_box, 1, border_radius=7)
+        label = SMALL_FONT.render(
+            "WHAT THE CHECKER SAYS", True, SECONDARY_TEXT
+        )
+        self.screen.blit(label, (detail_box.left + 14, detail_box.top + 10))
+        detail_y = detail_box.top + 38
+        for line in wrap_text(feedback["detail"], SMALL_FONT,
+                              detail_box.width - 28)[:2]:
+            self.screen.blit(SMALL_FONT.render(line, True, TEXT_COLOR),
+                             (detail_box.left + 14, detail_y))
+            detail_y += SMALL_FONT.get_height() + 3
+
+        mouse = pygame.mouse.get_pos()
+        primary_color = accent if not primary.collidepoint(mouse) else tuple(
+            min(255, channel + 28) for channel in accent[:3]
+        )
+        pygame.draw.rect(self.screen, primary_color, primary, border_radius=6)
+        primary_label = "CONTINUE" if passed else "BACK TO CODE"
+        rendered = BUTTON_FONT.render(primary_label, True, BUTTON_TEXT_COLOR)
+        self.screen.blit(rendered, rendered.get_rect(center=primary.center))
+
+        if secondary:
+            fill = BUTTON_HOVER_COLOR if secondary.collidepoint(mouse) else BUTTON_COLOR
+            pygame.draw.rect(self.screen, fill, secondary, border_radius=6)
+            pygame.draw.rect(self.screen, BORDER_COLOR, secondary, 2, border_radius=6)
+            rendered = BUTTON_FONT.render("REVIEW CODE", True, BUTTON_TEXT_COLOR)
+            self.screen.blit(rendered, rendered.get_rect(center=secondary.center))
+
+        hint_text = ("E / ENTER = Continue" if passed
+                     else "E / ENTER / ESC = Back to code")
+        hint = SMALL_FONT.render(hint_text, True, SECONDARY_TEXT)
+        self.screen.blit(hint, hint.get_rect(center=(panel.centerx, panel.bottom - 12)))
 
     # ---------------------------------------------------------
     # Clipboard
@@ -825,16 +1028,19 @@ class CodeEditor:
         it into other applications too, and vice versa.
         """
 
-        if not self.text_buffer.has_selection():
+        if not self.clipboard_available or not self.text_buffer.has_selection():
             return
 
         selected_text = self.text_buffer.get_selected_text()
 
         # SCRAP_TEXT expects raw bytes, not a Python string.
-        pygame.scrap.put(
-            pygame.SCRAP_TEXT,
-            selected_text.encode("utf-8")
-        )
+        try:
+            pygame.scrap.put(
+                pygame.SCRAP_TEXT,
+                selected_text.encode("utf-8")
+            )
+        except pygame.error:
+            self.clipboard_available = False
 
     # ---------------------------------------------------------
     # Cut / Paste
@@ -846,7 +1052,7 @@ class CodeEditor:
         """
 
         # Ctrl+X should do nothing when nothing is selected.
-        if not self.text_buffer.has_selection():
+        if not self.clipboard_available or not self.text_buffer.has_selection():
             return
 
         # First copy the highlighted text.
@@ -870,7 +1076,13 @@ class CodeEditor:
         operation, replacing any active selection first.
         """
 
-        clipboard_bytes = pygame.scrap.get(pygame.SCRAP_TEXT)
+        if not self.clipboard_available:
+            return
+        try:
+            clipboard_bytes = pygame.scrap.get(pygame.SCRAP_TEXT)
+        except pygame.error:
+            self.clipboard_available = False
+            return
 
         if not clipboard_bytes:
             return

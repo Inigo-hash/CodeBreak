@@ -33,7 +33,7 @@ class Button:
     CodeEditor decides what happens when the button is clicked.
     """
 
-    def __init__(self, x, y, width, height, text):
+    def __init__(self, x, y, width, height, text, variant="secondary"):
 
         self.rect = pygame.Rect(
             x,
@@ -43,6 +43,7 @@ class Button:
         )
 
         self.text = text
+        self.variant = variant
 
         self.hovered = False
 
@@ -52,7 +53,24 @@ class Button:
 
     def draw(self, screen):
 
-        color = BUTTON_HOVER_COLOR if self.hovered else BUTTON_COLOR
+        if self.variant == "primary":
+            base = pygame.Color(SUCCESS_COLOR)
+            color = tuple(min(255, channel + (28 if self.hovered else 0))
+                          for channel in base[:3])
+            border = tuple(min(255, channel + 45) for channel in base[:3])
+        elif self.variant == "tertiary":
+            color = BUTTON_COLOR if self.hovered else HEADER_COLOR
+            border = BUTTON_HOVER_COLOR if self.hovered else BORDER_COLOR
+        else:
+            color = BUTTON_HOVER_COLOR if self.hovered else BUTTON_COLOR
+            border = BORDER_COLOR
+
+        # Small shadow and top highlight make the action hierarchy readable
+        # without relying on color alone.
+        pygame.draw.rect(
+            screen, (10, 12, 18), self.rect.move(0, 3),
+            border_radius=BUTTON_RADIUS
+        )
 
         pygame.draw.rect(
             screen,
@@ -63,10 +81,16 @@ class Button:
 
         pygame.draw.rect(
             screen,
-            BORDER_COLOR,
+            border,
             self.rect,
             2,
             border_radius=BUTTON_RADIUS
+        )
+
+        pygame.draw.line(
+            screen, tuple(min(255, channel + 35) for channel in color[:3]),
+            (self.rect.left + 8, self.rect.top + 3),
+            (self.rect.right - 8, self.rect.top + 3), 1
         )
 
         label = BUTTON_FONT.render(

@@ -11,8 +11,8 @@ from src.settings_state import settings_state
 
 
 COMBAT_SFX_PATHS = {
-    "sword_swing": "assets/audios/sfx/sword_swing.wav",
-    "sword_hit": "assets/audios/sfx/sword_hit.wav",
+    "sword_swing": "assets/audios/sfx/main_character/sword_slash/air/Sword_slash_air_01.mp3",
+    "sword_hit": "assets/audios/sfx/main_character/sword_slash/flesh/Sword_slash_flesh_01.mp3",
     "player_hurt": "assets/audios/sfx/player_hurt.wav",
     "enemy_hurt": "assets/audios/sfx/enemy_hurt.wav",
     "dodge": "assets/audios/sfx/dodge.wav",

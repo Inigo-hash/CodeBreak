@@ -9,6 +9,7 @@ import sys
 import pygame
 
 from src.ui.theme import UI_COLORS, body_font, title_font
+from src.systems.audio import handle_music_shortcut
 
 
 REFERENCE_SIZE = (1920, 1080)
@@ -16,12 +17,13 @@ MIN_VISIBLE_MS = 280
 
 STAGE_BACKGROUNDS = {
     "island": "assets/images/backgrounds/loading_island_stage1.png",
+    "tutorial": "assets/images/backgrounds/loading_island_stage1.png",
 }
 
 BEGINNER_TIPS = (
     {"text": "print() displays information on the screen.",
      "code": 'print("Hello, explorer!")'},
-    {"text": "input() lets your program receive user input.",
+    {"text": "input() receives test values supplied by the current challenge.",
      "code": 'name = input("Name: ")'},
     {"text": "Variables store values that can be reused later.",
      "code": "player_hp = 100"},
@@ -43,6 +45,16 @@ BEGINNER_TIPS = (
 
 STAGE_TIPS = {
     "island": BEGINNER_TIPS,
+    "tutorial": (
+        {"text": "Use W, A, S, D or the arrow keys to move.",
+         "code": "W  A  S  D"},
+        {"text": "Press E to attack or interact with something nearby.",
+         "code": "E = action"},
+        {"text": "Run your code first, then Submit it when ready.",
+         "code": "TYPE  >  RUN  >  SUBMIT"},
+        {"text": "Wrong code costs nothing. Read the feedback and try again.",
+         "code": "Mistakes help you learn."},
+    ),
 }
 
 _BACKGROUND_CACHE = {}
@@ -205,6 +217,7 @@ class StageLoadingScreen:
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
+            handle_music_shortcut(event)
 
     def _fade_from_previous(self):
         clock = pygame.time.Clock()

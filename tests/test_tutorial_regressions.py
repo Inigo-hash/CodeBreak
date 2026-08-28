@@ -82,7 +82,9 @@ class TutorialRegressionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             try:
                 save_manager.SAVE_DIR = temp_dir
-                start_menu.tutorial_screen = lambda _screen: "cancelled"
+                start_menu.tutorial_screen = (
+                    lambda _screen, **_kwargs: "cancelled"
+                )
                 start_menu.game_screen = lambda *_args, **_kwargs: game_calls.append(True)
 
                 width, height = self.screen.get_size()

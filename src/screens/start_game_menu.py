@@ -173,7 +173,7 @@ def start_game_menu(screen, clean_backdrop=None):
 
     def _run_new(slot_num, state):
         pygame.mixer.music.stop()
-        tutorial_result = tutorial_screen(screen)
+        tutorial_result = tutorial_screen(screen, show_loading=True)
         if tutorial_result != "completed":
             # Do not create an unfinished save or overwrite an existing one
             # when the player returns from the tutorial. This also prevents

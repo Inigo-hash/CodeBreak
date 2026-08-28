@@ -15,6 +15,10 @@ VALID_SOLUTIONS = {
         'age = 18\nheight = 1.75\nname = "Alex"\nis_ready = True'
     ),
     "type_casting_001": 'age_text = "18"\nage = int(age_text)',
+    "input_lesson_001": 'name = input("Enter your name: ")',
+    "formatted_output_001": (
+        'name = "Alex"\nprint(f"Welcome, {name}!")'
+    ),
 }
 
 
@@ -26,7 +30,9 @@ class LearningChallengeTests(unittest.TestCase):
         for challenge_id, challenge in CHALLENGES.items():
             with self.subTest(challenge=challenge_id):
                 code = VALID_SOLUTIONS[challenge_id]
-                execution = run_user_code(code)
+                execution = run_user_code(
+                    code, input_values=challenge.get("test_inputs", [])
+                )
                 self.assertTrue(execution["success"], execution.get("error"))
 
                 passed, feedback = manager.validate(challenge, code)
@@ -41,6 +47,10 @@ class LearningChallengeTests(unittest.TestCase):
             "python_syntax_basics_001": 'print("Wrong")',
             "data_types_001": 'age = "18"',
             "type_casting_001": 'age_text = "18"\nage = age_text',
+            "input_lesson_001": 'name = "Alex"',
+            "formatted_output_001": (
+                'name = "Alex"\nprint("Welcome, Alex!")'
+            ),
         }
 
         for challenge_id, code in invalid_solutions.items():

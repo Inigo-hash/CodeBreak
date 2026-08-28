@@ -14,10 +14,22 @@ from src.screens.how_to_play import (
     STONE_LIGHT,
 )
 from src.ui.theme import body_font, title_font
+from src.screens.loading import StageLoadingScreen
 
 
-def tutorial_screen(screen, play_music=True):
+def tutorial_screen(screen, play_music=True, show_loading=False):
     SCREEN_WIDTH, SCREEN_HEIGHT = screen.get_size()
+
+    loading = None
+    if show_loading:
+        loading = StageLoadingScreen(
+            screen,
+            stage_id="tutorial",
+            stage_name="Training Grounds",
+            stage_label="Tutorial",
+            previous_frame=screen,
+        )
+        loading.update(8, "Preparing your first lesson...")
 
     # --- Palette (stone/gold theme, matches main menu & game UI) ---
     STONE_MID = (42, 46, 58)
@@ -40,6 +52,8 @@ def tutorial_screen(screen, play_music=True):
     manual_note_font = body_font(15)
     manual_btn_font = title_font(22)
     exit_title_font = title_font(26)
+    if loading:
+        loading.update(24, "Preparing tutorial instructions...")
 
     # Rows of dialogue the textbox reserves room for. Every tutorial line
     # fits well inside this at the current width; the cap only exists so an
@@ -52,6 +66,8 @@ def tutorial_screen(screen, play_music=True):
         pygame.mixer.music.load("assets/audios/tutorial_background_music.mp3")
         apply_music_volume()
         pygame.mixer.music.play(-1)
+    if loading:
+        loading.update(38, "Loading Mang Tahimik...")
 
     def _stop_tutorial_music():
         pygame.mixer.music.stop()
@@ -63,6 +79,8 @@ def tutorial_screen(screen, play_music=True):
         portrait = pygame.image.load("assets/images/characters/mang_tahimik/portrait.png").convert_alpha()
     except Exception:
         portrait = None
+    if loading:
+        loading.update(52, "Preparing the training room...")
 
     # The textbox sizes itself from its fonts, so the portrait is scaled to
     # whatever square it ends up asking for rather than to a fixed size here.
@@ -230,6 +248,8 @@ def tutorial_screen(screen, play_music=True):
     camera_x, camera_y = 0, 0
 
     main_character = MainCharacter(screen, SCREEN_WIDTH, SCREEN_HEIGHT)
+    if loading:
+        loading.update(72, "Equipping your explorer...")
     player_size = 40
     player_rect = pygame.Rect(
         SCREEN_WIDTH // 2 - player_size // 2,
@@ -248,6 +268,8 @@ def tutorial_screen(screen, play_music=True):
         world_y=SCREEN_HEIGHT // 2,
         enemy_id="tiyanak_sinta",
     )
+    if loading:
+        loading.update(88, "Summoning the training creature...")
     player_combat = PlayerCombat()
     combat_audio = CombatAudio()
     attack_has_hit = False
@@ -326,6 +348,8 @@ def tutorial_screen(screen, play_music=True):
         state = "stage_manual"
 
     dialogue = DialogueBox(intro_lines, on_finish=finish_intro)
+    if loading:
+        loading.update(96, "Opening the training grounds...")
 
     # --- Stage manual layout (reuses the How To Play content so the
     # two stay in sync) ---
@@ -403,6 +427,9 @@ def tutorial_screen(screen, play_music=True):
 
         hint = hint_font.render("Press SPACE or click BEGIN ADVENTURE", True, DIM_TEXT)
         surf.blit(hint, (manual_panel_rect.centerx - hint.get_width() // 2, manual_begin_rect.bottom + 10))
+
+    if loading:
+        loading.finish()
 
     clock = pygame.time.Clock()
     running = True

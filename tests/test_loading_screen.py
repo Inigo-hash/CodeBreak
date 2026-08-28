@@ -1,7 +1,9 @@
 """Regression tests for the reusable stage-loading presentation."""
 
 import os
+from pathlib import Path
 import unittest
+from unittest.mock import patch
 
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
@@ -9,7 +11,7 @@ os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 import pygame
 
 from src.screens.loading import (
-    BEGINNER_TIPS, StageLoadingScreen, loading_layout,
+    BEGINNER_TIPS, STAGE_TIPS, StageLoadingScreen, loading_layout,
 )
 
 
@@ -41,6 +43,35 @@ class LoadingScreenTests(unittest.TestCase):
             self.assertTrue(tip["text"])
             self.assertTrue(tip["code"])
             self.assertLessEqual(len(tip["text"]), 80)
+
+        self.assertTrue(any("input(" in tip["code"] for tip in BEGINNER_TIPS))
+
+    def test_tutorial_has_beginner_specific_loading_tips(self):
+        tutorial_tips = STAGE_TIPS["tutorial"]
+        self.assertGreaterEqual(len(tutorial_tips), 4)
+        self.assertTrue(any("RUN" in tip["code"] for tip in tutorial_tips))
+
+    def test_reported_progress_never_moves_backwards(self):
+        screen = pygame.display.set_mode((1280, 720))
+        background = pygame.Surface(screen.get_size())
+        with patch.object(StageLoadingScreen, "_fade_from_previous"):
+            loading = StageLoadingScreen(
+                screen,
+                stage_id="tutorial",
+                background=background,
+                previous_frame=background,
+                seed=1,
+            )
+        loading.update(65, "Loading characters...")
+        loading.update(20, "Older update")
+        self.assertEqual(loading.progress, 65)
+
+    def test_new_game_requests_the_tutorial_loading_transition(self):
+        root = Path(__file__).resolve().parents[1]
+        source = (root / "src" / "screens" / "start_game_menu.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("tutorial_screen(screen, show_loading=True)", source)
 
 
 if __name__ == "__main__":

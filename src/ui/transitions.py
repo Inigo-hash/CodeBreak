@@ -126,7 +126,8 @@ def _draw_dust(surf, dust, elapsed):
 
 
 def crumble_transition(screen, backdrop, old_source, old_rects, new_source, new_rects,
-                        seed=0, burst_duration=0.55, assemble_duration=0.5):
+                        seed=0, burst_duration=0.55, assemble_duration=0.5,
+                        paint_backdrop=None):
     """
     Two-phase brick-crumble transition, using real pixel tiles so the
     debris matches the actual button textures on both ends.
@@ -138,8 +139,19 @@ def crumble_transition(screen, backdrop, old_source, old_rects, new_source, new_
     new_source  : surface with the NEXT screen's buttons pre-rendered
                   OFFSCREEN (never blitted to the visible screen)
     new_rects   : rects where the new buttons will assemble (within new_source)
+    paint_backdrop : optional paint_backdrop(surface, t) that draws a live
+                  backdrop instead of the static one, so anything animated
+                  behind the buttons keeps moving across the transition
+                  rather than freezing for its duration
     """
     rng = random.Random(seed)
+
+    def draw_backdrop():
+        if paint_backdrop is None:
+            screen.blit(backdrop, (0, 0))
+        else:
+            paint_backdrop(screen, pygame.time.get_ticks() / 1000.0)
+
     play_crumble_sfx("break")
     clock = pygame.time.Clock()
     screen_w, screen_h = screen.get_size()
@@ -170,7 +182,7 @@ def crumble_transition(screen, backdrop, old_source, old_rects, new_source, new_
             c.rot += c.vrot * dt
             c.alpha -= 255 * (dt / max(0.1, duration - c.delay)) * 0.95
 
-        screen.blit(backdrop, (0, 0))
+        draw_backdrop()
         for c in chips:
             _draw_chip(screen, c)
         _draw_dust(screen, dust, elapsed)
@@ -188,7 +200,7 @@ def crumble_transition(screen, backdrop, old_source, old_rects, new_source, new_
         elapsed += dt
         pygame.event.pump()
 
-        screen.blit(backdrop, (0, 0))
+        draw_backdrop()
         for c in chips:
             progress = max(0.0, min(1.0,
                 (elapsed - c.delay) / max(0.01, duration - c.delay)

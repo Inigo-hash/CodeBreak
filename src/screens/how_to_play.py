@@ -187,7 +187,9 @@ def how_to_play_screen(screen):
     panel_rect, left_col, right_col, footer = manual_layout(SCREEN_WIDTH, SCREEN_HEIGHT)
     back_rect = pygame.Rect(panel_rect.centerx - 70, panel_rect.bottom - 56, 140, 36)
 
-    background = screen.copy()
+    # Imported here, not at module scope: main_menu imports this module, so
+    # naming it up top would close the import loop.
+    from src.screens.main_menu import paint_menu_backdrop
 
     clock = pygame.time.Clock()
     running = True
@@ -209,7 +211,9 @@ def how_to_play_screen(screen):
                 if back_rect.collidepoint(event.pos):
                     return
 
-        screen.blit(background, (0, 0))
+        # Repainted every frame rather than held as the snapshot this screen
+        # used to take on entry, so the dungeon behind the panel stays alive.
+        paint_menu_backdrop(screen, pygame.time.get_ticks() / 1000.0)
         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 170))
         screen.blit(overlay, (0, 0))

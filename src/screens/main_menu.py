@@ -484,6 +484,91 @@ def _draw_mang_tahimik_tip(surf: pygame.Surface, t: float) -> None:
                   (tip_r.left + 14, tip_r.top + 42 + i * 20))
 
 
+_menu_logo_cache = None
+_menu_ambient_cache = None
+
+
+def menu_logo():
+    """The CodeBreak logo and where it sits, loaded once and shared.
+
+    Every menu screen paints the same logo at the same place, so it is built
+    here instead of each screen re-loading and re-positioning its own.
+    """
+
+    global _menu_logo_cache
+    if _menu_logo_cache is None:
+        art = pygame.image.load("assets/images/logos/codebreakLogo.png").convert_alpha()
+        width = int(SCREEN_WIDTH * 0.50)
+        height = int(width * art.get_height() / art.get_width())
+        art = pygame.transform.smoothscale(art, (width, height))
+        _menu_logo_cache = (art, (SCREEN_WIDTH // 2 - width // 2,
+                                  int(SCREEN_HEIGHT * 0.04)))
+    return _menu_logo_cache
+
+
+def menu_ambient():
+    """The dungeon's ambient lights, shared by every menu screen.
+
+    One instance for the whole menu rather than one per screen, so the motes
+    and fireflies keep their phase and position across a screen change instead
+    of restarting from the top. The main menu and the start-game menu both lay
+    out three buttons, so the same rects are what the fireflies steer around.
+    """
+
+    global _menu_ambient_cache
+    if _menu_ambient_cache is None:
+        art, pos = menu_logo()
+        rects, *_ = compute_menu_layout(SCREEN_WIDTH, SCREEN_HEIGHT, 3)
+        button_block = pygame.Rect(
+            rects[0].left, rects[0].top,
+            rects[0].width, rects[-1].bottom - rects[0].top,
+        ).inflate(60, 40)
+        _menu_ambient_cache = AmbientParticles(
+            SCREEN_WIDTH, SCREEN_HEIGHT,
+            avoid=(pygame.Rect(pos, art.get_size()), button_block),
+            background=background,
+        )
+    return _menu_ambient_cache
+
+
+_menu_pulse_layer = None
+
+
+def _menu_pulse(surface, t):
+    """A slow, low-contrast blue swell across the whole dungeon.
+
+    The 3.2-second period stays far below seizure-risk flash rates and never
+    hides menu text. It sits in the shared backdrop rather than in one screen,
+    because a tint this broad is read as the room's lighting: having it on the
+    main menu alone made every other menu look like the lights had just been
+    turned down.
+    """
+
+    global _menu_pulse_layer
+    if (_menu_pulse_layer is None
+            or _menu_pulse_layer.get_size() != surface.get_size()):
+        _menu_pulse_layer = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
+    swell = (math.sin(t * math.tau / 3.2) + 1.0) * 0.5
+    _menu_pulse_layer.fill((24, 72, 115, round(6 + swell * 16)))
+    surface.blit(_menu_pulse_layer, (0, 0))
+
+
+def paint_menu_backdrop(surface, t):
+    """Paint the living menu backdrop: wall, ambient lights, logo, then pulse.
+
+    Menu screens call this every frame rather than blitting a snapshot they
+    captured on entry. A snapshot is what used to freeze the lights the moment
+    a screen changed, and it keeps the particles under the logo and — since
+    buttons are drawn after this returns — under the buttons too.
+    """
+
+    surface.blit(background, (0, 0))
+    menu_ambient().draw(surface, t)
+    art, pos = menu_logo()
+    surface.blit(art, pos)
+    _menu_pulse(surface, t)
+
+
 def main_menu():
     from src.screens.intro import opening_walkthrough
 
@@ -495,19 +580,11 @@ def main_menu():
     settings_panel = SettingsPanel(screen)
     settings_panel.close()
 
-    # Load logo and compute its height FIRST
-    logo = pygame.image.load("assets/images/logos/codebreakLogo.png").convert_alpha()
-    logo_width = int(SCREEN_WIDTH * 0.50)
-    aspect_ratio = logo.get_height() / logo.get_width()
-    logo_height = int(logo_width * aspect_ratio)
-    logo = pygame.transform.smoothscale(logo, (logo_width, logo_height))
-
-    # This offset is used BOTH for the layout math below AND for the
-    # actual blit position in the draw loop, so they can never drift
-    # out of sync with each other again.
-    logo_top_offset = int(SCREEN_HEIGHT * 0.04)
-    logo_bottom = logo_top_offset + logo_height
-    logo_pos = (SCREEN_WIDTH // 2 - logo.get_width() // 2, logo_top_offset)
+    # The logo is shared with every other menu screen, so its size and
+    # position can never drift between them.
+    logo, logo_pos = menu_logo()
+    logo_top_offset = logo_pos[1]
+    logo_bottom = logo_top_offset + logo.get_height()
 
     bw = int(SCREEN_WIDTH * 0.20)
     bh = int(SCREEN_HEIGHT * 0.075)
@@ -550,25 +627,13 @@ def main_menu():
     screen.blit(logo, logo_pos)
     menu_backdrop = screen.copy()
 
-    # The motes and specks in the background art are baked into the image, so
-    # the dungeon's lights are animated with a matching overlay instead. The
-    # wandering fireflies are steered away from the logo and the button column
-    # so none of them lives its whole life hidden behind opaque UI — the motes
-    # need no such rule, since they sit still and simply peek out around it.
-    logo_block = pygame.Rect(logo_pos, logo.get_size())
-    button_block = pygame.Rect(
-        rects[0].left, rects[0].top,
-        rects[0].width, rects[-1].bottom - rects[0].top,
-    ).inflate(60, 40)
-    ambient = AmbientParticles(
-        SCREEN_WIDTH, SCREEN_HEIGHT, avoid=(logo_block, button_block),
-        background=background,
-    )
+    # Built here rather than on the first frame, so the one-off cost of
+    # finding the painted specks lands during setup and not as a hitch.
+    menu_ambient()
 
     clock = pygame.time.Clock()
     clock.tick(60)
     running = True
-    pulse_layer = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
 
     pygame.mixer.music.load("assets/audios/mainMenuBgm.mp3")
     apply_music_volume()
@@ -614,7 +679,8 @@ def main_menu():
 
                         crumble_transition(screen, menu_backdrop, old_source, rects,
                                             new_source, new_rects, seed=99,
-                                            burst_duration=0.52, assemble_duration=0.56)
+                                            burst_duration=0.52, assemble_duration=0.56,
+                                            paint_backdrop=paint_menu_backdrop)
                         start_game_menu(screen, clean_backdrop=menu_backdrop)
                     if rects[1].collidepoint(event.pos):                      
                         how_to_play_screen(screen)
@@ -625,20 +691,7 @@ def main_menu():
                 settings_panel.handle_event(event)
                 show_settings = settings_panel.is_open
 
-        # Background, then the ambient lights, then the logo — same two blits
-        # per frame as the pre-baked backdrop, but with the particles sandwiched
-        # in so they can never land on top of the logo or, further down, the
-        # buttons. menu_backdrop stays particle-free for the crumble transition.
-        screen.blit(background, (0, 0))
-        ambient.draw(screen, t)
-        screen.blit(logo, logo_pos)
-
-        # A slow, low-contrast pulse makes the dungeon feel alive without
-        # rapid flashing.  The 3.2-second period stays far below seizure-risk
-        # flash rates and never hides menu text.
-        pulse = (math.sin(t * math.tau / 3.2) + 1.0) * 0.5
-        pulse_layer.fill((24, 72, 115, round(6 + pulse * 16)))
-        screen.blit(pulse_layer, (0, 0))
+        paint_menu_backdrop(screen, t)
 
         for rect, label, icon, h, seed, tier in zip(
             rects, labels, icons, hovers, seeds, tiers

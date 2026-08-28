@@ -27,10 +27,13 @@ def start_game_menu(screen, clean_backdrop=None):
     from src.screens.main_menu import (
         STONE_DARK, STONE_MID, STONE_LIGHT, METAL_FRAME, BLUE_GLOW, WHITE,
         _button_font, _small, _draw_stone_button, _update_icon_anims,
-        compute_menu_layout,
+        compute_menu_layout, paint_menu_backdrop,
     )
 
     width, height = screen.get_size()
+    # Kept as a still frame for the crumble transition's debris pass, but no
+    # longer what this menu paints each frame: blitting a snapshot is what
+    # used to stop the dungeon's lights dead the moment this screen opened.
     background = clean_backdrop.copy() if clean_backdrop is not None else screen.copy()
     rects, *_ = compute_menu_layout(width, height, len(SG_LABELS))
     icons, labels, seeds, tiers = SG_ICONS, SG_LABELS, SG_SEEDS, SG_TIERS
@@ -257,7 +260,8 @@ def start_game_menu(screen, clean_backdrop=None):
         render_main_menu_buttons(new_source, main_rects, t)
         crumble_transition(screen, background, old_source, rects,
                             new_source, main_rects, seed=101,
-                            burst_duration=0.52, assemble_duration=0.56)
+                            burst_duration=0.52, assemble_duration=0.56,
+                            paint_backdrop=paint_menu_backdrop)
 
     clock = pygame.time.Clock()
     while True:
@@ -339,7 +343,7 @@ def start_game_menu(screen, clean_backdrop=None):
                     _transition_to_main_menu(t)
                     return
 
-        screen.blit(background, (0, 0))
+        paint_menu_backdrop(screen, t)
         for rect, label, icon, hovered, seed, tier in zip(
             rects, labels, icons, hovers, seeds, tiers
         ):

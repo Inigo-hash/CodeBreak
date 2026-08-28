@@ -5,6 +5,7 @@ import math
 from pathlib import Path
 import random
 import pygame
+import numpy as np
 
 from src.settings_state import settings_state
 
@@ -131,19 +132,6 @@ def _build_crumble_sound(phase="break"):
     except pygame.error:
         return None
 
-
-def play_crumble_sfx(phase="break"):
-    sound = _crumble_sounds.get(phase)
-    if sound is None:
-        sound = _build_crumble_sound(phase)
-        _crumble_sounds[phase] = sound
-    if sound is None:
-        return False
-    sound.set_volume(min(1.0, settings_state["sfx_vol"] * 1.1))
-    sound.play()
-    return True
-
-
 class CombatAudio:
     """Load available sounds once and play them once per requested event."""
 
@@ -166,3 +154,126 @@ class CombatAudio:
         sound.set_volume(settings_state["sfx_vol"])
         sound.play()
         return True
+
+
+CUSTOM_BREAK_SFX_PATH = "assets/audios/sfx/crumble.mp3"
+ 
+
+BREAK_TARGET_SECONDS = 0.52
+SETTLE_TARGET_SECONDS = 0.56
+_custom_crumble_sounds = {}
+
+def _resample_to_duration(samples, target_seconds, sample_rate):
+    """
+    Return a NEW sample array that plays back in `target_seconds` at the
+    ORIGINAL sample rate.
+ 
+    This is naive resampling ("play it faster"), not true time-stretch:
+    it picks evenly spaced samples out of the original array rather than
+    reconstructing the waveform, so shortening the clip also raises its
+    pitch slightly - the same effect as speeding up a tape or record.
+ 
+    `samples` may be mono (1-D) or stereo (2-D: frames x channels);
+    indexing along axis 0 works for both.
+    """
+ 
+    original_frames = samples.shape[0]
+    target_frames = max(1, int(round(target_seconds * sample_rate)))
+ 
+    # Evenly spaced positions across the original clip, rounded to the
+    # nearest real sample index.
+    positions = np.linspace(0, original_frames - 1, target_frames)
+    indices = np.round(positions).astype(np.int64)
+ 
+    return samples[indices]
+ 
+ 
+ 
+def _load_and_process_custom_crumble_sound(phase):
+    """
+    Load CUSTOM_BREAK_SFX_PATH once, derive both "break" and "settle"
+    from it, cache both, and return whichever `phase` was asked for.
+ 
+    Returns None (for both phases) if the file is missing or this
+    environment can't do sample-array manipulation - callers are
+    expected to fall back to another sound source in that case.
+    """
+ 
+    if phase in _custom_crumble_sounds:
+        return _custom_crumble_sounds[phase]
+ 
+    mixer = pygame.mixer.get_init()
+    if not mixer:
+        return None
+ 
+    sample_rate, _format, _channels = mixer
+ 
+    try:
+        source = pygame.mixer.Sound(CUSTOM_BREAK_SFX_PATH)
+    except (pygame.error, FileNotFoundError):
+        # No custom file present - leave the cache empty so every future
+        # call keeps returning None cheaply instead of retrying the load.
+        _custom_crumble_sounds["break"] = None
+        _custom_crumble_sounds["settle"] = None
+        return None
+ 
+    try:
+        samples = pygame.sndarray.array(source)
+    except NotImplementedError:
+        # This pygame build has no numpy/sndarray support.
+        _custom_crumble_sounds["break"] = None
+        _custom_crumble_sounds["settle"] = None
+        return None
+ 
+    break_samples = _resample_to_duration(
+        samples, BREAK_TARGET_SECONDS, sample_rate
+    )
+    # Reversed independently from "break" - it has its own target
+    # duration, so this is not just break_samples flipped.
+    settle_samples = _resample_to_duration(
+        samples, SETTLE_TARGET_SECONDS, sample_rate
+    )[::-1]
+ 
+    # np.ascontiguousarray is needed because slicing with [::-1] produces
+    # a reversed VIEW with negative strides, which pygame.sndarray cannot
+    # read directly - this copies it into normal, forward-laid-out memory.
+    _custom_crumble_sounds["break"] = pygame.sndarray.make_sound(
+        np.ascontiguousarray(break_samples)
+    )
+    _custom_crumble_sounds["settle"] = pygame.sndarray.make_sound(
+        np.ascontiguousarray(settle_samples)
+    )
+ 
+    return _custom_crumble_sounds[phase]
+ 
+ 
+# ----------------------------------------------------------------------
+# Integration: replace play_crumble_sfx() in audio.py with this version
+# ----------------------------------------------------------------------
+ 
+
+def play_crumble_sfx(phase="break"):
+    """
+    Play the "break" or "settle" crumble sfx.
+ 
+    Tries the custom, resampled/reversed clip first; falls back to the
+    original synthesized sound (_build_crumble_sound, already defined
+    in audio.py) if no custom file is available.
+    """
+ 
+    sound = _load_and_process_custom_crumble_sound(phase)
+ 
+    if sound is None:
+        # Falls back to the existing synthesis + cache already defined
+        # in audio.py (_crumble_sounds / _build_crumble_sound).
+        sound = _crumble_sounds.get(phase)
+        if sound is None:
+            sound = _build_crumble_sound(phase)
+            _crumble_sounds[phase] = sound
+ 
+    if sound is None:
+        return False
+ 
+    sound.set_volume(min(1.0, settings_state["sfx_vol"] * 1.1))
+    sound.play()
+    return True

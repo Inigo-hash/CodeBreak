@@ -195,6 +195,9 @@ class Enemy:
         direction, distance = normalized_toward(self.rect.center, player_rect.center)
         self._face(direction)
         home_distance = math.dist(self.rect.center, self.spawn)
+        # Encounters own a specific part of the map. A player must enter that
+        # authored area before its enemies engage, and chase movement below is
+        # clamped to the same boundary so enemies cannot follow indefinitely.
         player_in_chase_zone = self.zone.collidepoint(player_rect.center)
 
         if self.state == "defeated":
@@ -279,7 +282,8 @@ class Enemy:
         elif self.state == "chase" and player_in_chase_zone:
             self.state = "chase"
             self._move(direction, self.stats.movement_speed, dt,
-                       collision_rects, map_width, map_height)
+                       collision_rects, map_width, map_height,
+                       movement_bounds=self.zone)
         elif distance <= self.detection_range and player_in_chase_zone:
             # A short reaction makes detection readable and prevents an enemy
             # outside melee range from attacking on the acquisition frame.
@@ -294,9 +298,10 @@ class Enemy:
         return damage
 
     def _move(self, direction, speed, dt, blockers, map_width, map_height,
-              allow_detour=True):
+              allow_detour=True, movement_bounds=None):
         """Move collision-safely, slide along corners, and escape dead ends."""
-        bounds = pygame.Rect(0, 0, map_width, map_height)
+        bounds = (pygame.Rect(movement_bounds) if movement_bounds is not None
+                  else pygame.Rect(0, 0, map_width, map_height))
         if allow_detour and self.detour_time > 0:
             self.detour_time = max(0.0, self.detour_time - dt)
             direction = self.detour_direction

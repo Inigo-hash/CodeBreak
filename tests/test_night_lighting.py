@@ -11,9 +11,8 @@ import pygame
 
 from src.ui.night_lighting import (
     WORLD_IS_NIGHT,
-    build_torch_overlay,
-    draw_night_and_torch,
-    torch_screen_position,
+    draw_night_and_map_torches,
+    place_path_torches,
 )
 from src.ui.fog import build_fog_texture, draw_fog
 
@@ -26,36 +25,29 @@ class NightLightingTests(unittest.TestCase):
     def test_world_starts_at_night(self):
         self.assertTrue(WORLD_IS_NIGHT)
 
-    def test_torch_overlay_is_bright_near_flame_and_dark_far_away(self):
-        overlay = build_torch_overlay((800, 600), (400, 300), 0.25, radius=180)
+    def test_fixed_torches_are_limited_and_stay_off_the_path(self):
+        tile_size = 16
+        radius = 84
+        path_cells = {(x, y) for x in range(40) for y in range(3)}
+        torches = place_path_torches(
+            path_cells, tile_size, radius, max_torches=4
+        )
 
-        center_alpha = overlay.get_at((400, 300)).a
-        middle_alpha = overlay.get_at((490, 300)).a
-        corner_alpha = overlay.get_at((0, 0)).a
-
-        self.assertLess(center_alpha, middle_alpha)
-        self.assertLess(middle_alpha, corner_alpha)
-
-    def test_torch_changes_sides_with_player_facing(self):
-        center = (400, 300)
-        left = torch_screen_position(center, "left", 0)
-        right = torch_screen_position(center, "right", 0)
-
-        self.assertLess(left[0], center[0])
-        self.assertGreater(right[0], center[0])
+        torch_cells = {(x // tile_size, y // tile_size) for x, y in torches}
+        self.assertTrue(torch_cells.isdisjoint(path_cells))
+        self.assertGreater(len(torches), 0)
+        self.assertLessEqual(len(torches), 4)
 
     def test_lighting_renders_repeatedly_at_supported_sizes(self):
         for size in ((800, 600), (1280, 720), (1920, 1080)):
             surface = pygame.Surface(size)
-            center = (size[0] // 2, size[1] // 2)
+            torches = [(size[0] // 3, size[1] // 2),
+                       (size[0] * 2 // 3, size[1] // 2)]
             for frame in range(30):
                 surface.fill((145, 160, 125))
-                draw_night_and_torch(
-                    surface, center, "right", frame / 60.0
-                )
+                draw_night_and_map_torches(surface, torches, frame / 60.0)
 
-            flame = torch_screen_position(center, "right", 29 / 60.0)
-            near = surface.get_at((round(flame[0]), round(flame[1])))
+            near = surface.get_at(torches[0])
             far = surface.get_at((5, 5))
             self.assertGreater(sum(near[:3]), sum(far[:3]))
 

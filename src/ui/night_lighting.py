@@ -1,5 +1,6 @@
-"""Nighttime lighting and the player's code-drawn torch."""
+"""Nighttime lighting and fixed, code-drawn map torches."""
 
+import heapq
 import math
 
 import pygame
@@ -8,10 +9,11 @@ import pygame
 # The stage begins at night; F1 may temporarily preview daylight.
 WORLD_IS_NIGHT = True
 NIGHT_COLOR = (8, 15, 40)
-NIGHT_ALPHA = 218
+NIGHT_ALPHA = 228
 
 _NIGHT_VEIL_CACHE = {}
 _LIGHT_MASK_CACHE = {}
+_WARM_GLOW_CACHE = {}
 
 
 def torch_screen_position(player_center, facing, elapsed_seconds):
@@ -94,6 +96,92 @@ def draw_torch(surface, flame_position, facing, elapsed_seconds):
     pygame.draw.ellipse(surface, (255, 239, 151), (x - 2, y - 4, 5, 9))
 
 
+def place_path_torches(path_cells, tile_size, placement_radius,
+                       max_torches=None):
+    """Place a restrained number of torches beside the paths.
+
+    Candidate positions are the non-path cells directly beside a path, so a
+    torch never stands in the player's walking lane. Positions are returned
+    in unscaled world coordinates. ``placement_radius`` controls spacing and
+    may be wider than the rendered light pool to preserve dark stretches.
+    """
+
+    path_centers = {
+        cell: (cell[0] * tile_size + tile_size // 2,
+               cell[1] * tile_size + tile_size // 2)
+        for cell in path_cells
+    }
+    edge_cells = {
+        (x + dx, y + dy)
+        for x, y in path_cells
+        for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0))
+        if (x + dx, y + dy) not in path_cells
+    }
+    candidates = {
+        cell: (cell[0] * tile_size + tile_size // 2,
+               cell[1] * tile_size + tile_size // 2)
+        for cell in edge_cells
+    }
+    uncovered = set(path_cells)
+    torches = []
+    radius_squared = placement_radius * placement_radius
+    # Only tiles in the candidate's local grid neighborhood can possibly be
+    # covered. The old candidate x every-path comparison performed millions
+    # of needless distance checks and dominated stage startup time.
+    cell_radius = math.ceil(placement_radius / tile_size)
+    coverage_by_candidate = {}
+    for cell, position in candidates.items():
+        coverage = set()
+        for dx in range(-cell_radius, cell_radius + 1):
+            for dy in range(-cell_radius, cell_radius + 1):
+                path_cell = (cell[0] + dx, cell[1] + dy)
+                if path_cell not in path_cells:
+                    continue
+                path_position = path_centers[path_cell]
+                if ((path_position[0] - position[0]) ** 2
+                        + (path_position[1] - position[1]) ** 2
+                        <= radius_squared):
+                    coverage.add(path_cell)
+        coverage_by_candidate[cell] = coverage
+
+    coverage_heap = [
+        (-len(coverage), cell[1], cell[0], cell)
+        for cell, coverage in coverage_by_candidate.items()
+    ]
+    heapq.heapify(coverage_heap)
+
+    while uncovered and (max_torches is None or len(torches) < max_torches):
+        best_cell = None
+        best_coverage = set()
+        while coverage_heap:
+            _estimated, _y, _x, cell = heapq.heappop(coverage_heap)
+            if cell not in candidates:
+                continue
+            coverage = coverage_by_candidate[cell] & uncovered
+            next_best_estimate = -coverage_heap[0][0] if coverage_heap else 0
+            if len(coverage) < next_best_estimate:
+                heapq.heappush(
+                    coverage_heap,
+                    (-len(coverage), cell[1], cell[0], cell),
+                )
+                continue
+            best_cell, best_coverage = cell, coverage
+            break
+
+        # This can only happen when an authored path is wider than the light
+        # diameter. Keep all torches on its edges and leave its deep interior
+        # dark instead of putting a fixture in the walking lane.
+        if best_cell is None or not best_coverage:
+            break
+
+        position = candidates.pop(best_cell)
+        coverage_by_candidate.pop(best_cell)
+        torches.append(position)
+        uncovered.difference_update(best_coverage)
+
+    return torches
+
+
 def _night_veil(size):
     veil = _NIGHT_VEIL_CACHE.get(size)
     if veil is None:
@@ -103,10 +191,16 @@ def _night_veil(size):
     return veil
 
 
-def _light_mask(radius):
-    """Return a cached radial alpha mask used to restore the lit world."""
+def _light_mask(radius, variant=0):
+    """Return a cached, softly irregular mask used to restore lit world.
 
-    mask = _LIGHT_MASK_CACHE.get(radius)
+    A real flame does not make a geometrically perfect disc. Each variant
+    uses a few gentle sine waves around its contour, producing organic pools
+    of light without random frame-to-frame flashing.
+    """
+
+    cache_key = (radius, variant)
+    mask = _LIGHT_MASK_CACHE.get(cache_key)
     if mask is not None:
         return mask
 
@@ -114,16 +208,48 @@ def _light_mask(radius):
     center = (radius + 1, radius + 1)
     mask = pygame.Surface((diameter, diameter), pygame.SRCALPHA)
     mask.fill((255, 255, 255, 0))
-    rings = 48
+    rings = 64
+    point_count = 72
+    phase = variant * 1.37
     for index in range(rings):
         fraction = 1.0 - index / (rings - 1)
-        ring_radius = max(1, round(radius * fraction))
-        visibility = round(12 + 239 * ((1.0 - fraction) ** 0.72))
-        pygame.draw.circle(
-            mask, (255, 255, 255, visibility), center, ring_radius
-        )
-    _LIGHT_MASK_CACHE[radius] = mask
+        # Even the center retains some blue night tint; a fixed torch should
+        # make the path readable, not turn its surroundings into daylight.
+        visibility = round(8 + 188 * ((1.0 - fraction) ** 0.82))
+        points = []
+        for point_index in range(point_count):
+            angle = math.tau * point_index / point_count
+            wobble = (
+                0.84
+                + 0.075 * math.sin(angle * 3 + phase)
+                + 0.045 * math.sin(angle * 5 - phase * 0.7)
+                + 0.025 * math.sin(angle * 9 + phase * 1.4)
+            )
+            ring_radius = radius * fraction * wobble
+            # A slight vertical stretch and upward bias suits an upright
+            # flame while keeping the edge soft and asymmetrical.
+            x = center[0] + math.cos(angle) * ring_radius
+            y = center[1] + math.sin(angle) * ring_radius * 1.06 - 3 * fraction
+            points.append((round(x), round(y)))
+        pygame.draw.polygon(mask, (255, 255, 255, visibility), points)
+    _LIGHT_MASK_CACHE[cache_key] = mask
     return mask
+
+
+def _warm_glow(radius, variant):
+    """Subtle amber tint following the same irregular light contour."""
+
+    cache_key = (radius, variant)
+    glow = _WARM_GLOW_CACHE.get(cache_key)
+    if glow is None:
+        glow = pygame.Surface((radius * 2 + 2, radius * 2 + 2), pygame.SRCALPHA)
+        glow.fill((255, 145, 48, 38))
+        glow.blit(
+            _light_mask(radius, variant), (0, 0),
+            special_flags=pygame.BLEND_RGBA_MULT,
+        )
+        _WARM_GLOW_CACHE[cache_key] = glow
+    return glow
 
 
 def draw_night_and_torch(surface, player_center, facing, elapsed_seconds):
@@ -167,3 +293,63 @@ def draw_night_and_torch(surface, player_center, facing, elapsed_seconds):
         surface.blit(lit_world, visible_rect.topleft)
 
     draw_torch(surface, flame_position, facing, elapsed_seconds)
+
+
+def draw_night_and_map_torches(surface, torch_positions, elapsed_seconds,
+                               radius=None):
+    """Darken the world and reveal it around fixed screen-space torches."""
+
+    if radius is None:
+        radius = 120
+
+    bright_world = surface.copy()
+    surface.blit(_night_veil(surface.get_size()), (0, 0))
+    for torch_index, flame_position in enumerate(torch_positions):
+        # Two low-amplitude frequencies produce smooth flame breathing. Each
+        # fixture has a phase offset, avoiding synchronized pulsing without
+        # introducing the harsh jumps of random per-frame values.
+        flicker = (
+            math.sin(elapsed_seconds * 6.7 + torch_index * 1.31) * 0.025
+            + math.sin(elapsed_seconds * 11.3 + torch_index * 0.73) * 0.012
+        )
+        live_radius = max(24, round(radius * (1.0 + flicker)))
+        light_x = flame_position[0] + math.sin(
+            elapsed_seconds * 4.9 + torch_index
+        ) * 1.5
+        light_y = flame_position[1] - 4
+        full_light_rect = pygame.Rect(
+            round(light_x) - live_radius - 1,
+            round(light_y) - live_radius - 1,
+            live_radius * 2 + 2,
+            live_radius * 2 + 2,
+        )
+        visible_rect = full_light_rect.clip(surface.get_rect())
+        if not visible_rect.width or not visible_rect.height:
+            continue
+
+        lit_world = pygame.Surface(visible_rect.size, pygame.SRCALPHA)
+        lit_world.blit(bright_world, (0, 0), visible_rect)
+        mask_source = pygame.Rect(
+            visible_rect.x - full_light_rect.x,
+            visible_rect.y - full_light_rect.y,
+            visible_rect.width,
+            visible_rect.height,
+        )
+        lit_world.blit(
+            _light_mask(live_radius, torch_index % 4),
+            (0, 0), mask_source, special_flags=pygame.BLEND_RGBA_MULT
+        )
+        surface.blit(lit_world, visible_rect.topleft)
+        surface.blit(
+            _warm_glow(live_radius, torch_index % 4),
+            visible_rect.topleft,
+            mask_source,
+        )
+
+    # A small phase offset stops all flames swaying in perfect unison.
+    for index, flame_position in enumerate(torch_positions):
+        if surface.get_rect().inflate(80, 80).collidepoint(flame_position):
+            draw_torch(
+                surface, flame_position, "north",
+                elapsed_seconds + index * 0.37,
+            )

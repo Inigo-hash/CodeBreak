@@ -139,8 +139,20 @@ def start_game_menu(screen, clean_backdrop=None):
         masked = "*" * len(password_text)
         field = _button_font.render(masked or "TYPE PASSWORD", True,
                                     WHITE if masked else (105, 110, 125))
-        surf.blit(field, (password_input.left + 16,
-                          password_input.centery - field.get_height() // 2))
+        field_pos = (password_input.left + 16,
+                     password_input.centery - field.get_height() // 2)
+        surf.blit(field, field_pos)
+        # The modal owns keyboard input as soon as it opens. A blinking caret
+        # makes that focus visible even before the first character is typed.
+        if (pygame.time.get_ticks() // 500) % 2 == 0:
+            caret_x = field_pos[0] + (field.get_width() if masked else 0)
+            caret_top = password_input.centery - _button_font.get_height() // 2
+            pygame.draw.line(
+                surf, WHITE,
+                (caret_x, caret_top),
+                (caret_x, caret_top + _button_font.get_height()),
+                3,
+            )
         warning = password_error or "Passwords cannot be recovered. Keep yours somewhere safe."
         warn_color = (255, 125, 125) if password_error else (180, 180, 190)
         warn = _small.render(warning, True, warn_color)

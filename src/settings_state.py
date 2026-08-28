@@ -20,7 +20,7 @@ settings_state = {
     # PC games should launch with text that is at least 18 physical pixels
     # high at 1080p and let the player enlarge it.  The shared font loaders
     # read this multiplier, so the choice reaches menus, dialogue and HUDs.
-    "font_size": "RECOMMENDED",
+    "font_size": 18,
 }
 
 
@@ -40,13 +40,9 @@ TEXT_SPEED_MS = {
 # src/screens/settings.py and the one inside the code editor - build
 # their rows from this, so neither can end up offering a setting the
 # other does not.
-FONT_SIZES = ("RECOMMENDED", "LARGE", "EXTRA LARGE")
-
-FONT_SCALE = {
-    "RECOMMENDED": 1.0,
-    "LARGE": 1.35,
-    "EXTRA LARGE": 2.0,
-}
+MIN_FONT_SIZE = 12
+MAX_FONT_SIZE = 28
+DEFAULT_FONT_SIZE = 18
 
 ROWS = ("font_size", "text_speed", "music", "sfx", "theme")
 
@@ -156,19 +152,28 @@ def revealed_characters(total, elapsed_ms):
 
 
 def current_font_size():
-    return settings_state.get("font_size", "RECOMMENDED")
+    value = settings_state.get("font_size", DEFAULT_FONT_SIZE)
+    # Migrate settings kept alive from the former preset-based control.
+    if isinstance(value, str):
+        value = {"RECOMMENDED": 18, "LARGE": 22, "EXTRA LARGE": 28}.get(
+            value, DEFAULT_FONT_SIZE
+        )
+        settings_state["font_size"] = value
+    return int(value)
 
 
 def font_scale():
-    return FONT_SCALE.get(current_font_size(), 1.0)
+    return current_font_size() / DEFAULT_FONT_SIZE
 
 
-def cycle_font_size(step):
-    index = FONT_SIZES.index(current_font_size())
-    settings_state["font_size"] = FONT_SIZES[(index + step) % len(FONT_SIZES)]
-
-    # Existing cached faces must be discarded before a screen rebuilds its
-    # local fonts.  Imported lazily to keep settings_state dependency-light.
+def set_font_size(value):
+    settings_state["font_size"] = max(
+        MIN_FONT_SIZE, min(MAX_FONT_SIZE, int(value))
+    )
     from src.ui.theme import clear_font_cache
     clear_font_cache()
     return current_font_size()
+
+
+def cycle_font_size(step):
+    return set_font_size(current_font_size() + step)

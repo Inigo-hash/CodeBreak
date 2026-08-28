@@ -46,9 +46,9 @@ RULES_LINES = [
 # this panel are the same object at the same size.
 MANUAL_WIDTH = 780
 MANUAL_HEIGHT = 580
-ROW_HEIGHT = 22          # one key/action row
+ROW_HEIGHT = 20          # compact enough to stay clear of the footer
 HEADER_HEIGHT = 30       # a section heading plus its breathing room
-SECTION_GAP = 12
+SECTION_GAP = 8
 KEY_COLUMN = 130         # where the action text starts, measured from the
                          # column's left edge - wide enough for the longest
                          # key label ("Ctrl + C / X / V")
@@ -89,7 +89,7 @@ def manual_layout(screen_width, screen_height):
 
     left = pygame.Rect(panel.left + 40, col_top, col_width, col_height)
     right = pygame.Rect(left.right + col_gap, col_top, col_width, col_height)
-    footer = pygame.Rect(panel.left + 40, panel.bottom - 104,
+    footer = pygame.Rect(panel.left + 40, panel.bottom - 92,
                          panel.width - 80, 44)
 
     return panel, left, right, footer

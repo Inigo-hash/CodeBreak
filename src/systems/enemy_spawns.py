@@ -1,5 +1,7 @@
 """Resolve authored encounter anchors onto collision-free map positions."""
 
+import math
+
 import pygame
 
 from src.systems.combat import ENEMY_BODY_SIZES
@@ -10,6 +12,25 @@ _GROUP_OFFSETS = (
     (-42, -22), (42, -22), (-48, 28),
     (48, 28), (0, -48), (0, 52),
 )
+
+
+def _group_offset(index):
+    """Return a deterministic formation offset for any group size.
+
+    The original authored six positions are preserved. Additional enemies
+    occupy progressively wider eight-point rings instead of indexing past a
+    fixed tuple when encounter counts are increased in ``encounters.py``.
+    """
+
+    if index < len(_GROUP_OFFSETS):
+        return _GROUP_OFFSETS[index]
+
+    extra_index = index - len(_GROUP_OFFSETS)
+    ring = extra_index // 8
+    point = extra_index % 8
+    radius = 84 + ring * 42
+    angle = math.tau * point / 8 - math.pi / 2
+    return round(math.cos(angle) * radius), round(math.sin(angle) * radius)
 
 
 def resolve_encounter_spawns(encounters, map_width, map_height,
@@ -33,14 +54,19 @@ def resolve_encounter_spawns(encounters, map_width, map_height,
         if spawn_margin:
             spawn_area.inflate_ip(-spawn_margin * 2, -spawn_margin * 2)
         for index, enemy_id in enumerate(encounter["enemies"]):
-            offset = _GROUP_OFFSETS[index]
+            offset = _group_offset(index)
             desired = (anchor_x + offset[0], anchor_y + offset[1])
             body_size = ENEMY_BODY_SIZES[enemy_id]
             position = _nearest_walkable(
                 desired, body_size, bounds, collision_rects, occupied,
                 safe_area, path_cells, tile_size, spawn_area,
             )
-            occupied.append(pygame.Rect(0, 0, body_size[0] + 36, body_size[1] + 36))
+            # Keep bodies separate without reserving an oversized 36-pixel
+            # moat around every enemy. Large user-authored groups otherwise
+            # exhaust narrow path areas even when valid body space remains.
+            occupied.append(pygame.Rect(
+                0, 0, body_size[0] + 12, body_size[1] + 12
+            ))
             occupied[-1].center = position
             resolved.append({
                 "encounter_id": encounter["id"],
@@ -59,19 +85,24 @@ def resolve_encounter_spawns(encounters, map_width, map_height,
 
 def _nearest_walkable(desired, body_size, bounds, collision_rects, occupied,
                       safe_area, path_cells, tile_size, spawn_area=None):
-    # Search in expanding 16-pixel rings, matching the TMX tile grid.
-    for radius in range(0, 257, 16):
-        candidates = [(0, 0)] if radius == 0 else _ring(radius)
-        for dx, dy in candidates:
-            rect = pygame.Rect(0, 0, *body_size)
-            rect.center = (desired[0] + dx, desired[1] + dy)
-            if (bounds.contains(rect)
-                    and (spawn_area is None or spawn_area.contains(rect))
-                    and not safe_area.colliderect(rect)
-                    and rect.collidelist(collision_rects) == -1
-                    and rect.collidelist(occupied) == -1
-                    and _body_is_on_path(rect, path_cells, tile_size)):
-                return rect.center
+    # Prefer dirt paths. If a user-authored group is too large for the path
+    # space in its zone, retry on any collision-free terrain in that same
+    # zone rather than crashing or placing the enemy outside its territory.
+    for require_path in (True, False):
+        for radius in range(0, 257, 16):
+            candidates = [(0, 0)] if radius == 0 else _ring(radius)
+            for dx, dy in candidates:
+                rect = pygame.Rect(0, 0, *body_size)
+                rect.center = (desired[0] + dx, desired[1] + dy)
+                if (bounds.contains(rect)
+                        and (spawn_area is None or spawn_area.contains(rect))
+                        and not safe_area.colliderect(rect)
+                        and rect.collidelist(collision_rects) == -1
+                        and rect.collidelist(occupied) == -1
+                        and (not require_path or _body_is_on_path(
+                            rect, path_cells, tile_size
+                        ))):
+                    return rect.center
     raise RuntimeError(f"No walkable enemy spawn near {desired}")
 
 

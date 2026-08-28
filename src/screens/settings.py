@@ -3,10 +3,10 @@ import sys
 import pygame
 
 from src.settings_state import (
-    FONT_SIZES, ROWS, TEXT_SPEEDS, VOLUME_STEP,
+    MAX_FONT_SIZE, MIN_FONT_SIZE, ROWS, TEXT_SPEEDS, VOLUME_STEP,
     current_font_size, current_text_speed, current_theme_name,
-    cycle_font_size, cycle_text_speed, cycle_theme, set_text_speed,
-    settings_state, swatch_color,
+    cycle_text_speed, cycle_theme, set_text_speed,
+    set_font_size, settings_state, swatch_color,
 )
 from src.systems.audio import apply_music_volume, handle_music_shortcut, music_shortcut_label
 from src.ui.theme import UI_COLORS, body_font, draw_button, draw_panel, title_font
@@ -30,6 +30,8 @@ class SettingsPanel:
         self.dragging_music = self.dragging_sfx = False
         self.focus = 0
         self.help_topic = None
+        self.editing_font_size = False
+        self.font_size_text = str(current_font_size())
         self._refresh_fonts()
         self._layout()
 
@@ -45,11 +47,12 @@ class SettingsPanel:
         self.panel = pygame.Rect(0, 0, min(640, width - 40), min(690, height - 40))
         self.panel.center = (width // 2, height // 2)
         option_width = (self.panel.width - 76) // 3
-        self.font_rects = [
-            pygame.Rect(self.panel.left + 28 + i * (option_width + 10),
-                        self.panel.top + 105, option_width, 34)
-            for i in range(len(FONT_SIZES))
-        ]
+        self.font_minus = pygame.Rect(self.panel.centerx - 104,
+                                      self.panel.top + 105, 40, 34)
+        self.font_input = pygame.Rect(self.panel.centerx - 54,
+                                      self.panel.top + 105, 108, 34)
+        self.font_plus = pygame.Rect(self.panel.centerx + 64,
+                                     self.panel.top + 105, 40, 34)
         self.speed_rects = [
             pygame.Rect(self.panel.left + 28 + i * (option_width + 10),
                         self.panel.top + 185, option_width, 34)
@@ -87,6 +90,17 @@ class SettingsPanel:
         if not self.is_open:
             return False
         if event.type == pygame.KEYDOWN:
+            if self.editing_font_size:
+                if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                    self._commit_font_size()
+                elif event.key == pygame.K_ESCAPE:
+                    self.editing_font_size = False
+                    self.font_size_text = str(current_font_size())
+                elif event.key == pygame.K_BACKSPACE:
+                    self.font_size_text = self.font_size_text[:-1]
+                elif event.unicode.isdigit() and len(self.font_size_text) < 2:
+                    self.font_size_text += event.unicode
+                return True
             return self._handle_key(event)
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             for topic, rect in self.help_rects.items():
@@ -99,11 +113,14 @@ class SettingsPanel:
                 self.focus = ROWS.index("music")
             elif self.dragging_sfx:
                 self.focus = ROWS.index("sfx")
-            for index, rect in enumerate(self.font_rects):
-                if rect.collidepoint(event.pos):
-                    cycle_font_size(index - FONT_SIZES.index(current_font_size()))
-                    self._refresh_fonts()
-                    self.focus = ROWS.index("font_size")
+            if self.font_input.collidepoint(event.pos):
+                self.editing_font_size = True
+                self.font_size_text = ""
+                self.focus = ROWS.index("font_size")
+            elif self.font_minus.collidepoint(event.pos):
+                self._change_font_size(-1)
+            elif self.font_plus.collidepoint(event.pos):
+                self._change_font_size(1)
             for index, rect in enumerate(self.speed_rects):
                 if rect.collidepoint(event.pos):
                     set_text_speed(TEXT_SPEEDS[index])
@@ -152,8 +169,7 @@ class SettingsPanel:
     def _adjust(self, step):
         row = ROWS[self.focus]
         if row == "font_size":
-            cycle_font_size(step)
-            self._refresh_fonts()
+            self._change_font_size(step)
         elif row == "text_speed":
             cycle_text_speed(step)
         elif row == "theme":
@@ -175,6 +191,20 @@ class SettingsPanel:
                 0.0, min(1.0, (mouse_x - self.sfx_bar.left) / self.sfx_bar.width)
             )
 
+    def _change_font_size(self, step):
+        set_font_size(current_font_size() + step)
+        self.font_size_text = str(current_font_size())
+        self.editing_font_size = False
+        self._refresh_fonts()
+        self.focus = ROWS.index("font_size")
+
+    def _commit_font_size(self):
+        if self.font_size_text:
+            set_font_size(int(self.font_size_text))
+        self.font_size_text = str(current_font_size())
+        self.editing_font_size = False
+        self._refresh_fonts()
+
     def draw(self):
         if not self.is_open:
             return
@@ -193,7 +223,7 @@ class SettingsPanel:
                    center=(self.panel.centerx, self.panel.top + 34))
         self._text(self.label_font, "FONT SIZE", UI_COLORS["text"],
                    (self.panel.left + 28, self.panel.top + 72))
-        self._draw_choices(FONT_SIZES, self.font_rects, current_font_size())
+        self._draw_font_size_input()
         self._text(self.label_font, "TEXT SPEED", UI_COLORS["text"],
                    (self.panel.left + 28, self.panel.top + 152))
         self._draw_choices(TEXT_SPEEDS, self.speed_rects, current_text_speed())
@@ -240,6 +270,24 @@ class SettingsPanel:
             self._text(self.option_font, name,
                        UI_COLORS["text"] if active else UI_COLORS["text_dim"], center=rect.center)
 
+    def _draw_font_size_input(self):
+        for rect, symbol in ((self.font_minus, "-"), (self.font_plus, "+")):
+            pygame.draw.rect(self.screen, UI_COLORS["stone_light"], rect, border_radius=4)
+            pygame.draw.rect(self.screen, UI_COLORS["bronze"], rect, 2, border_radius=4)
+            self._text(self.button_font, symbol, UI_COLORS["text"], center=rect.center)
+        pygame.draw.rect(self.screen, (22, 24, 32), self.font_input, border_radius=4)
+        pygame.draw.rect(
+            self.screen,
+            UI_COLORS["blue_bright"] if self.editing_font_size else UI_COLORS["gold"],
+            self.font_input, 2, border_radius=4,
+        )
+        value = self.font_size_text if self.editing_font_size else str(current_font_size())
+        self._text(self.option_font, value or "|", UI_COLORS["text"],
+                   center=self.font_input.center)
+        self._text(self.help_font, f"{MIN_FONT_SIZE}-{MAX_FONT_SIZE}",
+                   UI_COLORS["text_dim"],
+                   center=(self.panel.centerx, self.font_input.bottom + 7))
+
     def _draw_help_buttons(self):
         mouse = pygame.mouse.get_pos()
         for topic, rect in self.help_rects.items():
@@ -275,7 +323,7 @@ class SettingsPanel:
     def _draw_focus_ring(self):
         row = ROWS[self.focus]
         if row == "font_size":
-            target = self.font_rects[0].union(self.font_rects[-1]).inflate(8, 8)
+            target = self.font_minus.union(self.font_plus).inflate(8, 8)
         elif row == "text_speed":
             target = self.speed_rects[0].union(self.speed_rects[-1]).inflate(8, 8)
         elif row == "music":

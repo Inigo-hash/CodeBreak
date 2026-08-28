@@ -35,15 +35,28 @@ from src.screens.topic_lesson import open_topic_lesson
 from src.data.encounters import BEGINNER_PATH_GIDS, BEGINNER_STAGE_ENCOUNTERS
 from src.systems.enemy_spawns import resolve_encounter_spawns
 from src.ui.theme import UI_COLORS, body_font, draw_button, draw_panel, title_font
-from src.ui.night_lighting import WORLD_IS_NIGHT, draw_night_and_torch
+from src.ui.night_lighting import (
+    WORLD_IS_NIGHT, draw_night_and_map_torches, place_path_torches,
+)
 from src.ui.fog import build_fog_texture, draw_fog
+from src.screens.loading import StageLoadingScreen
 
 def game_screen(screen, slot_num=None, save_state=None):
     clock = pygame.time.Clock()
 
+    loading_stage = get_stage((save_state or {}).get("stage", "Island"))
+    loading = StageLoadingScreen(
+        screen,
+        stage_id=loading_stage.get("id", "island"),
+        stage_name=loading_stage.get("name", "Island"),
+        stage_label=loading_stage.get("subtitle", "Stage 1"),
+        previous_frame=screen,
+    )
+
     pygame.mixer.music.load("assets/audios/gameStage1Bgm.mp3")  
     apply_music_volume()
     pygame.mixer.music.play(-1)
+    loading.update(5, "Loading island terrain...")
 
     # --- Load Map ---
     tmx_data = load_pygame("assets/map/tmx/basic.tmx")
@@ -51,6 +64,7 @@ def game_screen(screen, slot_num=None, save_state=None):
 
     map_width  = tmx_data.width  * TILE_SIZE
     map_height = tmx_data.height * TILE_SIZE
+    loading.update(18, "Charting safe paths...")
 
     # Pytmx assigns its own runtime IDs to authored TMX gids. Convert the
     # known dirt-path IDs before comparing them with layer iteration values.
@@ -80,6 +94,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                             TILE_SIZE
                         )
                     )
+    loading.update(30, "Preparing interactables...")
 
     # --- Load interactive objects from all object layers ---
     interactables = []
@@ -111,6 +126,7 @@ def game_screen(screen, slot_num=None, save_state=None):
 
                 'topic_handled': False
             })
+    loading.update(38, "Restoring expedition records...")
 
     # --- Player Setup ---
     SCREEN_W, SCREEN_H = screen.get_size()
@@ -173,6 +189,7 @@ def game_screen(screen, slot_num=None, save_state=None):
     # Catches up on anything already satisfied by an older save (e.g. a
     # challenge passed before objectives existed).
     stage_progress.sync_objectives(stage, save_challenges_passed)
+    loading.update(47, "Preparing coding challenges...")
 
     def build_save_state():
         state = {
@@ -228,6 +245,7 @@ def game_screen(screen, slot_num=None, save_state=None):
     # Information screen. Holds `stage` and `stage_progress` by reference,
     # so the tracker updates itself as objectives complete.
     stage_panel = StagePanel(screen, stage, stage_progress)
+    loading.update(54, "Lighting island paths...")
 
     def open_topic_flow(
         topic_id,
@@ -348,6 +366,20 @@ def game_screen(screen, slot_num=None, save_state=None):
 
     ZOOM = 2 # increase this to zoom in more (ex. 2, 3, or 4)
 
+    # Fixed torches replace the player-carried torch.  Their spacing is
+    # derived from the actual light radius, and the placement helper keeps
+    # adding them until every authored dirt-path tile is covered.
+    # A compact pool of light (60 world pixels at 2x zoom) keeps the scene
+    # visibly nocturnal instead of producing broad daylight-sized circles.
+    MAP_TORCH_LIGHT_RADIUS = 120
+    map_torches = place_path_torches(
+        path_cells,
+        TILE_SIZE,
+        placement_radius=MAP_TORCH_LIGHT_RADIUS * 2.0 / ZOOM,
+        max_torches=26,
+    )
+    loading.update(60, "Rendering island terrain...")
+
     def update_camera():
         cx = player_rect.centerx * ZOOM - SCREEN_W // 2
         cy = player_rect.centery * ZOOM - SCREEN_H // 2
@@ -372,6 +404,7 @@ def game_screen(screen, slot_num=None, save_state=None):
     # Scale the pre-rendered map once at startup based on ZOOM level (e.g. ZOOM=2 doubles the size)
     # This avoids rescaling every frame which would slow down the game
     map_surface = pygame.transform.scale(raw_map_surface, (map_width * ZOOM, map_height * ZOOM))
+    loading.update(70, "Drawing expedition charts...")
 
     # --- Minimap ---
     # Pre-bake the whole map once at minimap resolution (same idea as
@@ -386,6 +419,12 @@ def game_screen(screen, slot_num=None, save_state=None):
     # should no more look like the ground than a real map does.
     MINIMAP_SIZE = max(150, min(220, int(SCREEN_H * 0.22)))
     MINIMAP_MARGIN = 14
+    minimap_panel_rect = pygame.Rect(
+        MINIMAP_MARGIN,
+        SCREEN_H - MINIMAP_MARGIN - MINIMAP_SIZE,
+        MINIMAP_SIZE,
+        MINIMAP_SIZE,
+    )
     # The carved frame eats into the panel rather than growing it, so the
     # minimap keeps the screen footprint it always had.
     MINIMAP_VIEW = MINIMAP_SIZE - MINIMAP_FRAME * 2
@@ -459,6 +498,7 @@ def game_screen(screen, slot_num=None, save_state=None):
     # Nightfall on the minimap: the same even wash the paper map uses, so
     # the two agree about how dark it is.
     minimap_night_veil = build_night_veil((MINIMAP_VIEW, MINIMAP_VIEW))
+    loading.update(79, "Placing island landmarks...")
 
     # --- Zone Labels ---
     # Converts each zone's fractional rect (from zones.py) into a
@@ -480,12 +520,7 @@ def game_screen(screen, slot_num=None, save_state=None):
     zone_label_font = title_font(11, bold=False)
 
     def draw_minimap(surf, player_rect, heading, night=False):
-        panel_rect = pygame.Rect(
-            MINIMAP_MARGIN,
-            SCREEN_H - MINIMAP_MARGIN - MINIMAP_SIZE,
-            MINIMAP_SIZE,
-            MINIMAP_SIZE
-        )
+        panel_rect = minimap_panel_rect
         # The terrain lives inside the frame; everything that used to be
         # measured against the panel is measured against this instead.
         view_rect = panel_rect.inflate(-MINIMAP_FRAME * 2, -MINIMAP_FRAME * 2)
@@ -559,6 +594,10 @@ def game_screen(screen, slot_num=None, save_state=None):
         # The surround goes on last: it is the thing the terrain is
         # clipped into, so it has to cover the crop's edges.
         surf.blit(minimap_frame, panel_rect.topleft)
+        if panel_rect.collidepoint(pygame.mouse.get_pos()):
+            pygame.draw.rect(
+                surf, UI_COLORS["gold"], panel_rect, 2, border_radius=7
+            )
 
     # --- Dynamic props ---
     dynamic_props = []
@@ -588,6 +627,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                 'y': (obj.y - obj.height) * ZOOM,
                 'sort_y': obj.y
             })
+    loading.update(86, "Preparing explorer and creatures...")
 
     # --- Pause menu setup ---
     paused = False
@@ -728,6 +768,25 @@ def game_screen(screen, slot_num=None, save_state=None):
     # Matches MainCharacter's own starting facing, so the arrow agrees with
     # the sprite before the player has moved at all.
     minimap_heading = (1, 0)
+
+    def show_world_map(current_night):
+        """Open the paper map from either M or a minimap click."""
+        return open_world_map(
+            screen,
+            minimap_base_surface,
+            player_rect,
+            map_width,
+            map_height,
+            zone_pixel_rects,
+            heading=minimap_heading,
+            background=screen.copy(),
+            title=f"Map of the {stage.get('name', 'Island')}",
+            subtitle="YOU ARE IN " + get_zone_at(
+                player_rect.centerx, player_rect.centery,
+                map_width, map_height,
+            ).upper(),
+            night=current_night,
+        )
     # How close (in unscaled world pixels) the player has to get before an
     # enemy is written into the bestiary. Roughly "you have clearly seen it".
     ENEMY_SIGHT_RANGE = 180
@@ -737,6 +796,7 @@ def game_screen(screen, slot_num=None, save_state=None):
         collision_rects, path_cells, TILE_SIZE,
         (stage_spawn[0] + player_size // 2, stage_spawn[1] + player_size),
     )
+    loading.update(92, "Awakening creatures...")
     enemies = [
         Enemy(screen, map_width, map_height,
               world_x=spawn["position"][0], world_y=spawn["position"][1],
@@ -749,12 +809,14 @@ def game_screen(screen, slot_num=None, save_state=None):
               return_tolerance=spawn["return_tolerance"])
         for spawn in enemy_spawns
     ]
+    loading.update(97, "Finalizing expedition...")
     player_combat = PlayerCombat()
     combat_audio = CombatAudio()
     attack_key_ready = True
     death_animation_complete = False
     near_interactable = None
     engaged = False
+    loading.finish()
     while running:
         dt = clock.tick(60) / 1000.0
         mouse_pos = pygame.mouse.get_pos()
@@ -853,23 +915,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                     # baked texture and zone rects the minimap draws from,
                     # so the two can never name or place anything
                     # differently - the map is just the uncropped view.
-                    background_snapshot = screen.copy()
-                    night_mode = open_world_map(
-                        screen,
-                        minimap_base_surface,
-                        player_rect,
-                        map_width,
-                        map_height,
-                        zone_pixel_rects,
-                        heading=minimap_heading,
-                        background=background_snapshot,
-                        title=f"Map of the {stage.get('name', 'Island')}",
-                        subtitle="YOU ARE IN " + get_zone_at(
-                            player_rect.centerx, player_rect.centery,
-                            map_width, map_height
-                        ).upper(),
-                        night=night_mode,
-                    )
+                    night_mode = show_world_map(night_mode)
 
                 elif event.key == pygame.K_ESCAPE:
                     # Settings-panel Escape is handled by the guard at the
@@ -927,7 +973,9 @@ def game_screen(screen, slot_num=None, save_state=None):
                     settings_panel.handle_event(event)
                     show_pause_settings = settings_panel.is_open
                 elif not paused:
-                    if gameplay_hud.profile_rect.collidepoint(event.pos):
+                    if minimap_panel_rect.collidepoint(event.pos):
+                        night_mode = show_world_map(night_mode)
+                    elif gameplay_hud.profile_rect.collidepoint(event.pos):
                         background_snapshot = screen.copy()
                         profile_screen(
                             screen,
@@ -1250,20 +1298,26 @@ def game_screen(screen, slot_num=None, save_state=None):
                 prop.draw_frames(ZOOM, camera_x, camera_y)
 
         # ---------------------------------------------------------
-        # Nighttime and player torch
+        # Nighttime and fixed map torches
         # ---------------------------------------------------------
-        # The player and world are darkened together, then the torch is drawn
-        # above the veil. Interface panels are drawn later and remain clear.
-        player_screen_center = (
-            player_rect.centerx * ZOOM - camera_x,
-            player_rect.centery * ZOOM - camera_y,
-        )
+        # The world is darkened together, then nearby fixed torches reveal
+        # every path. Interface panels are drawn later and remain clear.
         if night_mode:
-            draw_night_and_torch(
+            visible_torches = [
+                (world_x * ZOOM - camera_x, world_y * ZOOM - camera_y)
+                for world_x, world_y in map_torches
+                if (-MAP_TORCH_LIGHT_RADIUS / ZOOM
+                    <= world_x - camera_x / ZOOM
+                    <= SCREEN_W / ZOOM + MAP_TORCH_LIGHT_RADIUS / ZOOM)
+                and (-MAP_TORCH_LIGHT_RADIUS / ZOOM
+                     <= world_y - camera_y / ZOOM
+                     <= SCREEN_H / ZOOM + MAP_TORCH_LIGHT_RADIUS / ZOOM)
+            ]
+            draw_night_and_map_torches(
                 screen,
-                player_screen_center,
-                main_character.facing,
+                visible_torches,
                 pygame.time.get_ticks() / 1000.0,
+                MAP_TORCH_LIGHT_RADIUS,
             )
 
         if fog_mode:

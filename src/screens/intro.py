@@ -18,7 +18,7 @@ PAGES = (
     (
         "YOUR FIRST STEPS",
         "Move, practise one attack, and solve a guided Hello, World! challenge before the real adventure begins.",
-        ("W A S D / Arrow keys = move", "E = attack, interact, and continue dialogue"),
+        ("W A S D / Arrow keys = move", "E = attack/interact  |  SPACE = continue dialogue"),
     ),
     (
         "YOU CAN ALWAYS GET HELP",
@@ -56,7 +56,6 @@ def opening_walkthrough(screen, replay=False):
     panel = pygame.Rect(0, 0, min(920, width - 80), min(550, height - 90))
     panel.center = (width // 2, height // 2)
     next_button = pygame.Rect(panel.centerx - 125, panel.bottom - 76, 250, 48)
-    skip_button = pygame.Rect(panel.right - 148, panel.top + 18, 120, 36)
     page = 0
     clock = pygame.time.Clock()
     shade = pygame.Surface((width, height), pygame.SRCALPHA)
@@ -85,16 +84,11 @@ def opening_walkthrough(screen, replay=False):
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     return
-                if event.key in (pygame.K_e, pygame.K_SPACE, pygame.K_RETURN,
-                                 pygame.K_RIGHT):
+                if event.key == pygame.K_SPACE:
                     page += 1
                     if page >= len(PAGES):
                         return
-                elif event.key == pygame.K_LEFT and page > 0:
-                    page -= 1
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if skip_button.collidepoint(event.pos):
-                    return
                 if next_button.collidepoint(event.pos):
                     page += 1
                     if page >= len(PAGES):
@@ -126,10 +120,8 @@ def opening_walkthrough(screen, replay=False):
         draw_button(screen, next_button,
                     "OPEN MAIN MENU" if page == len(PAGES) - 1 else "NEXT",
                     button_font, hovered=next_button.collidepoint(pygame.mouse.get_pos()))
-        draw_button(screen, skip_button, "SKIP", title_font(15),
-                    hovered=skip_button.collidepoint(pygame.mouse.get_pos()))
         footer = small.render(
-            f"Page {page + 1}/{len(PAGES)}  |  E / ENTER = continue  |  {music_shortcut_label()}",
+            f"Page {page + 1}/{len(PAGES)}  |  SPACE = continue  |  {music_shortcut_label()}",
             True, UI_COLORS["text_dim"],
         )
         screen.blit(footer, footer.get_rect(center=(panel.centerx, panel.bottom - 12)))

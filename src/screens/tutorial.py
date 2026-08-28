@@ -155,7 +155,7 @@ def tutorial_screen(screen, play_music=True):
         def handle_event(self, event):
             if not self.active:
                 return
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_e:
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
                 self.advance()
 
         def wrap_text(self, text, font, max_width):
@@ -216,8 +216,8 @@ def tutorial_screen(screen, play_music=True):
                 # so the reveal runs at an even pace across rows.
                 budget -= len(line) + 1
 
-            hint_text = ("Press E to continue" if self.line_complete()
-                         else "Press E to show the full line")
+            hint_text = ("Press SPACE to continue" if self.line_complete()
+                         else "Press SPACE to show the full line")
             hint = hint_font.render(hint_text, True, DIM_TEXT)
             surf.blit(hint, (text_rect.right - hint.get_width() - 16, text_rect.bottom - hint.get_height() - 10))
 
@@ -401,7 +401,7 @@ def tutorial_screen(screen, play_music=True):
         bt = manual_btn_font.render("BEGIN ADVENTURE", True, (20, 30, 20) if not begin_hovered else WHITE)
         surf.blit(bt, (manual_begin_rect.centerx - bt.get_width() // 2, manual_begin_rect.centery - bt.get_height() // 2))
 
-        hint = hint_font.render("Click / E / SPACE / ENTER to begin", True, DIM_TEXT)
+        hint = hint_font.render("Press SPACE or click BEGIN ADVENTURE", True, DIM_TEXT)
         surf.blit(hint, (manual_panel_rect.centerx - hint.get_width() // 2, manual_begin_rect.bottom + 10))
 
     clock = pygame.time.Clock()
@@ -452,7 +452,7 @@ def tutorial_screen(screen, play_music=True):
             if state == "stage_manual":
                 begin_pressed = (
                     event.type == pygame.KEYDOWN
-                    and event.key in (pygame.K_e, pygame.K_SPACE, pygame.K_RETURN)
+                    and event.key == pygame.K_SPACE
                 ) or (
                     event.type == pygame.MOUSEBUTTONDOWN
                     and event.button == 1

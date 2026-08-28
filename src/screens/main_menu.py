@@ -7,6 +7,7 @@ from src.screens.game import game_screen
 from src.screens.settings import SettingsPanel
 from src.screens.how_to_play import how_to_play_screen
 from src.screens.start_game_menu import start_game_menu
+from src.ui.ambient_particles import AmbientParticles
 from src.ui.gear_icon import draw_gear, draw_medallion
 from src.systems.audio import (
     apply_music_volume, handle_music_shortcut, music_shortcut_label,
@@ -506,6 +507,7 @@ def main_menu():
     # out of sync with each other again.
     logo_top_offset = int(SCREEN_HEIGHT * 0.04)
     logo_bottom = logo_top_offset + logo_height
+    logo_pos = (SCREEN_WIDTH // 2 - logo.get_width() // 2, logo_top_offset)
 
     bw = int(SCREEN_WIDTH * 0.20)
     bh = int(SCREEN_HEIGHT * 0.075)
@@ -545,8 +547,22 @@ def main_menu():
     # after the logo is loaded/positioned, reused every frame instead of
     # re-copying the screen 60x/sec.
     screen.blit(background, (0, 0))
-    screen.blit(logo, (SCREEN_WIDTH // 2 - logo.get_width() // 2, logo_top_offset))
+    screen.blit(logo, logo_pos)
     menu_backdrop = screen.copy()
+
+    # The motes and specks in the background art are baked into the image, so
+    # the dungeon's lights are animated with a matching overlay instead. The
+    # wandering fireflies are steered away from the logo and the button column
+    # so none of them lives its whole life hidden behind opaque UI — the motes
+    # need no such rule, since they sit still and simply peek out around it.
+    logo_block = pygame.Rect(logo_pos, logo.get_size())
+    button_block = pygame.Rect(
+        rects[0].left, rects[0].top,
+        rects[0].width, rects[-1].bottom - rects[0].top,
+    ).inflate(60, 40)
+    ambient = AmbientParticles(
+        SCREEN_WIDTH, SCREEN_HEIGHT, avoid=(logo_block, button_block)
+    )
 
     clock = pygame.time.Clock()
     clock.tick(60)
@@ -608,7 +624,13 @@ def main_menu():
                 settings_panel.handle_event(event)
                 show_settings = settings_panel.is_open
 
-        screen.blit(menu_backdrop, (0, 0))
+        # Background, then the ambient lights, then the logo — same two blits
+        # per frame as the pre-baked backdrop, but with the particles sandwiched
+        # in so they can never land on top of the logo or, further down, the
+        # buttons. menu_backdrop stays particle-free for the crumble transition.
+        screen.blit(background, (0, 0))
+        ambient.draw(screen, t)
+        screen.blit(logo, logo_pos)
 
         # A slow, low-contrast pulse makes the dungeon feel alive without
         # rapid flashing.  The 3.2-second period stays far below seizure-risk

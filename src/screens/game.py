@@ -479,7 +479,7 @@ def game_screen(screen, slot_num=None, save_state=None):
     # sepia ink, from the same builder the paper map uses (ui/chart.py).
     # The minimap is a piece of the map the character is carrying, so it
     # should no more look like the ground than a real map does.
-    MINIMAP_SIZE = max(150, min(220, int(SCREEN_H * 0.22)))
+    MINIMAP_SIZE = max(200, min(300, int(SCREEN_H * 0.30)))
     MINIMAP_MARGIN = 14
     minimap_panel_rect = pygame.Rect(
         MINIMAP_MARGIN,
@@ -546,7 +546,7 @@ def game_screen(screen, slot_num=None, save_state=None):
     # straight off the movement input rather than the character's `facing`,
     # which only tracks the four cardinals it has sprite sets for — that way
     # the arrow covers the diagonals (NE/NW/SE/SW) as well.
-    MINIMAP_ARROW_SIZE = 8
+    MINIMAP_ARROW_SIZE = 11
 
     # Chrome that never changes: the carved surround and the vignette that
     # beds the terrain into it. Built here, blitted per frame. The vignette
@@ -579,7 +579,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             )
         })
 
-    zone_label_font = title_font(11, bold=False)
+    zone_label_font = title_font(13, bold=False)
 
     def draw_minimap(surf, player_rect, heading, night=False):
         panel_rect = minimap_panel_rect

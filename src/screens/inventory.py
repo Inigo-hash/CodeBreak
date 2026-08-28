@@ -249,7 +249,31 @@ class PlayerInventory:
                 return True
 
         return False
+    
+    def get_stored_topic_ids(self):
+        """
+        Return the topic IDs currently stored in the player's bag.
 
+        Only topic items are saved here. Normal gameplay items and the
+        weapon are handled separately.
+        """
+
+        topic_ids = []
+
+        for slot in self.bag:
+
+            if (
+                slot is not None
+                and getattr(slot, "kind", None) == "topic"
+                and getattr(slot, "topic_id", None)
+            ):
+
+                topic_ids.append(
+                    slot.topic_id
+                )
+
+        return topic_ids
+    
 # ===========================================================================
 #  SHARED DRAWING HELPERS
 # ===========================================================================

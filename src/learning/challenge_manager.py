@@ -5,6 +5,8 @@ from src.learning.validators.variable_validator import VariableValidator
 from src.learning.validators.print_validator import PrintValidator
 from src.learning.validators.data_type_validator import DataTypeValidator
 from src.learning.validators.type_casting_validator import TypeCastingValidator
+from src.learning.validators.formatted_output_validator import FormattedOutputValidator
+from src.learning.validators.input_validator import InputValidator
 
 
 class ChallengeManager:
@@ -17,13 +19,23 @@ class ChallengeManager:
 
         self.validators = {
 
-            "variable": VariableValidator(),
+            "variable":
+                VariableValidator(),
 
-            "print": PrintValidator(),
+            "print":
+                PrintValidator(),
 
-            "data_type": DataTypeValidator(),
+            "data_type":
+                DataTypeValidator(),
 
-            "type_casting": TypeCastingValidator()
+            "type_casting":
+                TypeCastingValidator(),
+
+            "formatted_output":
+                FormattedOutputValidator(),
+
+            "input":
+                InputValidator()
 
         }
 

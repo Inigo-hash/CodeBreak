@@ -47,7 +47,7 @@ class SandboxTimeout(Exception):
 # can be used to break out of the sandbox or touch the real system.
 FORBIDDEN_NAMES = {
     "__import__", "eval", "exec", "compile", "open",
-    "globals", "locals", "vars", "input",
+    "globals", "locals", "vars",
     "exit", "quit", "help", "breakpoint",
     "getattr", "setattr", "delattr",
 }
@@ -150,6 +150,7 @@ SAFE_BUILTINS = {
     "ArithmeticError": ArithmeticError,
     "AttributeError": AttributeError,
     "NameError": NameError,
+    "EOFError": EOFError,
 }
 
 
@@ -171,7 +172,11 @@ def _make_timeout_tracer(deadline):
     return tracer
 
 
-def run_user_code(code, timeout=3.0):
+def run_user_code(
+    code,
+    timeout=3.0,
+    input_values=None
+):
     """
     Runs `code` in a restricted environment and returns a result
     dict. Never raises - all failure modes (syntax errors, unsafe
@@ -222,8 +227,56 @@ def run_user_code(code, timeout=3.0):
             "error": str(error),
         }
 
-    # ---- Actual execution ----
-    sandbox_globals = {"__builtins__": SAFE_BUILTINS}
+    # --------------------------------------------------------------
+    # Controlled input()
+    # --------------------------------------------------------------
+
+    # Every execution gets its own fresh set of test inputs.
+    input_queue = iter(
+        str(value)
+        for value in (input_values or [])
+    )
+
+
+    def safe_input(prompt=""):
+        """
+        Replacement for Python's real input().
+
+        Instead of reading from the computer terminal, values are
+        supplied by the current coding challenge.
+        """
+
+        try:
+            value = next(input_queue)
+
+        except StopIteration:
+            raise EOFError(
+                "The program requested more input values "
+                "than the challenge provided."
+            )
+
+        # Show what the player would normally see in a terminal.
+        print(
+            f"{prompt}{value}"
+        )
+
+        return value
+
+
+    # Make a copy because safe_input belongs only to this execution.
+    sandbox_builtins = dict(
+        SAFE_BUILTINS
+    )
+
+    sandbox_builtins[
+        "input"
+    ] = safe_input
+
+
+    sandbox_globals = {
+        "__builtins__": sandbox_builtins
+    }
+
     output_buffer = io.StringIO()
 
     deadline = time.time() + timeout

@@ -828,7 +828,15 @@ class CodeEditor:
 
         code = "\n".join(self.text_buffer.lines)
 
-        result = run_user_code(code)
+        test_inputs = self.challenge.get(
+            "test_inputs",
+            []
+        )
+
+        result = run_user_code(
+            code,
+            input_values=test_inputs
+        )
 
         self.output_panel.clear()
 
@@ -856,7 +864,15 @@ class CodeEditor:
         self.submission_attempts += 1
         code = "\n".join(self.text_buffer.lines)
 
-        result = run_user_code(code)
+        test_inputs = self.challenge.get(
+            "test_inputs",
+            []
+        )
+
+        result = run_user_code(
+            code,
+            input_values=test_inputs
+        )
 
         self.output_panel.clear()
 

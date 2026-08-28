@@ -2698,6 +2698,7 @@
   <object id="1496" x="1632.25" y="742.25" width="31.5" height="25.5">
    <properties>
     <property name="actions" value="search_burrow"/>
+    <property name="topic_id" value="formatted_output"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>
@@ -2734,6 +2735,7 @@
   <object id="1502" x="336" y="308.5" width="31.5" height="27.25">
    <properties>
     <property name="actions" value="search_hay"/>
+    <property name="topic_id" value="input_lesson"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>

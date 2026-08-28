@@ -200,7 +200,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             "bonus_time": gameplay_state["bonus_time"],
             "challenges_passed": save_challenges_passed,
             "map_position": [player_x, player_y],
-            "inventory": [],
+            "inventory": player_inventory.get_stored_topic_ids(),
             "weapon_obtained": player_inventory.weapon_obtained,
             "weapon_equipped": player_inventory.weapon_equipped,
             "stage_progress": stage_progress.to_dict(),
@@ -235,6 +235,68 @@ def game_screen(screen, slot_num=None, save_state=None):
         True if save_state is None else save_state.get("weapon_obtained", True),
         True if save_state is None else save_state.get("weapon_equipped", True),
     )
+
+    # ---------------------------------------------------------
+    # Restore stored learning topics
+    # ---------------------------------------------------------
+
+    saved_topic_ids = []
+
+    if save_state:
+
+        saved_inventory = save_state.get(
+            "inventory",
+            []
+        )
+
+        if isinstance(saved_inventory, list):
+
+            saved_topic_ids = [
+                topic_id
+                for topic_id in saved_inventory
+                if isinstance(topic_id, str)
+            ]
+
+
+    for topic_id in saved_topic_ids:
+
+        topic = get_topic(
+            topic_id
+        )
+
+        if topic is None:
+            continue
+
+        player_inventory.add_topic(
+            topic_id,
+            topic["title"]
+        )
+
+    # ---------------------------------------------------------
+    # Restore topic discovery/handled state
+    # ---------------------------------------------------------
+
+    handled_topic_ids = set(
+        saved_topic_ids
+    )
+
+    handled_topic_ids.update(
+        gameplay_state["topics_completed"]
+    )
+
+
+    for item in interactables:
+
+        topic_id = item.get(
+            "topic_id"
+        )
+
+        if topic_id in handled_topic_ids:
+
+            item[
+                "topic_handled"
+            ] = True
+
     toolbar = Toolbar(screen, player_inventory)
     gameplay_hud = GameplayHUD(
         screen, gameplay_state, stage, player_inventory,
@@ -1197,11 +1259,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                         topic_id
                         and not near_interactable['topic_handled']
                     ):
-
-                        # Prevent this barrel from opening the discovery popup
-                        # repeatedly.
-                        near_interactable['topic_handled'] = True
-
+                        
                         background_snapshot = screen.copy()
 
                         decision = open_topic_found(
@@ -1211,6 +1269,8 @@ def game_screen(screen, slot_num=None, save_state=None):
                         )
 
                         if decision == "start":
+
+                            near_interactable['topic_handled'] = True
 
                             open_topic_flow(
                                 topic_id,
@@ -1236,6 +1296,8 @@ def game_screen(screen, slot_num=None, save_state=None):
 
                                 if stored:
 
+                                    near_interactable['topic_handled'] = True
+
                                     print(
                                         f"Stored topic: {topic['title']}"
                                     )
@@ -1246,9 +1308,6 @@ def game_screen(screen, slot_num=None, save_state=None):
                                         f"Topic already stored or bag is full: "
                                         f"{topic['title']}"
                                     )
-
-                            # NEXT STEP:
-                            # player_inventory.add_topic(...)
                             
                     # Finishing a search is what counts as discovering the
                     # object, so it fills in its entry in the Items tab.

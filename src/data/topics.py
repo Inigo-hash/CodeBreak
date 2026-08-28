@@ -405,6 +405,205 @@ Common type casting functions are:
 """,
 
         "challenge_id": "type_casting_001"
+    },
+    # =========================================================
+    # Input
+    # =========================================================
+
+    "input_lesson": {
+
+        "id": "input_lesson",
+
+        "title": "Input",
+
+        "difficulty": "Beginner",
+
+        "lesson": """
+WHAT IS INPUT?
+
+Input allows a program to receive information from the user.
+
+Python uses the input() function for this.
+
+
+USING INPUT()
+
+The basic syntax is:
+
+    input("Message")
+
+The message inside the parentheses is shown to the user.
+
+Example:
+
+    input("Enter your name: ")
+
+
+STORING INPUT
+
+The value entered by the user should usually be stored
+inside a variable.
+
+Example:
+
+    name = input("Enter your name: ")
+
+Here:
+
+    name
+
+stores whatever the user enters.
+
+
+INPUT RETURNS A STRING
+
+The input() function normally returns text.
+
+Example:
+
+    age = input("Enter your age: ")
+
+Even if the user enters:
+
+    18
+
+Python initially treats it as a string.
+
+
+INPUT WITH TYPE CASTING
+
+If you need a number, input can be combined with
+type casting.
+
+Example:
+
+    age = int(input("Enter your age: "))
+
+
+DISPLAYING USER INPUT
+
+You can use the stored value later in the program.
+
+Example:
+
+    name = input("Enter your name: ")
+
+    print(name)
+
+
+REMEMBER
+
+The basic pattern is:
+
+    variable = input("Prompt: ")
+""",
+
+        "challenge_id": "input_lesson_001"
+    },
+
+
+    # =========================================================
+    # Formatted Output
+    # =========================================================
+
+    "formatted_output": {
+
+        "id": "formatted_output",
+
+        "title": "Formatted Output",
+
+        "difficulty": "Beginner",
+
+        "lesson": """
+WHAT IS FORMATTED OUTPUT?
+
+Formatted output allows values stored in variables to be
+placed inside text.
+
+This makes output easier to read and understand.
+
+
+F-STRINGS
+
+A common way to create formatted output in Python is
+using an f-string.
+
+Place the letter:
+
+    f
+
+before the quotation marks.
+
+Example:
+
+    name = "Alex"
+
+    print(f"Hello, {name}!")
+
+
+USING CURLY BRACES
+
+Variables are placed inside curly braces:
+
+    { }
+
+Example:
+
+    score = 100
+
+    print(f"Score: {score}")
+
+Python replaces:
+
+    {score}
+
+with the value stored inside the score variable.
+
+
+MULTIPLE VALUES
+
+An f-string can contain more than one value.
+
+Example:
+
+    name = "Alex"
+
+    score = 100
+
+    print(f"{name} has {score} points.")
+
+
+PLACEHOLDER FORMATTING
+
+Python can also use placeholders with the percent symbol.
+
+Example:
+
+    score = 100
+
+    print("Score: %d" % score)
+
+Some common placeholders are:
+
+    %s    text
+
+    %d    integer
+
+
+WHY FORMATTED OUTPUT IS USEFUL
+
+Instead of writing separate pieces of output, formatted
+strings combine text and values into one readable message.
+
+
+REMEMBER
+
+A basic f-string looks like:
+
+    print(f"Text {variable}")
+""",
+
+        "challenge_id": "formatted_output_001"
     }
 
 }

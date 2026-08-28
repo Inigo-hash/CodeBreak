@@ -196,6 +196,89 @@ age
             "target": "age",
             "function": "int"
         }
+    },
+    # =========================================================
+    # Input
+    # =========================================================
+
+    "input_lesson_001": {
+
+        "id": "input_lesson_001",
+
+        "title": "User Input",
+
+        "difficulty": "Beginner",
+
+        "type": "input",
+
+        "problem": """
+Use input() to ask the user:
+
+Enter your name:
+
+Store the user's answer inside
+a variable named:
+
+name
+
+The coding environment will use:
+
+Alex
+
+as the test input.
+        """,
+
+        "objective":
+            "Use input() to store the user's name inside a variable named name.",
+
+        "requirements": [],
+
+        "test_inputs": [
+            "Alex"
+        ],
+
+        "expected": {
+            "target": "name",
+            "prompt": "Enter your name: "
+        }
+    },
+
+
+    # =========================================================
+    # Formatted Output
+    # =========================================================
+
+    "formatted_output_001": {
+
+        "id": "formatted_output_001",
+
+        "title": "Formatted Output",
+
+        "difficulty": "Beginner",
+
+        "type": "formatted_output",
+
+        "problem": """
+Create this variable:
+
+name = "Alex"
+
+Then use an f-string to display:
+
+Welcome, Alex!
+        """,
+
+        "objective":
+            'Use an f-string to display "Welcome, Alex!" using the name variable.',
+
+        "requirements": [],
+
+        "expected": {
+            "variable": "name",
+            "value": "Alex",
+            "prefix": "Welcome, ",
+            "suffix": "!"
+        }
     }
 
 }

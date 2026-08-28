@@ -133,6 +133,12 @@ class TopicFoundScreen:
                     continue
 
                 if (
+                    event.type == pygame.KEYDOWN
+                    and event.key == pygame.K_ESCAPE
+                ):
+                    return "cancel"
+
+                if (
                     event.type == pygame.MOUSEBUTTONDOWN
                     and event.button == 1
                 ):

@@ -237,12 +237,11 @@ def draw_stat_bar(surface, font, x, y, width, label, current, maximum,
 class GameplayHUD:
     """Render gameplay data without owning or mutating it."""
 
-    def __init__(self, screen, state, stage, inventory,
+    def __init__(self, screen, state, stage,
                  completed_stage_topics=None, bonus_time=0):
         self.screen = screen
         self.state = state
         self.stage = stage
-        self.inventory = inventory
         self.completed_stage_topics = completed_stage_topics if completed_stage_topics is not None else ()
         self.bonus_time = bonus_time
         self.font = body_font(15)
@@ -269,13 +268,11 @@ class GameplayHUD:
         # the panels read as a single group instead of floating apart.
         progress_rect = pygame.Rect(margin, self.profile_rect.bottom + 8,
                                     min(275, width // 3), 92)
-        weapon_rect = pygame.Rect(margin, progress_rect.bottom + 8, 250, 42)
-        bonus_rect = pygame.Rect(margin, weapon_rect.bottom + 8, 112, 42)
+        bonus_rect = pygame.Rect(margin, progress_rect.bottom + 8, 112, 42)
 
         self.draw_character_profile(current_hp, max_hp, in_combat,
                                     current_energy, max_energy)
         self.draw_stage_progress(progress_rect)
-        self.draw_weapon(weapon_rect.left, weapon_rect.top)
         self.draw_bonus_time(bonus_rect.left, bonus_rect.top,
                              self.bonus_time if bonus_time is None else bonus_time)
 
@@ -357,18 +354,6 @@ class GameplayHUD:
             self.screen.blit(icon, (rect.left + 10, y - 7))
             self.screen.blit(self.font.render(label, True, TEXT), (rect.left + 45, y))
 
-    def draw_weapon(self, x, y):
-        item = self.inventory.get_selected_item()
-        is_weapon = item is not None and (
-            getattr(item, "kind", None) == "weapon"
-            or "sword" in item.name.lower()
-        )
-        name = item.name if is_weapon else "No weapon equipped"
-        rect = pygame.Rect(x, y, 250, 42)
-        self._panel(rect)
-        self._draw_sword_placeholder(rect.left + 13, rect.centery)
-        self.screen.blit(self.font.render(name, True, TEXT if is_weapon else DIM), (rect.left + 44, rect.top + 12))
-
     def draw_bonus_time(self, x, y, bonus_time):
         rect = pygame.Rect(x, y, 112, 42)
         self._panel(rect)
@@ -404,11 +389,6 @@ class GameplayHUD:
 
     def _profile_panel(self, rect, emphasized=False):
         draw_profile_frame(self.screen, rect, emphasized=emphasized)
-
-    def _draw_sword_placeholder(self, x, y):
-        pygame.draw.line(self.screen, (190, 195, 205), (x - 7, y + 8), (x + 9, y - 8), 5)
-        pygame.draw.line(self.screen, (245, 245, 235), (x - 5, y + 6), (x + 10, y - 9), 2)
-        pygame.draw.line(self.screen, GOLD, (x - 9, y + 2), (x - 2, y + 9), 4)
 
     def _draw_clock_placeholder(self, x, y):
         pygame.draw.circle(self.screen, GOLD, (x, y), 10, 2)

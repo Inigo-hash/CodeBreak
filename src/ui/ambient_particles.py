@@ -24,6 +24,7 @@ onto itself seamlessly.
 import math
 import random
 
+import numpy as np
 import pygame
 
 TAU = math.tau
@@ -44,6 +45,13 @@ _GOLD_TINTS = ((255, 186, 92), (255, 208, 126), (240, 160, 70))
 # rung of the ladder would quantise it into three or four visible bands
 # across a swell. Dim at full resolution breathes smoothly instead.
 _FIREFLY_HALO = (54, 42, 24)
+
+# Thresholds for finding the points of light already painted into the
+# background. Tuned upward until only real specks qualify: lit brick edges are
+# plentiful and start registering as specks well before this.
+_SPECK_MIN_LUM = 170
+_SPECK_SURROUND_MAX = 62
+_SPECK_PATCH = 9          # half-width of the cut-out taken around each speck
 
 # Normalised areas of mainMenuBg1.png that are already light sources -- the
 # arched window and the crystal on its pedestal. Extra glow stacked on top of
@@ -229,6 +237,115 @@ class _Firefly:
         return glow + self.flare * _breath(t, self.flare_rate, self.flare_offset, 7.0)
 
 
+def _find_static_specks(rgb, limit=160):
+    """Locate the points of light painted into the background image.
+
+    Returns (x, y) centres of isolated, bright, warm pixels. Lit brick edges
+    are bright too, so a candidate has to be a local maximum *and* sit on dark
+    surroundings before it counts as a speck.
+    """
+
+    lum = rgb.max(axis=2)
+    height, width = lum.shape
+    edge = _SPECK_PATCH + 1
+
+    ys, xs = np.nonzero(lum >= _SPECK_MIN_LUM)
+    inside = ((ys >= edge) & (ys < height - edge)
+              & (xs >= edge) & (xs < width - edge))
+    ys, xs = ys[inside], xs[inside]
+    if not len(ys):
+        return []
+
+    # Local maxima over a 9x9 window. The tie-break on (dy, dx) keeps exactly
+    # one pixel of a flat-topped speck rather than every pixel on the plateau.
+    peak = lum[ys, xs]
+    is_max = np.ones(len(ys), bool)
+    for dy in range(-4, 5):
+        for dx in range(-4, 5):
+            if dy or dx:
+                other = lum[ys + dy, xs + dx]
+                is_max &= (peak > other) | ((peak == other) & ((dy, dx) < (0, 0)))
+    ys, xs = ys[is_max], xs[is_max]
+
+    # Mean of a 29x29 box, via an integral image so the window size is free.
+    # A speck sitting on an already-lit surface belongs to a bigger feature --
+    # the crystal, the doorway, a painted torch pool -- and is not ours.
+    integral = np.cumsum(np.cumsum(lum.astype(np.int64), 0), 1)
+    y0, y1 = np.clip(ys - 14, 0, height - 1), np.clip(ys + 14, 0, height - 1)
+    x0, x1 = np.clip(xs - 14, 0, width - 1), np.clip(xs + 14, 0, width - 1)
+    surround = ((integral[y1, x1] - integral[y0, x1]
+                 - integral[y1, x0] + integral[y0, x0])
+                / np.maximum(1, (y1 - y0) * (x1 - x0)))
+    lone = surround < _SPECK_SURROUND_MAX
+    ys, xs = ys[lone], xs[lone]
+
+    colour = rgb[ys, xs]
+    warm = colour[:, 0] > colour[:, 2] + 20
+    ys, xs = ys[warm], xs[warm]
+
+    if len(ys) > limit:                    # keep the brightest if we must trim
+        pick = np.argsort(-lum[ys, xs])[:limit]
+        ys, xs = ys[pick], xs[pick]
+    return list(zip(xs.tolist(), ys.tolist()))
+
+
+class _StaticSpeck:
+    """A speck painted into the background, given a breath of its own.
+
+    Additive blending can only ever brighten, so a painted light cannot be
+    dimmed by drawing over it. Each speck therefore carries a cut-out of its
+    own light -- its patch of background with the surrounding wall level
+    removed -- which is subtracted to dim it and added to brighten it. Using
+    the speck's real shape instead of a modelled one is what lets it walk
+    smoothly down toward bare wall rather than having a dark hole punched
+    through its middle.
+    """
+
+    __slots__ = ("x", "y", "half", "ladder", "rate", "offset", "gamma",
+                 "dim", "lift")
+
+    def __init__(self, rng, rgb, x, y):
+        half = _SPECK_PATCH
+        self.x, self.y, self.half = x, y, half
+        patch = rgb[y - half:y + half + 1, x - half:x + half + 1].astype(np.float32)
+
+        # The wall level under the speck, per channel. A low percentile rather
+        # than the minimum, which would be mortar shadow and would leave the
+        # surrounding brick inside the cut-out.
+        base_level = np.percentile(patch.reshape(-1, 3), 20, axis=0)
+        excess = np.clip(patch - base_level, 0.0, 255.0)
+
+        # Feather the rim so subtracting the cut-out can never leave a square
+        # seam, whatever the speck's own falloff happens to do at the edge.
+        span = np.arange(-half, half + 1, dtype=np.float32)
+        radius = np.sqrt(span[:, None] ** 2 + span[None, :] ** 2) / half
+        excess *= np.clip(1.0 - radius ** 2, 0.0, 1.0)[..., None]
+
+        base = pygame.surfarray.make_surface(
+            excess.transpose(1, 0, 2).astype(np.uint8))
+        ladder = []
+        for step in range(_LEVELS):
+            scale = round(255 * step / (_LEVELS - 1))
+            frame = base.copy()
+            frame.fill((scale, scale, scale, 255), special_flags=pygame.BLEND_RGB_MULT)
+            ladder.append(frame)
+        self.ladder = tuple(ladder)
+
+        self.rate = 1.0 / rng.uniform(4.5, 14.0)
+        self.offset = rng.random()
+        self.gamma = rng.uniform(1.0, 2.2)
+        # Asymmetric deliberately: the art already has these near the top of
+        # their range, so there is far more room below them than above.
+        self.dim = rng.uniform(0.35, 0.68)
+        self.lift = rng.uniform(0.10, 0.26)
+
+    def delta(self, t):
+        """Signed -1..1: negative takes light away, positive adds it."""
+
+        swing = _breath(t, self.rate, self.offset, self.gamma) * 2.0 - 1.0
+        return swing * (self.lift if swing > 0.0 else self.dim)
+
+
 def _scatter(rng, width, height, count, margin, blocked):
     """Pick `count` points spread across the room, avoiding `blocked` rects.
 
@@ -269,7 +386,8 @@ class AmbientParticles:
     seed always produces the same room.
     """
 
-    def __init__(self, width, height, avoid=(), seed=20260828):
+    def __init__(self, width, height, avoid=(), background=None,
+                 seed=20260828):
         rng = random.Random(seed)
         area_scale = (width * height) / (1920.0 * 1080.0)
 
@@ -302,12 +420,34 @@ class AmbientParticles:
                                  bright + avoid)
         ]
 
+        # Finally the specks the artist already painted in. Built last so that
+        # adding them cannot shift the random draws above, and the motes and
+        # fireflies keep the layout they were tuned with.
+        self._specks = []
+        if background is not None:
+            rgb = pygame.surfarray.array3d(background).transpose(1, 0, 2)
+            self._specks = [_StaticSpeck(rng, rgb, x, y)
+                            for x, y in _find_static_specks(rgb)]
+
     def draw(self, surface, t):
         """Blit every particle additively, brightest-pixel-first, at time `t`."""
 
         blit = surface.blit
         additive = pygame.BLEND_RGB_ADD
+        subtractive = pygame.BLEND_RGB_SUB
         top = _LEVELS - 1
+
+        # Painted specks first: they modify the wall itself, and the overlay
+        # lights belong on top of the result.
+        for speck in self._specks:
+            delta = speck.delta(t)
+            step = int(abs(delta) * top)
+            if step <= 0:
+                continue
+            half = speck.half
+            blit(speck.ladder[min(top, step)],
+                 (speck.x - half, speck.y - half), None,
+                 additive if delta > 0.0 else subtractive)
 
         for mote in self._motes:
             step = int(mote.level(t) * top)

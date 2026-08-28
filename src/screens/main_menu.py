@@ -561,7 +561,8 @@ def main_menu():
         rects[0].width, rects[-1].bottom - rects[0].top,
     ).inflate(60, 40)
     ambient = AmbientParticles(
-        SCREEN_WIDTH, SCREEN_HEIGHT, avoid=(logo_block, button_block)
+        SCREEN_WIDTH, SCREEN_HEIGHT, avoid=(logo_block, button_block),
+        background=background,
     )
 
     clock = pygame.time.Clock()

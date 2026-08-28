@@ -332,14 +332,14 @@ def game_screen(screen, slot_num=None, save_state=None):
 
     toolbar = Toolbar(screen, player_inventory)
     gameplay_hud = GameplayHUD(
-        screen, gameplay_state, stage, player_inventory,
+        screen, gameplay_state, stage,
         completed_stage_topics=save_challenges_passed,
     )
 
-    # Objectives tracker + the rail of buttons that opens the full Stage
-    # Information screen. Holds `stage` and `stage_progress` by reference,
-    # so the tracker updates itself as objectives complete.
-    stage_panel = StagePanel(screen, stage, stage_progress)
+    # The rail of buttons that opens the full Stage Information screen.
+    # Objectives are still tracked in `stage_progress`; they are read on
+    # the OBJECTIVES tab rather than from a box on the HUD.
+    stage_panel = StagePanel(screen)
     loading.update(54, "Lighting island paths...")
 
     def open_topic_flow(
@@ -1679,7 +1679,7 @@ def game_screen(screen, slot_num=None, save_state=None):
         # always sits on top of everything else in the scene.
         toolbar.draw(mouse_pos)
 
-        # Objectives tracker + stage info rail (right side)
+        # Stage info rail (right side)
         stage_panel.draw(mouse_pos)
 
         # Key hints (top-right, out of the way of the profile HUD)

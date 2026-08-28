@@ -1,23 +1,18 @@
 """
 stage_panel.py
 
-The right-hand side of the gameplay HUD: an always-visible objectives
-tracker, with a rail of four buttons underneath it that open the full
-Stage Information screen (src/screens/stage_info.py).
-
-    +-----------------------------+
-    | OBJECTIVES            1/3   |
-    | [ ] Search anything you...  |
-    | [x] Repair a terminal...    |
-    +-----------------------------+
+The right-hand side of the gameplay HUD: a rail of four buttons that
+open the full Stage Information screen (src/screens/stage_info.py).
 
     [ (icon) STAGE MANUAL     I ]
     [ (icon) ENEMIES          J ]
     [ (icon) ITEMS            K ]
     [ (icon) OBJECTIVES       O ]
 
-The tracker sits on top because it is the part the player glances at
-constantly; the rail below it is the "I want more detail" row.
+Objectives are still tracked while the stage is played - the progress
+lives in StageProgress and is read by the OBJECTIVES tab of the Stage
+Information screen. There is just no always-on tracker box on the HUD
+any more, so the world is what the right-hand side of the screen shows.
 
 The rail buttons are deliberately NOT wrapped in a panel of their own:
 each one is a standalone carved plaque, wood for the two "your stuff"
@@ -32,12 +27,8 @@ widget's job, so handle_event() hands back the tab the player asked for
 ("manual", "enemies", "items", "objectives") or None. game.py decides
 what to do with that.
 
-Geometry is fixed at construction, including the tracker's height, which
-is measured from the tallest TRACKER_ROWS objectives the stage owns
-rather than from the ones showing right now. A tracker that grew and
-shrank as objectives were finished would drag the rail up and down
-underneath it, and buttons that move while you are reaching for them are
-worse than a little empty space.
+Geometry is fixed at construction: nothing here is data-driven, so the
+buttons never move while the player is reaching for one.
 
 Icons and plaques are drawn with pygame primitives rather than loaded from
 files or typed as emoji: the bundled UI fonts have no emoji glyphs and would
@@ -50,7 +41,6 @@ import random
 
 import pygame
 
-from src.ui.editor_widgets import wrap_text
 from src.ui.theme import UI_COLORS, body_font, title_font
 
 
@@ -62,7 +52,6 @@ from src.ui.theme import UI_COLORS, body_font, title_font
 # ---------------------------------------------------------------------------
 PANEL_BG      = UI_COLORS["stone"]
 PANEL_INNER   = UI_COLORS["stone_deep"]
-PANEL_ALPHA   = 205             # tracker/rail are see-through, like the hotbar
 METAL_FRAME   = UI_COLORS["bronze_dark"]
 FRAME_HOVER   = UI_COLORS["blue_bright"]
 ACCENT        = UI_COLORS["gold"]
@@ -74,19 +63,11 @@ TEXT_DONE     = (120, 200, 140)
 # ---------------------------------------------------------------------------
 # Layout
 # ---------------------------------------------------------------------------
-# The tracker is read at a glance from across the screen while the player is
-# moving, so it is sized for legibility rather than for how little room it can
-# take: a wide box with body copy at the same size as the rest of the HUD.
-PANEL_WIDTH   = 460
+PANEL_WIDTH   = 460  # width of a drawn plaque, and the column's right edge
 EDGE_MARGIN   = 14   # gap from the right edge of the screen
 TOP_MARGIN    = 40   # clears the "ESC = Pause" hint game.py draws at y=10
-PAD           = 14
-ROW_GAP       = 8    # between one objective and the next
-TRACKER_ROWS  = 3    # objectives shown at once (see the note above)
-ROW_LINES     = 2    # wrapped lines allowed per objective before ellipsis
 BUTTON_HEIGHT = 42
 BUTTON_GAP    = 9    # wide enough that the plaques read as separate objects
-GROUP_GAP     = 12   # between the tracker and the first plaque
 PLAQUE_BLEED  = 6    # room around the rect for the shadow and hover glow
 
 # Tab id -> (button label, hotkey, pygame key). The order here is the
@@ -137,12 +118,6 @@ RAIL_SPRITE_DIR = "assets/images/ui"
 # matching heights would shrink the busiest plaque and leave the column ragged.
 RAIL_SPRITE_WIDTH = 205
 HOTKEY_GUTTER = 30          # space to the left of a button for its key badge
-
-
-def _row_text(objective):
-    """The text one tracker row shows, prefix and all."""
-    text = objective["text"]
-    return f"(Optional) {text}" if objective.get("optional") else text
 
 
 def _load_rail_sprites():
@@ -289,7 +264,7 @@ class StagePanel:
     """
     Usage from the game loop:
 
-        stage_panel = StagePanel(screen, stage, stage_progress)
+        stage_panel = StagePanel(screen)
         ...
         tab = stage_panel.handle_event(event)   # in the event loop
         if tab:
@@ -297,42 +272,20 @@ class StagePanel:
         ...
         stage_panel.draw(mouse_pos)             # once per frame, on top
 
-    ``stage`` and ``progress`` are held by reference and re-read every
-    frame, so completing an objective updates the tracker immediately
-    with no call back into this class.
+    The panel holds no stage state: it only reports which tab the player
+    asked for, and the caller passes the stage and its progress to the
+    screen that opens.
     """
 
-    def __init__(self, screen, stage, progress):
+    def __init__(self, screen):
         self.screen = screen
-        self.stage = stage
-        self.progress = progress
 
         screen_w, _ = screen.get_size()
 
-        self.font_title = title_font(20)
-        self.font_row = body_font(19)
         self.font_button = title_font(13)
         self.font_key = body_font(17, bold=True)
 
-        self.row_height = self.font_row.get_height() + 2
-
-        # Wrapping width for objective text: panel minus padding minus the
-        # checkbox column. Needed before the tracker can be measured.
-        self._text_indent = self.font_row.size("[ ] ")[0]
-        self._text_width = PANEL_WIDTH - PAD * 2 - self._text_indent
-
-        # --- Tracker -------------------------------------------------------
-        header_height = self.font_title.get_height() + 8
-        rows_height = self._reserved_rows_height()
-
         panel_left = screen_w - EDGE_MARGIN - PANEL_WIDTH
-
-        self.tracker_rect = pygame.Rect(
-            panel_left,
-            TOP_MARGIN,
-            PANEL_WIDTH,
-            header_height + rows_height + PAD * 2
-        )
 
         # --- Rail ----------------------------------------------------------
         # No enclosing panel: the buttons are placed straight onto the screen,
@@ -344,13 +297,12 @@ class StagePanel:
         self._plaques = {}
         self.button_rects = {}
 
-        rail_top = self.tracker_rect.bottom + GROUP_GAP
-        y = rail_top
+        y = TOP_MARGIN
 
         for i, (tab, label, key_label, _) in enumerate(RAIL_BUTTONS):
             if self._sprites:
                 art = self._sprites[tab]
-                # Right-aligned with the tracker, so the column has one edge.
+                # Right-aligned, so the column has one clean edge.
                 rect = pygame.Rect(0, y, art.get_width(), art.get_height())
                 rect.right = panel_left + PANEL_WIDTH
                 self._plaques[(tab, False)] = art
@@ -369,27 +321,6 @@ class StagePanel:
         # The drawn plaques carry a bleed margin for their shadow; the painted
         # ones are already trimmed to their own edges.
         self._bleed = 0 if self._sprites else PLAQUE_BLEED
-
-    def _reserved_rows_height(self):
-        """Height to keep clear for objective rows, fixed for the stage.
-
-        Completing an objective reorders the list but never rewrites it, so
-        measuring the tallest TRACKER_ROWS objectives this stage owns gives a
-        height that cannot change while the stage is being played - the rail
-        below stays put - without reserving two lines for every row when the
-        text only ever needs one.
-        """
-
-        counts = sorted(
-            (min(ROW_LINES, len(wrap_text(_row_text(objective), self.font_row,
-                                          self._text_width)))
-             for objective in self.stage.get("objectives", [])),
-            reverse=True
-        )[:TRACKER_ROWS]
-
-        # An empty stage still shows the "No objectives yet." line.
-        return sum(lines * self.row_height + ROW_GAP for lines in counts) \
-            or self.row_height
 
     # -- input --------------------------------------------------------------
     def handle_event(self, event):
@@ -415,96 +346,9 @@ class StagePanel:
 
     # -- drawing ------------------------------------------------------------
     def draw(self, mouse_pos=(-1, -1)):
-        """Draw the tracker and the rail. Call after the world and HUD."""
+        """Draw the rail. Call after the world and HUD."""
 
-        self._draw_tracker()
         self._draw_rail(mouse_pos)
-
-    def _panel_surface(self, rect):
-        """A translucent stone panel with a metal frame, sized to rect."""
-
-        surf = pygame.Surface(rect.size, pygame.SRCALPHA)
-        pygame.draw.rect(surf, (*PANEL_BG, PANEL_ALPHA),
-                         surf.get_rect(), border_radius=8)
-        pygame.draw.rect(surf, METAL_FRAME, surf.get_rect(), 2,
-                         border_radius=8)
-        return surf
-
-    def _tracker_entries(self):
-        """
-        The objectives to show, unfinished ones first.
-
-        Finished objectives fill any leftover space instead of being
-        dropped, so a nearly-complete stage still shows a full box rather
-        than a mostly empty one.
-        """
-
-        objectives = self.stage.get("objectives", [])
-
-        pending = [o for o in objectives
-                   if not self.progress.is_objective_done(o["id"])]
-        done = [o for o in objectives
-                if self.progress.is_objective_done(o["id"])]
-
-        return (pending + done)[:TRACKER_ROWS]
-
-    def _draw_tracker(self):
-        panel = self._panel_surface(self.tracker_rect)
-
-        title = self.font_title.render("OBJECTIVES", True, ACCENT)
-        panel.blit(title, (PAD, PAD))
-
-        done_count, total = self.progress.objective_counts(self.stage)
-        counter = self.font_title.render(
-            f"{done_count}/{total}", True,
-            TEXT_DONE if total and done_count >= total else TEXT_DIM
-        )
-        panel.blit(counter, (self.tracker_rect.width - PAD
-                             - counter.get_width(), PAD))
-
-        y = PAD + self.font_title.get_height() + 8
-
-        entries = self._tracker_entries()
-
-        if not entries:
-            empty = self.font_row.render("No objectives yet.", True, TEXT_DIM)
-            panel.blit(empty, (PAD, y))
-        else:
-            for objective in entries:
-                y = self._draw_tracker_row(panel, objective, y)
-
-        self.screen.blit(panel, self.tracker_rect.topleft)
-
-    def _draw_tracker_row(self, panel, objective, y):
-        """Draw one objective line; returns the y for the next row."""
-
-        finished = self.progress.is_objective_done(objective["id"])
-
-        marker = "[x]" if finished else "[ ]"
-        marker_color = TEXT_DONE if finished else ACCENT_DIM
-        panel.blit(self.font_row.render(marker, True, marker_color), (PAD, y))
-
-        lines = wrap_text(_row_text(objective), self.font_row, self._text_width)
-
-        # Too long to fit its two lines - cut the last one short rather
-        # than let the row spill into the next objective.
-        if len(lines) > ROW_LINES:
-            lines = lines[:ROW_LINES]
-            lines[-1] = lines[-1][:max(0, len(lines[-1]) - 1)] + "..."
-
-        color = TEXT_DIM if finished else TEXT_MAIN
-        line_y = y
-
-        for line in lines:
-            panel.blit(self.font_row.render(line, True, color),
-                       (PAD + self._text_indent, line_y))
-            line_y += self.row_height
-
-        # Advance by the lines this row actually used, not the reserved
-        # ROW_LINES: a one-line objective followed by a two-line one should
-        # not have a hole between them. The panel is still *sized* for the
-        # worst case, so the rail below never moves.
-        return line_y + ROW_GAP
 
     def _draw_hotkey_badge(self, rect, key_label, tab, hovered):
         """Small carved chip showing the hotkey, in the gutter beside a button.

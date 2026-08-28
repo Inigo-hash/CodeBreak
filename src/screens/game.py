@@ -1,3 +1,5 @@
+import math
+
 from pytmx.util_pygame import load_pygame
 import pygame
 import sys
@@ -40,6 +42,10 @@ from src.ui.night_lighting import (
 )
 from src.ui.fog import build_fog_texture, draw_fog
 from src.screens.loading import StageLoadingScreen
+from src.screens.stage_gate import open_stage_gate
+from src.systems.stage_gate import (
+    award_topic_keys, evaluate_stage_gate, migrate_key_count,
+)
 
 def game_screen(screen, slot_num=None, save_state=None):
     clock = pygame.time.Clock()
@@ -156,6 +162,7 @@ def game_screen(screen, slot_num=None, save_state=None):
     # restored either, since Item icons aren't currently serializable.)
     gameplay_state = {
         "hearts": 5, "keys": 0, "topics_completed": [], "bonus_time": 0,
+        "completed_stages": [],
     }
     save_stage = "Island"
     save_challenges_passed = []
@@ -168,6 +175,9 @@ def game_screen(screen, slot_num=None, save_state=None):
         save_stage = save_state.get("stage", save_stage)
         gameplay_state["topics_completed"] = list(save_state.get("topics_completed", []))
         gameplay_state["bonus_time"] = save_state.get("bonus_time", 0)
+        gameplay_state["completed_stages"] = list(
+            save_state.get("completed_stages", [])
+        )
         save_challenges_passed = save_state.get("challenges_passed", [])
         save_stage_progress = save_state.get("stage_progress")
         save_security = save_state.get("_security")
@@ -185,10 +195,32 @@ def game_screen(screen, slot_num=None, save_state=None):
     # has found so far, and is what decides whether the panel prints a
     # real entry or a "???" placeholder.
     stage = get_stage(save_stage)
+    gameplay_state["keys"] = migrate_key_count(
+        gameplay_state["keys"], stage, save_challenges_passed
+    )
     stage_progress = StageProgress.from_dict(save_stage_progress)
     # Catches up on anything already satisfied by an older save (e.g. a
     # challenge passed before objectives existed).
     stage_progress.sync_objectives(stage, save_challenges_passed)
+
+    # The exit is authored as a fraction of the map so it remains attached
+    # to the castle doorway if the TMX canvas changes size.
+    completion_rules = stage.get("completion", {})
+    exit_fraction = completion_rules.get("exit_rect")
+    stage_exit_rect = None
+    if isinstance(exit_fraction, (tuple, list)) and len(exit_fraction) == 4:
+        exit_x, exit_y, exit_width, exit_height = exit_fraction
+        stage_exit_rect = pygame.Rect(
+            round(float(exit_x) * map_width),
+            round(float(exit_y) * map_height),
+            max(1, round(float(exit_width) * map_width)),
+            max(1, round(float(exit_height) * map_height)),
+        )
+    stage_exit_detection_rect = (
+        stage_exit_rect.inflate(TILE_SIZE * 4, TILE_SIZE * 4)
+        if stage_exit_rect is not None else None
+    )
+    stage_exit_name = completion_rules.get("exit_name", "Stage Exit")
     loading.update(47, "Preparing coding challenges...")
 
     def build_save_state():
@@ -199,6 +231,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             "topics_completed": gameplay_state["topics_completed"],
             "bonus_time": gameplay_state["bonus_time"],
             "challenges_passed": save_challenges_passed,
+            "completed_stages": gameplay_state["completed_stages"],
             "map_position": [player_x, player_y],
             "inventory": player_inventory.get_stored_topic_ids(),
             "weapon_obtained": player_inventory.weapon_obtained,
@@ -399,9 +432,8 @@ def game_screen(screen, slot_num=None, save_state=None):
                     challenge_id
                 )
 
-                gameplay_state["keys"] = min(
-                    5,
-                    gameplay_state["keys"] + 1
+                gameplay_state["keys"] = award_topic_keys(
+                    gameplay_state["keys"], stage, challenge_id
                 )
 
             if (
@@ -877,6 +909,7 @@ def game_screen(screen, slot_num=None, save_state=None):
     attack_key_ready = True
     death_animation_complete = False
     near_interactable = None
+    near_stage_exit = False
     engaged = False
     loading.finish()
     while running:
@@ -922,7 +955,34 @@ def game_screen(screen, slot_num=None, save_state=None):
                 continue
 
             if event.type == pygame.KEYDOWN:
-                if (event.key == pygame.K_e and attack_key_ready and not paused
+                at_stage_exit = (
+                    stage_exit_detection_rect is not None
+                    and player_rect.colliderect(stage_exit_detection_rect)
+                )
+                if (event.key == pygame.K_e and not paused and not engaged
+                        and at_stage_exit):
+                    gate_status = evaluate_stage_gate(
+                        stage, gameplay_state["keys"], save_challenges_passed
+                    )
+                    gate_decision = open_stage_gate(
+                        screen,
+                        gate_status,
+                        gate_name=stage_exit_name,
+                        background=screen.copy(),
+                    )
+                    if gate_decision == "exit":
+                        stage_id = stage.get("id", save_stage.lower())
+                        if stage_id not in gameplay_state["completed_stages"]:
+                            gameplay_state["completed_stages"].append(stage_id)
+                        if slot_num is not None:
+                            save_manager.save_slot(slot_num, build_save_state())
+                        pygame.mixer.music.stop()
+                        return "main_menu"
+                    # The E press belongs to the gate. It must not fall
+                    # through and swing the sword after the modal closes.
+                    attack_key_ready = False
+                    continue
+                elif (event.key == pygame.K_e and attack_key_ready and not paused
                         and (near_interactable is None or engaged)):
                     attack_key_ready = False
                     if (player_inventory.weapon_equipped
@@ -1246,6 +1306,16 @@ def game_screen(screen, slot_num=None, save_state=None):
         if engaged:
             near_interactable = None
 
+        near_stage_exit = (
+            not engaged
+            and stage_exit_detection_rect is not None
+            and player_rect.colliderect(stage_exit_detection_rect)
+        )
+        if near_stage_exit:
+            # A doorway and a nearby prop must never compete for the same E
+            # press. The exit is the more specific action in this location.
+            near_interactable = None
+
         # --- Handle E key hold ---
         if near_interactable:
             if keys[pygame.K_e]:
@@ -1388,6 +1458,47 @@ def game_screen(screen, slot_num=None, save_state=None):
                 fog_drift_x, fog_drift_y,
             )
 
+        # Keep the castle exit discoverable at night. Its colour immediately
+        # communicates whether the two completion requirements are satisfied;
+        # E opens the full checklist instead of making the player guess.
+        if stage_exit_rect is not None:
+            gate_screen_rect = pygame.Rect(
+                round(stage_exit_rect.x * ZOOM - camera_x),
+                round(stage_exit_rect.y * ZOOM - camera_y),
+                round(stage_exit_rect.width * ZOOM),
+                round(stage_exit_rect.height * ZOOM),
+            )
+            if gate_screen_rect.colliderect(screen.get_rect()):
+                gate_status = evaluate_stage_gate(
+                    stage, gameplay_state["keys"], save_challenges_passed
+                )
+                gate_color = (
+                    (90, 225, 145) if gate_status.unlocked
+                    else UI_COLORS["gold"]
+                )
+                pulse = 5 + round(
+                    2 * math.sin(pygame.time.get_ticks() / 280.0)
+                )
+                pygame.draw.rect(
+                    screen, gate_color, gate_screen_rect, pulse, border_radius=8
+                )
+                if near_stage_exit:
+                    label = inspect_font.render(
+                        "EXIT OPEN" if gate_status.unlocked else "SEALED EXIT",
+                        True,
+                        gate_color,
+                    )
+                    label_box = label.get_rect(
+                        midbottom=(gate_screen_rect.centerx, gate_screen_rect.top - 8)
+                    ).inflate(18, 10)
+                    pygame.draw.rect(
+                        screen, (15, 16, 21), label_box, border_radius=5
+                    )
+                    pygame.draw.rect(
+                        screen, gate_color, label_box, 2, border_radius=5
+                    )
+                    screen.blit(label, label.get_rect(center=label_box.center))
+
         # --- Draw interaction UI ---
         if near_interactable:
             # Scale the interactable position to match the zoomed map
@@ -1481,7 +1592,14 @@ def game_screen(screen, slot_num=None, save_state=None):
                     near_interactable['inspect_progress'] = 0.0
 
         interaction_prompt = None
-        if near_interactable and not near_interactable["inspecting"]:
+        if near_stage_exit:
+            gate_status = evaluate_stage_gate(
+                stage, gameplay_state["keys"], save_challenges_passed
+            )
+            interaction_prompt = (
+                "Complete Stage" if gate_status.unlocked else "Inspect Sealed Exit"
+            )
+        elif near_interactable and not near_interactable["inspecting"]:
             action = near_interactable.get("actions", "")
             if near_interactable.get("topic_id"):
                 interaction_prompt = "Read Topic"

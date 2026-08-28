@@ -5,6 +5,9 @@ import hashlib
 import hmac
 import secrets
 
+from src.data.stages import get_stage
+from src.systems.stage_gate import required_key_count
+
 SAVE_DIR = "saves"
 NUM_SLOTS = 3
 PASSWORD_MIN_LENGTH = 4
@@ -90,7 +93,8 @@ def slot_summary(slot: int) -> str:
     hearts = data.get("hearts", "?")
     keys = data.get("keys", 0)
     lock = "Protected" if is_protected(data) else "Needs password"
-    return f"{stage}  |  Hearts: {hearts}  |  Keys: {keys}/5  |  {lock}"
+    required_keys = required_key_count(get_stage(stage))
+    return f"{stage}  |  Hearts: {hearts}  |  Keys: {keys}/{required_keys}  |  {lock}"
 
 
 def new_game_state() -> dict:
@@ -101,6 +105,7 @@ def new_game_state() -> dict:
         "topics_completed": [],
         "bonus_time": 0,
         "challenges_passed": [],
+        "completed_stages": [],
         "map_position": None,
         "inventory": [],
         "weapon_obtained": True,

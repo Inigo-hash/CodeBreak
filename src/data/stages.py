@@ -74,8 +74,12 @@ STAGES = {
             # one's real title and difficulty, so this list never falls
             # out of step with the challenges themselves.
             "topics": [
+                "python_syntax_basics_001",
                 "variables_001",
-                "print_001",
+                "data_types_001",
+                "type_casting_001",
+                "input_lesson_001",
+                "formatted_output_001",
             ],
 
             "tips": [
@@ -101,6 +105,27 @@ STAGES = {
             "mang_tahimik",
         ],
 
+        # The castle doorway in the Corrupted Core is the stage exit. Its
+        # rectangle is fractional, like zone rectangles, so it stays aligned
+        # if the TMX dimensions change. Ten keys alone are not sufficient:
+        # every lesson listed in manual.topics must also be completed.
+        "completion": {
+            "required_keys": 10,
+            "exit_name": "Corrupted Core Gate",
+            "exit_rect": (0.565, 0.070, 0.035, 0.045),
+            # Six lessons divide the stage's ten keys as 2+2+2+2+1+1.
+            # Keeping the rewards authored here makes save migration and
+            # first-completion awards deterministic regardless of play order.
+            "topic_key_rewards": {
+                "python_syntax_basics_001": 2,
+                "variables_001": 2,
+                "data_types_001": 2,
+                "type_casting_001": 2,
+                "input_lesson_001": 1,
+                "formatted_output_001": 1,
+            },
+        },
+
         "objectives": [
             {
                 "id": "island_search_first",
@@ -110,17 +135,45 @@ STAGES = {
                 "optional": False,
             },
             {
+                "id": "island_python_syntax",
+                "text": "Repair the Python Syntax Basics terminal.",
+                "kind": "challenge",
+                "target": "python_syntax_basics_001",
+                "optional": False,
+            },
+            {
                 "id": "island_variables",
-                "text": "Repair a terminal with the Variables challenge.",
+                "text": "Repair the Variables terminal.",
                 "kind": "challenge",
                 "target": "variables_001",
                 "optional": False,
             },
             {
-                "id": "island_print",
-                "text": "Repair a terminal with the Say Hello challenge.",
+                "id": "island_data_types",
+                "text": "Repair the Data Types terminal.",
                 "kind": "challenge",
-                "target": "print_001",
+                "target": "data_types_001",
+                "optional": False,
+            },
+            {
+                "id": "island_type_casting",
+                "text": "Repair the Type Casting terminal.",
+                "kind": "challenge",
+                "target": "type_casting_001",
+                "optional": False,
+            },
+            {
+                "id": "island_input",
+                "text": "Repair the User Input terminal.",
+                "kind": "challenge",
+                "target": "input_lesson_001",
+                "optional": False,
+            },
+            {
+                "id": "island_formatted_output",
+                "text": "Repair the Formatted Output terminal.",
+                "kind": "challenge",
+                "target": "formatted_output_001",
                 "optional": False,
             },
             {

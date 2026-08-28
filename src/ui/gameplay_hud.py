@@ -2,6 +2,8 @@
 
 import pygame
 
+from src.systems.stage_gate import required_key_count
+
 from src.systems.combat import PLAYER_DODGE_ENERGY_COST
 from src.ui.theme import UI_COLORS, body_font, draw_panel, title_font
 
@@ -344,7 +346,10 @@ class GameplayHUD:
         completed_topics = stage_topics.intersection(self.completed_stage_topics)
         total_topics = len(stage_topics)
         rows = (
-            (key_icon, f"KEYS  {max(0, int(self.state.get('keys', 0)))}/5"),
+            (key_icon, (
+                f"KEYS  {max(0, int(self.state.get('keys', 0)))}"
+                f"/{required_key_count(self.stage)}"
+            )),
             (topic_icon, f"TOPICS  {len(completed_topics)}/{total_topics}"),
         )
         for index, (icon, label) in enumerate(rows):

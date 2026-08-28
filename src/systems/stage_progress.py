@@ -115,6 +115,8 @@ class StageProgress:
                 satisfied = self.knows_item(target)
             elif kind == "challenge":
                 satisfied = target in challenges_passed
+            elif kind == "defeat":
+                satisfied = target in self.defeated_enemies
             else:
                 satisfied = False
 

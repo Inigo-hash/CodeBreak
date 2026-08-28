@@ -32,6 +32,7 @@ class StageGateTests(unittest.TestCase):
     def setUp(self):
         self.stage = get_stage("island")
         self.required_topics = required_topic_ids(self.stage)
+        self.defeated_boss = (self.stage["completion"]["required_boss"],)
 
     def test_island_has_six_real_required_topics_and_ten_keys(self):
         self.assertEqual(len(self.required_topics), 6)
@@ -107,22 +108,37 @@ class StageGateTests(unittest.TestCase):
 
     def test_ten_keys_cannot_bypass_a_missing_topic(self):
         status = evaluate_stage_gate(
-            self.stage, 10, self.required_topics[:-1]
+            self.stage, 10, self.required_topics[:-1], self.defeated_boss
         )
         self.assertFalse(status.unlocked)
         self.assertEqual(status.completed_topics, 5)
         self.assertEqual(status.missing_topic_ids, (self.required_topics[-1],))
 
     def test_all_topics_cannot_bypass_missing_keys(self):
-        status = evaluate_stage_gate(self.stage, 9, self.required_topics)
+        status = evaluate_stage_gate(
+            self.stage, 9, self.required_topics, self.defeated_boss
+        )
         self.assertFalse(status.unlocked)
         self.assertEqual(status.keys, 9)
         self.assertFalse(status.missing_topic_ids)
 
     def test_ten_keys_and_every_topic_unlock_the_exit(self):
-        status = evaluate_stage_gate(self.stage, 10, self.required_topics)
+        status = evaluate_stage_gate(
+            self.stage, 10, self.required_topics, self.defeated_boss
+        )
         self.assertTrue(status.unlocked)
         self.assertEqual(status.completed_topics, status.required_topics)
+
+    def test_keys_and_topics_cannot_bypass_required_boss(self):
+        status = evaluate_stage_gate(
+            self.stage, 10, self.required_topics, defeated_enemies=()
+        )
+        self.assertFalse(status.unlocked)
+        self.assertFalse(status.boss_defeated)
+        self.assertEqual(
+            status.required_boss_id,
+            self.stage["completion"]["required_boss"],
+        )
 
     def test_first_completion_rewards_cap_at_ten(self):
         keys = 0
@@ -153,12 +169,15 @@ class StageGateModalTests(unittest.TestCase):
         cls.screen = pygame.display.set_mode((1280, 720))
         cls.stage = get_stage("island")
         cls.topics = required_topic_ids(cls.stage)
+        cls.defeated_boss = (cls.stage["completion"]["required_boss"],)
 
     def setUp(self):
         pygame.event.clear()
 
     def test_confirm_key_cannot_exit_while_requirements_are_missing(self):
-        locked = evaluate_stage_gate(self.stage, 10, self.topics[:-1])
+        locked = evaluate_stage_gate(
+            self.stage, 10, self.topics[:-1], self.defeated_boss
+        )
         confirm_event = pygame.event.Event(
             pygame.KEYDOWN, {"key": pygame.K_e, "unicode": "e"}
         )
@@ -168,14 +187,18 @@ class StageGateModalTests(unittest.TestCase):
             self.assertEqual(open_stage_gate(self.screen, locked), "stay")
 
     def test_confirm_key_exits_only_after_both_requirements_pass(self):
-        unlocked = evaluate_stage_gate(self.stage, 10, self.topics)
+        unlocked = evaluate_stage_gate(
+            self.stage, 10, self.topics, self.defeated_boss
+        )
         pygame.event.post(pygame.event.Event(
             pygame.KEYDOWN, {"key": pygame.K_RETURN, "unicode": "\r"}
         ))
         self.assertEqual(open_stage_gate(self.screen, unlocked), "exit")
 
     def test_escape_keeps_player_in_stage_even_when_gate_is_open(self):
-        unlocked = evaluate_stage_gate(self.stage, 10, self.topics)
+        unlocked = evaluate_stage_gate(
+            self.stage, 10, self.topics, self.defeated_boss
+        )
         pygame.event.post(pygame.event.Event(
             pygame.KEYDOWN, {"key": pygame.K_ESCAPE, "unicode": ""}
         ))

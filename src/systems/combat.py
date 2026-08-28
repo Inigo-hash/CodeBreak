@@ -60,6 +60,9 @@ ENEMY_STATS = {
     "tiyanak_sinta": EnemyStats(40, 6, 1.10, 30, 160, 96, 240, 300, 120, 4, 1.30, 0.52, 6),
     "manananggal": EnemyStats(70, 10, 1.25, 34, 200, 112, 290, 360, 150, 4, 1.15, 0.55, 10),
     "tikbalang": EnemyStats(110, 14, 1.05, 42, 176, 112, 270, 330, 140, 5, 1.25, 0.60, 16),
+    "corrupted_core_kapre": EnemyStats(
+        260, 18, 1.10, 46, 260, 180, 520, 640, 220, 6, 1.10, 0.66, 45
+    ),
 }
 
 # Feet-level combat bodies, deliberately smaller than the rendered artwork.
@@ -69,6 +72,7 @@ ENEMY_BODY_SIZES = {
     "tiyanak_sinta": (20, 18),
     "manananggal": (28, 28),
     "tikbalang": (36, 38),
+    "corrupted_core_kapre": (58, 64),
 }
 
 

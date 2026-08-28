@@ -15,10 +15,11 @@ Each objective is a dict:
 
     id        unique string, also what gets stored in the save file
     text      the line shown to the player
-    kind      "interact" | "challenge" | "explore"
+    kind      "interact" | "challenge" | "defeat" | "explore"
     target    what completes it, read according to `kind`:
                 interact  -> an item id from items.py
                 challenge -> a challenge id from challenges.py
+                defeat    -> an enemy id from enemies.py
                 explore   -> a zone name from zones.py
     optional  True for side objectives (shown but not counted as required)
 
@@ -62,6 +63,10 @@ STAGES = {
                 "along with what they are weak to.",
                 "Anything you discover is kept in your save, so a "
                 "reloaded game remembers what you already found.",
+                "Entering the Corrupted Core starts its boss encounter. "
+                "Victory is required before the castle exit can open.",
+                "If the boss defeats you, choose safe combat practice or "
+                "retry the encounter immediately.",
             ],
 
             # Shared with How To Play and the tutorial rather than
@@ -87,6 +92,8 @@ STAGES = {
                 "option.",
                 "Read the lesson panel before the problem panel. It "
                 "usually contains the exact line you need.",
+                "The Core warden telegraphs its swing. Dodge first, then "
+                "answer with one or two attacks.",
             ],
         },
 
@@ -94,6 +101,7 @@ STAGES = {
             "tiyanak_sinta",
             "manananggal",
             "tikbalang",
+            "corrupted_core_kapre",
         ],
 
         "items": [
@@ -111,6 +119,7 @@ STAGES = {
         # every lesson listed in manual.topics must also be completed.
         "completion": {
             "required_keys": 10,
+            "required_boss": "corrupted_core_kapre",
             "exit_name": "Corrupted Core Gate",
             "exit_rect": (0.565, 0.070, 0.035, 0.045),
             # Six lessons divide the stage's ten keys as 2+2+2+2+1+1.
@@ -174,6 +183,13 @@ STAGES = {
                 "text": "Repair the Formatted Output terminal.",
                 "kind": "challenge",
                 "target": "formatted_output_001",
+                "optional": False,
+            },
+            {
+                "id": "island_core_boss",
+                "text": "Defeat the warden of the Corrupted Core.",
+                "kind": "defeat",
+                "target": "corrupted_core_kapre",
                 "optional": False,
             },
             {

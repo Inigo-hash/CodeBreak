@@ -1,12 +1,13 @@
 """Rules for earning stage keys and unlocking a stage exit.
 
 The rules live outside ``game.py`` so loading old saves, awarding a newly
-completed lesson, and checking the exit all use the same source of truth.
+completed lesson, boss victory, and checking the exit use one source of truth.
 """
 
 from dataclasses import dataclass
 
 from src.data.challenges import CHALLENGES
+from src.systems.boss_trigger import required_boss_id
 
 
 DEFAULT_REQUIRED_KEYS = 10
@@ -23,6 +24,8 @@ class StageGateStatus:
     required_topics: int
     missing_topic_ids: tuple[str, ...]
     missing_topic_titles: tuple[str, ...]
+    required_boss_id: str | None
+    boss_defeated: bool
 
 
 def required_topic_ids(stage):
@@ -86,8 +89,8 @@ def migrate_key_count(current_keys, stage, challenges_passed):
     return min(maximum, max(saved, earned_topic_keys(stage, challenges_passed)))
 
 
-def evaluate_stage_gate(stage, keys, challenges_passed):
-    """Require both the full key total and every required lesson topic."""
+def evaluate_stage_gate(stage, keys, challenges_passed, defeated_enemies=()):
+    """Require the key total, every lesson, and the authored stage boss."""
 
     required_ids = required_topic_ids(stage)
     completed = set(challenges_passed or ())
@@ -100,17 +103,25 @@ def evaluate_stage_gate(stage, keys, challenges_passed):
         for challenge_id in missing_ids
     )
     required_keys = required_key_count(stage)
+    boss_id = required_boss_id(stage)
+    boss_defeated = not boss_id or boss_id in set(defeated_enemies or ())
     try:
         current_keys = max(0, int(keys or 0))
     except (TypeError, ValueError):
         current_keys = 0
 
     return StageGateStatus(
-        unlocked=current_keys >= required_keys and not missing_ids,
+        unlocked=(
+            current_keys >= required_keys
+            and not missing_ids
+            and boss_defeated
+        ),
         keys=min(current_keys, required_keys),
         required_keys=required_keys,
         completed_topics=len(required_ids) - len(missing_ids),
         required_topics=len(required_ids),
         missing_topic_ids=missing_ids,
         missing_topic_titles=missing_titles,
+        required_boss_id=boss_id,
+        boss_defeated=boss_defeated,
     )

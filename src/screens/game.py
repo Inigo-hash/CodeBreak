@@ -33,6 +33,7 @@ from src.data.stages import get_stage
 from src.screens.topic_found import open_topic_found
 from src.data.topics import get_topic
 from src.data.challenges import get_challenge
+from src.data.enemies import get_enemy
 from src.screens.topic_lesson import open_topic_lesson
 from src.data.encounters import BEGINNER_PATH_GIDS, BEGINNER_STAGE_ENCOUNTERS
 from src.systems.enemy_spawns import resolve_encounter_spawns
@@ -43,6 +44,11 @@ from src.ui.night_lighting import (
 from src.ui.fog import build_fog_texture, draw_fog
 from src.screens.loading import StageLoadingScreen
 from src.screens.stage_gate import open_stage_gate
+from src.screens.boss_encounter import open_boss_intro, open_boss_result
+from src.screens.tutorial import tutorial_screen
+from src.systems.boss_trigger import (
+    boss_zone_at, required_boss_id, should_trigger_boss,
+)
 from src.systems.stage_gate import (
     award_topic_keys, evaluate_stage_gate, migrate_key_count,
 )
@@ -903,6 +909,62 @@ def game_screen(screen, slot_num=None, save_state=None):
               return_tolerance=spawn["return_tolerance"])
         for spawn in enemy_spawns
     ]
+
+    # Bosses are not part of the normal encounter list. Their spawn is
+    # resolved up front, but the enemy itself is created only when the player
+    # crosses into whichever authored zone carries is_boss_zone=True.
+    boss_id = required_boss_id(stage)
+    boss_zone = next(
+        (zone for zone in zone_pixel_rects if zone.get("is_boss_zone")), None
+    )
+    boss_spawn = None
+    if boss_id and boss_zone:
+        boss_anchor = (
+            boss_zone["rect"].centerx / map_width,
+            boss_zone["rect"].centery / map_height,
+        )
+        boss_spawn = resolve_encounter_spawns(
+            ({
+                "id": "corrupted_core_boss",
+                "anchor": boss_anchor,
+                "zone_size": boss_zone["rect"].size,
+                "spawn_margin": TILE_SIZE * 4,
+                "enemies": (boss_id,),
+                "detection_range": 260,
+                "chase_range": 640,
+                "disengage_range": 520,
+            },),
+            map_width, map_height, collision_rects, path_cells, TILE_SIZE,
+            (stage_spawn[0] + player_size // 2, stage_spawn[1] + player_size),
+        )[0]
+
+    boss_enemy = None
+    boss_defeated = bool(
+        boss_id and boss_id in stage_progress.defeated_enemies
+    )
+    boss_victory_handled = boss_defeated
+    previous_boss_zone = None
+    last_safe_position = stage_spawn
+    boss_entry_position = stage_spawn
+
+    def create_boss():
+        """Build the one dedicated boss instance for this stage run."""
+        if boss_spawn is None:
+            return None
+        return Enemy(
+            screen, map_width, map_height,
+            world_x=boss_spawn["position"][0],
+            world_y=boss_spawn["position"][1],
+            enemy_id=boss_spawn["enemy_id"],
+            zone_size=boss_spawn["zone_size"],
+            zone_name=boss_spawn["zone_name"],
+            zone_rect=boss_spawn["zone_rect"],
+            group_id=boss_spawn["encounter_id"],
+            detection_range=boss_spawn["detection_range"],
+            chase_range=boss_spawn["chase_range"],
+            disengage_range=boss_spawn["disengage_range"],
+            return_tolerance=boss_spawn["return_tolerance"],
+        )
     loading.update(97, "Finalizing expedition...")
     player_combat = PlayerCombat()
     combat_audio = CombatAudio()
@@ -962,7 +1024,8 @@ def game_screen(screen, slot_num=None, save_state=None):
                 if (event.key == pygame.K_e and not paused and not engaged
                         and at_stage_exit):
                     gate_status = evaluate_stage_gate(
-                        stage, gameplay_state["keys"], save_challenges_passed
+                        stage, gameplay_state["keys"], save_challenges_passed,
+                        stage_progress.defeated_enemies,
                     )
                     gate_decision = open_stage_gate(
                         screen,
@@ -1225,6 +1288,43 @@ def game_screen(screen, slot_num=None, save_state=None):
         # --- Camera ---
         camera_x, camera_y = update_camera()
 
+        # Entering an authored boss zone is the only campaign boss trigger.
+        # No zone-name comparison is involved, so another stage can opt in by
+        # setting is_boss_zone on its own zone record.
+        current_boss_zone = boss_zone_at(
+            zone_pixel_rects, player_rect.center
+        )
+        boss_is_active = (
+            boss_enemy is not None
+            and boss_enemy.active
+            and boss_enemy.state != "defeated"
+        )
+        if boss_id and should_trigger_boss(
+            previous_boss_zone,
+            current_boss_zone,
+            defeated=boss_defeated,
+            boss_active=boss_is_active,
+        ):
+            boss_entry_position = (player_rect.x, player_rect.y)
+            decision = open_boss_intro(
+                screen, boss_id, background=screen.copy()
+            )
+            if decision == "retreat":
+                player_rect.topleft = last_safe_position
+                player_x, player_y = map(float, last_safe_position)
+                current_boss_zone = None
+            else:
+                boss_enemy = create_boss()
+                if boss_enemy is not None:
+                    enemies.append(boss_enemy)
+                    stage_progress.discover_enemy(boss_enemy.enemy_id)
+                    stage_progress.sync_objectives(
+                        stage, save_challenges_passed
+                    )
+        if current_boss_zone is None:
+            last_safe_position = (player_rect.x, player_rect.y)
+        previous_boss_zone = current_boss_zone
+
         # --- Independent enemy AI and combat resolution ---
         engaged = False
         for enemy in enemies:
@@ -1273,22 +1373,80 @@ def game_screen(screen, slot_num=None, save_state=None):
                 enemy.rewarded = True
                 gameplay_state["bonus_time"] += enemy.stats.reward_time
                 stage_progress.defeat_enemy(enemy.enemy_id)
+                stage_progress.sync_objectives(stage, save_challenges_passed)
+                if enemy is boss_enemy:
+                    boss_defeated = True
+
+        if (boss_enemy is not None and boss_defeated
+                and not boss_victory_handled and not boss_enemy.active):
+            boss_victory_handled = True
+            if slot_num is not None:
+                save_manager.save_slot(slot_num, build_save_state())
+            boss_result = open_boss_result(
+                screen, victory=True, background=screen.copy()
+            )
+            if boss_result == "practice":
+                tutorial_screen(
+                    screen, play_music=False, show_loading=False,
+                    practice_only=True,
+                )
 
         if player_combat.hp == 0 and death_animation_complete:
             gameplay_state["hearts"] = max(0, gameplay_state["hearts"] - 1)
-            result = game_over_screen(screen, background=screen.copy())
-            if result == "main_menu":
-                pygame.mixer.music.stop()
-                return "main_menu"
-            if gameplay_state["hearts"] == 0:
-                gameplay_state["hearts"] = 5
-            player_combat.reset()
-            death_animation_complete = False
-            player_rect.topleft = stage_spawn
-            player_x, player_y = map(float, stage_spawn)
-            for enemy in enemies:
-                enemy.reset()
-                enemy.rewarded = False
+            boss_loss = (
+                boss_enemy is not None
+                and not boss_defeated
+                and boss_enemy.active
+            )
+            if boss_loss:
+                result = open_boss_result(
+                    screen, victory=False, background=screen.copy()
+                )
+                if result == "practice":
+                    tutorial_screen(
+                        screen, play_music=False, show_loading=False,
+                        practice_only=True,
+                    )
+                if gameplay_state["hearts"] == 0:
+                    gameplay_state["hearts"] = 5
+                player_combat.reset()
+                death_animation_complete = False
+                for enemy in enemies:
+                    enemy.reset()
+                    enemy.rewarded = False
+                if result == "retry":
+                    player_rect.topleft = boss_entry_position
+                    previous_boss_zone = boss_zone_at(
+                        zone_pixel_rects, player_rect.center
+                    )
+                else:
+                    # Practice returns to the safe campaign spawn. Re-entering
+                    # the Core creates a fresh boss encounter and intro.
+                    if boss_enemy in enemies:
+                        enemies.remove(boss_enemy)
+                    boss_enemy = None
+                    boss_victory_handled = False
+                    player_rect.topleft = stage_spawn
+                    previous_boss_zone = None
+                player_x, player_y = map(float, player_rect.topleft)
+                if slot_num is not None:
+                    save_manager.save_slot(slot_num, build_save_state())
+            else:
+                result = game_over_screen(screen, background=screen.copy())
+                if result == "main_menu":
+                    pygame.mixer.music.stop()
+                    return "main_menu"
+                if gameplay_state["hearts"] == 0:
+                    gameplay_state["hearts"] = 5
+                player_combat.reset()
+                death_animation_complete = False
+                player_rect.topleft = stage_spawn
+                player_x, player_y = map(float, stage_spawn)
+                for enemy in enemies:
+                    if enemy is boss_enemy and boss_defeated:
+                        continue
+                    enemy.reset()
+                    enemy.rewarded = False
 
         # --- Check if player is near an interactable ---
         near_interactable = None
@@ -1459,7 +1617,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             )
 
         # Keep the castle exit discoverable at night. Its colour immediately
-        # communicates whether the two completion requirements are satisfied;
+        # communicates whether all completion requirements are satisfied;
         # E opens the full checklist instead of making the player guess.
         if stage_exit_rect is not None:
             gate_screen_rect = pygame.Rect(
@@ -1470,7 +1628,8 @@ def game_screen(screen, slot_num=None, save_state=None):
             )
             if gate_screen_rect.colliderect(screen.get_rect()):
                 gate_status = evaluate_stage_gate(
-                    stage, gameplay_state["keys"], save_challenges_passed
+                    stage, gameplay_state["keys"], save_challenges_passed,
+                    stage_progress.defeated_enemies,
                 )
                 gate_color = (
                     (90, 225, 145) if gate_status.unlocked
@@ -1594,7 +1753,8 @@ def game_screen(screen, slot_num=None, save_state=None):
         interaction_prompt = None
         if near_stage_exit:
             gate_status = evaluate_stage_gate(
-                stage, gameplay_state["keys"], save_challenges_passed
+                stage, gameplay_state["keys"], save_challenges_passed,
+                stage_progress.defeated_enemies,
             )
             interaction_prompt = (
                 "Complete Stage" if gate_status.unlocked else "Inspect Sealed Exit"
@@ -1619,6 +1779,36 @@ def game_screen(screen, slot_num=None, save_state=None):
             max_energy=player_combat.max_energy,
             bonus_time=gameplay_state["bonus_time"],
         )
+
+        if (boss_enemy is not None and boss_enemy.active
+                and boss_enemy.state != "defeated"):
+            boss_record = get_enemy(boss_enemy.enemy_id) or {}
+            boss_name = boss_record.get("name", "CORE BOSS").upper()
+            boss_font = title_font(18)
+            boss_small = body_font(13, bold=True)
+            boss_bar = pygame.Rect(0, 0, min(520, SCREEN_W // 3), 18)
+            boss_bar.midtop = (SCREEN_W // 2, 48)
+            boss_label = boss_font.render(boss_name, True, (255, 225, 175))
+            screen.blit(
+                boss_label,
+                boss_label.get_rect(midbottom=(boss_bar.centerx, boss_bar.top - 7)),
+            )
+            pygame.draw.rect(screen, (15, 16, 21), boss_bar, border_radius=5)
+            boss_fill = boss_bar.inflate(-4, -4)
+            boss_fill.width = round(
+                boss_fill.width * boss_enemy.hp / boss_enemy.stats.max_hp
+            )
+            pygame.draw.rect(
+                screen, (183, 38, 50), boss_fill, border_radius=3
+            )
+            pygame.draw.rect(
+                screen, UI_COLORS["gold"], boss_bar, 2, border_radius=5
+            )
+            hp_label = boss_small.render(
+                f"{boss_enemy.hp} / {boss_enemy.stats.max_hp}",
+                True, UI_COLORS["text"],
+            )
+            screen.blit(hp_label, hp_label.get_rect(center=boss_bar.center))
 
         if COMBAT_DEBUG:
             world_hitbox = attack_hitbox(player_rect, main_character.facing)

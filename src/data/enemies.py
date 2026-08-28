@@ -60,6 +60,30 @@ ENEMIES = {
         "drops": ["Large corrupted fragments"],
     },
 
+    "corrupted_core_kapre": {
+        "id": "corrupted_core_kapre",
+        "name": "Colossal Corrupted Kapre",
+        "family": "Kapre",
+        "threat": "Boss",
+        "portrait": (
+            "assets/images/frames/kapre_usikan/"
+            "walking/south/frame_0.png"
+        ),
+        "description": (
+            "A towering Kapre swollen by the Corrupted Core. It appears "
+            "only when an explorer crosses into the island's boss zone."
+        ),
+        "behavior": (
+            "Its huge reach controls the Core arena. Slow, crushing swings "
+            "punish anyone who keeps attacking instead of dodging."
+        ),
+        "weakness": (
+            "Its size makes every attack easy to read. Wait for the heavy "
+            "swing, dodge aside, then answer with careful strikes."
+        ),
+        "drops": ["Corrupted Core seal"],
+    },
+
     "duwende_mandurug": {
 
         "id": "duwende_mandurug",

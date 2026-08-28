@@ -4,6 +4,7 @@ import sys
 
 import pygame
 
+from src.data.enemies import get_enemy
 from src.systems.audio import handle_music_shortcut
 from src.ui.theme import (
     TIER_PRIMARY, TIER_TERTIARY, UI_COLORS, body_font, draw_button,
@@ -106,6 +107,13 @@ def open_stage_gate(screen, status, gate_name="Stage Exit", background=None):
                 not status.missing_topic_ids,
             ),
         )
+        if status.required_boss_id:
+            boss = get_enemy(status.required_boss_id) or {}
+            rows += ((
+                boss.get("name", "CORE BOSS").upper(),
+                "DEFEATED" if status.boss_defeated else "NOT DEFEATED",
+                status.boss_defeated,
+            ),)
         for index, (label, value, complete) in enumerate(rows):
             rect = pygame.Rect(row_left, panel.top + 105 + index * 54, row_width, 44)
             pygame.draw.rect(screen, UI_COLORS["stone_deep"], rect, border_radius=6)
@@ -124,11 +132,12 @@ def open_stage_gate(screen, status, gate_name="Stage Exit", background=None):
             screen.blit(value_surface, (rect.right - value_surface.get_width() - 14,
                                         rect.top + 10))
 
-        list_y = panel.top + 226
+        list_y = panel.top + 285
         if status.unlocked:
             lines = (
                 "All 10 keys are accounted for.",
                 "Every required coding topic is complete.",
+                "The Corrupted Core boss has been defeated.",
                 "You may now leave the island. Your completion will be saved.",
             )
             for index, line in enumerate(lines):
@@ -138,7 +147,7 @@ def open_stage_gate(screen, status, gate_name="Stage Exit", background=None):
                 ))
         else:
             instruction = text_font.render(
-                "Finish both requirements before this exit can open.",
+                "Finish every requirement before this exit can open.",
                 True,
                 UI_COLORS["text"],
             )

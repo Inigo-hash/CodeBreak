@@ -18,6 +18,16 @@ class Enemy:
         "tiyanak_sinta": ("walking", "attacking", "{direction}.png", 40, (72, 50)),
         "manananggal": ("flying", "attacking", "manananggal_{direction}.png", 76, (110, 88)),
         "tikbalang": ("walking", "attacking", "{direction}.png", 88, (124, 98)),
+        "corrupted_core_kapre": (
+            # More than twice the 88px Tikbalang silhouette: this is meant
+            # to read as a colossal boss even before its health bar appears.
+            # The combat body remains smaller than this artwork so the boss
+            # looks massive without snagging on scenery or feeling unfair.
+            "walking", "attack", "{direction}.png", 210, (270, 228)
+        ),
+    }
+    _asset_sources = {
+        "corrupted_core_kapre": "kapre_usikan",
     }
 
     def __init__(self, screen, map_width, map_height, world_x=None, world_y=None,
@@ -78,7 +88,9 @@ class Enemy:
             move_group, attack_group, flinch_name, target_height, canvas = (
                 self._asset_config[self.enemy_id]
             )
-            root = Path("assets/images/frames") / self.enemy_id
+            root = Path("assets/images/frames") / self._asset_sources.get(
+                self.enemy_id, self.enemy_id
+            )
             paths = {"walking": {}, "attack": {}, "flinch": {}}
             for direction in ("north", "south", "east", "west"):
                 paths["walking"][direction] = self._numbered_frames(

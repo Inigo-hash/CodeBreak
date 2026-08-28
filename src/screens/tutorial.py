@@ -3,7 +3,9 @@ import sys
 from src.settings_state import revealed_characters
 from src.entities.player import MainCharacter
 from src.entities.enemy import Enemy
-from src.systems.combat import PlayerCombat, attack_hitbox
+from src.systems.combat import (
+    FACING_VECTORS, PLAYER_DODGE_SPEED, PlayerCombat, attack_hitbox,
+)
 from src.systems.audio import CombatAudio, apply_music_volume, handle_music_shortcut
 from src.ui.code_editor import CodeEditor
 from src.data.challenges import CHALLENGES
@@ -17,7 +19,8 @@ from src.ui.theme import body_font, title_font
 from src.screens.loading import StageLoadingScreen
 
 
-def tutorial_screen(screen, play_music=True, show_loading=False):
+def tutorial_screen(screen, play_music=True, show_loading=False,
+                    practice_only=False):
     SCREEN_WIDTH, SCREEN_HEIGHT = screen.get_size()
 
     loading = None
@@ -70,7 +73,8 @@ def tutorial_screen(screen, play_music=True, show_loading=False):
         loading.update(38, "Loading Mang Tahimik...")
 
     def _stop_tutorial_music():
-        pygame.mixer.music.stop()
+        if play_music:
+            pygame.mixer.music.stop()
 
     # --- Mang Tahimik portrait (falls back to a drawn placeholder if the path is wrong) ---
     # NOTE: adjust this path to wherever his portrait actually lives in your assets folder
@@ -276,12 +280,17 @@ def tutorial_screen(screen, play_music=True, show_loading=False):
 
     has_moved = {"up": False, "down": False, "left": False, "right": False}
     has_attacked = False
+    has_dodged = False
     has_solved = False
 
     def gate_complete():
         """Movement & Combat gate only - the coding challenge is its
         own separate gate later in the state machine."""
-        return all(has_moved.values()) and has_attacked
+        return (
+            all(has_moved.values())
+            and has_attacked
+            and (has_dodged or not practice_only)
+        )
 
     # ------------------------------------------------------------------
     # Tutorial state machine
@@ -291,7 +300,7 @@ def tutorial_screen(screen, play_music=True, show_loading=False):
     #   -> [CodeEditor opens] -> "challenge_complete_dialogue" (on pass)
     #      or "retry_dialogue" -> [CodeEditor opens again] (on fail)
     #   -> "stage_manual" -> "done"
-    state = "intro_dialogue"
+    state = "practice" if practice_only else "intro_dialogue"
 
     intro_lines = [
         "Ah, a new soul in CodeBreak... I am Mang Tahimik, and I will guide you through these halls.",
@@ -379,16 +388,26 @@ def tutorial_screen(screen, play_music=True, show_loading=False):
         surf.blit(overlay, (0, 0))
         pygame.draw.rect(surf, STONE_MID, exit_rect, border_radius=10)
         pygame.draw.rect(surf, METAL_FRAME, exit_rect, 3, border_radius=10)
-        heading = exit_title_font.render("LEAVE THE TUTORIAL?", True, YELLOW_GLOW)
+        heading_text = (
+            "LEAVE PRACTICE?" if practice_only else "LEAVE THE TUTORIAL?"
+        )
+        heading = exit_title_font.render(heading_text, True, YELLOW_GLOW)
         surf.blit(heading, heading.get_rect(center=(exit_rect.centerx, exit_rect.top + 48)))
-        copy = hint_font.render("Your new adventure will not start until the tutorial is completed.", True, WHITE)
+        copy_text = (
+            "You can return to the island and retry the boss when ready."
+            if practice_only
+            else "Your new adventure will not start until the tutorial is completed."
+        )
+        copy = hint_font.render(copy_text, True, WHITE)
         surf.blit(copy, copy.get_rect(center=(exit_rect.centerx, exit_rect.top + 105)))
         note = prompt_font.render("Press ESC to keep learning, or choose an option below.", True, DIM_TEXT)
         surf.blit(note, note.get_rect(center=(exit_rect.centerx, exit_rect.top + 145)))
         mouse = pygame.mouse.get_pos()
         for rect, label, color in (
             (keep_learning_rect, "KEEP LEARNING", GREEN_OK),
-            (return_menu_rect, "RETURN TO MENU", (115, 75, 75)),
+            (return_menu_rect, (
+                "RETURN TO ISLAND" if practice_only else "RETURN TO MENU"
+            ), (115, 75, 75)),
         ):
             fill = tuple(min(255, channel + 20) for channel in color) if rect.collidepoint(mouse) else color
             pygame.draw.rect(surf, fill, rect, border_radius=5)
@@ -455,7 +474,7 @@ def tutorial_screen(screen, play_music=True, show_loading=False):
                         show_exit_confirm = False
                     elif return_menu_rect.collidepoint(event.pos):
                         _stop_tutorial_music()
-                        return "cancelled"
+                        return "practice_cancelled" if practice_only else "cancelled"
                 continue
 
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
@@ -475,6 +494,12 @@ def tutorial_screen(screen, play_music=True, show_loading=False):
                 if player_combat.start_attack():
                     attack_has_hit = False
                     combat_audio.play("sword_swing")
+
+            if (state == "practice" and event.type == pygame.KEYDOWN
+                    and event.key in (pygame.K_LSHIFT, pygame.K_RSHIFT)):
+                if player_combat.start_dodge():
+                    has_dodged = True
+                    combat_audio.play("dodge")
 
             if state == "stage_manual":
                 begin_pressed = (
@@ -506,7 +531,13 @@ def tutorial_screen(screen, play_music=True, show_loading=False):
                 dx *= 0.7071
                 dy *= 0.7071
 
-            if player_combat.locked:
+            if player_combat.state == "dodging":
+                dodge_dx, dodge_dy = FACING_VECTORS.get(
+                    main_character.facing, (1, 0)
+                )
+                dx = dodge_dx * PLAYER_DODGE_SPEED
+                dy = dodge_dy * PLAYER_DODGE_SPEED
+            elif player_combat.locked:
                 dx = dy = 0
             else:
                 dx *= player_speed
@@ -539,7 +570,12 @@ def tutorial_screen(screen, play_music=True, show_loading=False):
 
             if (gate_complete() and not training_enemy.active
                     and player_combat.state != "attacking"):
-                dialogue = DialogueBox(movement_complete_lines, on_finish=start_code_editor_intro)
+                if practice_only:
+                    _stop_tutorial_music()
+                    return "practice_complete"
+                dialogue = DialogueBox(
+                    movement_complete_lines, on_finish=start_code_editor_intro
+                )
                 state = "movement_complete_dialogue"
 
             main_character.set_combat_state(player_combat.state)
@@ -547,7 +583,7 @@ def tutorial_screen(screen, play_music=True, show_loading=False):
 
         if state == "done":
             _stop_tutorial_music()
-            return "completed"  # Full tutorial gate cleared.
+            return "practice_complete" if practice_only else "completed"
 
         # --- draw ---
         mouse_pos = pygame.mouse.get_pos()
@@ -570,10 +606,15 @@ def tutorial_screen(screen, play_music=True, show_loading=False):
                 ("Move RIGHT (D)", has_moved["right"]),
                 ("Defeat the Tiyanak (E)", has_attacked),
             ]
+            if practice_only:
+                checklist.append(("Dodge (Left Shift)", has_dodged))
             panel = pygame.Rect(20, 20, 260, 30 + len(checklist) * 26)
             pygame.draw.rect(screen, STONE_MID, panel, border_radius=8)
             pygame.draw.rect(screen, METAL_FRAME, panel, 2, border_radius=8)
-            title = prompt_font.render("Movement & Combat", True, YELLOW_GLOW)
+            practice_title = (
+                "Boss Combat Practice" if practice_only else "Movement & Combat"
+            )
+            title = prompt_font.render(practice_title, True, YELLOW_GLOW)
             screen.blit(title, (panel.left + 14, panel.top + 8))
             for i, (label, done) in enumerate(checklist):
                 color = GREEN_OK if done else DIM_TEXT

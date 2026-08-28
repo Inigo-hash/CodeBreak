@@ -122,6 +122,33 @@ class TutorialRegressionTests(unittest.TestCase):
                 start_menu.tutorial_screen = original_tutorial
                 start_menu.game_screen = original_game
 
+    def test_boss_practice_can_return_to_island_without_tutorial_flow(self):
+        from src.screens.tutorial import tutorial_screen
+
+        width, height = self.screen.get_size()
+        exit_rect = pygame.Rect(0, 0, min(620, width - 60), 280)
+        exit_rect.center = (width // 2, height // 2)
+        return_island = pygame.Rect(
+            exit_rect.right - 268, exit_rect.bottom - 76, 220, 46
+        )
+        pygame.event.post(pygame.event.Event(
+            pygame.KEYDOWN, key=pygame.K_ESCAPE
+        ))
+        timer = threading.Timer(
+            0.15,
+            lambda: pygame.event.post(pygame.event.Event(
+                pygame.MOUSEBUTTONDOWN, button=1, pos=return_island.center
+            )),
+        )
+        timer.start()
+        try:
+            result = tutorial_screen(
+                self.screen, play_music=False, practice_only=True
+            )
+            self.assertEqual(result, "practice_cancelled")
+        finally:
+            timer.cancel()
+
     def test_crumble_has_separate_break_and_rubble_settle_layers(self):
         from src.systems.audio import _build_crumble_sound
 

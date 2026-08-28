@@ -13,7 +13,6 @@ from src.systems.audio import handle_music_shortcut
 
 
 REFERENCE_SIZE = (1920, 1080)
-MIN_VISIBLE_MS = 280
 
 STAGE_BACKGROUNDS = {
     "island": "assets/images/backgrounds/loading_island_stage1.png",
@@ -109,9 +108,12 @@ class StageLoadingScreen:
         self.previous_frame = (previous_frame.copy() if previous_frame is not None
                                else screen.copy())
 
-        choices = tuple(tips or STAGE_TIPS.get(self.stage_id, BEGINNER_TIPS))
+        self.tips = tuple(
+            tips or STAGE_TIPS.get(self.stage_id, BEGINNER_TIPS)
+        )
         rng = random.Random(seed) if seed is not None else random.SystemRandom()
-        self.tip = rng.choice(choices)
+        self.tip_index = rng.randrange(len(self.tips))
+        self.tip = self.tips[self.tip_index]
         self._ambient_seed = random.Random(f"{self.stage_id}:{self.tip['code']}")
         self.fireflies = [
             (self._ambient_seed.random(), self._ambient_seed.random(),
@@ -139,6 +141,8 @@ class StageLoadingScreen:
         self.code_font = body_font(max(17, round(25 * scale)), bold=True)
         self.status_font = body_font(max(15, round(22 * scale)))
         self.percent_font = title_font(max(15, round(22 * scale)))
+        self.navigation_font = body_font(max(13, round(17 * scale)), bold=True)
+        self.prompt_font = title_font(max(16, round(22 * scale)), bold=False)
 
     def _load_background(self, background):
         source = background or STAGE_BACKGROUNDS.get(
@@ -212,12 +216,47 @@ class StageLoadingScreen:
         _PARCHMENT_CACHE[size] = surface
         return surface
 
-    def _pump_events(self):
+    def _tip_navigation_rects(self):
+        note = self.layout["note"]
+        size = max(34, round(48 * self.layout["scale"]))
+        left = pygame.Rect(0, 0, size, size)
+        right = pygame.Rect(0, 0, size, size)
+        left.center = (note.left + size // 2 + 8, note.centery)
+        right.center = (note.right - size // 2 - 8, note.centery)
+        return left, right
+
+    def _change_tip(self, direction):
+        self.tip_index = (self.tip_index + direction) % len(self.tips)
+        self.tip = self.tips[self.tip_index]
+
+    def _pump_events(self, allow_continue=False):
+        """Handle loading controls and report a valid SPACE continuation."""
+
+        continue_requested = False
+        left_arrow, right_arrow = self._tip_navigation_rects()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
-            handle_music_shortcut(event)
+            if handle_music_shortcut(event):
+                continue
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_LEFT:
+                    self._change_tip(-1)
+                elif event.key == pygame.K_RIGHT:
+                    self._change_tip(1)
+                elif (
+                    event.key == pygame.K_SPACE
+                    and allow_continue
+                    and self.progress >= 100
+                ):
+                    continue_requested = True
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if left_arrow.collidepoint(event.pos):
+                    self._change_tip(-1)
+                elif right_arrow.collidepoint(event.pos):
+                    self._change_tip(1)
+        return continue_requested
 
     def _fade_from_previous(self):
         clock = pygame.time.Clock()
@@ -327,7 +366,39 @@ class StageLoadingScreen:
         )
         self.screen.blit(label, label.get_rect(center=header.center))
 
-        pad = max(24, round(38 * scale))
+        left_arrow, right_arrow = self._tip_navigation_rects()
+        mouse = pygame.mouse.get_pos()
+        for arrow_rect, direction in ((left_arrow, -1), (right_arrow, 1)):
+            hovered = arrow_rect.collidepoint(mouse)
+            fill = (54, 58, 68) if hovered else UI_COLORS["stone_deep"]
+            border = UI_COLORS["gold"] if hovered else UI_COLORS["bronze"]
+            pygame.draw.rect(self.screen, fill, arrow_rect,
+                             border_radius=arrow_rect.height // 2)
+            pygame.draw.rect(self.screen, border, arrow_rect, 2,
+                             border_radius=arrow_rect.height // 2)
+            cx, cy = arrow_rect.center
+            offset = max(5, arrow_rect.width // 7)
+            points = (
+                ((cx + offset, cy - offset), (cx - offset, cy),
+                 (cx + offset, cy + offset))
+                if direction < 0 else
+                ((cx - offset, cy - offset), (cx + offset, cy),
+                 (cx - offset, cy + offset))
+            )
+            pygame.draw.lines(self.screen, UI_COLORS["gold"], False,
+                              points, max(2, round(3 * scale)))
+
+        counter = self.navigation_font.render(
+            f"NOTE {self.tip_index + 1} / {len(self.tips)}",
+            True,
+            (67, 45, 25),
+        )
+        self.screen.blit(
+            counter,
+            counter.get_rect(midright=(rect.right - 18, header.centery)),
+        )
+
+        pad = max(44, round(58 * scale))
         text_top = header.bottom + max(12, round(18 * scale))
         lines = self._wrap(self.note_font, self.tip["text"], rect.width - pad * 2)
         line_height = self.note_font.get_height() + max(3, round(5 * scale))
@@ -374,13 +445,36 @@ class StageLoadingScreen:
         )
         self.screen.blit(percent, percent.get_rect(center=bar.center))
 
-    def finish(self):
-        """Show the completed phase briefly, then fade cleanly to gameplay."""
+        if self.progress >= 100:
+            footer_text = "PRESS SPACE TO CONTINUE   |   LEFT / RIGHT = CHANGE NOTE"
+            footer_color = UI_COLORS["gold"]
+        else:
+            footer_text = "LEFT / RIGHT = CHANGE NOTE"
+            footer_color = UI_COLORS["text_dim"]
+        footer_font = (
+            self.prompt_font if self.progress >= 100 else self.navigation_font
+        )
+        footer = footer_font.render(
+            footer_text, True, footer_color
+        )
+        footer_y = min(
+            self.layout["safe"].bottom - footer.get_height() // 2 - 2,
+            bar.bottom + max(16, round(27 * self.layout["scale"])),
+        )
+        self.screen.blit(
+            footer,
+            footer.get_rect(center=(self.size[0] // 2, footer_y)),
+        )
 
-        self.update(100, "Ready to explore.")
+    def finish(self):
+        """Wait at 100% for SPACE, then fade cleanly to gameplay."""
+
+        self.progress = 100
+        self.status = "Ready to explore."
         clock = pygame.time.Clock()
-        while pygame.time.get_ticks() - self.started_at < MIN_VISIBLE_MS:
-            self._pump_events()
+        while True:
+            if self._pump_events(allow_continue=True):
+                break
             self.draw()
             pygame.display.flip()
             clock.tick(60)

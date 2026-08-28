@@ -5,11 +5,19 @@
   "topics_completed": [],
   "bonus_time": 0,
   "challenges_passed": [],
-  "map_position": null,
+  "map_position": [
+    1128.0,
+    1504.0
+  ],
   "inventory": [],
   "weapon_obtained": true,
   "weapon_equipped": true,
-  "stage_progress": {},
+  "stage_progress": {
+    "discovered_enemies": [],
+    "discovered_items": [],
+    "objectives_done": [],
+    "defeated_enemies": []
+  },
   "_security": {
     "version": 1,
     "algorithm": "pbkdf2_sha256",

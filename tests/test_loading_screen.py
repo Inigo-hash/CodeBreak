@@ -66,6 +66,57 @@ class LoadingScreenTests(unittest.TestCase):
         loading.update(20, "Older update")
         self.assertEqual(loading.progress, 65)
 
+    def test_arrows_cycle_notes_and_wrap_around(self):
+        screen = pygame.display.set_mode((1280, 720))
+        background = pygame.Surface(screen.get_size())
+        with patch.object(StageLoadingScreen, "_fade_from_previous"):
+            loading = StageLoadingScreen(
+                screen,
+                tips=BEGINNER_TIPS[:3],
+                background=background,
+                previous_frame=background,
+                seed=1,
+            )
+        pygame.event.clear()
+        loading.tip_index = 0
+        loading.tip = loading.tips[0]
+
+        pygame.event.post(pygame.event.Event(
+            pygame.KEYDOWN, key=pygame.K_LEFT, unicode=""
+        ))
+        self.assertFalse(loading._pump_events())
+        self.assertEqual(loading.tip_index, 2)
+
+        _left, right = loading._tip_navigation_rects()
+        pygame.event.post(pygame.event.Event(
+            pygame.MOUSEBUTTONDOWN, button=1, pos=right.center
+        ))
+        self.assertFalse(loading._pump_events())
+        self.assertEqual(loading.tip_index, 0)
+
+    def test_space_continues_only_after_progress_reaches_100(self):
+        screen = pygame.display.set_mode((1280, 720))
+        background = pygame.Surface(screen.get_size())
+        with patch.object(StageLoadingScreen, "_fade_from_previous"):
+            loading = StageLoadingScreen(
+                screen,
+                background=background,
+                previous_frame=background,
+                seed=1,
+            )
+        pygame.event.clear()
+        loading.progress = 99
+        pygame.event.post(pygame.event.Event(
+            pygame.KEYDOWN, key=pygame.K_SPACE, unicode=" "
+        ))
+        self.assertFalse(loading._pump_events(allow_continue=True))
+
+        loading.progress = 100
+        pygame.event.post(pygame.event.Event(
+            pygame.KEYDOWN, key=pygame.K_SPACE, unicode=" "
+        ))
+        self.assertTrue(loading._pump_events(allow_continue=True))
+
     def test_new_game_requests_the_tutorial_loading_transition(self):
         root = Path(__file__).resolve().parents[1]
         source = (root / "src" / "screens" / "start_game_menu.py").read_text(

@@ -14,8 +14,10 @@ Blurs whatever's currently on screen behind the panel, same
 downscale/upscale trick used for main_menu's settings panel
 (_draw_interactive_settings) and game.py's pause menu.
 
-Energy is not wired to a real system yet; passing max_pp=0 makes the bar
-render as "-- / --" instead of a full-looking empty bar.
+Energy comes from PlayerCombat: it is the dodge budget, spent per dodge
+and regenerating over time. Callers with no energy to report can still
+pass max_pp=0, which renders the bar as "-- / --" instead of a
+full-looking empty bar.
 """
 
 import pygame
@@ -66,8 +68,10 @@ def profile_screen(screen, background=None, name="Bobiles the explorer the great
 
     # Both bars share a gutter wide enough for the longer of the two labels,
     # so their fills start on the same x.
+    # Measured against the digit form, not "-- / --": now that energy shows
+    # real numbers, "ENERGY 100 / 100" is the widest label either bar draws.
     bar_label_width = max(font_bar.size("HP 000 / 000")[0],
-                          font_bar.size("ENERGY -- / --")[0]) + 14
+                          font_bar.size("ENERGY 000 / 000")[0]) + 14
 
     title_surface = font_title.render("PROFILE", True, UI_COLORS["gold"])
     name_surface = font_name.render(name.upper(), True, NAME_GOLD)

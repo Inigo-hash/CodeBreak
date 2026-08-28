@@ -37,7 +37,7 @@ CONTROL_SECTIONS = [
     ("MOVING AND FIGHTING", [
         ("W A S D / Arrows", "Move"),
         ("E", "Attack with your sword"),
-        ("Left Shift", "Dodge"),
+        ("Left Shift", "Dodge (costs energy)"),
     ]),
 
     # Actions are kept short on purpose: the manuals print them in a
@@ -75,6 +75,7 @@ CONTROL_SECTIONS = [
 # nobody says so out loud.
 CONTROL_NOTES = [
     "E attacks - but next to a searchable object, hold E to search instead.",
+    "Dodging spends 25 energy; energy refills by 5 every second.",
     "Run and Submit inside the editor are buttons you click.",
 ]
 

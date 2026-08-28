@@ -6,6 +6,12 @@ import pygame
 
 
 PLAYER_MAX_HP = 100
+PLAYER_MAX_ENERGY = 100
+# Energy is the dodge budget: four dodges from full, and a steady trickle
+# back so a fight is paced by when the player spends it, not by a cooldown
+# alone. Regen is per second and applied continuously, not in 1s ticks.
+PLAYER_DODGE_ENERGY_COST = 25
+PLAYER_ENERGY_REGEN = 5.0
 ATTACK_FRAME_COUNT = 9
 ATTACK_FRAME_DURATION = 0.055
 PLAYER_ATTACK_DURATION = ATTACK_FRAME_COUNT * ATTACK_FRAME_DURATION
@@ -78,6 +84,10 @@ class PlayerCombat:
     def __init__(self):
         self.max_hp = PLAYER_MAX_HP
         self.hp = self.max_hp
+        self.max_energy = PLAYER_MAX_ENERGY
+        # Kept as a float so partial-second regen accumulates instead of
+        # being rounded away every frame; the HUD is what rounds it.
+        self.energy = float(self.max_energy)
         self.attack_cooldown = 0.0
         self.dodge_cooldown = 0.0
         self.invulnerable = 0.0
@@ -90,6 +100,10 @@ class PlayerCombat:
         return self.state in ("attacking", "dodging", "flinch", "defeated")
 
     @property
+    def can_dodge(self):
+        return not (self.dodge_cooldown or self.locked) and self.energy >= PLAYER_DODGE_ENERGY_COST
+
+    @property
     def attack_active(self):
         elapsed = PLAYER_ATTACK_DURATION - self.action_time
         return self.state == "attacking" and PLAYER_ATTACK_ACTIVE_START <= elapsed <= PLAYER_ATTACK_ACTIVE_END
@@ -98,6 +112,7 @@ class PlayerCombat:
         self.attack_cooldown = max(0.0, self.attack_cooldown - dt)
         self.dodge_cooldown = max(0.0, self.dodge_cooldown - dt)
         self.invulnerable = max(0.0, self.invulnerable - dt)
+        self.energy = min(float(self.max_energy), self.energy + PLAYER_ENERGY_REGEN * dt)
         if self.action_time > 0:
             self.action_time = max(0.0, self.action_time - dt)
             if self.action_time == 0 and self.state != "defeated":
@@ -113,8 +128,9 @@ class PlayerCombat:
         return True
 
     def start_dodge(self):
-        if self.dodge_cooldown or self.locked:
+        if not self.can_dodge:
             return False
+        self.energy -= PLAYER_DODGE_ENERGY_COST
         self.state = "dodging"
         self.action_time = PLAYER_DODGE_DURATION
         self.dodge_cooldown = PLAYER_DODGE_COOLDOWN
@@ -138,6 +154,7 @@ class PlayerCombat:
 
     def reset(self):
         self.hp = self.max_hp
+        self.energy = float(self.max_energy)
         self.state = "idle"
         self.action_time = 0
         self.invulnerable = 0

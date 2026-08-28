@@ -1044,7 +1044,8 @@ def game_screen(screen, slot_num=None, save_state=None):
                             background=background_snapshot,
                             name=profile_name,
                             hp=player_combat.hp, max_hp=player_combat.max_hp,
-                            pp=0, max_pp=0,
+                            pp=int(player_combat.energy),
+                            max_pp=player_combat.max_energy,
                             hearts=gameplay_state["hearts"],
                         )
 
@@ -1496,6 +1497,8 @@ def game_screen(screen, slot_num=None, save_state=None):
             in_combat=engaged,
             current_hp=player_combat.hp,
             max_hp=player_combat.max_hp,
+            current_energy=int(player_combat.energy),
+            max_energy=player_combat.max_energy,
             bonus_time=gameplay_state["bonus_time"],
         )
 

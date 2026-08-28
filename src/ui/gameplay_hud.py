@@ -2,6 +2,7 @@
 
 import pygame
 
+from src.systems.combat import PLAYER_DODGE_ENERGY_COST
 from src.ui.theme import UI_COLORS, body_font, draw_panel, title_font
 
 
@@ -256,10 +257,12 @@ class GameplayHUD:
         return load_portrait()
 
     def draw(self, interaction_prompt=None, in_combat=False,
-             current_hp=None, max_hp=None, bonus_time=None):
+             current_hp=None, max_hp=None, bonus_time=None,
+             current_energy=None, max_energy=None):
         width, height = self.screen.get_size()
         margin = max(10, round(min(width, height) * 0.016))
-        self.profile_rect = pygame.Rect(margin, margin, min(510, width // 2), 134)
+        # 152 tall rather than 134: the card carries two stat bars now.
+        self.profile_rect = pygame.Rect(margin, margin, min(510, width // 2), 152)
         # Everything stacks in one left-hand column under the profile card so
         # the panels read as a single group instead of floating apart.
         progress_rect = pygame.Rect(margin, self.profile_rect.bottom + 8,
@@ -267,7 +270,8 @@ class GameplayHUD:
         weapon_rect = pygame.Rect(margin, progress_rect.bottom + 8, 250, 42)
         bonus_rect = pygame.Rect(margin, weapon_rect.bottom + 8, 112, 42)
 
-        self.draw_character_profile(current_hp, max_hp, in_combat)
+        self.draw_character_profile(current_hp, max_hp, in_combat,
+                                    current_energy, max_energy)
         self.draw_stage_progress(progress_rect)
         self.draw_weapon(weapon_rect.left, weapon_rect.top)
         self.draw_bonus_time(bonus_rect.left, bonus_rect.top,
@@ -276,32 +280,56 @@ class GameplayHUD:
         if interaction_prompt:
             self.draw_interaction_prompt(interaction_prompt, width, height)
         if in_combat:
-            self.draw_combat_controls(width, height)
+            # Unset energy means "not being tracked", so the hint stays lit
+            # rather than claiming dodge is unavailable.
+            self.draw_combat_controls(
+                width, height,
+                dodge_ready=current_energy is None or current_energy >= PLAYER_DODGE_ENERGY_COST,
+            )
 
-    def draw_character_profile(self, current_hp, max_hp, in_combat=False):
+    def draw_character_profile(self, current_hp, max_hp, in_combat=False,
+                               current_energy=None, max_energy=None):
         self._profile_panel(self.profile_rect, emphasized=in_combat)
         portrait_rect = pygame.Rect(
             self.profile_rect.left + 13,
-            self.profile_rect.top + 14,
-            106,
-            106,
+            self.profile_rect.top + 18,
+            116,
+            116,
         )
         draw_framed_portrait(self.screen, self.portrait, portrait_rect)
 
         text_left = portrait_rect.right + 13
+        bar_width = self.profile_rect.right - text_left - 14
+        # One gutter sized for the longer of the two labels, so the HP and
+        # ENERGY fills start on the same x instead of stepping.
+        label_width = self._stat_label_width()
         self.screen.blit(self.bold.render("BOBILES THE EXPLORER", True, NAME_GOLD),
                          (text_left, self.profile_rect.top + 20))
         self.draw_hearts(text_left, self.profile_rect.top + 50)
-        self.draw_hp_bar(text_left, self.profile_rect.top + 90,
-                         self.profile_rect.right - text_left - 14,
-                         current_hp, max_hp, in_combat)
+        self.draw_hp_bar(text_left, self.profile_rect.top + 88, bar_width,
+                         current_hp, max_hp, in_combat, label_width)
+        self.draw_energy_bar(text_left, self.profile_rect.top + 112, bar_width,
+                             current_energy, max_energy, label_width)
+
+    def _stat_label_width(self):
+        return max(self.small.size("HP 000 / 000")[0],
+                   self.small.size("ENERGY 000 / 000")[0]) + 12
 
     def draw_hearts(self, x, y):
         draw_heart_row(self.screen, self.icons, x, y, self.state.get("hearts", 0))
 
-    def draw_hp_bar(self, x, y, width, current_hp, max_hp, emphasized=False):
+    def draw_hp_bar(self, x, y, width, current_hp, max_hp, emphasized=False,
+                    label_width=92):
         draw_stat_bar(self.screen, self.small, x, y, width, "HP",
-                      current_hp, max_hp, emphasized=emphasized)
+                      current_hp, max_hp, emphasized=emphasized,
+                      label_width=label_width)
+
+    def draw_energy_bar(self, x, y, width, current_energy, max_energy,
+                        label_width=92):
+        """The dodge budget, in gold under the red HP bar."""
+        draw_stat_bar(self.screen, self.small, x, y, width, "ENERGY",
+                      current_energy, max_energy, fill_color=GOLD,
+                      label_width=label_width)
 
     def draw_stage_progress(self, rect):
         self._panel(rect)
@@ -351,13 +379,20 @@ class GameplayHUD:
         self._panel(rect, emphasized=True)
         self.screen.blit(text, text.get_rect(center=rect.center))
 
-    def draw_combat_controls(self, width, height):
-        text = self.small.render("[E] ATTACK     [L-SHIFT] DODGE", True, TEXT)
-        rect = text.get_rect()
+    def draw_combat_controls(self, width, height, dodge_ready=True):
+        # Two renders instead of one line so the dodge half can grey out on
+        # its own while energy is below the cost of a dodge.
+        attack = self.small.render("[E] ATTACK     ", True, TEXT)
+        dodge = self.small.render("[L-SHIFT] DODGE", True, TEXT if dodge_ready else DIM)
+        rect = pygame.Rect(0, 0, attack.get_width() + dodge.get_width(),
+                           max(attack.get_height(), dodge.get_height()))
         rect.inflate_ip(24, 14)
         rect.bottomright = (width - 14, height - 14)
         self._panel(rect, emphasized=True)
-        self.screen.blit(text, text.get_rect(center=rect.center))
+        left = rect.centerx - (attack.get_width() + dodge.get_width()) // 2
+        self.screen.blit(attack, (left, rect.centery - attack.get_height() // 2))
+        self.screen.blit(dodge, (left + attack.get_width(),
+                                 rect.centery - dodge.get_height() // 2))
 
     def _panel(self, rect, emphasized=False):
         draw_panel(self.screen, rect, emphasized=emphasized, radius=7, alpha=225)

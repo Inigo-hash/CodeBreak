@@ -127,6 +127,14 @@ class BossTriggerTests(unittest.TestCase):
             round(x * map_width), round(y * map_height),
             round(width * map_width), round(height * map_height),
         )
+
+        ocean_padding = 30
+
+        player_spawn = (
+            map_width // 2 + tile_size * 7,
+            map_height - tile_size * (ocean_padding + 5),
+        )
+
         resolved = resolve_encounter_spawns(
             ({
                 "id": "test_core_boss",
@@ -138,9 +146,14 @@ class BossTriggerTests(unittest.TestCase):
                 "spawn_margin": tile_size * 4,
                 "enemies": (self.boss_id,),
             },),
-            map_width, map_height, collision_rects, path_cells, tile_size,
-            (map_width // 2, map_height - tile_size * 5),
+            map_width,
+            map_height,
+            collision_rects,
+            path_cells,
+            tile_size,
+            player_spawn,
         )[0]
+        
         body = pygame.Rect(0, 0, *ENEMY_BODY_SIZES[self.boss_id])
         body.center = resolved["position"]
         self.assertTrue(core_rect.contains(body))

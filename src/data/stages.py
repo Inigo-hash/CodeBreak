@@ -121,7 +121,7 @@ STAGES = {
             "required_keys": 10,
             "required_boss": "corrupted_core_kapre",
             "exit_name": "Corrupted Core Gate",
-            "exit_rect": (0.565, 0.070, 0.035, 0.045),
+            "exit_rect": (0.544255, 0.231250, 0.023830, 0.028125),
             # Six lessons divide the stage's ten keys as 2+2+2+2+1+1.
             # Keeping the rewards authored here makes save migration and
             # first-completion awards deterministic regardless of play order.

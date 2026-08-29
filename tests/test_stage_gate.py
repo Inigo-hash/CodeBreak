@@ -77,10 +77,13 @@ class StageGateTests(unittest.TestCase):
             round(exit_height * map_height),
         ).inflate(tile_size * 4, tile_size * 4)
 
+        ocean_padding = 30
+
         spawn = (
             (map_width // 2 - tile_size // 2 + tile_size * 7) // tile_size,
-            (map_height - tile_size * 6) // tile_size,
+            (map_height - tile_size * (ocean_padding + 6)) // tile_size,
         )
+        
         frontier = deque([spawn])
         visited = {spawn}
         reached = False

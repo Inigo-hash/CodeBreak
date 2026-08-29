@@ -76,6 +76,18 @@ def game_screen(screen, slot_num=None, save_state=None):
 
     map_width  = tmx_data.width  * TILE_SIZE
     map_height = tmx_data.height * TILE_SIZE
+    # ---------------------------------------------------------
+    # Map layout version
+    # ---------------------------------------------------------
+
+    # Version 2 is the resized Island map.
+    MAP_LAYOUT_VERSION = 2
+
+    # The original island was shifted 30 tiles right and down
+    # when ocean space was added around all four sides.
+    OLD_MAP_SHIFT_X = TILE_SIZE * 30
+    OLD_MAP_SHIFT_Y = TILE_SIZE * 30
+
     loading.update(18, "Charting safe paths...")
 
     # Pytmx assigns its own runtime IDs to authored TMX gids. Convert the
@@ -144,8 +156,13 @@ def game_screen(screen, slot_num=None, save_state=None):
     SCREEN_W, SCREEN_H = screen.get_size()
     player_size = TILE_SIZE
 
-    spawn_margin = TILE_SIZE * 6
-    spawn_offset_x = TILE_SIZE * 7  # how far right of center — tweak this number
+    # The resized map adds 30 ocean tiles around the original island.
+    # Keep the player's original spawn position relative to the island.
+    ISLAND_OCEAN_PADDING = 30
+
+    spawn_margin = TILE_SIZE * (ISLAND_OCEAN_PADDING + 6)
+    spawn_offset_x = TILE_SIZE * 7
+
     player_rect = pygame.Rect(
         map_width // 2 - player_size // 2 + spawn_offset_x,
         map_height - spawn_margin,
@@ -188,12 +205,59 @@ def game_screen(screen, slot_num=None, save_state=None):
         save_stage_progress = save_state.get("stage_progress")
         save_security = save_state.get("_security")
 
-        map_position = save_state.get("map_position")
+        map_position = save_state.get(
+            "map_position"
+        )
+
         if map_position:
-            player_x, player_y = float(map_position[0]), float(map_position[1])
-            player_rect.x, player_rect.y = int(player_x), int(player_y)
-            player_rect.clamp_ip(pygame.Rect(0, 0, map_width, map_height))
-            player_x, player_y = float(player_rect.x), float(player_rect.y)
+
+            player_x = float(
+                map_position[0]
+            )
+
+            player_y = float(
+                map_position[1]
+            )
+
+            # -----------------------------------------------------
+            # Migrate saves created before the map was resized
+            # -----------------------------------------------------
+
+            saved_map_version = save_state.get(
+                "map_layout_version",
+                1
+            )
+
+            if saved_map_version < MAP_LAYOUT_VERSION:
+
+                player_x += OLD_MAP_SHIFT_X
+                player_y += OLD_MAP_SHIFT_Y
+
+
+            player_rect.x = int(
+                player_x
+            )
+
+            player_rect.y = int(
+                player_y
+            )
+
+            player_rect.clamp_ip(
+                pygame.Rect(
+                    0,
+                    0,
+                    map_width,
+                    map_height
+                )
+            )
+
+            player_x = float(
+                player_rect.x
+            )
+
+            player_y = float(
+                player_rect.y
+            )
 
     # --- Stage information (right-hand HUD panel) ---
     # `stage` is the static description of this stage - its manual, enemy
@@ -209,8 +273,8 @@ def game_screen(screen, slot_num=None, save_state=None):
     # challenge passed before objectives existed).
     stage_progress.sync_objectives(stage, save_challenges_passed)
 
-    # The exit is authored as a fraction of the map so it remains attached
-    # to the castle doorway if the TMX canvas changes size.
+    # Convert the stage exit's normalized map coordinates
+    # into world-pixel coordinates for the current TMX map.
     completion_rules = stage.get("completion", {})
     exit_fraction = completion_rules.get("exit_rect")
     stage_exit_rect = None
@@ -238,6 +302,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             "bonus_time": gameplay_state["bonus_time"],
             "challenges_passed": save_challenges_passed,
             "completed_stages": gameplay_state["completed_stages"],
+            "map_layout_version": MAP_LAYOUT_VERSION,
             "map_position": [player_x, player_y],
             "inventory": player_inventory.get_stored_topic_ids(),
             "weapon_obtained": player_inventory.weapon_obtained,
@@ -1560,7 +1625,13 @@ def game_screen(screen, slot_num=None, save_state=None):
                 item['inspecting'] = False
 
         # --- Draw ---
-        screen.blit(map_surface, (-camera_x, -camera_y))
+        screen.blit(
+            map_surface,
+            (
+                -camera_x,
+                -camera_y
+            )
+        )
 
         # game.py already resolved movement/collision above; only synchronize
         # the renderer here so the player is not moved a second time.

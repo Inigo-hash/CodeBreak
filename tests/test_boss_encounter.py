@@ -16,9 +16,13 @@ from src.data.enemies import ENEMIES
 from src.data.stages import get_stage
 from src.data.zones import ZONES
 from src.entities.enemy import Enemy
-from src.screens.boss_encounter import open_boss_intro, open_boss_result
+from src.screens.boss_encounter import (
+    open_boss_intro, open_boss_result, open_boss_retreat_warning,
+)
+from src.screens.game import boss_sword_damage
 from src.systems.boss_trigger import (
-    boss_zone_at, required_boss_id, should_trigger_boss,
+    boss_main_entrance_at, boss_zone_at, required_boss_id,
+    should_trigger_boss,
 )
 from src.systems.combat import ENEMY_BODY_SIZES, ENEMY_STATS
 from src.systems.enemy_spawns import resolve_encounter_spawns
@@ -54,6 +58,23 @@ class BossTriggerTests(unittest.TestCase):
         self.assertFalse(should_trigger_boss(None, current, boss_active=True))
         self.assertIsNone(boss_zone_at([self.zone], (20, 20)))
 
+    def test_retreat_warning_corridor_is_only_at_main_south_entrance(self):
+        self.assertTrue(
+        boss_main_entrance_at(self.zone, (self.zone["rect"].centerx, 330))
+        )
+        self.assertFalse(
+            boss_main_entrance_at(self.zone, (95, self.zone["rect"].centery))
+        )
+        self.assertFalse(
+            boss_main_entrance_at(self.zone, (405, self.zone["rect"].centery))
+        )
+
+    def test_boss_intro_corridor_rejects_side_zone_entry(self):
+        side_entry = (self.zone["rect"].left + 4, self.zone["rect"].centery)
+        main_entry = (self.zone["rect"].centerx, self.zone["rect"].bottom + 8)
+        self.assertFalse(boss_main_entrance_at(self.zone, side_entry))
+        self.assertTrue(boss_main_entrance_at(self.zone, main_entry))
+
     def test_boss_has_distinct_record_stats_body_and_assets(self):
         self.assertEqual(self.boss_id, "corrupted_core_kapre")
         self.assertIn(self.boss_id, self.stage["enemies"])
@@ -85,6 +106,18 @@ class BossTriggerTests(unittest.TestCase):
             ENEMY_BODY_SIZES[self.boss_id][1],
             ENEMY_BODY_SIZES["tikbalang"][1],
         )
+        self.assertEqual(ENEMY_STATS[self.boss_id].max_hp, 1000)
+
+    def test_core_armor_phases_take_exactly_thirty_connected_hits(self):
+        hp = ENEMY_STATS[self.boss_id].max_hp
+        damage_seen = []
+        while hp > 0:
+            damage = boss_sword_damage(hp)
+            damage_seen.append(damage)
+            hp = max(0, hp - damage)
+
+        self.assertEqual(len(damage_seen), 30)
+        self.assertEqual(sorted(set(damage_seen)), [25, 35, 40, 45])
 
     def test_boss_defeat_persists_and_completes_its_objective(self):
         progress = StageProgress()
@@ -144,6 +177,7 @@ class BossTriggerTests(unittest.TestCase):
                 ),
                 "zone_size": core_rect.size,
                 "spawn_margin": tile_size * 4,
+                "require_path": False,
                 "enemies": (self.boss_id,),
             },),
             map_width,
@@ -194,10 +228,21 @@ class BossModalTests(unittest.TestCase):
         self.assertEqual(open_boss_result(self.screen, True), "continue")
 
         pygame.event.post(self.key_event(pygame.K_RETURN, "\r"))
-        self.assertEqual(open_boss_result(self.screen, False), "practice")
+        self.assertEqual(open_boss_result(self.screen, False), "retry")
 
         pygame.event.post(self.key_event(pygame.K_ESCAPE))
-        self.assertEqual(open_boss_result(self.screen, False), "retry")
+        self.assertEqual(open_boss_result(self.screen, False), "retreat")
+
+    def test_leaving_active_boss_fight_requires_confirmation(self):
+        pygame.event.post(self.key_event(pygame.K_RETURN, "\r"))
+        self.assertEqual(
+            open_boss_retreat_warning(self.screen), "stay"
+        )
+
+        pygame.event.post(self.key_event(pygame.K_ESCAPE))
+        self.assertEqual(
+            open_boss_retreat_warning(self.screen), "leave"
+        )
 
 
 if __name__ == "__main__":

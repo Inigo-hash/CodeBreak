@@ -1,5 +1,8 @@
 import sys
 
+import math
+import time
+
 import pygame
 
 from src.screens.game import game_screen
@@ -13,6 +16,11 @@ SG_ICONS = ["play", "chest", "quit"]
 SG_LABELS = ["START NEW GAME", "CONTINUE GAME", "RETURN TO MAIN MENU"]
 SG_SEEDS = [55, 66, 77]
 SG_TIERS = [TIER_PRIMARY, TIER_SECONDARY, TIER_TERTIARY]
+
+PASSWORD_MAX_ATTEMPTS = 3
+PASSWORD_LOCKOUT_SECONDS = 30
+_password_failures = {}
+_password_locked_until = {}
 
 
 def render_start_menu_buttons(surface, rects, t=0.0):
@@ -47,11 +55,13 @@ def start_game_menu(screen, clean_backdrop=None):
     first_password = ""
     password_error = ""
 
-    panel_rect = pygame.Rect(0, 0, min(650, width - 60), min(520, height - 70))
+    panel_rect = pygame.Rect(
+        0, 0, min(720, width - 60), min(620, height - 50)
+    )
     panel_rect.center = (width // 2, height // 2)
     slot_rects = [
-        pygame.Rect(panel_rect.left + 40, panel_rect.top + 92 + i * 105,
-                    panel_rect.width - 80, 84)
+        pygame.Rect(panel_rect.left + 40, panel_rect.top + 122 + i * 136,
+                    panel_rect.width - 80, 124)
         for i in range(save_manager.NUM_SLOTS)
     ]
     back_rect = pygame.Rect(panel_rect.centerx - 80, panel_rect.bottom - 56, 160, 38)
@@ -70,29 +80,109 @@ def start_game_menu(screen, clean_backdrop=None):
         surf.blit(overlay, (0, 0))
         pygame.draw.rect(surf, (36, 38, 48), panel_rect, border_radius=8)
         pygame.draw.rect(surf, METAL_FRAME, panel_rect, 4, border_radius=8)
+        pygame.draw.rect(
+            surf, (108, 76, 42), panel_rect.inflate(-14, -14), 2,
+            border_radius=7,
+        )
         heading = "CHOOSE A SLOT FOR A NEW GAME" if mode == "new" else "CHOOSE YOUR ADVENTURE"
         title = _button_font.render(heading, True, WHITE)
-        surf.blit(title, title.get_rect(center=(panel_rect.centerx, panel_rect.top + 38)))
+        surf.blit(title, title.get_rect(
+            center=(panel_rect.centerx, panel_rect.top + 45)
+        ))
+        pygame.draw.line(
+            surf, (205, 164, 88),
+            (panel_rect.left + 52, panel_rect.top + 79),
+            (panel_rect.right - 52, panel_rect.top + 79), 2,
+        )
         mouse = pygame.mouse.get_pos()
         for i, rect in enumerate(slot_rects):
             slot_num = i + 1
             filled = save_manager.slot_exists(slot_num)
             clickable = filled or mode == "new"
-            pygame.draw.rect(surf, STONE_MID if clickable else STONE_DARK, rect, border_radius=5)
+            shadow_rect = rect.move(0, 4)
+            pygame.draw.rect(
+                surf, (12, 14, 20), shadow_rect, border_radius=7
+            )
+            pygame.draw.rect(
+                surf, STONE_MID if clickable else STONE_DARK,
+                rect, border_radius=7,
+            )
             if rect.collidepoint(mouse) and clickable:
                 hi = pygame.Surface(rect.size, pygame.SRCALPHA)
                 hi.fill((*BLUE_GLOW[:3], 35))
                 surf.blit(hi, rect.topleft)
-            pygame.draw.rect(surf, STONE_LIGHT if clickable else (60, 60, 65), rect, 2, border_radius=5)
+            pygame.draw.rect(
+                surf, STONE_LIGHT if clickable else (60, 60, 65),
+                rect, 2, border_radius=7,
+            )
+            pygame.draw.rect(
+                surf, (117, 79, 39),
+                (rect.left + 5, rect.top + 7, 5, rect.height - 14),
+                border_radius=2,
+            )
+            for rivet_y in (rect.top + 12, rect.bottom - 12):
+                pygame.draw.circle(
+                    surf, (193, 151, 77),
+                    (rect.left + 7, rivet_y), 2,
+                )
             name = _button_font.render(f"SLOT {slot_num}", True, WHITE if clickable else (110, 110, 115))
-            surf.blit(name, (rect.left + 16, rect.top + 10))
+            content_left = rect.left + 24
+            name_y = rect.top + 8
+            surf.blit(name, (content_left, name_y))
             summary = _small.render(save_manager.slot_summary(slot_num), True,
                                     (205, 205, 215) if filled else (125, 125, 132))
-            surf.blit(summary, (rect.left + 16, rect.top + 49))
+            summary_y = name_y + name.get_height() + 3
+            surf.blit(summary, (content_left, summary_y))
             if filled:
-                lock = _small.render("LOCK" if save_manager.is_protected(save_manager.load_slot(slot_num)) else "?",
-                                     True, (120, 205, 255))
-                surf.blit(lock, (rect.right - lock.get_width() - 16, rect.top + 14))
+                protected = save_manager.is_protected(
+                    save_manager.load_slot(slot_num)
+                )
+                badge_text = "PROTECTED" if protected else "SET PASSWORD"
+                lock = _small.render(
+                    badge_text, True,
+                    (140, 220, 255) if protected else (215, 180, 105),
+                )
+                badge = lock.get_rect()
+                badge.inflate_ip(18, 10)
+                badge.topright = (rect.right - 14, rect.top + 12)
+                pygame.draw.rect(
+                    surf, (20, 34, 46) if protected else (48, 39, 24),
+                    badge, border_radius=4,
+                )
+                pygame.draw.rect(
+                    surf, BLUE_GLOW if protected else (154, 112, 52),
+                    badge, 1, border_radius=4,
+                )
+                surf.blit(lock, lock.get_rect(center=badge.center))
+                progress = save_manager.slot_progress(slot_num)
+                progress_label = _small.render(
+                    f"PROGRESS {progress}%", True, (150, 215, 255)
+                )
+                progress_label_y = summary_y + summary.get_height() + 5
+                progress_bar = pygame.Rect(
+                    content_left,
+                    progress_label_y + progress_label.get_height() + 1,
+                    rect.right - content_left - 18, 10,
+                )
+                pygame.draw.rect(
+                    surf, (18, 20, 28), progress_bar, border_radius=3
+                )
+                progress_fill = progress_bar.copy()
+                progress_fill.width = round(
+                    progress_bar.width * progress / 100
+                )
+                if progress_fill.width:
+                    pygame.draw.rect(
+                        surf, BLUE_GLOW, progress_fill, border_radius=3
+                    )
+                pygame.draw.rect(
+                    surf, (105, 113, 132), progress_bar, 1,
+                    border_radius=3,
+                )
+                surf.blit(progress_label, (
+                    content_left,
+                    progress_label_y,
+                ))
         pygame.draw.rect(surf, STONE_MID, back_rect, border_radius=4)
         pygame.draw.rect(surf, STONE_LIGHT, back_rect, 2, border_radius=4)
         label = _button_font.render("BACK", True, WHITE)
@@ -120,6 +210,10 @@ def start_game_menu(screen, clean_backdrop=None):
         if password_stage == "confirm":
             return "CONFIRM PASSWORD"
         return "CREATE SAVE PASSWORD"
+
+    def _lockout_remaining(slot_num):
+        deadline = _password_locked_until.get(slot_num, 0.0)
+        return max(0, math.ceil(deadline - time.monotonic()))
 
     def _draw_password(surf):
         overlay = pygame.Surface((width, height), pygame.SRCALPHA)
@@ -156,8 +250,17 @@ def start_game_menu(screen, clean_backdrop=None):
                 (caret_x, caret_top + _button_font.get_height()),
                 3,
             )
-        warning = password_error or "Passwords cannot be recovered. Keep yours somewhere safe."
-        warn_color = (255, 125, 125) if password_error else (180, 180, 190)
+        remaining = _lockout_remaining(password_slot)
+        warning = (
+            f"Too many failed attempts. Try again in {remaining} seconds."
+            if remaining else
+            password_error
+            or "Passwords cannot be recovered. Keep yours somewhere safe."
+        )
+        warn_color = (
+            (255, 125, 125)
+            if password_error or remaining else (180, 180, 190)
+        )
         warn = _small.render(warning, True, warn_color)
         surf.blit(warn, warn.get_rect(center=(password_rect.centerx, password_rect.top + 230)))
         for rect, label in ((password_ok, "CONTINUE"), (password_cancel, "CANCEL")):
@@ -210,10 +313,34 @@ def start_game_menu(screen, clean_backdrop=None):
         nonlocal password_stage, password_text, first_password, password_error
         state = save_manager.load_slot(password_slot)
         if password_action in ("load_unlock", "overwrite_unlock"):
-            if not save_manager.verify_password(state, password_text):
-                password_error = "That password is incorrect. Please try again."
+            remaining = _lockout_remaining(password_slot)
+            if remaining:
+                password_error = (
+                    f"Too many failed attempts. Try again in {remaining} seconds."
+                )
                 password_text = ""
                 return None
+            if not save_manager.verify_password(state, password_text):
+                failures = _password_failures.get(password_slot, 0) + 1
+                if failures >= PASSWORD_MAX_ATTEMPTS:
+                    _password_failures[password_slot] = 0
+                    _password_locked_until[password_slot] = (
+                        time.monotonic() + PASSWORD_LOCKOUT_SECONDS
+                    )
+                    password_error = (
+                        "Too many failed attempts. Access is temporarily locked."
+                    )
+                else:
+                    _password_failures[password_slot] = failures
+                    attempts_left = PASSWORD_MAX_ATTEMPTS - failures
+                    password_error = (
+                        f"Incorrect password. {attempts_left} "
+                        f"attempt{'s' if attempts_left != 1 else ''} remaining."
+                    )
+                password_text = ""
+                return None
+            _password_failures.pop(password_slot, None)
+            _password_locked_until.pop(password_slot, None)
             security = state.get("_security")
             action = password_action
             slot = password_slot
@@ -280,12 +407,16 @@ def start_game_menu(screen, clean_backdrop=None):
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
                         _close_password()
-                    elif event.key == pygame.K_BACKSPACE:
+                    elif (_lockout_remaining(password_slot) == 0
+                          and event.key == pygame.K_BACKSPACE):
                         password_text = password_text[:-1]
                     elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
                         if _submit_password() == "main_menu":
                             return
-                    elif event.unicode and event.unicode.isprintable() and len(password_text) < 32:
+                    elif (_lockout_remaining(password_slot) == 0
+                          and event.unicode
+                          and event.unicode.isprintable()
+                          and len(password_text) < 32):
                         password_text += event.unicode
                 elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     if password_cancel.collidepoint(event.pos):

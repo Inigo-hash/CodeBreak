@@ -330,6 +330,7 @@ def game_over_screen(screen, background=None, failed_snippet=None):
 
     label_font = title_font(max(14, int(SCREEN_H * 0.026)))
     icon_font = body_font(max(16, int(SCREEN_H * 0.03)), bold=True)
+    guide_font = body_font(max(15, int(SCREEN_H * 0.021)))
 
     title_text = "GAME OVER"
     # Pace of the typewriter reveal, from the TEXT SPEED setting rather
@@ -346,7 +347,7 @@ def game_over_screen(screen, background=None, failed_snippet=None):
     btn_h = max(50, int(SCREEN_H * 0.075))
     btn_gap = max(12, int(SCREEN_H * 0.018))
     btn_x = SCREEN_W // 2 - btn_w // 2
-    first_btn_y = int(SCREEN_H * 0.56)
+    first_btn_y = int(SCREEN_H * 0.62)
 
     buttons = [
         {"key": "retry", "label": "RETRY", "icon": "skull",
@@ -414,6 +415,19 @@ def game_over_screen(screen, background=None, failed_snippet=None):
 
         if now >= TITLE_DONE_MS:
             _draw_divider(screen, SCREEN_W, int(SCREEN_H * 0.46))
+
+            guide_lines = (
+                "Mang Tahimik: Try again. Watch your health and retreat when it runs low.",
+                "Dash with Left Shift to avoid attacks, face enemies before pressing E,",
+                "and use healing items from your hotbar before your health reaches zero.",
+            )
+            for line_index, line_text in enumerate(guide_lines):
+                rendered = guide_font.render(line_text, True, TEXT_GREY)
+                screen.blit(rendered, rendered.get_rect(center=(
+                    SCREEN_W // 2,
+                    int(SCREEN_H * 0.495)
+                    + line_index * (guide_font.get_height() + 2),
+                )))
 
             for i, b in enumerate(buttons):
                 reveal_at = TITLE_DONE_MS + i * BUTTON_STAGGER_MS

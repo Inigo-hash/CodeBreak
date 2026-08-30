@@ -43,10 +43,10 @@ def open_boss_result(screen, victory, background=None):
             lines=(
                 "The boss requirement is complete and has been saved.",
                 "The castle exit still checks your 10 keys and all lessons.",
-                "Continue now, or revisit the safe combat practice room.",
+                "Continue exploring or head toward the castle exit.",
             ),
             primary=("CONTINUE TO EXIT", "continue"),
-            secondary=("PRACTICE COMBAT", "practice"),
+            secondary=("RETURN TO ISLAND", "continue"),
             background=background,
         )
     return _boss_modal(
@@ -55,11 +55,29 @@ def open_boss_result(screen, victory, background=None):
         subtitle="BOSS DEFEAT",
         lines=(
             "Your stage progress is safe. The boss has reset.",
-            "Practice is safe and does not consume campaign hearts.",
-            "Choose practice for a guided refresher, or retry immediately.",
+            "Press P while exploring if you want to enter combat practice.",
+            "Retry now, or retreat to the island and prepare first.",
         ),
-        primary=("PRACTICE FIRST", "practice"),
-        secondary=("RETRY BOSS", "retry"),
+        primary=("RETRY BOSS", "retry"),
+        secondary=("RETREAT TO ISLAND", "retreat"),
+        background=background,
+        danger=True,
+    )
+
+
+def open_boss_retreat_warning(screen, background=None):
+    """Confirm leaving an unfinished Corrupted Core encounter."""
+    return _boss_modal(
+        screen,
+        title="LEAVE THE CORRUPTED CORE?",
+        subtitle="ACTIVE BOSS ENCOUNTER",
+        lines=(
+            "Crossing this boundary abandons the current fight.",
+            "The Kapre, its armor phases, and all reinforcements will reset.",
+            "Return to the battle now, or retreat to the island.",
+        ),
+        primary=("RETURN TO BATTLE", "stay"),
+        secondary=("RETREAT", "leave"),
         background=background,
         danger=True,
     )

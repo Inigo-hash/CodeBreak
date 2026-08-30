@@ -12,6 +12,8 @@ os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 import pygame
 
 from src.entities.enemy import Enemy
+from src.systems.combat import ENEMY_STATS
+from src.systems.enemy_spawns import resolve_encounter_spawns
 from src.screens.game import load_interactables, nearest_interactable
 from src.screens.intro import PAGES
 from src.screens.settings import HELP_COPY
@@ -20,6 +22,39 @@ from src.ui.ambient_particles import AmbientParticles
 
 
 class MapAndInteractionRegressionTests(unittest.TestCase):
+    def test_impossible_dirt_spawn_is_skipped_without_crashing(self):
+        spawns = resolve_encounter_spawns(
+            ({
+                "id": "no_dirt",
+                "anchor": (0.5, 0.5),
+                "enemies": ("tiyanak_sinta",),
+            },),
+            320, 240, [], set(), 16, (160, 220),
+        )
+        self.assertEqual(spawns, [])
+
+    def test_wilderness_enemy_reach_matches_visible_sprite_distance(self):
+        self.assertGreaterEqual(ENEMY_STATS["tiyanak_sinta"].attack_range, 72)
+        self.assertGreaterEqual(ENEMY_STATS["manananggal"].attack_range, 96)
+        self.assertGreaterEqual(ENEMY_STATS["tikbalang"].attack_range, 104)
+
+    def test_enemy_body_cannot_move_from_dirt_onto_grass(self):
+        enemy = Enemy.__new__(Enemy)
+        enemy.rect = pygame.Rect(16, 16, 12, 12)
+        enemy.x, enemy.y = float(enemy.rect.x), float(enemy.rect.y)
+        enemy.spawn = enemy.rect.center
+        enemy.allowed_ground_cells = {(1, 1)}
+        enemy.ground_tile_size = 16
+        enemy.detour_time = 0.0
+        enemy.detour_direction = (0, 0)
+        enemy.facing = "south"
+        enemy.stuck_time = 0.0
+        enemy.center_x, enemy.center_y = enemy.rect.center
+
+        enemy._move((1, 0), 20, 1.0, [], 128, 128, allow_detour=False)
+
+        self.assertEqual(enemy.rect.topleft, (16, 16))
+
     def test_every_authored_collision_property_uses_the_loader_spelling(self):
         root = ET.parse(
             Path("assets/map/tsx/Enviroment-Forest.tsx")

@@ -56,12 +56,12 @@ class EnemyStats:
 
 ENEMY_STATS = {
     # Ranges are unscaled world pixels (the map uses 16-pixel tiles).
-    "duwende_mandurug": EnemyStats(60, 8, 1.15, 32, 144, 96, 220, 280, 120, 4, 1.15, 0.52, 10),
-    "tiyanak_sinta": EnemyStats(40, 6, 1.10, 30, 160, 96, 240, 300, 120, 4, 1.30, 0.52, 6),
-    "manananggal": EnemyStats(70, 10, 1.25, 34, 200, 112, 290, 360, 150, 4, 1.15, 0.55, 10),
-    "tikbalang": EnemyStats(110, 14, 1.05, 42, 176, 112, 270, 330, 140, 5, 1.25, 0.60, 16),
+    "duwende_mandurug": EnemyStats(60, 8, 1.15, 58, 144, 96, 220, 280, 120, 4, 1.15, 0.52, 10),
+    "tiyanak_sinta": EnemyStats(40, 6, 1.10, 72, 160, 96, 240, 300, 120, 4, 1.30, 0.52, 6),
+    "manananggal": EnemyStats(70, 10, 1.25, 96, 200, 112, 290, 360, 150, 4, 1.15, 0.55, 10),
+    "tikbalang": EnemyStats(110, 14, 1.05, 104, 176, 112, 270, 330, 140, 5, 1.25, 0.60, 16),
     "corrupted_core_kapre": EnemyStats(
-        260, 18, 1.10, 46, 260, 180, 520, 640, 220, 6, 1.10, 0.66, 45
+        1000, 18, 1.10, 46, 260, 180, 520, 640, 220, 6, 1.10, 0.66, 45
     ),
 }
 

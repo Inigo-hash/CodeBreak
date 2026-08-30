@@ -46,10 +46,10 @@ RULES_LINES = [
 # this panel are the same object at the same size.
 MANUAL_WIDTH = 900
 MANUAL_HEIGHT = 660
-ROW_HEIGHT = 20          # compact enough to stay clear of the footer
-HEADER_HEIGHT = 30       # a section heading plus its breathing room
-SECTION_GAP = 8
-FOOTER_LINE_HEIGHT = 26
+ROW_HEIGHT = 20
+HEADER_HEIGHT = 27
+SECTION_GAP = 5
+FOOTER_LINE_HEIGHT = 18
 KEY_COLUMN = 130         # where the action text starts, measured from the
                          # column's left edge - wide enough for the longest
                          # key label ("Ctrl + C / X / V")
@@ -189,10 +189,10 @@ def how_to_play_screen(screen):
     SCREEN_WIDTH, SCREEN_HEIGHT = screen.get_size()
 
     heading_font = title_font(30)
-    header_font = title_font(20, bold=False)
-    key_font = body_font(17, bold=True)
-    line_font = body_font(17)
-    note_font = body_font(15)
+    header_font = title_font(18, bold=False)
+    key_font = body_font(14, bold=True)
+    line_font = body_font(14)
+    note_font = body_font(12)
     btn_font = title_font(22)
 
     panel_rect, left_col, right_col, footer = manual_layout(SCREEN_WIDTH, SCREEN_HEIGHT)

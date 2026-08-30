@@ -60,13 +60,16 @@ def resolve_encounter_spawns(encounters, map_width, map_height,
             position = _nearest_walkable(
                 desired, body_size, bounds, collision_rects, occupied,
                 safe_area, path_cells, tile_size, spawn_area,
+                encounter.get("require_path", True),
             )
-            # Keep bodies separate without reserving an oversized 36-pixel
-            # moat around every enemy. Large user-authored groups otherwise
-            # exhaust narrow path areas even when valid body space remains.
-            occupied.append(pygame.Rect(
-                0, 0, body_size[0] + 12, body_size[1] + 12
-            ))
+            # A crowded authored group must never prevent the stage loading.
+            # If every valid dirt position is already occupied, omit only
+            # that excess member instead of putting it on grass or raising.
+            if position is None:
+                continue
+            # Reserve the real combat body. Enemy-to-enemy collision keeps
+            # the group separated after loading without wasting dirt space.
+            occupied.append(pygame.Rect(0, 0, *body_size))
             occupied[-1].center = position
             resolved.append({
                 "encounter_id": encounter["id"],
@@ -84,29 +87,28 @@ def resolve_encounter_spawns(encounters, map_width, map_height,
 
 
 def _nearest_walkable(desired, body_size, bounds, collision_rects, occupied,
-                      safe_area, path_cells, tile_size, spawn_area=None):
-    # Prefer dirt paths. If a user-authored group is too large for the path
-    # space in its zone, retry on any collision-free terrain in that same
-    # zone rather than crashing or placing the enemy outside its territory.
-    for require_path in (True, False):
-        for radius in range(0, 257, 16):
-            candidates = [(0, 0)] if radius == 0 else _ring(radius)
-            for dx, dy in candidates:
-                rect = pygame.Rect(0, 0, *body_size)
-                rect.center = (desired[0] + dx, desired[1] + dy)
-                if (bounds.contains(rect)
-                        and (spawn_area is None or spawn_area.contains(rect))
-                        and not safe_area.colliderect(rect)
-                        and rect.collidelist(collision_rects) == -1
-                        and rect.collidelist(occupied) == -1
-                        and (not require_path or _body_is_on_path(
-                            rect, path_cells, tile_size
-                        ))):
-                    return rect.center
-    raise RuntimeError(f"No walkable enemy spawn near {desired}")
+                      safe_area, path_cells, tile_size, spawn_area=None,
+                      require_path=True):
+    # Enemies belong on the authored dirt battlefield. Never fall back to
+    # collision-free grass when a formation cannot use its first choice.
+    max_radius = max(256, spawn_area.width, spawn_area.height) if spawn_area else 512
+    for radius in range(0, max_radius + 1, 16):
+        candidates = [(0, 0)] if radius == 0 else _ring(radius)
+        for dx, dy in candidates:
+            rect = pygame.Rect(0, 0, *body_size)
+            rect.center = (desired[0] + dx, desired[1] + dy)
+            if (bounds.contains(rect)
+                    and (spawn_area is None or spawn_area.contains(rect))
+                    and not safe_area.colliderect(rect)
+                    and rect.collidelist(collision_rects) == -1
+                    and rect.collidelist(occupied) == -1
+                    and (not require_path
+                         or body_is_on_path(rect, path_cells, tile_size))):
+                return rect.center
+    return None
 
 
-def _body_is_on_path(rect, path_cells, tile_size):
+def body_is_on_path(rect, path_cells, tile_size):
     """Require the body center and inset corners to stand on dirt tiles."""
     points = (
         rect.center,

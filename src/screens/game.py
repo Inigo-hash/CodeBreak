@@ -1,4 +1,5 @@
 import math
+import random
 
 from pytmx.util_pygame import load_pygame
 import pygame
@@ -30,7 +31,9 @@ from src.systems.combat import (
     PlayerCombat, attack_hitbox, attack_path_blocked, move_rect,
     selected_weapon_damage,
 )
-from src.systems.audio import CombatAudio, apply_music_volume, handle_music_shortcut
+from src.systems.audio import (
+    CombatAudio, apply_music_volume, handle_music_shortcut, play_crumble_sfx,
+)
 from src.data.zones import ZONES, get_zone_at
 from src.data.stages import get_stage
 from src.screens.topic_found import open_topic_found
@@ -47,14 +50,38 @@ from src.ui.night_lighting import (
 from src.ui.fog import build_fog_texture, draw_fog
 from src.screens.loading import StageLoadingScreen
 from src.screens.stage_gate import open_stage_gate
-from src.screens.boss_encounter import open_boss_intro, open_boss_result
+from src.screens.boss_encounter import (
+    open_boss_intro, open_boss_result, open_boss_retreat_warning,
+)
 from src.screens.tutorial import tutorial_screen
 from src.systems.boss_trigger import (
-    boss_zone_at, required_boss_id, should_trigger_boss,
+    boss_main_entrance_at, boss_zone_at, required_boss_id,
+    should_trigger_boss,
 )
 from src.systems.stage_gate import (
     award_topic_keys, evaluate_stage_gate, migrate_key_count,
 )
+
+
+BOSS_PHASE_DAMAGE = (
+    (750, 25),
+    (500, 35),
+    (250, 40),
+    (0, 45),
+)
+BOSS_PHASE_THRESHOLDS = (750, 500, 250)
+
+
+def boss_sword_damage(current_hp):
+    """Damage per connected hit for the 1000-HP Core boss.
+
+    With threshold-crossing damage carried forward, the four armor phases
+    take 10, 8, 6, and 6 hits: exactly 30 successful connections.
+    """
+    for lower_bound, damage in BOSS_PHASE_DAMAGE:
+        if current_hp > lower_bound:
+            return damage
+    return BOSS_PHASE_DAMAGE[-1][1]
 
 
 def load_interactables(tmx_data):
@@ -1025,6 +1052,14 @@ def game_screen(screen, slot_num=None, save_state=None):
         for spawn in enemy_spawns
     ]
 
+    def keep_enemy_on_dirt(enemy):
+        enemy.allowed_ground_cells = path_cells
+        enemy.ground_tile_size = TILE_SIZE
+        return enemy
+
+    for enemy in enemies:
+        keep_enemy_on_dirt(enemy)
+
     # Bosses are not part of the normal encounter list. Their spawn is
     # resolved up front, but the enemy itself is created only when the player
     # crosses into whichever authored zone carries is_boss_zone=True.
@@ -1044,6 +1079,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                 "anchor": boss_anchor,
                 "zone_size": boss_zone["rect"].size,
                 "spawn_margin": TILE_SIZE * 4,
+                "require_path": False,
                 "enemies": (boss_id,),
                 "detection_range": 260,
                 "chase_range": 640,
@@ -1066,7 +1102,7 @@ def game_screen(screen, slot_num=None, save_state=None):
         """Build the one dedicated boss instance for this stage run."""
         if boss_spawn is None:
             return None
-        return Enemy(
+        boss = Enemy(
             screen, map_width, map_height,
             world_x=boss_spawn["position"][0],
             world_y=boss_spawn["position"][1],
@@ -1080,9 +1116,89 @@ def game_screen(screen, slot_num=None, save_state=None):
             disengage_range=boss_spawn["disengage_range"],
             return_tolerance=boss_spawn["return_tolerance"],
         )
+        boss.phase_thresholds_triggered = set()
+        return boss
     loading.update(97, "Finalizing expedition...")
     player_combat = PlayerCombat()
     combat_audio = CombatAudio()
+    boss_phase_effect_timer = 0.0
+    boss_phase_effect_text = ""
+    boss_phase_effect_world = (0, 0)
+
+    def summon_boss_reinforcements(threshold):
+        """Add a bounded, collision-safe random wave inside the Core."""
+        if boss_enemy is None:
+            return
+        alive_summons = sum(
+            enemy.active and enemy.group_id.startswith("boss_wave_")
+            for enemy in enemies
+        )
+        summon_count = min(2, 3 - alive_summons)
+        if summon_count <= 0:
+            return
+        pools = {
+            750: ("tiyanak_sinta", "manananggal"),
+            500: ("tiyanak_sinta", "manananggal", "tikbalang"),
+            250: ("manananggal", "tikbalang", "tiyanak_sinta"),
+        }
+        encounter_id = f"boss_wave_{threshold}"
+        selected = tuple(
+            random.choice(pools[threshold]) for _ in range(summon_count)
+        )
+        try:
+            wave_spawns = resolve_encounter_spawns(
+                ({
+                    "id": encounter_id,
+                    "anchor": (
+                        boss_enemy.rect.centerx / map_width,
+                        boss_enemy.rect.centery / map_height,
+                    ),
+                    "zone_size": boss_enemy.zone.size,
+                    "spawn_margin": TILE_SIZE * 2,
+                    "require_path": False,
+                    "enemies": selected,
+                    "detection_range": 260,
+                    "chase_range": 520,
+                    "disengage_range": 460,
+                },),
+                map_width, map_height, collision_rects, path_cells, TILE_SIZE,
+                player_rect.center,
+            )
+        except RuntimeError:
+            # A crowded authored zone should skip a wave rather than crash
+            # the encounter or place an enemy inside scenery.
+            return
+        for spawn in wave_spawns:
+            enemies.append(Enemy(
+                screen, map_width, map_height,
+                world_x=spawn["position"][0], world_y=spawn["position"][1],
+                enemy_id=spawn["enemy_id"], zone_size=spawn["zone_size"],
+                zone_name=spawn["zone_name"], zone_rect=spawn["zone_rect"],
+                group_id=encounter_id,
+                detection_range=spawn["detection_range"],
+                chase_range=spawn["chase_range"],
+                disengage_range=spawn["disengage_range"],
+                return_tolerance=spawn["return_tolerance"],
+            ))
+
+    def trigger_boss_phase(threshold):
+        nonlocal boss_phase_effect_timer, boss_phase_effect_text
+        nonlocal boss_phase_effect_world
+        if boss_enemy is None:
+            return
+        boss_enemy.phase_thresholds_triggered.add(threshold)
+        aggression = {750: 1.05, 500: 1.10, 250: 1.15}[threshold]
+        boss_enemy.movement_speed_multiplier = aggression
+        boss_enemy.attack_cooldown_multiplier = 1.0 / aggression
+        boss_enemy.attack_damage_multiplier = aggression
+        boss_phase_effect_timer = 1.25
+        boss_phase_effect_text = (
+            f"CORE ARMOR BREAKS — {threshold} HP PHASE"
+        )
+        boss_phase_effect_world = boss_enemy.rect.center
+        play_crumble_sfx("break")
+        summon_boss_reinforcements(threshold)
+
     attack_key_ready = True
     death_animation_complete = False
     near_interactable = None
@@ -1091,6 +1207,7 @@ def game_screen(screen, slot_num=None, save_state=None):
     loading.finish()
     while running:
         dt = clock.tick(60) / 1000.0
+        boss_phase_effect_timer = max(0.0, boss_phase_effect_timer - dt)
         mouse_pos = pygame.mouse.get_pos()
 
         # --- Events ---
@@ -1169,6 +1286,14 @@ def game_screen(screen, slot_num=None, save_state=None):
                 elif event.key in (pygame.K_LSHIFT, pygame.K_RSHIFT) and not paused:
                     if player_combat.start_dodge():
                         combat_audio.play("dodge")
+                elif event.key == pygame.K_p and not paused and not engaged:
+                    tutorial_screen(
+                        screen, play_music=False, show_loading=False,
+                        practice_only=True,
+                    )
+                    pygame.mixer.music.load("assets/audios/gameStage1Bgm.mp3")
+                    apply_music_volume()
+                    pygame.mixer.music.play(-1)
                 elif event.key == pygame.K_b and not paused:
 
                     # Keep the original game frame behind the inventory.
@@ -1202,10 +1327,10 @@ def game_screen(screen, slot_num=None, save_state=None):
                         # When the lesson/editor closes, this loop opens
                         # the inventory again.
 
-                elif DEBUG_MODE and event.key == pygame.K_F1 and not paused:
+                elif event.key == pygame.K_F1 and not paused:
                     night_mode = not night_mode
 
-                elif DEBUG_MODE and event.key == pygame.K_F2 and not paused:
+                elif event.key == pygame.K_F2 and not paused:
                     fog_mode = not fog_mode
                     if fog_mode and fog_texture is None:
                         fog_texture = build_fog_texture(1100, 750)
@@ -1420,12 +1545,41 @@ def game_screen(screen, slot_num=None, save_state=None):
             and boss_enemy.active
             and boss_enemy.state != "defeated"
         )
+        leaving_active_boss = (
+            boss_is_active
+            and previous_boss_zone is not None
+            and current_boss_zone is None
+            and boss_main_entrance_at(
+                previous_boss_zone, player_rect.center
+            )
+        )
+        if leaving_active_boss:
+            retreat_decision = open_boss_retreat_warning(
+                screen, background=screen.copy()
+            )
+            if retreat_decision == "stay":
+                player_rect.topleft = boss_entry_position
+                player_x, player_y = map(float, player_rect.topleft)
+                current_boss_zone = boss_zone_at(
+                    zone_pixel_rects, player_rect.center
+                )
+            else:
+                enemies[:] = [
+                    enemy for enemy in enemies
+                    if enemy is not boss_enemy
+                    and not enemy.group_id.startswith("boss_wave_")
+                ]
+                boss_enemy = None
+                boss_victory_handled = False
+                boss_phase_effect_timer = 0.0
+                previous_boss_zone = None
+                boss_is_active = False
         if boss_id and should_trigger_boss(
             previous_boss_zone,
             current_boss_zone,
             defeated=boss_defeated,
             boss_active=boss_is_active,
-        ):
+        ) and boss_main_entrance_at(current_boss_zone, player_rect.center):
             boss_entry_position = (player_rect.x, player_rect.y)
             decision = open_boss_intro(
                 screen, boss_id, background=screen.copy()
@@ -1489,11 +1643,22 @@ def game_screen(screen, slot_num=None, save_state=None):
                 )
                 if damage and enemy.active and not already_hit and not path_blocked and hitbox.colliderect(enemy.rect):
                     enemy.last_player_attack = player_combat.attack_id
-                    if enemy.receive_damage(damage):
+                    applied_damage = (
+                        boss_sword_damage(enemy.hp)
+                        if enemy is boss_enemy else damage
+                    )
+                    hp_before = enemy.hp
+                    if enemy.receive_damage(applied_damage):
                         combat_audio.play("sword_hit")
                         combat_audio.play(
                             "enemy_death" if enemy.hp == 0 else "enemy_hurt"
                         )
+                        if enemy is boss_enemy:
+                            for threshold in BOSS_PHASE_THRESHOLDS:
+                                if (hp_before > threshold >= enemy.hp
+                                        and threshold not in
+                                        enemy.phase_thresholds_triggered):
+                                    trigger_boss_phase(threshold)
 
         for enemy in enemies:
             if enemy.state == "defeated" and not getattr(enemy, "rewarded", False):
@@ -1512,11 +1677,6 @@ def game_screen(screen, slot_num=None, save_state=None):
             boss_result = open_boss_result(
                 screen, victory=True, background=screen.copy()
             )
-            if boss_result == "practice":
-                tutorial_screen(
-                    screen, play_music=False, show_loading=False,
-                    practice_only=True,
-                )
 
         if player_combat.hp == 0 and death_animation_complete:
             gameplay_state["hearts"] = max(0, gameplay_state["hearts"] - 1)
@@ -1529,25 +1689,26 @@ def game_screen(screen, slot_num=None, save_state=None):
                 result = open_boss_result(
                     screen, victory=False, background=screen.copy()
                 )
-                if result == "practice":
-                    tutorial_screen(
-                        screen, play_music=False, show_loading=False,
-                        practice_only=True,
-                    )
                 if gameplay_state["hearts"] == 0:
                     gameplay_state["hearts"] = 5
                 player_combat.reset()
                 death_animation_complete = False
+                enemies[:] = [
+                    enemy for enemy in enemies
+                    if not enemy.group_id.startswith("boss_wave_")
+                ]
                 for enemy in enemies:
                     enemy.reset()
                     enemy.rewarded = False
+                if boss_enemy is not None:
+                    boss_enemy.phase_thresholds_triggered = set()
                 if result == "retry":
                     player_rect.topleft = boss_entry_position
                     previous_boss_zone = boss_zone_at(
                         zone_pixel_rects, player_rect.center
                     )
                 else:
-                    # Practice returns to the safe campaign spawn. Re-entering
+                    # Retreat returns to the safe campaign spawn. Re-entering
                     # the Core creates a fresh boss encounter and intro.
                     if boss_enemy in enemies:
                         enemies.remove(boss_enemy)
@@ -1946,6 +2107,42 @@ def game_screen(screen, slot_num=None, save_state=None):
             bonus_time=gameplay_state["bonus_time"],
         )
 
+        if boss_phase_effect_timer > 0:
+            effect_progress = 1.0 - boss_phase_effect_timer / 1.25
+            pulse_alpha = round(115 * (1.0 - effect_progress))
+            flash = pygame.Surface((SCREEN_W, SCREEN_H), pygame.SRCALPHA)
+            flash.fill((190, 34, 20, pulse_alpha))
+            screen.blit(flash, (0, 0))
+
+            effect_center = (
+                round(boss_phase_effect_world[0] * ZOOM - camera_x),
+                round(boss_phase_effect_world[1] * ZOOM - camera_y),
+            )
+            ring_radius = round(45 + 155 * effect_progress)
+            ring_color = (255, 205, 90)
+            pygame.draw.circle(screen, ring_color, effect_center,
+                               ring_radius, max(1, round(6 * (1 - effect_progress))))
+            # Deterministic radial fragments read as armor pieces without
+            # requiring a new bitmap particle asset.
+            for fragment in range(14):
+                angle = math.tau * fragment / 14 + effect_progress * 0.7
+                distance = 30 + effect_progress * (65 + fragment % 4 * 12)
+                fx = round(effect_center[0] + math.cos(angle) * distance)
+                fy = round(effect_center[1] + math.sin(angle) * distance)
+                size = max(2, round(7 * (1.0 - effect_progress)))
+                pygame.draw.rect(screen, (235, 105, 45),
+                                 (fx - size // 2, fy - size // 2, size, size))
+
+            phase_font = title_font(max(20, int(SCREEN_H * 0.032)))
+            phase_text = phase_font.render(
+                boss_phase_effect_text, True, (255, 225, 135)
+            )
+            shadow = phase_font.render(boss_phase_effect_text, True, (25, 8, 8))
+            phase_pos = phase_text.get_rect(center=(SCREEN_W // 2,
+                                                   int(SCREEN_H * 0.27)))
+            screen.blit(shadow, phase_pos.move(3, 3))
+            screen.blit(phase_text, phase_pos)
+
         if (boss_enemy is not None and boss_enemy.active
                 and boss_enemy.state != "defeated"):
             boss_record = get_enemy(boss_enemy.enemy_id) or {}
@@ -2040,7 +2237,7 @@ def game_screen(screen, slot_num=None, save_state=None):
 
         # Key hints (top-right, out of the way of the profile HUD)
         hint = font.render(
-            "ESC = Pause    B = Inventory    M = Map    F10 = Mute music",
+            "P = Practice    F1 = Light    F2 = Fog    F10 = Mute",
             True,
             (255, 255, 255)
         )

@@ -568,7 +568,7 @@ def open_world_map(screen, map_texture, player_rect, map_width, map_height,
                 if event.key in (pygame.K_ESCAPE, pygame.K_m):
                     running = False
 
-                elif DEBUG_MODE and event.key == pygame.K_F1:
+                elif event.key == pygame.K_F1:
                     night = not night
                     night_veil = make_night_veil() if night else None
 

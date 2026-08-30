@@ -23,8 +23,8 @@ Binding a new key in the game means adding it here as well, or the
 manuals start drifting again - which is the whole reason this file
 exists.
 
-The F1/F2/F5/F6/F8 preview tools are intentionally kept out of the beginner
-manual; F10 is the only function-key action needed for normal play.
+F1 and F2 are player-facing lighting controls. The F5/F6/F8 developer tools
+remain hidden and require debug mode.
 """
 
 
@@ -55,7 +55,10 @@ CONTROL_SECTIONS = [
         ("J", "Enemies you have met"),
         ("K", "Items you have found"),
         ("O", "Objectives"),
+        ("P", "Three-stage combat practice"),
         ("ESC", "Pause"),
+        ("F1", "Toggle night / light mode"),
+        ("F2", "Toggle fog"),
         ("F10", "Mute / unmute music"),
     ]),
 

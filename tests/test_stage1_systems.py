@@ -70,7 +70,7 @@ class StageScaffoldAndDebugTests(unittest.TestCase):
         self.assertEqual(castle["manual"]["topics"], [])
         self.assertEqual(stage_challenges(castle), [])
 
-    def test_preview_hotkeys_are_guarded_by_debug_mode(self):
+    def test_developer_hotkeys_are_guarded_by_debug_mode(self):
         for path in (
             Path("src/screens/game.py"),
             Path("src/screens/world_map.py"),
@@ -79,8 +79,7 @@ class StageScaffoldAndDebugTests(unittest.TestCase):
             source = path.read_text(encoding="utf-8")
             for line in source.splitlines():
                 if any(key in line for key in (
-                    "pygame.K_F1", "pygame.K_F2", "pygame.K_F5",
-                    "pygame.K_F6", "pygame.K_F8",
+                    "pygame.K_F5", "pygame.K_F6", "pygame.K_F8",
                 )):
                     self.assertIn("DEBUG_MODE", line, f"unguarded debug key: {line}")
 

@@ -47,6 +47,8 @@ class Enemy:
         self.center_x, self.center_y = map(float, self.spawn)
         self.rect = pygame.Rect(0, 0, *ENEMY_BODY_SIZES[enemy_id])
         self.rect.center = self.spawn
+        self.allowed_ground_cells = None
+        self.ground_tile_size = 0
         self.x, self.y = float(self.rect.x), float(self.rect.y)
         if enemy_id not in self._frame_cache:
             self._frame_cache[enemy_id] = self._load_frames()
@@ -85,6 +87,11 @@ class Enemy:
         self.chase_path = []
         self.chase_goal = None
         self.path_retry = 0.0
+        # Boss phases may tune these per instance without changing the
+        # shared immutable stats used by every enemy of the same species.
+        self.movement_speed_multiplier = 1.0
+        self.attack_cooldown_multiplier = 1.0
+        self.attack_damage_multiplier = 1.0
 
     def _load_frames(self):
         result = {"walking": {}, "attack": {}, "flinch": {}}
@@ -218,10 +225,9 @@ class Enemy:
         direction, distance = normalized_toward(self.rect.center, player_rect.center)
         self._face(direction)
         home_distance = math.dist(self.rect.center, self.spawn)
-        # Encounters own a specific part of the map. A player must enter that
-        # authored area before its enemies engage, and chase movement below is
-        # clamped to the same boundary so enemies cannot follow indefinitely.
-        player_in_chase_zone = self.zone.collidepoint(player_rect.center)
+        # Chase movement remains clamped to the authored patrol territory,
+        # while detection and attacks use visible distance instead of an
+        # invisible zone border.
 
         if self.state == "defeated":
             self.defeat_timer -= dt
@@ -233,15 +239,16 @@ class Enemy:
                 self.state = self._resume_state
             return 0
         if self.state == "alert":
-            if not player_in_chase_zone:
-                self.state = "return"
-            elif self.action_timer == 0:
+            if self.action_timer == 0:
                 self.state = "chase"
             return 0
 
         damage = 0
         if self.state == "attack":
-            if (not player_in_chase_zone or home_distance > self.chase_range
+            # Patrol-zone borders are invisible to the player. Once an enemy
+            # is close enough to strike, crossing that bookkeeping boundary
+            # must not cancel its attack.
+            if (home_distance > self.chase_range
                     or distance > self.disengage_range):
                 self.state = "return"
                 self.action_timer = 0.0
@@ -250,7 +257,9 @@ class Enemy:
             if elapsed >= self.stats.attack_duration * 0.52 and not self.attack_connected:
                 self.attack_connected = True
                 if distance <= self.stats.attack_range + 12:
-                    damage = self.stats.attack_damage
+                    damage = round(
+                        self.stats.attack_damage * self.attack_damage_multiplier
+                    )
             if self.action_timer == 0:
                 self.state = "chase"
             return damage
@@ -292,8 +301,7 @@ class Enemy:
                            allow_detour=False)
             return 0
 
-        if self.state == "chase" and (not player_in_chase_zone
-                or home_distance > self.chase_range
+        if self.state == "chase" and (home_distance > self.chase_range
                 or distance > self.disengage_range):
             self.state = "return"
             return 0
@@ -301,17 +309,41 @@ class Enemy:
         if distance <= self.stats.attack_range and self.attack_cooldown == 0 and self.state == "chase":
             self.state = "attack"
             self.action_timer = self.stats.attack_duration
-            self.attack_cooldown = self.stats.attack_cooldown
+            self.attack_cooldown = (
+                self.stats.attack_cooldown * self.attack_cooldown_multiplier
+            )
             self.attack_connected = False
             self.just_started_attack = True
-        elif self.state == "chase" and player_in_chase_zone:
+        elif self.state == "chase":
             self.state = "chase"
-            # Direct pursuit is cheapest on open ground. If it stalls, follow
-            # a body-safe waypoint route around the blocking tree or prop.
-            if (self.chase_goal is not None
-                    and math.dist(self.chase_goal, player_rect.center) > 72):
+            # Refresh routes while the target moves instead of walking an
+            # obsolete path all the way to its old endpoint. Terrain alone
+            # drives pathfinding; other enemies remain local movement
+            # blockers so a crowd does not repeatedly compute identical
+            # detours around itself.
+            static_blockers = (
+                navigation_rects
+                if navigation_rects is not None else collision_rects
+            )
+            direct_blocked = any(
+                blocker.clipline(self.rect.center, player_rect.center)
+                for blocker in static_blockers
+            )
+            target_moved = (
+                self.chase_goal is None
+                or math.dist(self.chase_goal, player_rect.center) > 32
+            )
+            if not direct_blocked:
                 self.chase_path.clear()
                 self.chase_goal = None
+            elif self.path_retry == 0 and (
+                    not self.chase_path or target_moved):
+                self.chase_path = self._find_path_to(
+                    player_rect.center, static_blockers,
+                    map_width, map_height, self.zone,
+                )
+                self.chase_goal = player_rect.center
+                self.path_retry = 0.45
             while (self.chase_path
                    and math.dist(self.rect.center, self.chase_path[0]) <= 4):
                 self.chase_path.pop(0)
@@ -321,22 +353,19 @@ class Enemy:
                     self.rect.center, self.chase_path[0]
                 )
             became_stuck = self._move(
-                move_direction, self.stats.movement_speed, dt,
+                move_direction,
+                self.stats.movement_speed * self.movement_speed_multiplier, dt,
                 collision_rects, map_width, map_height,
                 movement_bounds=self.zone,
             )
             if became_stuck and self.path_retry == 0:
-                static_blockers = (
-                    navigation_rects
-                    if navigation_rects is not None else collision_rects
-                )
                 self.chase_path = self._find_path_to(
                     player_rect.center, static_blockers,
                     map_width, map_height, self.zone,
                 )
                 self.chase_goal = player_rect.center
                 self.path_retry = 0.75
-        elif distance <= self.detection_range and player_in_chase_zone:
+        elif distance <= self.detection_range:
             # A short reaction makes detection readable and prevents an enemy
             # outside melee range from attacking on the acquisition frame.
             self.state = "alert"
@@ -359,8 +388,12 @@ class Enemy:
             direction = self.detour_direction
         self._face(direction)
         before = self.rect.center
+        before_x, before_y = self.x, self.y
         dx, dy = direction[0] * speed, direction[1] * speed
         self.x, self.y = move_rect(self.rect, self.x, self.y, dx, dy, blockers, bounds)
+        if not self._body_on_allowed_ground(self.rect):
+            self.rect.center = before
+            self.x, self.y = before_x, before_y
 
         moved = math.dist(before, self.rect.center)
         trying = abs(dx) + abs(dy) > 0.01
@@ -387,6 +420,25 @@ class Enemy:
             self.stuck_time = 0.0
         self.center_x, self.center_y = self.rect.center
         return became_stuck
+
+    def _body_on_allowed_ground(self, rect):
+        """Keep every enemy body fully on the authored dirt battlefield."""
+        allowed_cells = getattr(self, "allowed_ground_cells", None)
+        tile_size = getattr(self, "ground_tile_size", 0)
+        if allowed_cells is None or not tile_size:
+            return True
+        points = (
+            rect.center,
+            (rect.left + 2, rect.top + 2),
+            (rect.right - 3, rect.top + 2),
+            (rect.left + 2, rect.bottom - 3),
+            (rect.right - 3, rect.bottom - 3),
+        )
+        size = tile_size
+        return all(
+            (x // size, y // size) in allowed_cells
+            for x, y in points
+        )
 
     def _find_return_path(self, blockers, map_width, map_height):
         """Build deterministic collision-safe waypoints back to spawn."""
@@ -427,7 +479,8 @@ class Enemy:
             probe = pygame.Rect(0, 0, self.rect.width, self.rect.height)
             probe.center = (node[0] * step, node[1] * step)
             return (bounds.contains(probe)
-                    and probe.collidelist(blockers) == -1)
+                    and probe.collidelist(blockers) == -1
+                    and self._body_on_allowed_ground(probe))
 
         frontier = [(0, start)]
         came_from = {start: None}
@@ -488,6 +541,9 @@ class Enemy:
         self.chase_path.clear()
         self.chase_goal = None
         self.path_retry = 0.0
+        self.movement_speed_multiplier = 1.0
+        self.attack_cooldown_multiplier = 1.0
+        self.attack_damage_multiplier = 1.0
 
     def _face(self, direction):
         dx, dy = direction

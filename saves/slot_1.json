@@ -1,16 +1,38 @@
 {
   "stage": "Island",
-  "hearts": 5,
+  "hearts": 2,
   "keys": 0,
   "topics_completed": [],
-  "bonus_time": 0,
+  "bonus_time": 100,
   "challenges_passed": [],
   "completed_stages": [],
-  "map_position": null,
+  "map_layout_version": 2,
+  "map_position": [
+    1530.0,
+    982.0
+  ],
   "inventory": [],
   "weapon_obtained": true,
   "weapon_equipped": true,
-  "stage_progress": {},
+  "stage_progress": {
+    "discovered_enemies": [
+      "corrupted_core_kapre",
+      "manananggal",
+      "tikbalang",
+      "tiyanak_sinta"
+    ],
+    "discovered_items": [],
+    "objectives_done": [],
+    "defeated_enemies": [
+      "manananggal",
+      "tikbalang",
+      "tiyanak_sinta"
+    ],
+    "discovered_zones": [
+      "The Corrupted Core"
+    ],
+    "opened_interactables": []
+  },
   "_security": {
     "version": 1,
     "algorithm": "pbkdf2_sha256",

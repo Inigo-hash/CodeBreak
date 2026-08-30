@@ -6,7 +6,8 @@ import hmac
 import secrets
 
 from src.data.stages import get_stage
-from src.systems.stage_gate import required_key_count
+from src.systems.boss_trigger import required_boss_id
+from src.systems.stage_gate import required_key_count, required_topic_ids
 
 SAVE_DIR = "saves"
 NUM_SLOTS = 3
@@ -95,6 +96,33 @@ def slot_summary(slot: int) -> str:
     lock = "Protected" if is_protected(data) else "Needs password"
     required_keys = required_key_count(get_stage(stage))
     return f"{stage}  |  Hearts: {hearts}  |  Keys: {keys}/{required_keys}  |  {lock}"
+
+
+def slot_progress(slot: int) -> int:
+    """Return meaningful stage completion from lessons plus the boss."""
+    data = load_slot(slot)
+    if data is None:
+        return 0
+    stage = get_stage(data.get("stage", "Island"))
+    stage_id = stage.get("id", "").lower()
+    completed_stages = {
+        str(value).lower() for value in data.get("completed_stages", ())
+    }
+    if stage_id and stage_id in completed_stages:
+        return 100
+
+    topic_ids = required_topic_ids(stage)
+    passed = set(data.get("challenges_passed", ()))
+    completed_topics = sum(topic_id in passed for topic_id in topic_ids)
+    boss_id = required_boss_id(stage)
+    defeated = set(
+        data.get("stage_progress", {}).get("defeated_enemies", ())
+    )
+    completed_boss = int(not boss_id or boss_id in defeated)
+    total_units = len(topic_ids) + int(bool(boss_id))
+    if total_units == 0:
+        return 0
+    return round(100 * (completed_topics + completed_boss) / total_units)
 
 
 def new_game_state() -> dict:

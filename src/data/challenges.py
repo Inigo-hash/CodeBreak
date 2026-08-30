@@ -279,7 +279,101 @@ Welcome, Alex!
             "prefix": "Welcome, ",
             "suffix": "!"
         }
-    }
+    },
+
+
+    # =========================================================
+    # Operators
+    # =========================================================
+
+    "operators_001": {
+        "id": "operators_001",
+        "title": "Arithmetic Operators",
+        "difficulty": "Beginner",
+        "type": "operator",
+        "problem": "Store the result of 12 + 8 inside a variable named total.",
+        "objective": "Create total using the + operator with 12 and 8.",
+        "requirements": [],
+        "expected": {
+            "target": "total", "operator": "add",
+            "left": 12, "right": 8, "value": 20,
+        },
+    },
+
+
+    # =========================================================
+    # String Basics
+    # =========================================================
+
+    "string_basics_001": {
+        "id": "string_basics_001",
+        "title": "String Basics",
+        "difficulty": "Beginner",
+        "type": "string",
+        "problem": (
+            'Join "Code" and " Breaker" with + and store the result '
+            "inside a variable named title."
+        ),
+        "objective": "Create title by joining the two quoted strings.",
+        "requirements": [],
+        "expected": {
+            "target": "title",
+            "parts": ["Code", " Breaker"],
+            "value": "Code Breaker",
+        },
+    },
+
+
+    # =========================================================
+    # If / Elif / Else
+    # =========================================================
+
+    "conditionals_001": {
+        "id": "conditionals_001",
+        "title": "If, Elif, and Else",
+        "difficulty": "Beginner",
+        "type": "conditional",
+        "problem": (
+            "Set score to 85. Set rank to 'Gold' when score >= 90, "
+            "'Silver' when score >= 75, and 'Bronze' otherwise."
+        ),
+        "objective": "Use a complete if/elif/else chain to assign rank.",
+        "requirements": [],
+        "expected": {
+            "source": "score",
+            "source_value": 85,
+            "target": "rank",
+            "branches": [
+                {"operator": "gte", "value": 90, "result": "Gold"},
+                {"operator": "gte", "value": 75, "result": "Silver"},
+            ],
+            "else_result": "Bronze",
+        },
+    },
+
+
+    # =========================================================
+    # Boolean Logic
+    # =========================================================
+
+    "boolean_logic_001": {
+        "id": "boolean_logic_001",
+        "title": "Boolean Logic",
+        "difficulty": "Beginner",
+        "type": "boolean_logic",
+        "problem": (
+            "Set has_key to True and gate_locked to False. Then create "
+            "can_enter using has_key and not gate_locked."
+        ),
+        "objective": "Combine boolean variables using and and not.",
+        "requirements": [],
+        "expected": {
+            "variables": {"has_key": True, "gate_locked": False},
+            "target": "can_enter",
+            "plain": "has_key",
+            "negated": "gate_locked",
+        },
+    },
 
 }
 

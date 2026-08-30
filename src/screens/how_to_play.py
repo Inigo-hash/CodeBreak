@@ -44,11 +44,12 @@ RULES_LINES = [
 
 # Manual geometry. Both screens read these so the tutorial's copy and
 # this panel are the same object at the same size.
-MANUAL_WIDTH = 780
-MANUAL_HEIGHT = 580
+MANUAL_WIDTH = 900
+MANUAL_HEIGHT = 660
 ROW_HEIGHT = 20          # compact enough to stay clear of the footer
 HEADER_HEIGHT = 30       # a section heading plus its breathing room
 SECTION_GAP = 8
+FOOTER_LINE_HEIGHT = 26
 KEY_COLUMN = 130         # where the action text starts, measured from the
                          # column's left edge - wide enough for the longest
                          # key label ("Ctrl + C / X / V")
@@ -85,12 +86,22 @@ def manual_layout(screen_width, screen_height):
     col_gap = 30
     col_width = (panel.width - 80 - col_gap) // 2
     col_top = panel.top + 100
-    col_height = panel.height - 200
+    # The footer contains three separate notes and the Back button has its
+    # own row below them. Derive the column height from those reserved areas
+    # instead of letting the manual body continue underneath both.
+    footer_height = max(44, len(CONTROL_NOTES) * FOOTER_LINE_HEIGHT)
+    footer_bottom = panel.bottom - 72
+
+    footer = pygame.Rect(
+        panel.left + 40,
+        footer_bottom - footer_height,
+        panel.width - 80,
+        footer_height,
+    )
+    col_height = max(0, footer.top - col_top - 12)
 
     left = pygame.Rect(panel.left + 40, col_top, col_width, col_height)
     right = pygame.Rect(left.right + col_gap, col_top, col_width, col_height)
-    footer = pygame.Rect(panel.left + 40, panel.bottom - 92,
-                         panel.width - 80, 44)
 
     return panel, left, right, footer
 
@@ -142,7 +153,7 @@ def draw_manual_footer(surface, rect, font):
     for note in CONTROL_NOTES:
         rendered = font.render(note, True, (170, 175, 190))
         surface.blit(rendered, (rect.centerx - rendered.get_width() // 2, y))
-        y += 22
+        y += FOOTER_LINE_HEIGHT
     return y
 
 
@@ -203,7 +214,8 @@ def how_to_play_screen(screen):
                 sys.exit()
             if handle_music_shortcut(event):
                 continue
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            if (event.type == pygame.KEYDOWN
+                    and event.key in (pygame.K_ESCAPE, pygame.K_BACKSPACE)):
                 return
             # Left button only - see the note in main_menu.py: the wheel
             # and the right button raise this event as well.

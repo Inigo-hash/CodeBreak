@@ -9,7 +9,7 @@ Responsibilities:
 - Show the objective.
 - Wrap long text so it fits the pane's width.
 - Scroll when the text is taller than the pane.
-- (Future) Show hints and difficulty.
+- Reveal progressively stronger hints after unsuccessful submissions.
 
 This class ONLY draws the problem information.
 It never validates code and never decides layout - the renderer
@@ -33,6 +33,71 @@ INNER_PADDING = 14
 
 # Height of the fixed "OBJECTIVE" strip at the top of the pane.
 TITLE_STRIP_HEIGHT = 38
+MAX_HINT_LEVEL = 4
+
+
+DEFAULT_HINTS = {
+    "print": (
+        "Use Python's print() function.",
+        "Put the requested message between quotation marks.",
+        "The shape is print(\"message\"). Check spelling and punctuation.",
+        "Copy the requested text exactly inside print(...).",
+    ),
+    "variable": (
+        "A variable needs a name, an equals sign, and a value.",
+        "Use the exact variable name shown in the objective.",
+        "Numbers do not need quotation marks.",
+        "Follow this shape: name = value, using the requested name and value.",
+    ),
+    "data_type": (
+        "Create one clearly named variable on each line.",
+        "Strings use quotes; integers and floats do not.",
+        "Python booleans are written True and False with capital letters.",
+        "Recheck every required name, type, and value against the problem.",
+    ),
+    "type_casting": (
+        "Create the source text variable before converting it.",
+        "int(), float(), and str() convert values to another type.",
+        "Pass the source variable into the requested conversion function.",
+        "Store the converted result in the exact target variable named above.",
+    ),
+    "input": (
+        "input() reads one value supplied by the player.",
+        "Store the result of input() in the requested variable.",
+        "Put the exact requested prompt inside input(...).",
+        "Use this shape: name = input(\"the exact prompt\").",
+    ),
+    "formatted_output": (
+        "An f-string starts with the letter f before its opening quote.",
+        "Put a variable inside braces to insert its value: {name}.",
+        "Pass the complete f-string to print().",
+        "Match the required prefix, variable, suffix, spaces, and punctuation exactly.",
+    ),
+    "operator": (
+        "Use a Python arithmetic operator between two values.",
+        "The + operator performs addition.",
+        "Store the expression itself in the requested variable.",
+        "Follow this shape: result = left_value + right_value.",
+    ),
+    "string": (
+        "String values are surrounded by quotation marks.",
+        "The + operator can join two strings.",
+        "Keep required spaces inside one of the quoted pieces.",
+        "Assign the complete joined string to the requested variable.",
+    ),
+    "conditional": (
+        "Use if, elif, and else to choose between outcomes.",
+        "Each condition ends with a colon and its body is indented.",
+        "elif is attached to the first if; else has no condition.",
+        "Assign the requested result in all three branches.",
+    ),
+    "boolean_logic": (
+        "Boolean values are True or False.",
+        "Use and when both conditions must be true.",
+        "Use not to reverse a boolean value.",
+        "Build the requested expression with both named variables, and, and not.",
+    ),
+}
 
 
 class ProblemPanel:
@@ -54,6 +119,47 @@ class ProblemPanel:
         # rather than on every single frame.
         self._wrapped_rows = []
         self._wrapped_width = None
+
+        # One stronger hint unlocks after each failed Submit, capped at four.
+        # Run-only errors do not advance this because they are not submissions.
+        self.failure_count = 0
+        self.hint_level = 0
+
+    def hint_steps(self):
+        """Return exactly four progressively stronger hints."""
+
+        authored = self.challenge.get("hints") or ()
+        if isinstance(authored, str):
+            authored = (authored,)
+        steps = [str(hint).strip() for hint in authored if str(hint).strip()]
+        legacy_hint = self.challenge.get("hint")
+        if legacy_hint and not steps:
+            steps.append(str(legacy_hint).strip())
+        fallbacks = DEFAULT_HINTS.get(
+            self.challenge.get("type"),
+            DEFAULT_HINTS["variable"],
+        )
+        for fallback in fallbacks:
+            if len(steps) >= MAX_HINT_LEVEL:
+                break
+            if fallback not in steps:
+                steps.append(fallback)
+        while len(steps) < MAX_HINT_LEVEL:
+            steps.append("Compare every name, value, and symbol with the objective.")
+        return tuple(steps[:MAX_HINT_LEVEL])
+
+    def record_failure(self):
+        """Unlock the next hint and return its one-based level."""
+
+        self.failure_count += 1
+        self.hint_level = min(MAX_HINT_LEVEL, self.failure_count)
+        self._wrapped_rows = []
+        self._wrapped_width = None
+        if self.rect:
+            # Put the newly unlocked hint on screen immediately instead of
+            # leaving it below the previous scroll position.
+            self.scroll_offset = self.get_max_scroll_offset(self.rect)
+        return self.hint_level
 
     # ---------------------------------------------------------
     # Content
@@ -159,19 +265,28 @@ class ProblemPanel:
                 )
             )
 
-        hint = self.challenge.get("hint")
-        if not hint:
-            hint = {
-                "print": 'A print statement looks like: print("your message")',
-                "variable": "A variable follows this pattern: name = value",
-                "data_type": "Create one clearly named variable on each line.",
-                "type_casting": "Functions such as int(), float(), and str() convert values.",
-            }.get(self.challenge.get("type"))
-        if hint:
-            rows.append(("", SMALL_FONT, SECONDARY_TEXT))
-            rows.append(("Need a hint?", SMALL_FONT, SUCCESS_COLOR))
+        rows.append(("", SMALL_FONT, SECONDARY_TEXT))
+        if self.hint_level:
+            hint = self.hint_steps()[self.hint_level - 1]
+            rows.append((
+                f"HINT {self.hint_level} OF {MAX_HINT_LEVEL}",
+                SMALL_FONT,
+                SUCCESS_COLOR,
+            ))
             for line in wrap_text(hint, SMALL_FONT, max_width):
                 rows.append((line, SMALL_FONT, SECONDARY_TEXT))
+            if self.hint_level < MAX_HINT_LEVEL:
+                rows.append((
+                    "Another failed SUBMIT reveals the next hint.",
+                    SMALL_FONT,
+                    SECONDARY_TEXT,
+                ))
+        else:
+            rows.append((
+                "Hints unlock after an unsuccessful SUBMIT.",
+                SMALL_FONT,
+                SECONDARY_TEXT,
+            ))
         return rows
 
     def _rows_for_width(self, max_width):

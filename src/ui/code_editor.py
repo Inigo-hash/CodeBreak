@@ -884,8 +884,13 @@ class CodeEditor:
         # finished running - no point checking it against the
         # challenge, since there's nothing valid to check yet.
         if not result["success"]:
+            hint_level = self.renderer.problem_panel.record_failure()
             self.output_panel.add(result["error"], ERROR_COLOR)
             self.output_panel.add("Submission not completed.", ERROR_COLOR)
+            self.output_panel.add(
+                f"Hint {hint_level} of 4 unlocked in the Objective panel.",
+                SUCCESS_COLOR,
+            )
             self._show_submission_feedback(
                 False,
                 "CODE COULD NOT RUN",
@@ -919,8 +924,13 @@ class CodeEditor:
                 feedback,
             )
         else:
+            hint_level = self.renderer.problem_panel.record_failure()
             self.output_panel.add(
                 "Edit your code and submit again when ready.", ERROR_COLOR
+            )
+            self.output_panel.add(
+                f"Hint {hint_level} of 4 unlocked in the Objective panel.",
+                SUCCESS_COLOR,
             )
             self._show_submission_feedback(
                 False,

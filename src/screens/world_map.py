@@ -35,6 +35,7 @@ import random
 import sys
 
 import pygame
+from src.config import DEBUG_MODE
 from src.systems.audio import handle_music_shortcut
 
 # Aliased because this module uses `title_font` as a local variable name.
@@ -567,7 +568,7 @@ def open_world_map(screen, map_texture, player_rect, map_width, map_height,
                 if event.key in (pygame.K_ESCAPE, pygame.K_m):
                     running = False
 
-                elif event.key == pygame.K_F1:
+                elif DEBUG_MODE and event.key == pygame.K_F1:
                     night = not night
                     night_veil = make_night_veil() if night else None
 

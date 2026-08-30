@@ -3,9 +3,11 @@ import math
 from pytmx.util_pygame import load_pygame
 import pygame
 import sys
+from src.config import DEBUG_MODE
 from src.screens.settings import SettingsPanel
 from src.entities.player import MainCharacter
 from src.entities.enemy import Enemy
+from src.entities.chest import Chest
 from src.ui.code_editor import CodeEditor
 from src.screens.game_over import game_over_screen
 from src.screens.profile import profile_screen
@@ -17,6 +19,7 @@ from src.systems.stage_progress import StageProgress
 from src.ui.stage_panel import StagePanel
 from src.ui.gameplay_hud import (
     GameplayHUD, MINIMAP_FRAME, build_minimap_frame, build_view_vignette,
+    draw_low_health_warning,
 )
 from src.ui.chart import (
     BOSS_INK, INK, build_chart_texture, build_night_veil, build_sea_tile,
@@ -52,6 +55,73 @@ from src.systems.boss_trigger import (
 from src.systems.stage_gate import (
     award_topic_keys, evaluate_stage_gate, migrate_key_count,
 )
+
+
+def load_interactables(tmx_data):
+    """Return every visible map object that advertises an interaction.
+
+    Older revisions of the map used the custom key ``types=interactive``.
+    Tiled's conventional ``type`` field and action-only objects are accepted
+    too, so a harmless metadata spelling difference cannot make a prop look
+    interactive while silently dropping it from gameplay.
+    """
+
+    interactables = []
+    for layer in tmx_data.visible_layers:
+        if hasattr(layer, "data"):
+            continue
+        for obj in layer:
+            properties = getattr(obj, "properties", {}) or {}
+            action = properties.get("actions") or properties.get("action")
+            object_type = (
+                properties.get("types")
+                or properties.get("type")
+                or getattr(obj, "type", "")
+                or ""
+            )
+            if str(object_type).strip().lower() != "interactive" and not action:
+                continue
+            rect = pygame.Rect(
+                round(obj.x), round(obj.y),
+                max(1, round(obj.width)), max(1, round(obj.height)),
+            )
+            entity = None
+            if action == "search_chest":
+                entity = Chest(
+                    rect,
+                    reward_seconds=properties.get("reward_seconds", 0),
+                    trap_seconds=properties.get("trap_seconds", 0),
+                )
+            interactables.append({
+                "rect": rect,
+                "actions": action,
+                "topic_id": properties.get("topic_id"),
+                "interaction_id": str(getattr(obj, "id", "")),
+                "entity": entity,
+                "interaction_message": "",
+                "inspecting": False,
+                "inspect_progress": 0.0,
+                "topic_handled": False,
+            })
+    return interactables
+
+
+def nearest_interactable(player_rect, interactables, reach=32):
+    """Choose the closest reachable prop instead of map-file order."""
+
+    candidates = [
+        item for item in interactables
+        if player_rect.colliderect(item["rect"].inflate(reach * 2, reach * 2))
+    ]
+    return min(
+        candidates,
+        key=lambda item: (
+            (item["rect"].centerx - player_rect.centerx) ** 2
+            + (item["rect"].centery - player_rect.centery) ** 2
+        ),
+        default=None,
+    )
+
 
 def game_screen(screen, slot_num=None, save_state=None):
     clock = pygame.time.Clock()
@@ -120,36 +190,8 @@ def game_screen(screen, slot_num=None, save_state=None):
                     )
     loading.update(30, "Preparing interactables...")
 
-    # --- Load interactive objects from all object layers ---
-    interactables = []
-
-    for layer in tmx_data.visible_layers:
-
-        # Tile layers have "data", object layers do not
-        if hasattr(layer, 'data'):
-            continue
-
-        for obj in layer:
-
-            if obj.properties.get('types') != 'interactive':
-                continue
-
-            interactables.append({
-                'rect': pygame.Rect(
-                    int(obj.x),
-                    int(obj.y),
-                    int(obj.width),
-                    int(obj.height)
-                ),
-
-                'actions': obj.properties.get('actions'),
-                'topic_id': obj.properties.get('topic_id'),
-
-                'inspecting': False,
-                'inspect_progress': 0.0,
-
-                'topic_handled': False
-            })
+    # --- Load interactive objects from all visible object layers ---
+    interactables = load_interactables(tmx_data)
     loading.update(38, "Restoring expedition records...")
 
     # --- Player Setup ---
@@ -401,6 +443,14 @@ def game_screen(screen, slot_num=None, save_state=None):
                 "topic_handled"
             ] = True
 
+        entity = item.get("entity")
+        if (entity is not None
+                and stage_progress.has_opened_interactable(
+                    item.get("interaction_id")
+                )):
+            entity.opened = True
+            item["interaction_message"] = "This chest has already been opened."
+
     toolbar = Toolbar(screen, player_inventory)
     gameplay_hud = GameplayHUD(
         screen, gameplay_state, stage,
@@ -523,7 +573,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                 save_challenges_passed
             )
 
-        return "editor_closed"
+        return "solved" if editor.solved else "editor_closed"
 
     # --- Camera with zoom ---
     camera_x = 0
@@ -1152,10 +1202,10 @@ def game_screen(screen, slot_num=None, save_state=None):
                         # When the lesson/editor closes, this loop opens
                         # the inventory again.
 
-                elif event.key == pygame.K_F1 and not paused:
+                elif DEBUG_MODE and event.key == pygame.K_F1 and not paused:
                     night_mode = not night_mode
 
-                elif event.key == pygame.K_F2 and not paused:
+                elif DEBUG_MODE and event.key == pygame.K_F2 and not paused:
                     fog_mode = not fog_mode
                     if fog_mode and fog_texture is None:
                         fog_texture = build_fog_texture(1100, 750)
@@ -1180,7 +1230,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                         # was looking at when they hit pause.
                         pause_snapshot = blur_frame(screen)
 
-                elif event.key == pygame.K_F5 and not paused:
+                elif DEBUG_MODE and event.key == pygame.K_F5 and not paused:
                     sample_challenge = {
                         "title": "Variables",
                         "objective": (
@@ -1192,12 +1242,12 @@ def game_screen(screen, slot_num=None, save_state=None):
                     editor = CodeEditor(screen, sample_challenge, screen.copy())
                     editor.run()
 
-                elif event.key == pygame.K_F6 and not paused:
+                elif DEBUG_MODE and event.key == pygame.K_F6 and not paused:
                     frac_x = player_rect.centerx / map_width
                     frac_y = player_rect.centery / map_height
                     print(f"Zone position: ({frac_x:.2f}, {frac_y:.2f})")
 
-                elif event.key == pygame.K_F8 and not paused:
+                elif DEBUG_MODE and event.key == pygame.K_F8 and not paused:
                     game_over_screen(screen, background=screen.copy())
 
             # Left button only - see the note in main_menu.py: the wheel
@@ -1353,6 +1403,12 @@ def game_screen(screen, slot_num=None, save_state=None):
         # --- Camera ---
         camera_x, camera_y = update_camera()
 
+        current_zone_name = get_zone_at(
+            player_rect.centerx, player_rect.centery, map_width, map_height
+        )
+        if stage_progress.visit_zone(current_zone_name):
+            stage_progress.sync_objectives(stage, save_challenges_passed)
+
         # Entering an authored boss zone is the only campaign boss trigger.
         # No zone-name comparison is involved, so another stage can opt in by
         # setting is_boss_zone on its own zone record.
@@ -1393,14 +1449,20 @@ def game_screen(screen, slot_num=None, save_state=None):
         # --- Independent enemy AI and combat resolution ---
         engaged = False
         for enemy in enemies:
-            enemy_blockers = collision_rects + [
+            # Manananggal fly over trees and props. They still respect their
+            # encounter/map bounds and avoid other living enemies, so flight
+            # fixes terrain snags without letting a whole group stack up.
+            terrain_blockers = (
+                [] if enemy.flies_over_terrain else collision_rects
+            )
+            enemy_blockers = terrain_blockers + [
                 other.rect for other in enemies
                 if other is not enemy and other.active
                 and other.state != "defeated"
             ]
             incoming_damage = enemy.update(
                 dt, player_rect, enemy_blockers, map_width, map_height,
-                navigation_rects=collision_rects,
+                navigation_rects=terrain_blockers,
             )
             if enemy.just_started_attack:
                 combat_audio.play("enemy_attack")
@@ -1514,16 +1576,12 @@ def game_screen(screen, slot_num=None, save_state=None):
                     enemy.rewarded = False
 
         # --- Check if player is near an interactable ---
-        near_interactable = None
-        for item in interactables:
-            # player_rect is in UNSCALED world coordinates (ZOOM is only
-            # applied when drawing to the screen), so the detection rect
-            # must stay unscaled too to match it.
-            detection_rect = item['rect'].inflate(20, 20)
-
-            if player_rect.colliderect(detection_rect):
-                near_interactable = item
-                break
+        # Coordinates remain unscaled here (ZOOM is draw-only). A two-tile
+        # reach lets the player use a prop while its solid artwork keeps the
+        # character body a short distance away.
+        near_interactable = nearest_interactable(
+            player_rect, interactables, reach=TILE_SIZE * 2
+        )
 
         # Combat takes input priority over environmental hold interactions.
         if engaged:
@@ -1542,12 +1600,30 @@ def game_screen(screen, slot_num=None, save_state=None):
         # --- Handle E key hold ---
         if near_interactable:
             if keys[pygame.K_e]:
-                near_interactable['inspect_progress'] += 1 / 60 / INSPECT_TIME
+                near_interactable['inspect_progress'] += dt / INSPECT_TIME
                 near_interactable['inspect_progress'] = min(near_interactable['inspect_progress'], 1.0)
                 if near_interactable['inspect_progress'] >= 1.0:
                     near_interactable['inspecting'] = True
 
                     topic_id = near_interactable.get('topic_id')
+                    action = near_interactable.get('actions', '')
+
+                    if action == "search_chest":
+                        entity = near_interactable.get("entity")
+                        interaction_id = near_interactable.get("interaction_id")
+                        if (entity is not None
+                                and stage_progress.open_interactable(interaction_id)):
+                            (gameplay_state["bonus_time"], message,
+                             _changed) = entity.open(
+                                gameplay_state["bonus_time"]
+                            )
+                            near_interactable["interaction_message"] = message
+                        elif entity is not None and not near_interactable.get(
+                            "interaction_message"
+                        ):
+                            near_interactable["interaction_message"] = (
+                                "This chest has already been opened."
+                            )
 
                     if (
                         topic_id
@@ -1563,13 +1639,18 @@ def game_screen(screen, slot_num=None, save_state=None):
                         )
 
                         if decision == "start":
-
-                            near_interactable['topic_handled'] = True
-
-                            open_topic_flow(
+                            topic_result = open_topic_flow(
                                 topic_id,
                                 background_snapshot
                             )
+                            # Closing a lesson or an unsolved editor must not
+                            # consume the only map terminal for that topic.
+                            # Completed or stored lessons remain handled.
+                            near_interactable['topic_handled'] = (
+                                topic_result == "solved"
+                            )
+                            near_interactable['inspect_progress'] = 0.0
+                            near_interactable['inspecting'] = False
 
                         elif decision == "store":
 
@@ -1615,7 +1696,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                         )
             else:
                 near_interactable['inspect_progress'] = max(
-                    0, near_interactable['inspect_progress'] - 1 / 60 / INSPECT_TIME
+                    0, near_interactable['inspect_progress'] - dt / INSPECT_TIME
                 )
                 if not near_interactable['inspecting']:
                     near_interactable['inspect_progress'] = 0.0
@@ -1642,6 +1723,10 @@ def game_screen(screen, slot_num=None, save_state=None):
 
         # --- Depth-sorted draw pass (painter's algorithm) ---
         draw_list = [('prop', p['sort_y'], p) for p in dynamic_props]
+        draw_list.extend(
+            ('chest', item['entity'].rect.bottom, item['entity'])
+            for item in interactables if item.get('entity') is not None
+        )
         draw_list.append(('player', player_rect.bottom, None))
         for enemy in enemies:
             if enemy.active:
@@ -1655,6 +1740,8 @@ def game_screen(screen, slot_num=None, save_state=None):
                 main_character.draw_frames(ZOOM, camera_x, camera_y, dt=dt)
             elif kind == 'enemy':
                 prop.draw_frames(ZOOM, camera_x, camera_y)
+            elif kind == 'chest':
+                prop.draw(screen, ZOOM, camera_x, camera_y)
 
         # ---------------------------------------------------------
         # Nighttime and fixed map torches
@@ -1751,7 +1838,15 @@ def game_screen(screen, slot_num=None, save_state=None):
                 topic_id = near_interactable.get('topic_id')
 
                 if topic_id:
-                    message = ""
+                    message = (
+                        "You already collected this lesson."
+                        if near_interactable["topic_handled"] else ""
+                    )
+                elif action == "search_chest":
+                    message = near_interactable.get(
+                        "interaction_message",
+                        "This chest has already been opened.",
+                    )
                 else:
                     object_name = (
                         action
@@ -1881,7 +1976,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             )
             screen.blit(hp_label, hp_label.get_rect(center=boss_bar.center))
 
-        if COMBAT_DEBUG:
+        if DEBUG_MODE and COMBAT_DEBUG:
             world_hitbox = attack_hitbox(player_rect, main_character.facing)
             debug_hitbox = pygame.Rect(
                 world_hitbox.x * ZOOM - camera_x,
@@ -1899,7 +1994,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                 )
                 pygame.draw.rect(screen, (255, 80, 80), enemy_debug_rect, 1)
 
-        if DEBUG_ENEMY_AI:
+        if DEBUG_MODE and DEBUG_ENEMY_AI:
             ai_font = body_font(12, bold=True)
             for enemy in enemies:
                 if not enemy.active:
@@ -1950,6 +2045,13 @@ def game_screen(screen, slot_num=None, save_state=None):
             (255, 255, 255)
         )
         screen.blit(hint, (SCREEN_W - hint.get_width() - 10, 10))
+
+        draw_low_health_warning(
+            screen,
+            player_combat.hp,
+            player_combat.max_hp,
+            pygame.time.get_ticks() / 1000.0,
+        )
 
         pygame.display.flip()
         if player_combat.state == "defeated" and player_combat.action_time == 0:

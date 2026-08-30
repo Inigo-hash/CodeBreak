@@ -63,6 +63,18 @@ ITEMS = {
         "hint": "Hold E to search.",
     },
 
+    "chest": {
+        "id": "chest",
+        "name": "Treasure Chest",
+        "kind": "interactable",
+        "action": "search_chest",
+        "description": (
+            "A reinforced chest wired into the island's broken timer. Some "
+            "grant bonus time; corrupted ones spring a time-draining trap."
+        ),
+        "hint": "Hold E to open it. Each chest can resolve only once.",
+    },
+
     "hay": {
         "id": "hay",
         "name": "Hay Pile",

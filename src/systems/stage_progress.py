@@ -32,11 +32,14 @@ class StageProgress:
     """
 
     def __init__(self, discovered_enemies=None, discovered_items=None,
-                 objectives_done=None, defeated_enemies=None):
+                 objectives_done=None, defeated_enemies=None,
+                 discovered_zones=None, opened_interactables=None):
         self.discovered_enemies = set(discovered_enemies or ())
         self.discovered_items = set(discovered_items or ())
         self.objectives_done = set(objectives_done or ())
         self.defeated_enemies = set(defeated_enemies or ())
+        self.discovered_zones = set(discovered_zones or ())
+        self.opened_interactables = set(opened_interactables or ())
 
     # -- discovery ----------------------------------------------------------
     # Each of these returns True only the *first* time an id is recorded,
@@ -75,6 +78,30 @@ class StageProgress:
     def knows_item(self, item_id):
         return item_id in self.discovered_items
 
+    def visit_zone(self, zone_name):
+        """Record entry into a named map zone."""
+
+        if (not zone_name or zone_name == "Wilderness"
+                or zone_name in self.discovered_zones):
+            return False
+        self.discovered_zones.add(zone_name)
+        return True
+
+    def knows_zone(self, zone_name):
+        return zone_name in self.discovered_zones
+
+    def open_interactable(self, interaction_id):
+        """Persist a one-shot map interaction by its Tiled object id."""
+
+        interaction_id = str(interaction_id or "")
+        if not interaction_id or interaction_id in self.opened_interactables:
+            return False
+        self.opened_interactables.add(interaction_id)
+        return True
+
+    def has_opened_interactable(self, interaction_id):
+        return str(interaction_id or "") in self.opened_interactables
+
     # -- objectives ---------------------------------------------------------
 
     def complete_objective(self, objective_id):
@@ -97,8 +124,7 @@ class StageProgress:
         Called after a discovery or a passed challenge rather than every
         frame - it is cheap, but there is no reason to run it constantly.
 
-        "explore" objectives are left alone: nothing records zone entry
-        yet, so there is no condition to check against.
+        Explore objectives use the named zones recorded by visit_zone().
         """
 
         newly_done = []
@@ -117,6 +143,8 @@ class StageProgress:
                 satisfied = target in challenges_passed
             elif kind == "defeat":
                 satisfied = target in self.defeated_enemies
+            elif kind == "explore":
+                satisfied = self.knows_zone(target)
             else:
                 satisfied = False
 
@@ -173,6 +201,8 @@ class StageProgress:
             "discovered_items": sorted(self.discovered_items),
             "objectives_done": sorted(self.objectives_done),
             "defeated_enemies": sorted(self.defeated_enemies),
+            "discovered_zones": sorted(self.discovered_zones),
+            "opened_interactables": sorted(self.opened_interactables),
         }
 
     @classmethod
@@ -191,4 +221,6 @@ class StageProgress:
             discovered_items=data.get("discovered_items", []),
             objectives_done=data.get("objectives_done", []),
             defeated_enemies=data.get("defeated_enemies", []),
+            discovered_zones=data.get("discovered_zones", []),
+            opened_interactables=data.get("opened_interactables", []),
         )

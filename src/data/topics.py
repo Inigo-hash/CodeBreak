@@ -604,7 +604,110 @@ A basic f-string looks like:
 """,
 
         "challenge_id": "formatted_output_001"
-    }
+    },
+
+
+    # =========================================================
+    # Arithmetic Operators
+    # =========================================================
+
+    "operators": {
+        "id": "operators",
+        "title": "Arithmetic Operators",
+        "difficulty": "Beginner",
+        "lesson": """
+OPERATORS
+
+Operators tell Python to calculate with values.
+
+    +   addition
+    -   subtraction
+    *   multiplication
+    /   division
+
+An expression can be stored in a variable:
+
+    total = 12 + 8
+
+Python calculates the right side first, then stores the result.
+""",
+        "challenge_id": "operators_001",
+    },
+
+
+    # =========================================================
+    # String Basics
+    # =========================================================
+
+    "string_basics": {
+        "id": "string_basics",
+        "title": "String Basics",
+        "difficulty": "Beginner",
+        "lesson": """
+STRING BASICS
+
+A string is text surrounded by quotation marks.
+
+    name = "Alex"
+
+The + operator joins strings. This is called concatenation.
+
+    title = "Code" + " Breaker"
+
+Spaces inside quotation marks are part of the resulting text.
+""",
+        "challenge_id": "string_basics_001",
+    },
+
+
+    # =========================================================
+    # If / Elif / Else
+    # =========================================================
+
+    "conditionals": {
+        "id": "conditionals",
+        "title": "If, Elif, and Else",
+        "difficulty": "Beginner",
+        "lesson": """
+MAKING DECISIONS
+
+An if statement runs a block when its condition is true.
+elif checks another condition. else handles everything remaining.
+
+    if score >= 90:
+        rank = "Gold"
+    elif score >= 75:
+        rank = "Silver"
+    else:
+        rank = "Bronze"
+
+Each heading ends with a colon, and each body is indented.
+""",
+        "challenge_id": "conditionals_001",
+    },
+
+
+    # =========================================================
+    # Boolean Logic
+    # =========================================================
+
+    "boolean_logic": {
+        "id": "boolean_logic",
+        "title": "Boolean Logic",
+        "difficulty": "Beginner",
+        "lesson": """
+BOOLEAN LOGIC
+
+Booleans have only two values: True and False.
+
+Use and when both conditions must be true. Use not to reverse a value.
+
+    can_enter = has_key and not gate_locked
+
+This is true only when the player has a key and the gate is not locked.
+""",
+        "challenge_id": "boolean_logic_001",
+    },
 
 }
 

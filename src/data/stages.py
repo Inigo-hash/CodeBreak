@@ -23,10 +23,9 @@ Each objective is a dict:
                 explore   -> a zone name from zones.py
     optional  True for side objectives (shown but not counted as required)
 
-Only "interact" and "challenge" complete themselves right now, through
-StageProgress.sync_objectives(). "explore" objectives are recognised by
-the panel but nothing marks them done yet - the zone-entry hook is not
-wired up.
+Interact, challenge, defeat, and explore objectives complete through
+StageProgress.sync_objectives(); game.py records discoveries, victories,
+and named-zone entry as the player moves through the stage.
 """
 
 from src.data.challenges import CHALLENGES
@@ -85,6 +84,10 @@ STAGES = {
                 "type_casting_001",
                 "input_lesson_001",
                 "formatted_output_001",
+                "operators_001",
+                "string_basics_001",
+                "conditionals_001",
+                "boolean_logic_001",
             ],
 
             "tips": [
@@ -108,6 +111,7 @@ STAGES = {
             "barrel",
             "burrow",
             "crate",
+            "chest",
             "hay",
             "vase",
             "mang_tahimik",
@@ -122,16 +126,19 @@ STAGES = {
             "required_boss": "corrupted_core_kapre",
             "exit_name": "Corrupted Core Gate",
             "exit_rect": (0.544255, 0.231250, 0.023830, 0.028125),
-            # Six lessons divide the stage's ten keys as 2+2+2+2+1+1.
-            # Keeping the rewards authored here makes save migration and
-            # first-completion awards deterministic regardless of play order.
+            # Ten beginner lessons award one key each. Keeping rewards
+            # authored here makes save migration deterministic.
             "topic_key_rewards": {
-                "python_syntax_basics_001": 2,
-                "variables_001": 2,
-                "data_types_001": 2,
-                "type_casting_001": 2,
+                "python_syntax_basics_001": 1,
+                "variables_001": 1,
+                "data_types_001": 1,
+                "type_casting_001": 1,
                 "input_lesson_001": 1,
                 "formatted_output_001": 1,
+                "operators_001": 1,
+                "string_basics_001": 1,
+                "conditionals_001": 1,
+                "boolean_logic_001": 1,
             },
         },
 
@@ -193,13 +200,91 @@ STAGES = {
                 "optional": False,
             },
             {
+                "id": "island_operators",
+                "text": "Repair the Arithmetic Operators terminal.",
+                "kind": "challenge",
+                "target": "operators_001",
+                "optional": False,
+            },
+            {
+                "id": "island_strings",
+                "text": "Repair the String Basics terminal.",
+                "kind": "challenge",
+                "target": "string_basics_001",
+                "optional": False,
+            },
+            {
+                "id": "island_conditionals",
+                "text": "Repair the If, Elif, and Else terminal.",
+                "kind": "challenge",
+                "target": "conditionals_001",
+                "optional": False,
+            },
+            {
+                "id": "island_boolean_logic",
+                "text": "Repair the Boolean Logic terminal.",
+                "kind": "challenge",
+                "target": "boolean_logic_001",
+                "optional": False,
+            },
+            {
                 "id": "island_burrow",
                 "text": "Search a duwende burrow.",
                 "kind": "interact",
                 "target": "burrow",
                 "optional": True,
             },
+            {
+                "id": "island_explore_amber_hollow",
+                "text": "Reach Amber Hollow in the island's southeast.",
+                "kind": "explore",
+                "target": "Amber Hollow",
+                "optional": True,
+            },
+            {
+                "id": "island_open_chest",
+                "text": "Open one of the island's timer chests.",
+                "kind": "interact",
+                "target": "chest",
+                "optional": True,
+            },
         ],
+    },
+
+    # Stage 2 content buffer. The record is intentionally non-playable until
+    # its own map, encounters, topics, and completion gate are authored; it is
+    # nevertheless valid stage data, so menus and save migrations can refer to
+    # the Castle without falling back to the Island.
+    "castle": {
+        "id": "castle",
+        "name": "Castle",
+        "subtitle": "Stage 2 - Intermediate",
+        "playable": False,
+        "manual": {
+            "summary": (
+                "Beyond the Corrupted Core stands a castle whose machinery "
+                "depends on intermediate Python. Its lesson route is still "
+                "being charted."
+            ),
+            "mechanics": [
+                "The Castle is an intermediate-code stage scaffold.",
+                "Its map, encounters, and lesson terminals will be added here.",
+            ],
+            "controls": WORLD_CONTROLS,
+            "topics": [],
+            "tips": [
+                "Finish every Island lesson and defeat the Core warden first."
+            ],
+        },
+        "enemies": [],
+        "items": [],
+        "completion": {
+            "required_keys": 0,
+            "required_boss": None,
+            "exit_name": "Castle Exit",
+            "topic_key_rewards": {},
+        },
+        "objectives": [],
     },
 
 }

@@ -12,13 +12,13 @@ from src.ui.theme import UI_COLORS, body_font, draw_button, draw_panel, title_fo
 PAGES = (
     (
         "WELCOME TO CODEBREAK",
-        "A dungeon adventure where your sword handles monsters and Python code unlocks the path ahead.",
+        "A dungeon adventure where your sword defeats monsters and Python code unlocks the path ahead.",
         ("No programming experience is required.", "Mang Tahimik will guide you step by step."),
     ),
     (
         "YOUR FIRST STEPS",
         "Move, practise one attack, and solve a guided Hello, World! challenge before the real adventure begins.",
-        ("W A S D / Arrow keys = move", "E = attack/interact  |  SPACE = continue dialogue"),
+        ("W A S D / Arrow keys = move", "E = attack/interact  |  SPACE = next dialogue line"),
     ),
     (
         "YOU CAN ALWAYS GET HELP",
@@ -55,7 +55,19 @@ def opening_walkthrough(screen, replay=False):
     button_font = title_font(max(18, round(height * 0.025)))
     panel = pygame.Rect(0, 0, min(920, width - 80), min(550, height - 90))
     panel.center = (width // 2, height // 2)
-    next_button = pygame.Rect(panel.centerx - 125, panel.bottom - 76, 250, 48)
+    # Keep the buttons above a dedicated footer row so their borders and
+    # labels cannot overlap the keyboard shortcuts at the panel's bottom.
+    button_y = panel.bottom - 120
+    next_button_width = max(
+        250, button_font.size("OPEN MAIN MENU")[0] + 48
+    )
+    next_button = pygame.Rect(0, button_y, next_button_width, 48)
+    next_button.centerx = panel.centerx
+    back_button_width = max(150, button_font.size("BACK")[0] + 48)
+    back_button = pygame.Rect(
+        panel.left + 34, button_y, back_button_width, 48
+    )
+    close_button = pygame.Rect(panel.right - 54, panel.top + 18, 36, 36)
     page = 0
     clock = pygame.time.Clock()
     shade = pygame.Surface((width, height), pygame.SRCALPHA)
@@ -84,12 +96,18 @@ def opening_walkthrough(screen, replay=False):
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     return
+                if event.key == pygame.K_BACKSPACE and page > 0:
+                    page -= 1
                 if event.key == pygame.K_SPACE:
                     page += 1
                     if page >= len(PAGES):
                         return
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if next_button.collidepoint(event.pos):
+                if close_button.collidepoint(event.pos):
+                    return
+                if page > 0 and back_button.collidepoint(event.pos):
+                    page -= 1
+                elif next_button.collidepoint(event.pos):
                     page += 1
                     if page >= len(PAGES):
                         return
@@ -120,9 +138,54 @@ def opening_walkthrough(screen, replay=False):
         draw_button(screen, next_button,
                     "OPEN MAIN MENU" if page == len(PAGES) - 1 else "NEXT",
                     button_font, hovered=next_button.collidepoint(pygame.mouse.get_pos()))
+        if page > 0:
+            draw_button(
+                screen, back_button, "BACK", button_font,
+                hovered=back_button.collidepoint(pygame.mouse.get_pos()),
+            )
+
+        close_hovered = close_button.collidepoint(pygame.mouse.get_pos())
+        pygame.draw.circle(
+            screen,
+            UI_COLORS["stone_light"] if close_hovered else UI_COLORS["stone"],
+            close_button.center,
+            17,
+        )
+        pygame.draw.circle(
+            screen,
+            UI_COLORS["blue_bright"] if close_hovered else UI_COLORS["bronze"],
+            close_button.center,
+            17,
+            2,
+        )
+        close_label = button_font.render("X", True, UI_COLORS["text"])
+        screen.blit(close_label, close_label.get_rect(center=close_button.center))
+
+        if page == 0:
+            prompt = small.render(
+                "Select NEXT or press SPACE to go to the next page.",
+                True,
+                UI_COLORS["parchment"],
+            )
+            prompt_box = prompt.get_rect(
+                center=(panel.centerx, next_button.top - 24)
+            ).inflate(24, 12)
+            pygame.draw.rect(
+                screen, UI_COLORS["stone_deep"], prompt_box,
+                border_radius=6,
+            )
+            pygame.draw.rect(
+                screen, UI_COLORS["blue"], prompt_box, 1,
+                border_radius=6,
+            )
+            screen.blit(prompt, prompt.get_rect(center=prompt_box.center))
+        footer_parts = [f"Page {page + 1}/{len(PAGES)}", "SPACE = Next"]
+        if page > 0:
+            footer_parts.append("BACKSPACE = Back")
+        footer_parts.extend(("ESC = Close", music_shortcut_label()))
         footer = small.render(
-            f"Page {page + 1}/{len(PAGES)}  |  SPACE = continue  |  {music_shortcut_label()}",
+            "  |  ".join(footer_parts),
             True, UI_COLORS["text_dim"],
         )
-        screen.blit(footer, footer.get_rect(center=(panel.centerx, panel.bottom - 12)))
+        screen.blit(footer, footer.get_rect(center=(panel.centerx, panel.bottom - 20)))
         pygame.display.flip()

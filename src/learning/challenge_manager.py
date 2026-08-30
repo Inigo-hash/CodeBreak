@@ -7,6 +7,10 @@ from src.learning.validators.data_type_validator import DataTypeValidator
 from src.learning.validators.type_casting_validator import TypeCastingValidator
 from src.learning.validators.formatted_output_validator import FormattedOutputValidator
 from src.learning.validators.input_validator import InputValidator
+from src.learning.validators.operator_validator import OperatorValidator
+from src.learning.validators.string_validator import StringValidator
+from src.learning.validators.conditional_validator import ConditionalValidator
+from src.learning.validators.boolean_logic_validator import BooleanLogicValidator
 
 
 class ChallengeManager:
@@ -35,7 +39,19 @@ class ChallengeManager:
                 FormattedOutputValidator(),
 
             "input":
-                InputValidator()
+                InputValidator(),
+
+            "operator":
+                OperatorValidator(),
+
+            "string":
+                StringValidator(),
+
+            "conditional":
+                ConditionalValidator(),
+
+            "boolean_logic":
+                BooleanLogicValidator()
 
         }
 

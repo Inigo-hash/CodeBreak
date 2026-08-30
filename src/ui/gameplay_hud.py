@@ -1,5 +1,6 @@
 """Responsive, state-driven HUD for the gameplay screen."""
 
+import math
 import pygame
 
 from src.systems.stage_gate import required_key_count
@@ -27,6 +28,79 @@ PORTRAIT_FRAME = (80, 55, 32)
 PORTRAIT_INNER = (194, 126, 48)
 PORTRAIT_BACKING = (8, 16, 25)
 NAME_GOLD = (236, 205, 149)
+LOW_HP_THRESHOLD = 0.30
+
+_low_health_overlay_cache = {}
+
+
+def build_low_health_corner_overlay(size):
+    """Build transparent red corner marks for the low-health warning."""
+
+    cached = _low_health_overlay_cache.get(size)
+    if cached is not None:
+        return cached
+
+    width, height = size
+    band = max(72, min(180, round(min(width, height) * 0.14)))
+    overlay = pygame.Surface(size, pygame.SRCALPHA)
+
+    # Nested corner wedges create a soft inward fade while leaving the
+    # centre of the play area completely clear.
+    for radius in range(band, 0, -3):
+        alpha = round(190 * (1.0 - radius / band) ** 1.45)
+        color = (190, 8, 22, alpha)
+        pygame.draw.polygon(overlay, color, ((0, 0), (radius, 0), (0, radius)))
+        pygame.draw.polygon(
+            overlay, color,
+            ((width, 0), (width - radius, 0), (width, radius)),
+        )
+        pygame.draw.polygon(
+            overlay, color,
+            ((0, height), (radius, height), (0, height - radius)),
+        )
+        pygame.draw.polygon(
+            overlay, color,
+            ((width, height), (width - radius, height),
+             (width, height - radius)),
+        )
+
+    # Three sharper diagonal marks in each corner make the warning read as
+    # damage rather than as a general red color filter.
+    mark_color = (245, 28, 38, 205)
+    for offset in (24, 43, 62):
+        reach = min(band - 8, offset + 44)
+        pygame.draw.line(overlay, mark_color, (offset, 0), (0, reach), 3)
+        pygame.draw.line(
+            overlay, mark_color, (width - offset, 0), (width, reach), 3
+        )
+        pygame.draw.line(
+            overlay, mark_color, (offset, height), (0, height - reach), 3
+        )
+        pygame.draw.line(
+            overlay, mark_color,
+            (width - offset, height), (width, height - reach), 3,
+        )
+
+    _low_health_overlay_cache[size] = overlay
+    return overlay
+
+
+def draw_low_health_warning(surface, current_hp, max_hp, time_seconds=0.0):
+    """Pulse red corner marks while HP is at or below thirty percent."""
+
+    if current_hp is None or not max_hp or current_hp <= 0:
+        return False
+    hp_ratio = max(0.0, min(1.0, current_hp / max_hp))
+    if hp_ratio > LOW_HP_THRESHOLD:
+        return False
+
+    urgency = 1.0 - hp_ratio / LOW_HP_THRESHOLD
+    pulse = 0.82 + 0.18 * (0.5 + 0.5 * math.sin(time_seconds * 5.2))
+    alpha = round(255 * (0.55 + 0.45 * urgency) * pulse)
+    overlay = build_low_health_corner_overlay(surface.get_size())
+    overlay.set_alpha(alpha)
+    surface.blit(overlay, (0, 0))
+    return True
 
 
 def load_hud_icons():

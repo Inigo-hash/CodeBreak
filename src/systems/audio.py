@@ -156,7 +156,7 @@ class CombatAudio:
         return True
 
 
-CUSTOM_BREAK_SFX_PATH = "assets/audios/sfx/crumble.mp3"
+CUSTOM_BREAK_SFX_PATH = "assets/audios/sfx/main_menu/crumble.mp3"
  
 
 BREAK_TARGET_SECONDS = 0.52

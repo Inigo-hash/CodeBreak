@@ -13,6 +13,7 @@ class Enemy:
     """Independent combatant with HP, AI, cooldowns, and animation."""
 
     _frame_cache = {}
+    _flying_enemy_ids = frozenset(("manananggal",))
     # (movement folder, attack folder, flinch filename, visible height, canvas)
     _asset_config = {
         "tiyanak_sinta": ("walking", "attacking", "{direction}.png", 40, (72, 50)),
@@ -81,6 +82,9 @@ class Enemy:
         self._last_position = self.rect.center
         self._resume_state = "chase"
         self.return_path = []
+        self.chase_path = []
+        self.chase_goal = None
+        self.path_retry = 0.0
 
     def _load_frames(self):
         result = {"walking": {}, "attack": {}, "flinch": {}}
@@ -197,6 +201,12 @@ class Enemy:
     def engaged(self):
         return self.active and self.state in ("chase", "attack", "flinch")
 
+    @property
+    def flies_over_terrain(self):
+        """Whether scenery should be excluded from movement blockers."""
+
+        return self.enemy_id in self._flying_enemy_ids
+
     def update(self, dt, player_rect, collision_rects, map_width, map_height,
                navigation_rects=None):
         self.just_started_attack = False
@@ -204,6 +214,7 @@ class Enemy:
             return 0
         self.attack_cooldown = max(0.0, self.attack_cooldown - dt)
         self.action_timer = max(0.0, self.action_timer - dt)
+        self.path_retry = max(0.0, self.path_retry - dt)
         direction, distance = normalized_toward(self.rect.center, player_rect.center)
         self._face(direction)
         home_distance = math.dist(self.rect.center, self.spawn)
@@ -247,6 +258,8 @@ class Enemy:
         # RETURN is deliberately non-interruptible: an enemy must get home
         # before it can detect the player again.
         if self.state == "return":
+            self.chase_path.clear()
+            self.chase_goal = None
             self.hp = min(self.stats.max_hp, self.hp + self.stats.max_hp * 0.5 * dt)
             home_direction, home_distance = normalized_toward(self.rect.center, self.spawn)
             if home_distance <= self.return_tolerance:
@@ -293,9 +306,36 @@ class Enemy:
             self.just_started_attack = True
         elif self.state == "chase" and player_in_chase_zone:
             self.state = "chase"
-            self._move(direction, self.stats.movement_speed, dt,
-                       collision_rects, map_width, map_height,
-                       movement_bounds=self.zone)
+            # Direct pursuit is cheapest on open ground. If it stalls, follow
+            # a body-safe waypoint route around the blocking tree or prop.
+            if (self.chase_goal is not None
+                    and math.dist(self.chase_goal, player_rect.center) > 72):
+                self.chase_path.clear()
+                self.chase_goal = None
+            while (self.chase_path
+                   and math.dist(self.rect.center, self.chase_path[0]) <= 4):
+                self.chase_path.pop(0)
+            move_direction = direction
+            if self.chase_path:
+                move_direction, _ = normalized_toward(
+                    self.rect.center, self.chase_path[0]
+                )
+            became_stuck = self._move(
+                move_direction, self.stats.movement_speed, dt,
+                collision_rects, map_width, map_height,
+                movement_bounds=self.zone,
+            )
+            if became_stuck and self.path_retry == 0:
+                static_blockers = (
+                    navigation_rects
+                    if navigation_rects is not None else collision_rects
+                )
+                self.chase_path = self._find_path_to(
+                    player_rect.center, static_blockers,
+                    map_width, map_height, self.zone,
+                )
+                self.chase_goal = player_rect.center
+                self.path_retry = 0.75
         elif distance <= self.detection_range and player_in_chase_zone:
             # A short reaction makes detection readable and prevents an enemy
             # outside melee range from attacking on the acquisition frame.
@@ -325,7 +365,8 @@ class Enemy:
         moved = math.dist(before, self.rect.center)
         trying = abs(dx) + abs(dy) > 0.01
         self.stuck_time = self.stuck_time + dt if trying and moved < 0.25 else 0.0
-        if allow_detour and self.stuck_time >= 0.35:
+        became_stuck = allow_detour and self.stuck_time >= 0.35
+        if became_stuck:
             # Perpendicular choices preserve collision and create a short
             # wall-following detour instead of teleporting through geometry.
             choices = [(-direction[1], direction[0]), (direction[1], -direction[0])]
@@ -345,25 +386,47 @@ class Enemy:
                     break
             self.stuck_time = 0.0
         self.center_x, self.center_y = self.rect.center
+        return became_stuck
 
     def _find_return_path(self, blockers, map_width, map_height):
         """Build deterministic collision-safe waypoints back to spawn."""
+        return self._find_path_to(
+            self.spawn, blockers, map_width, map_height,
+            pygame.Rect(0, 0, map_width, map_height),
+        )
+
+    def _find_path_to(self, target, blockers, map_width, map_height,
+                      movement_bounds=None):
+        """Build deterministic body-safe waypoints to ``target``.
+
+        Chase calls this only after direct pursuit stalls, so ordinary open
+        ground remains cheap while a large Tikbalang can route around trees
+        instead of oscillating inside the same dead end.
+        """
         step = 8
         start = (round(self.rect.centerx / step), round(self.rect.centery / step))
-        goal = (round(self.spawn[0] / step), round(self.spawn[1] / step))
+        goal = (round(target[0] / step), round(target[1] / step))
+        bounds = (
+            pygame.Rect(movement_bounds)
+            if movement_bounds is not None
+            else pygame.Rect(0, 0, map_width, map_height)
+        )
         margin = 24
-        min_x = max(0, min(start[0], goal[0]) - margin)
-        max_x = min(map_width // step, max(start[0], goal[0]) + margin)
-        min_y = max(0, min(start[1], goal[1]) - margin)
-        max_y = min(map_height // step, max(start[1], goal[1]) + margin)
+        min_x = max(math.ceil(bounds.left / step),
+                    min(start[0], goal[0]) - margin)
+        max_x = min(math.floor(bounds.right / step),
+                    max(start[0], goal[0]) + margin)
+        min_y = max(math.ceil(bounds.top / step),
+                    min(start[1], goal[1]) - margin)
+        max_y = min(math.floor(bounds.bottom / step),
+                    max(start[1], goal[1]) + margin)
 
         def walkable(node):
             if node in (start, goal):
                 return True
             probe = pygame.Rect(0, 0, self.rect.width, self.rect.height)
             probe.center = (node[0] * step, node[1] * step)
-            return (0 <= probe.left and probe.right <= map_width
-                    and 0 <= probe.top and probe.bottom <= map_height
+            return (bounds.contains(probe)
                     and probe.collidelist(blockers) == -1)
 
         frontier = [(0, start)]
@@ -394,7 +457,7 @@ class Enemy:
             nodes.append((current[0] * step, current[1] * step))
             current = came_from[current]
         nodes.reverse()
-        nodes.append(self.spawn)
+        nodes.append(tuple(target))
         return nodes
 
     def receive_damage(self, amount):
@@ -422,6 +485,9 @@ class Enemy:
         self.stuck_time = 0.0
         self.detour_time = 0.0
         self.return_path.clear()
+        self.chase_path.clear()
+        self.chase_goal = None
+        self.path_retry = 0.0
 
     def _face(self, direction):
         dx, dy = direction

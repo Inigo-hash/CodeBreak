@@ -34,8 +34,8 @@ class StageGateTests(unittest.TestCase):
         self.required_topics = required_topic_ids(self.stage)
         self.defeated_boss = (self.stage["completion"]["required_boss"],)
 
-    def test_island_has_six_real_required_topics_and_ten_keys(self):
-        self.assertEqual(len(self.required_topics), 6)
+    def test_island_has_ten_real_required_topics_and_ten_keys(self):
+        self.assertEqual(len(self.required_topics), 10)
         self.assertTrue(all(topic in CHALLENGES for topic in self.required_topics))
         self.assertEqual(earned_topic_keys(self.stage, self.required_topics), 10)
 
@@ -53,6 +53,68 @@ class StageGateTests(unittest.TestCase):
             if topic_id in TOPICS
         }
         self.assertTrue(set(self.required_topics).issubset(mapped_challenges))
+
+        tmx = load_pygame(str(map_path))
+        tile_size = tmx.tilewidth
+        blocked = set()
+        for layer in tmx.visible_layers:
+            if not hasattr(layer, "data"):
+                continue
+            for x, y, gid in layer:
+                properties = tmx.get_tile_properties_by_gid(gid) if gid else None
+                if properties and properties.get("collidable"):
+                    blocked.add((x, y))
+
+        map_width = tmx.width * tile_size
+        map_height = tmx.height * tile_size
+        spawn = (
+            (map_width // 2 - tile_size // 2 + tile_size * 7) // tile_size,
+            (map_height - tile_size * 36) // tile_size,
+        )
+        frontier = deque([spawn])
+        reachable_cells = {spawn}
+        while frontier:
+            x, y = frontier.popleft()
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                neighbor = (x + dx, y + dy)
+                if (
+                    neighbor not in reachable_cells
+                    and neighbor not in blocked
+                    and 0 <= neighbor[0] < tmx.width
+                    and 0 <= neighbor[1] < tmx.height
+                ):
+                    reachable_cells.add(neighbor)
+                    frontier.append(neighbor)
+
+        reachable_challenges = set()
+        for obj in root.findall(".//object"):
+            properties = {
+                prop.get("name"): prop.get("value")
+                for prop in obj.findall("./properties/property")
+            }
+            topic = TOPICS.get(properties.get("topic_id"))
+            if not topic:
+                continue
+            rect = pygame.Rect(
+                round(float(obj.get("x", 0))),
+                round(float(obj.get("y", 0))),
+                max(1, round(float(obj.get("width", 1)))),
+                max(1, round(float(obj.get("height", 1)))),
+            )
+            nearby = {
+                (x, y)
+                for x in range(max(0, rect.left // tile_size - 2),
+                               min(tmx.width - 1, rect.right // tile_size + 2) + 1)
+                for y in range(max(0, rect.top // tile_size - 2),
+                               min(tmx.height - 1, rect.bottom // tile_size + 2) + 1)
+            }
+            if nearby & reachable_cells:
+                reachable_challenges.add(topic["challenge_id"])
+
+        self.assertTrue(
+            set(self.required_topics).issubset(reachable_challenges),
+            "At least one required Stage 1 lesson cannot be reached from spawn",
+        )
 
     def test_castle_exit_trigger_is_reachable_from_player_spawn(self):
         map_path = Path(__file__).parents[1] / "assets" / "map" / "tmx" / "basic.tmx"
@@ -114,7 +176,7 @@ class StageGateTests(unittest.TestCase):
             self.stage, 10, self.required_topics[:-1], self.defeated_boss
         )
         self.assertFalse(status.unlocked)
-        self.assertEqual(status.completed_topics, 5)
+        self.assertEqual(status.completed_topics, len(self.required_topics) - 1)
         self.assertEqual(status.missing_topic_ids, (self.required_topics[-1],))
 
     def test_all_topics_cannot_bypass_missing_keys(self):

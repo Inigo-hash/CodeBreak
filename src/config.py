@@ -1,5 +1,19 @@
 import os
 
+
+def _env_flag(name, default=False):
+    """Read a conventional true/false environment flag."""
+
+    value = os.environ.get(name)
+    if value is None:
+        return bool(default)
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+# Developer preview keys (F1/F2/F5/F6/F8) are disabled in normal builds.
+# Launch with CODEBREAK_DEBUG=1 to enable them deliberately.
+DEBUG_MODE = _env_flag("CODEBREAK_DEBUG", False)
+
 # Must be set before pygame.init() (SDL reads this hint at video subsystem
 # init). Without it, SDL auto-minimizes the exclusive-fullscreen window the
 # instant it loses OS focus, which is what happens when a screenshot tool

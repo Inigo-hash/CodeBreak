@@ -3,28 +3,14 @@
   "hearts": 5,
   "keys": 0,
   "topics_completed": [],
-  "bonus_time": 45,
+  "bonus_time": 0,
   "challenges_passed": [],
   "completed_stages": [],
-  "map_position": [
-    1142.0,
-    240.0
-  ],
+  "map_position": null,
   "inventory": [],
   "weapon_obtained": true,
   "weapon_equipped": true,
-  "stage_progress": {
-    "discovered_enemies": [
-      "corrupted_core_kapre"
-    ],
-    "discovered_items": [],
-    "objectives_done": [
-      "island_core_boss"
-    ],
-    "defeated_enemies": [
-      "corrupted_core_kapre"
-    ]
-  },
+  "stage_progress": {},
   "_security": {
     "version": 1,
     "algorithm": "pbkdf2_sha256",

@@ -109,6 +109,20 @@ class EditorFeedbackTests(unittest.TestCase):
         )
         self.assertIn("Syntax error", self.editor.submission_feedback["detail"])
 
+    def test_four_progressive_hints_unlock_on_repeated_failures(self):
+        panel = self.editor.renderer.problem_panel
+        self.assertEqual(panel.hint_level, 0)
+        self.assertEqual(len(panel.hint_steps()), 4)
+
+        for expected_level in (1, 2, 3, 4, 4):
+            self.editor.text_buffer.lines = ['print("Wrong")']
+            self.editor.submit_code()
+            self.assertEqual(panel.hint_level, expected_level)
+            self.editor.submission_feedback = None
+
+        rows = panel._build_rows(300)
+        self.assertTrue(any(text == "HINT 4 OF 4" for text, _font, _color in rows))
+
     def test_feedback_layout_renders_at_supported_window_sizes(self):
         for size in ((800, 600), (1280, 720), (1920, 1080)):
             self.screen = pygame.display.set_mode(size)

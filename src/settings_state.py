@@ -17,10 +17,10 @@ settings_state = {
     # read it, and nothing in the game revealed text a character at a
     # time for it to control either.
     "text_speed": "NORMAL",
-    # PC games should launch with text that is at least 18 physical pixels
-    # high at 1080p and let the player enlarge it.  The shared font loaders
-    # read this multiplier, so the choice reaches menus, dialogue and HUDs.
-    "font_size": 18,
+    # Launch one step above the former 18px baseline for easier first-run
+    # reading. Players who prefer a denser interface can still reduce it.
+    # The shared font loaders carry this choice into menus, dialogue and HUDs.
+    "font_size": 20,
 }
 
 

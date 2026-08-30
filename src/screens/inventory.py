@@ -42,6 +42,7 @@ import pygame
 from src.systems.audio import handle_music_shortcut
 
 from src.ui.theme import body_font, title_font
+from src.ui.topic_icons import topic_icon
 
 
 # ---------------------------------------------------------------------------
@@ -230,6 +231,13 @@ class PlayerInventory:
             ):
 
                 return False
+
+        # Topic books have their own visual language instead of the generic
+        # first-letter fallback used by ordinary items without artwork.  Do
+        # this here so loading a save and finding a topic in the world follow
+        # exactly the same path.
+        if icon is None:
+            icon = topic_icon(topic_id)
 
         topic_item = Item(
             name=topic_name,

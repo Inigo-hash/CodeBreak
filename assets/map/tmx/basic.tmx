@@ -2952,6 +2952,7 @@
   <object id="1492" x="608.25" y="1040.25" width="31.5" height="31.75">
    <properties>
     <property name="actions" value="search_barrel"/>
+    <property name="topic_id" value="operators"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>
@@ -2965,6 +2966,7 @@
   <object id="1494" x="848.36" y="1270.18" width="31.8182" height="25.6364">
    <properties>
     <property name="actions" value="search_burrow"/>
+    <property name="topic_id" value="string_basics"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>
@@ -2978,12 +2980,14 @@
   <object id="1497" x="2336.18" y="998.18" width="31.6364" height="25.6364">
    <properties>
     <property name="actions" value="search_burrow"/>
+    <property name="topic_id" value="conditionals"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>
   <object id="1498" x="2464.18" y="1414.36" width="31.6364" height="25.6364">
    <properties>
     <property name="actions" value="search_burrow"/>
+    <property name="topic_id" value="boolean_logic"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>
@@ -3021,13 +3025,15 @@
   </object>
   <object id="1504" x="1712" y="1984" width="31.3333" height="31.6667">
    <properties>
-    <property name="actions" value="search_crate"/>
+    <property name="actions" value="search_chest"/>
+    <property name="reward_seconds" type="int" value="30"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>
   <object id="1505" x="2319.3" y="1759.67" width="31.75" height="31.875">
    <properties>
-    <property name="actions" value="search_crate"/>
+    <property name="actions" value="search_chest"/>
+    <property name="trap_seconds" type="int" value="15"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>

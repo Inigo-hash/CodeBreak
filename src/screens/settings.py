@@ -13,11 +13,11 @@ from src.ui.theme import UI_COLORS, body_font, draw_button, draw_panel, title_fo
 
 
 HELP_COPY = {
-    "font_size": "Changes readable game text. New screens use the selected size.",
-    "text_speed": "Controls how quickly Mang Tahimik's dialogue appears.",
-    "music": "Background music volume. Press F10 anywhere to mute or unmute.",
-    "sfx": "SFX means sound effects: attacks, impacts, and crumbling stones.",
-    "theme": "Changes the coding editor's color combination.",
+    "font_size": "Use - / +, the arrow keys, or select the number and type a size from 12 to 28.",
+    "text_speed": "Select Slow, Normal, or Instant to control how quickly dialogue appears.",
+    "music": "Drag or click the slider, use - / +, or press Left / Right. F10 mutes or unmutes music.",
+    "sfx": "Drag or click the slider, use - / +, or press Left / Right to set sound-effects volume.",
+    "theme": "Use either arrow to change the coding editor's color combination.",
 }
 
 
@@ -298,27 +298,65 @@ class SettingsPanel:
             self._text(self.option_font, "?", UI_COLORS["stone_deep"], center=rect.center)
 
     def _draw_help_text(self):
-        topic = self.help_topic
+        mouse = pygame.mouse.get_pos()
+        hovered_topic = next(
+            (name for name, rect in self.help_rects.items()
+             if rect.collidepoint(mouse)),
+            None,
+        )
+        topic = hovered_topic or self.help_topic
         if topic is None:
-            topic = next((name for name, rect in self.help_rects.items()
-                          if rect.collidepoint(pygame.mouse.get_pos())), None)
-        if topic:
-            words = HELP_COPY[topic].split()
-            lines, current = [], ""
-            for word in words:
-                candidate = f"{current} {word}".strip()
-                if not current or self.help_font.size(candidate)[0] <= self.panel.width - 70:
-                    current = candidate
-                else:
-                    lines.append(current)
-                    current = word
-            if current:
+            self._text(
+                self.help_font,
+                "Hover or select a ? for help.",
+                UI_COLORS["text_dim"],
+                center=(self.panel.centerx, self.panel.top + 535),
+            )
+            return
+
+        anchor = self.help_rects[topic]
+        bubble_width = min(420, self.panel.width - 100)
+        text_width = bubble_width - 28
+        words = HELP_COPY[topic].split()
+        lines, current = [], ""
+        for word in words:
+            candidate = f"{current} {word}".strip()
+            if not current or self.help_font.size(candidate)[0] <= text_width:
+                current = candidate
+            else:
                 lines.append(current)
-            start_y = self.panel.top + 524
-            for index, line in enumerate(lines[:2]):
-                self._text(self.help_font, line, UI_COLORS["parchment"],
-                           center=(self.panel.centerx,
-                                   start_y + index * (self.help_font.get_height() + 3)))
+                current = word
+        if current:
+            lines.append(current)
+
+        line_height = self.help_font.get_height() + 4
+        bubble = pygame.Rect(
+            anchor.left - bubble_width - 14,
+            anchor.centery - (len(lines) * line_height + 22) // 2,
+            bubble_width,
+            len(lines) * line_height + 22,
+        )
+        bubble.clamp_ip(self.panel.inflate(-24, -24))
+        pygame.draw.rect(
+            self.screen, (18, 21, 29), bubble,
+            border_radius=7,
+        )
+        pygame.draw.rect(
+            self.screen, UI_COLORS["blue_bright"], bubble, 2,
+            border_radius=7,
+        )
+        pointer_y = max(bubble.top + 12, min(anchor.centery, bubble.bottom - 12))
+        pygame.draw.polygon(
+            self.screen, UI_COLORS["blue_bright"],
+            ((bubble.right - 1, pointer_y - 7),
+             (anchor.left - 3, anchor.centery),
+             (bubble.right - 1, pointer_y + 7)),
+        )
+        for index, line in enumerate(lines):
+            self._text(
+                self.help_font, line, UI_COLORS["parchment"],
+                (bubble.left + 14, bubble.top + 10 + index * line_height),
+            )
 
     def _draw_focus_ring(self):
         row = ROWS[self.focus]

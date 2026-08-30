@@ -38,6 +38,7 @@ import math
 import random
 
 import pygame
+from src.config import DEBUG_MODE
 from src.systems.audio import handle_music_shortcut
 
 from src.settings_state import letter_delay_ms, revealed_characters
@@ -378,7 +379,7 @@ def game_over_screen(screen, background=None, failed_snippet=None):
                 continue
 
             # F8 closes the preview immediately, even while it is animating.
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_F8:
+            if DEBUG_MODE and event.type == pygame.KEYDOWN and event.key == pygame.K_F8:
                 result = "debug_close"
                 running = False
                 break

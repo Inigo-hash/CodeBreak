@@ -63,6 +63,9 @@ CONTROL_SECTIONS = [
     ]),
 
     ("IN THE CODE EDITOR", [
+        ("F1", "Light editor theme"),
+        ("F2", "Dark editor theme"),
+        ("F10", "Mute / unmute music"),
         ("Ctrl + Z / Y", "Undo / redo"),
         ("Ctrl + C / X / V", "Copy, cut, paste"),
         ("Tab", "Indent"),

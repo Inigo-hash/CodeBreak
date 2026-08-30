@@ -15,6 +15,7 @@ from src.entities.enemy import Enemy
 from src.systems.combat import ENEMY_STATS
 from src.systems.enemy_spawns import resolve_encounter_spawns
 from src.screens.game import load_interactables, nearest_interactable
+from src.screens.world_map import enemy_marker_positions
 from src.screens.intro import PAGES
 from src.screens.settings import HELP_COPY
 from src.settings_state import settings_state
@@ -22,6 +23,18 @@ from src.ui.ambient_particles import AmbientParticles
 
 
 class MapAndInteractionRegressionTests(unittest.TestCase):
+    def test_world_map_marks_only_living_active_enemies(self):
+        alive = SimpleNamespace(
+            active=True, state="idle", rect=pygame.Rect(90, 40, 20, 20)
+        )
+        defeated = SimpleNamespace(
+            active=True, state="defeated", rect=pygame.Rect(10, 10, 20, 20)
+        )
+        positions = enemy_marker_positions(
+            (alive, defeated), (100, 50), pygame.Rect(20, 30, 300, 200), 0.5
+        )
+        self.assertEqual(positions, [(170, 105)])
+
     def test_impossible_dirt_spawn_is_skipped_without_crashing(self):
         spawns = resolve_encounter_spawns(
             ({

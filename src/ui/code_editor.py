@@ -15,6 +15,7 @@ Validation is handled by the ChallengeManager.
 
 import pygame
 from src.systems.audio import handle_music_shortcut
+from src.settings_state import set_theme
 
 from src.ui.text_buffer import TextBuffer
 from src.ui.editor_renderer import EditorRenderer
@@ -250,6 +251,12 @@ class CodeEditor:
                 pygame.quit()
                 raise SystemExit
             if handle_music_shortcut(event):
+                continue
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_F1:
+                set_theme("LIGHT")
+                continue
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_F2:
+                set_theme("DARK")
                 continue
 
             # A submission result is deliberately outside the output pane and

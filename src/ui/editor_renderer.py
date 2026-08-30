@@ -1247,6 +1247,15 @@ class EditorRenderer:
         self.submit_button.draw(self.screen)
         self.leave_button.draw(self.screen)
 
+        shortcut = SMALL_FONT.render(
+            "F1 = Light   F2 = Dark   F10 = Mute", True, SECONDARY_TEXT
+        )
+        shortcut_rect = shortcut.get_rect(
+            midleft=(self.button_rect.left + 14, self.button_rect.centery)
+        )
+        if shortcut_rect.right < self.leave_button.rect.left - 10:
+            self.screen.blit(shortcut, shortcut_rect)
+
 
     # ==========================================================
     # Component Getters

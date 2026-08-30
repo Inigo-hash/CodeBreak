@@ -93,6 +93,17 @@ def cycle_theme(step):
     return name
 
 
+def set_theme(name):
+    """Select and apply an editor theme by name for keyboard shortcuts."""
+    themes = settings_state["themes"]
+    normalized = str(name).upper()
+    if normalized not in themes:
+        normalized = themes[0]
+    settings_state["theme_index"] = themes.index(normalized)
+    from src.ui.editor_theme import apply_theme
+    return apply_theme(normalized)
+
+
 def swatch_color(name):
     """Label color for a theme name, with a safe fallback."""
 

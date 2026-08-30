@@ -1028,6 +1028,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                 map_width, map_height,
             ).upper(),
             night=current_night,
+            enemies=enemies,
         )
     # How close (in unscaled world pixels) the player has to get before an
     # enemy is written into the bestiary. Roughly "you have clearly seen it".

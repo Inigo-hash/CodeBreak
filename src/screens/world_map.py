@@ -460,9 +460,32 @@ def _draw_marker(surface, center, heading, pulse):
     draw_marker(surface, center, heading, MARKER_SIZE)
 
 
+def enemy_marker_positions(enemies, paper_pos, map_rect, scale):
+    """Translate active enemy world positions onto the paper map."""
+    return [
+        (
+            round(paper_pos[0] + map_rect.left + enemy.rect.centerx * scale),
+            round(paper_pos[1] + map_rect.top + enemy.rect.centery * scale),
+        )
+        for enemy in enemies
+        if enemy.active and enemy.state != "defeated"
+    ]
+
+
+def _draw_enemy_marker(surface, center):
+    """Small hostile ink mark that stays readable without hiding terrain."""
+    pygame.draw.circle(surface, (78, 18, 18), center, 5)
+    pygame.draw.circle(surface, (232, 72, 55), center, 3)
+    pygame.draw.line(surface, PARCHMENT, (center[0] - 2, center[1] - 2),
+                     (center[0] + 2, center[1] + 2), 1)
+    pygame.draw.line(surface, PARCHMENT, (center[0] + 2, center[1] - 2),
+                     (center[0] - 2, center[1] + 2), 1)
+
+
 def open_world_map(screen, map_texture, player_rect, map_width, map_height,
                    zone_rects, heading=(1, 0), background=None,
-                   title="Map of the Island", subtitle="", night=False):
+                   title="Map of the Island", subtitle="", night=False,
+                   enemies=()):
     """
     Show the world map and block until the player closes it.
 
@@ -524,6 +547,9 @@ def open_world_map(screen, map_texture, player_rect, map_width, map_height,
     marker_center = (
         paper_pos[0] + map_rect.left + player_rect.centerx * scale,
         paper_pos[1] + map_rect.top + player_rect.centery * scale,
+    )
+    enemy_markers = enemy_marker_positions(
+        enemies, paper_pos, map_rect, scale
     )
 
     # Rendered once, not per frame - the caption never changes while the
@@ -589,6 +615,9 @@ def open_world_map(screen, map_texture, player_rect, map_width, map_height,
         # in the dark.
         if night_veil is not None:
             screen.blit(night_veil, paper_pos)
+
+        for enemy_center in enemy_markers:
+            _draw_enemy_marker(screen, enemy_center)
 
         # 0 -> 1 -> 0 over roughly a second and a half.
         ticks = pygame.time.get_ticks() % 1500

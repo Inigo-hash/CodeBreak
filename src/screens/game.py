@@ -823,6 +823,24 @@ def game_screen(screen, slot_num=None, save_state=None):
         if night:
             surf.blit(minimap_night_veil, view_rect.topleft)
 
+        # Live hostile markers use the same crop transform as the terrain.
+        # Draw them above lighting so nearby threats remain readable at night.
+        for enemy in enemies:
+            if not enemy.active or enemy.state == "defeated":
+                continue
+            enemy_x = (
+                view_rect.left - src_left
+                + enemy.rect.centerx * minimap_px_per_unit
+            )
+            enemy_y = (
+                view_rect.top - src_top
+                + enemy.rect.centery * minimap_px_per_unit
+            )
+            marker = (round(enemy_x), round(enemy_y))
+            if view_rect.collidepoint(marker):
+                pygame.draw.circle(surf, (76, 12, 18), marker, 4)
+                pygame.draw.circle(surf, (245, 76, 58), marker, 2)
+
         surf.set_clip(prev_clip)
 
         # Player marker — always dead-center, since the crop above keeps
@@ -1095,7 +1113,11 @@ def game_screen(screen, slot_num=None, save_state=None):
         boss_id and boss_id in stage_progress.defeated_enemies
     )
     boss_victory_handled = boss_defeated
-    previous_boss_zone = None
+    # Loading/spawning inside the broad authored Core label must not count as
+    # walking through its door. Arm the encounter only after the player has
+    # occupied ordinary ground outside the zone at least once.
+    previous_boss_zone = boss_zone_at(zone_pixel_rects, player_rect.center)
+    boss_trigger_armed = previous_boss_zone is None
     last_safe_position = stage_spawn
     boss_entry_position = stage_spawn
 
@@ -1580,7 +1602,10 @@ def game_screen(screen, slot_num=None, save_state=None):
             current_boss_zone,
             defeated=boss_defeated,
             boss_active=boss_is_active,
-        ) and boss_main_entrance_at(current_boss_zone, player_rect.center):
+        ) and boss_trigger_armed and boss_main_entrance_at(
+            current_boss_zone, player_rect.center
+        ):
+            boss_trigger_armed = False
             boss_entry_position = (player_rect.x, player_rect.y)
             decision = open_boss_intro(
                 screen, boss_id, background=screen.copy()
@@ -1598,6 +1623,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                         stage, save_challenges_passed
                     )
         if current_boss_zone is None:
+            boss_trigger_armed = True
             last_safe_position = (player_rect.x, player_rect.y)
         previous_boss_zone = current_boss_zone
 

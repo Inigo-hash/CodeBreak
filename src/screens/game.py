@@ -62,7 +62,8 @@ from src.systems.boss_trigger import (
     should_trigger_boss,
 )
 from src.systems.stage_gate import (
-    award_topic_keys, evaluate_stage_gate, migrate_key_count,
+    award_topic_keys, evaluate_boss_access, evaluate_stage_gate,
+    migrate_key_count,
 )
 
 
@@ -882,7 +883,16 @@ def game_screen(screen, slot_num=None, save_state=None):
         # Live hostile markers use the same crop transform as the terrain.
         # Draw them above lighting so nearby threats remain readable at night.
         for enemy in enemies:
-            if not enemy.active or enemy.state == "defeated":
+            # A marker means the enemy currently has the player acquired.
+            # It vanishes as soon as the enemy disengages and starts returning
+            # home, restoring uncertainty and making the minimap useful as a
+            # readable stealth/combat signal instead of permanent radar.
+            tracking_states = {"alert", "chase", "attack"}
+            if enemy.state == "flinch":
+                visible = getattr(enemy, "_resume_state", "") == "chase"
+            else:
+                visible = enemy.state in tracking_states
+            if not enemy.active or not visible:
                 continue
             enemy_x = (
                 view_rect.left - src_left
@@ -1648,6 +1658,21 @@ def game_screen(screen, slot_num=None, save_state=None):
         current_boss_zone = boss_zone_at(
             zone_pixel_rects, player_rect.center
         )
+        boss_access = evaluate_boss_access(
+            stage, gameplay_state["keys"], save_challenges_passed
+        )
+        if (current_boss_zone is not None and previous_boss_zone is None
+                and not boss_access.unlocked):
+            # The Core is progression space, not an early-game shortcut.
+            # Put the player back on the last non-boss tile and show the same
+            # concrete missing requirements used by the final stage gate.
+            player_rect.topleft = last_safe_position
+            player_x, player_y = map(float, last_safe_position)
+            current_boss_zone = None
+            open_stage_gate(
+                screen, boss_access, background=screen.copy(),
+                gate_name="Corrupted Core",
+            )
         boss_is_active = (
             boss_enemy is not None
             and boss_enemy.active
@@ -1917,7 +1942,14 @@ def game_screen(screen, slot_num=None, save_state=None):
                     topic_id = near_interactable.get('topic_id')
                     action = near_interactable.get('actions', '')
 
-                    if action == "search_chest":
+                    topic = get_topic(topic_id) if topic_id else None
+                    challenge_id = (topic or {}).get("challenge_id")
+                    coding_unlocked = (
+                        not challenge_id
+                        or challenge_id in save_challenges_passed
+                    )
+
+                    if action == "search_chest" and coding_unlocked:
                         entity = near_interactable.get("entity")
                         interaction_id = near_interactable.get("interaction_id")
                         if (entity is not None
@@ -1933,6 +1965,10 @@ def game_screen(screen, slot_num=None, save_state=None):
                             near_interactable["interaction_message"] = (
                                 "This chest has already been opened."
                             )
+                    elif action == "search_chest":
+                        near_interactable["interaction_message"] = (
+                            "Solve this cache's coding challenge to unlock it."
+                        )
 
                     if (
                         topic_id

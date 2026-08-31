@@ -87,12 +87,17 @@ class LoadingScreenTests(unittest.TestCase):
         self.assertFalse(loading._pump_events())
         self.assertEqual(loading.tip_index, 2)
 
-        _left, right = loading._tip_navigation_rects()
         pygame.event.post(pygame.event.Event(
-            pygame.MOUSEBUTTONDOWN, button=1, pos=right.center
+            pygame.MOUSEBUTTONDOWN, button=3, pos=(1, 1)
         ))
         self.assertFalse(loading._pump_events())
         self.assertEqual(loading.tip_index, 0)
+
+        pygame.event.post(pygame.event.Event(
+            pygame.MOUSEBUTTONDOWN, button=1, pos=(999, 500)
+        ))
+        self.assertFalse(loading._pump_events())
+        self.assertEqual(loading.tip_index, 2)
 
     def test_space_continues_only_after_progress_reaches_100(self):
         screen = pygame.display.set_mode((1280, 720))

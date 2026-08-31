@@ -3027,6 +3027,7 @@
    <properties>
     <property name="actions" value="search_chest"/>
     <property name="reward_seconds" type="int" value="30"/>
+    <property name="topic_id" value="python_syntax_basics"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>
@@ -3034,6 +3035,7 @@
    <properties>
     <property name="actions" value="search_chest"/>
     <property name="trap_seconds" type="int" value="15"/>
+    <property name="topic_id" value="boolean_logic"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>

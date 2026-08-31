@@ -76,6 +76,50 @@ ENEMY_BODY_SIZES = {
 }
 
 
+@dataclass(frozen=True)
+class BossPhase:
+    """One armour phase of a boss fight, entered by crossing ``threshold``.
+
+    ``sword_damage`` is what a connected player swing takes off once the
+    phase has been entered, ``aggression`` scales the boss's speed, attack
+    rate and damage, and ``reinforcements`` is the pool a summoned wave
+    draws from. Order matters: pool order decides which member a random
+    draw picks, and phases are read in the order written here.
+    """
+
+    threshold: int
+    sword_damage: int
+    aggression: float
+    reinforcements: tuple
+
+
+# Per-boss fight tuning, keyed by the enemy id a stage names as its
+# ``required_boss``. A boss with no entry here simply takes the player's
+# ordinary weapon damage and never changes phase, so a stage can ship its
+# boss before its phase table is tuned.
+BOSS_PHASES = {
+    "corrupted_core_kapre": {
+        # Damage per connected hit before the first armour break. With the
+        # phase damage below, the 1000-HP Core boss takes 10, 8, 6 and 6
+        # hits: exactly 30 successful connections.
+        "base_sword_damage": 25,
+        "phases": (
+            BossPhase(750, 35, 1.05, ("tiyanak_sinta", "manananggal")),
+            BossPhase(500, 40, 1.10,
+                      ("tiyanak_sinta", "manananggal", "tikbalang")),
+            BossPhase(250, 45, 1.15,
+                      ("manananggal", "tikbalang", "tiyanak_sinta")),
+        ),
+    },
+}
+
+
+def boss_phase_table(boss_id):
+    """Return the authored phases for a boss, or an empty table."""
+
+    return BOSS_PHASES.get(boss_id, {"base_sword_damage": 0, "phases": ()})
+
+
 FACING_VECTORS = {
     "right": (1, 0), "left": (-1, 0),
     "forward": (0, -1), "backward": (0, 1),

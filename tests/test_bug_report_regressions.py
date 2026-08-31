@@ -43,6 +43,7 @@ class MapAndInteractionRegressionTests(unittest.TestCase):
                 "enemies": ("tiyanak_sinta",),
             },),
             320, 240, [], set(), 16, (160, 220),
+            zones=(),
         )
         self.assertEqual(spawns, [])
 

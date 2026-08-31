@@ -28,20 +28,19 @@ from src.ui.chart import (
 )
 from src.systems.combat import (
     COMBAT_DEBUG, DEBUG_ENEMY_AI, FACING_VECTORS, PLAYER_DODGE_SPEED,
-    PlayerCombat, attack_hitbox, attack_path_blocked, move_rect,
-    selected_weapon_damage,
+    PlayerCombat, attack_hitbox, attack_path_blocked, boss_phase_table,
+    move_rect, selected_weapon_damage,
 )
 from src.systems.audio import (
     CombatAudio, apply_music_volume, handle_music_shortcut, play_crumble_sfx,
 )
-from src.data.zones import ZONES, get_zone_at
-from src.data.stages import get_stage
+from src.data.zones import get_zone_at
+from src.data.stages import get_stage, stage_world
 from src.screens.topic_found import open_topic_found
 from src.data.topics import get_topic
 from src.data.challenges import get_challenge
 from src.data.enemies import get_enemy
 from src.screens.topic_lesson import open_topic_lesson
-from src.data.encounters import BEGINNER_PATH_GIDS, BEGINNER_STAGE_ENCOUNTERS
 from src.systems.enemy_spawns import resolve_encounter_spawns
 from src.ui.theme import UI_COLORS, body_font, draw_button, draw_panel, title_font
 from src.ui.night_lighting import (
@@ -63,34 +62,20 @@ from src.systems.stage_gate import (
 )
 
 
-# --------------------------------------------------------------------
-# Music tracks used during a stage run. Named here so every swap in the
-# game loop (stage <-> boss fight) points at the same two constants
-# instead of retyping the paths at each call site.
-# --------------------------------------------------------------------
-STAGE_BGM_PATH = "assets/audios/gameStage1Bgm.mp3"
-BOSS_FIGHT_BGM_PATH = "assets/audios/bgm/boss_fight/easy/Boss_fight_easy_sound_01.mp3"
+def boss_sword_damage(current_hp, phase_table):
+    """Damage per connected hit against a boss at ``current_hp``.
 
-
-BOSS_PHASE_DAMAGE = (
-    (750, 25),
-    (500, 35),
-    (250, 40),
-    (0, 45),
-)
-BOSS_PHASE_THRESHOLDS = (750, 500, 250)
-
-
-def boss_sword_damage(current_hp):
-    """Damage per connected hit for the 1000-HP Core boss.
-
-    With threshold-crossing damage carried forward, the four armor phases
-    take 10, 8, 6, and 6 hits: exactly 30 successful connections.
+    ``phase_table`` is one entry of combat.BOSS_PHASES, so each stage's
+    boss carries its own armour phases rather than every boss inheriting
+    the Core warden's. Damage carried forward on a crossing means the
+    Core's four phases still take 10, 8, 6 and 6 hits: exactly 30
+    successful connections.
     """
-    for lower_bound, damage in BOSS_PHASE_DAMAGE:
-        if current_hp > lower_bound:
-            return damage
-    return BOSS_PHASE_DAMAGE[-1][1]
+    damage = phase_table.get("base_sword_damage", 0)
+    for phase in phase_table.get("phases", ()):
+        if current_hp <= phase.threshold:
+            damage = phase.sword_damage
+    return damage
 
 
 def load_interactables(tmx_data):
@@ -162,22 +147,58 @@ def nearest_interactable(player_rect, interactables, reach=32):
 def game_screen(screen, slot_num=None, save_state=None):
     clock = pygame.time.Clock()
 
-    loading_stage = get_stage((save_state or {}).get("stage", "Island"))
+    # Which stage this run is, and everything needed to load it: map,
+    # music, spawn, zones, encounters and walkable ground all come from
+    # the stage record (see stages.py) rather than being named here.
+    save_stage = (save_state or {}).get("stage", "Island")
+    stage = get_stage(save_stage)
+    world = stage_world(stage)
+    stage_name = stage.get("name", "Island")
+
+    # A stage with no authored map is content-only: menus and saves may
+    # name it, but there is nothing to walk around in yet. Returning to the
+    # menu keeps that a dead end rather than a crash.
+    if not world["map"]:
+        if DEBUG_MODE:
+            print(f"[stage] {stage_name} has no map yet - returning to menu.")
+        return "main_menu"
+
     loading = StageLoadingScreen(
         screen,
-        stage_id=loading_stage.get("id", "island"),
-        stage_name=loading_stage.get("name", "Island"),
-        stage_label=loading_stage.get("subtitle", "Stage 1"),
+        stage_id=stage.get("id", "island"),
+        stage_name=stage_name,
+        stage_label=stage.get("subtitle", "Stage 1"),
         previous_frame=screen,
     )
 
-    pygame.mixer.music.load(STAGE_BGM_PATH)
-    apply_music_volume()
-    pygame.mixer.music.play(-1)
-    loading.update(5, "Loading island terrain...")
+    def play_track(path):
+        """Loop one authored track, or leave the music alone if unset."""
+
+        if not path:
+            return
+        pygame.mixer.music.load(path)
+        apply_music_volume()
+        pygame.mixer.music.play(-1)
+
+    def start_stage_music():
+        """Play this stage's ordinary exploration track."""
+
+        play_track(world["music"])
+
+    def start_boss_music():
+        """Play this stage's boss theme, if it has authored one.
+
+        A stage with no boss track simply keeps its exploration music, so
+        a new stage can ship its boss before its theme is chosen.
+        """
+
+        play_track(world["boss_music"])
+
+    start_stage_music()
+    loading.update(5, f"Loading {stage_name} terrain...")
 
     # --- Load Map ---
-    tmx_data = load_pygame("assets/map/tmx/basic.tmx")
+    tmx_data = load_pygame(world["map"])
     TILE_SIZE = tmx_data.tilewidth
 
     map_width  = tmx_data.width  * TILE_SIZE
@@ -186,13 +207,11 @@ def game_screen(screen, slot_num=None, save_state=None):
     # Map layout version
     # ---------------------------------------------------------
 
-    # Version 2 is the resized Island map.
-    MAP_LAYOUT_VERSION = 2
-
-    # The original island was shifted 30 tiles right and down
-    # when ocean space was added around all four sides.
-    OLD_MAP_SHIFT_X = TILE_SIZE * 30
-    OLD_MAP_SHIFT_Y = TILE_SIZE * 30
+    # Authored per stage. A save written before this stage's map was
+    # re-cut has its stored position shifted by that stage's own offset.
+    MAP_LAYOUT_VERSION = world["map_layout_version"]
+    OLD_MAP_SHIFT_X = TILE_SIZE * world["legacy_shift_tiles"][0]
+    OLD_MAP_SHIFT_Y = TILE_SIZE * world["legacy_shift_tiles"][1]
 
     loading.update(18, "Charting safe paths...")
 
@@ -200,8 +219,8 @@ def game_screen(screen, slot_num=None, save_state=None):
     # known dirt-path IDs before comparing them with layer iteration values.
     runtime_path_gids = {
         runtime_gid
-        for authored_gid in BEGINNER_PATH_GIDS
-        for runtime_gid, _flags in tmx_data.map_gid(authored_gid)
+        for authored_gid in world["path_gids"]
+        for runtime_gid, _flags in (tmx_data.map_gid(authored_gid) or ())
     }
 
     # --- Build collision rects from tile custom properties ---
@@ -212,7 +231,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             for x, y, gid in layer:
                 if gid == 0:
                     continue
-                if layer.name == "Ground Layer 1" and gid in runtime_path_gids:
+                if layer.name == world["path_layer"] and gid in runtime_path_gids:
                     path_cells.add((x, y))
                 props = tmx_data.get_tile_properties_by_gid(gid)
                 if props and props.get('collidable'):
@@ -234,16 +253,13 @@ def game_screen(screen, slot_num=None, save_state=None):
     SCREEN_W, SCREEN_H = screen.get_size()
     player_size = TILE_SIZE
 
-    # The resized map adds 30 ocean tiles around the original island.
-    # Keep the player's original spawn position relative to the island.
-    ISLAND_OCEAN_PADDING = 30
-
-    spawn_margin = TILE_SIZE * (ISLAND_OCEAN_PADDING + 6)
-    spawn_offset_x = TILE_SIZE * 7
+    # Authored in stages.py as fractions of the map, the same way zone
+    # rects and encounter anchors are, so a resized map keeps its spawn.
+    spawn_fraction_x, spawn_fraction_y = world["spawn"]
 
     player_rect = pygame.Rect(
-        map_width // 2 - player_size // 2 + spawn_offset_x,
-        map_height - spawn_margin,
+        round(spawn_fraction_x * map_width),
+        round(spawn_fraction_y * map_height),
         player_size,
         player_size
     )
@@ -265,7 +281,6 @@ def game_screen(screen, slot_num=None, save_state=None):
         "hearts": 5, "keys": 0, "topics_completed": [], "bonus_time": 0,
         "completed_stages": [],
     }
-    save_stage = "Island"
     save_challenges_passed = []
     save_stage_progress = None
     save_security = None
@@ -273,7 +288,6 @@ def game_screen(screen, slot_num=None, save_state=None):
     if save_state:
         gameplay_state["hearts"] = save_state.get("hearts", gameplay_state["hearts"])
         gameplay_state["keys"] = save_state.get("keys", gameplay_state["keys"])
-        save_stage = save_state.get("stage", save_stage)
         gameplay_state["topics_completed"] = list(save_state.get("topics_completed", []))
         gameplay_state["bonus_time"] = save_state.get("bonus_time", 0)
         gameplay_state["completed_stages"] = list(
@@ -341,8 +355,8 @@ def game_screen(screen, slot_num=None, save_state=None):
     # `stage` is the static description of this stage - its manual, enemy
     # and item lists, and objectives. `stage_progress` is what this player
     # has found so far, and is what decides whether the panel prints a
-    # real entry or a "???" placeholder.
-    stage = get_stage(save_stage)
+    # real entry or a "???" placeholder. `stage` itself is resolved at the
+    # top of this function, because loading the map already needed it.
     gameplay_state["keys"] = migrate_key_count(
         gameplay_state["keys"], stage, save_challenges_passed
     )
@@ -497,7 +511,7 @@ def game_screen(screen, slot_num=None, save_state=None):
     # Objectives are still tracked in `stage_progress`; they are read on
     # the OBJECTIVES tab rather than from a box on the HUD.
     stage_panel = StagePanel(screen)
-    loading.update(54, "Lighting island paths...")
+    loading.update(54, f"Lighting {stage_name} paths...")
 
     def open_topic_flow(
         topic_id,
@@ -629,7 +643,7 @@ def game_screen(screen, slot_num=None, save_state=None):
         placement_radius=MAP_TORCH_LIGHT_RADIUS * 2.0 / ZOOM,
         max_torches=26,
     )
-    loading.update(60, "Rendering island terrain...")
+    loading.update(60, f"Rendering {stage_name} terrain...")
 
     def update_camera():
         cx = player_rect.centerx * ZOOM - SCREEN_W // 2
@@ -749,13 +763,13 @@ def game_screen(screen, slot_num=None, save_state=None):
     # Nightfall on the minimap: the same even wash the paper map uses, so
     # the two agree about how dark it is.
     minimap_night_veil = build_night_veil((MINIMAP_VIEW, MINIMAP_VIEW))
-    loading.update(79, "Placing island landmarks...")
+    loading.update(79, f"Placing {stage_name} landmarks...")
 
     # --- Zone Labels ---
-    # Converts each zone's fractional rect (from zones.py) into a
-    # real pixel rect once, using this map's actual dimensions.
+    # Converts each zone's fractional rect (this stage's own list in
+    # zones.py) into a real pixel rect once, using this map's dimensions.
     zone_pixel_rects = []
-    for zone in ZONES:
+    for zone in world["zones"]:
         frac_x, frac_y, frac_w, frac_h = zone["rect"]
         zone_pixel_rects.append({
             "name": zone["name"],
@@ -1052,7 +1066,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             title=f"Map of the {stage.get('name', 'Island')}",
             subtitle="YOU ARE IN " + get_zone_at(
                 player_rect.centerx, player_rect.centery,
-                map_width, map_height,
+                map_width, map_height, world["zones"],
             ).upper(),
             night=current_night,
             enemies=enemies,
@@ -1062,9 +1076,10 @@ def game_screen(screen, slot_num=None, save_state=None):
     ENEMY_SIGHT_RANGE = 180
     main_character = MainCharacter(screen, map_width, map_height)
     enemy_spawns = resolve_encounter_spawns(
-        BEGINNER_STAGE_ENCOUNTERS, map_width, map_height,
+        world["encounters"], map_width, map_height,
         collision_rects, path_cells, TILE_SIZE,
         (stage_spawn[0] + player_size // 2, stage_spawn[1] + player_size),
+        zones=world["zones"],
     )
     loading.update(92, "Awakening creatures...")
     enemies = [
@@ -1092,6 +1107,13 @@ def game_screen(screen, slot_num=None, save_state=None):
     # resolved up front, but the enemy itself is created only when the player
     # crosses into whichever authored zone carries is_boss_zone=True.
     boss_id = required_boss_id(stage)
+    # Armour phases, aggression and reinforcement pools for whichever boss
+    # this stage names. A boss with no authored table takes ordinary weapon
+    # damage and never changes phase.
+    boss_phases = boss_phase_table(boss_id)
+    boss_phase_by_threshold = {
+        phase.threshold: phase for phase in boss_phases["phases"]
+    }
     boss_zone = next(
         (zone for zone in zone_pixel_rects if zone.get("is_boss_zone")), None
     )
@@ -1103,7 +1125,7 @@ def game_screen(screen, slot_num=None, save_state=None):
         )
         boss_spawn = resolve_encounter_spawns(
             ({
-                "id": "corrupted_core_boss",
+                "id": f"{stage.get('id', 'stage')}_boss",
                 "anchor": boss_anchor,
                 "zone_size": boss_zone["rect"].size,
                 "spawn_margin": TILE_SIZE * 4,
@@ -1115,6 +1137,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             },),
             map_width, map_height, collision_rects, path_cells, TILE_SIZE,
             (stage_spawn[0] + player_size // 2, stage_spawn[1] + player_size),
+            zones=world["zones"],
         )[0]
 
     boss_enemy = None
@@ -1168,14 +1191,12 @@ def game_screen(screen, slot_num=None, save_state=None):
         summon_count = min(2, 3 - alive_summons)
         if summon_count <= 0:
             return
-        pools = {
-            750: ("tiyanak_sinta", "manananggal"),
-            500: ("tiyanak_sinta", "manananggal", "tikbalang"),
-            250: ("manananggal", "tikbalang", "tiyanak_sinta"),
-        }
+        phase = boss_phase_by_threshold.get(threshold)
+        if phase is None or not phase.reinforcements:
+            return
         encounter_id = f"boss_wave_{threshold}"
         selected = tuple(
-            random.choice(pools[threshold]) for _ in range(summon_count)
+            random.choice(phase.reinforcements) for _ in range(summon_count)
         )
         try:
             wave_spawns = resolve_encounter_spawns(
@@ -1195,6 +1216,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                 },),
                 map_width, map_height, collision_rects, path_cells, TILE_SIZE,
                 player_rect.center,
+                zones=world["zones"],
             )
         except RuntimeError:
             # A crowded authored zone should skip a wave rather than crash
@@ -1218,8 +1240,11 @@ def game_screen(screen, slot_num=None, save_state=None):
         nonlocal boss_phase_effect_world
         if boss_enemy is None:
             return
+        phase = boss_phase_by_threshold.get(threshold)
+        if phase is None:
+            return
         boss_enemy.phase_thresholds_triggered.add(threshold)
-        aggression = {750: 1.05, 500: 1.10, 250: 1.15}[threshold]
+        aggression = phase.aggression
         boss_enemy.movement_speed_multiplier = aggression
         boss_enemy.attack_cooldown_multiplier = 1.0 / aggression
         boss_enemy.attack_damage_multiplier = aggression
@@ -1323,9 +1348,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                         screen, play_music=False, show_loading=False,
                         practice_only=True,
                     )
-                    pygame.mixer.music.load(STAGE_BGM_PATH)
-                    apply_music_volume()
-                    pygame.mixer.music.play(-1)
+                    start_stage_music()
                 elif event.key == pygame.K_b and not paused:
 
                     # Keep the original game frame behind the inventory.
@@ -1561,7 +1584,8 @@ def game_screen(screen, slot_num=None, save_state=None):
         camera_x, camera_y = update_camera()
 
         current_zone_name = get_zone_at(
-            player_rect.centerx, player_rect.centery, map_width, map_height
+            player_rect.centerx, player_rect.centery, map_width, map_height,
+            world["zones"],
         )
         if stage_progress.visit_zone(current_zone_name):
             stage_progress.sync_objectives(stage, save_challenges_passed)
@@ -1598,9 +1622,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             else:
                 # Abandoning the fight mid-encounter - revert to the
                 # ordinary stage music.
-                pygame.mixer.music.load(STAGE_BGM_PATH)
-                apply_music_volume()
-                pygame.mixer.music.play(-1)
+                start_stage_music()
 
                 enemies[:] = [
                     enemy for enemy in enemies
@@ -1625,9 +1647,7 @@ def game_screen(screen, slot_num=None, save_state=None):
 
             # Swap to boss battle music the moment the encounter popup
             # appears, so the fight has its own theme from the very start.
-            pygame.mixer.music.load(BOSS_FIGHT_BGM_PATH)
-            apply_music_volume()
-            pygame.mixer.music.play(-1)
+            start_boss_music()
 
             decision = open_boss_intro(
                 screen, boss_id, background=screen.copy()
@@ -1635,9 +1655,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             if decision == "retreat":
                 # Player backed out of the intro without fighting -
                 # go back to the regular stage track.
-                pygame.mixer.music.load(STAGE_BGM_PATH)
-                apply_music_volume()
-                pygame.mixer.music.play(-1)
+                start_stage_music()
 
                 player_rect.topleft = last_safe_position
                 player_x, player_y = map(float, last_safe_position)
@@ -1699,8 +1717,9 @@ def game_screen(screen, slot_num=None, save_state=None):
                 if damage and enemy.active and not already_hit and not path_blocked and hitbox.colliderect(enemy.rect):
                     enemy.last_player_attack = player_combat.attack_id
                     applied_damage = (
-                        boss_sword_damage(enemy.hp)
-                        if enemy is boss_enemy else damage
+                        boss_sword_damage(enemy.hp, boss_phases)
+                        if enemy is boss_enemy and boss_phases["phases"]
+                        else damage
                     )
                     hp_before = enemy.hp
                     if enemy.receive_damage(applied_damage):
@@ -1709,7 +1728,8 @@ def game_screen(screen, slot_num=None, save_state=None):
                             "enemy_death" if enemy.hp == 0 else "enemy_hurt"
                         )
                         if enemy is boss_enemy:
-                            for threshold in BOSS_PHASE_THRESHOLDS:
+                            for boss_phase in boss_phases["phases"]:
+                                threshold = boss_phase.threshold
                                 if (hp_before > threshold >= enemy.hp
                                         and threshold not in
                                         enemy.phase_thresholds_triggered):
@@ -1731,9 +1751,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                 save_manager.save_slot(slot_num, build_save_state())
 
             # Fight won - drop the boss theme and return to stage music.
-            pygame.mixer.music.load(STAGE_BGM_PATH)
-            apply_music_volume()
-            pygame.mixer.music.play(-1)
+            start_stage_music()
 
             boss_result = open_boss_result(
                 screen, victory=True, background=screen.copy()
@@ -1749,9 +1767,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             if boss_loss:
                 # Fight lost - drop the boss theme before showing the
                 # retry/retreat modal.
-                pygame.mixer.music.load(STAGE_BGM_PATH)
-                apply_music_volume()
-                pygame.mixer.music.play(-1)
+                start_stage_music()
 
                 result = open_boss_result(
                     screen, victory=False, background=screen.copy()
@@ -1777,9 +1793,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                     # Retrying goes straight back into the fight, so the
                     # boss theme should resume rather than staying on the
                     # stage track.
-                    pygame.mixer.music.load(BOSS_FIGHT_BGM_PATH)
-                    apply_music_volume()
-                    pygame.mixer.music.play(-1)
+                    start_boss_music()
                 else:
                     # Retreat returns to the safe campaign spawn. Re-entering
                     # the Core creates a fresh boss encounter and intro.

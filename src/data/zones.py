@@ -1,8 +1,13 @@
 """
 zones.py
 
-Named regions of the world map, used to label areas on the minimap -
+Named regions of a stage's map, used to label areas on the minimap -
 the same way most RPGs name their overworld regions.
+
+One list per stage. A stage's world record in stages.py points at its
+own list, and the lookup helpers below are handed that list rather than
+reading a module-level one, so a second stage labels its own map without
+this module having to know which stage is loaded.
 
 Each zone's rect is stored as FRACTIONS of the map's total width and
 height (0.0 - 1.0), not raw pixel coordinates. A zone positioned at
@@ -15,7 +20,7 @@ all as values between 0.0 and 1.0, then reload and check the minimap.
 F6 prints the player's current fractional position for placement work.
 """
 
-ZONES = [
+ISLAND_ZONES = [
     {
         "name": "The Corrupted Core",
         "rect": (
@@ -119,14 +124,17 @@ ZONES = [
 ]
 
 
-def get_zone_at(world_x, world_y, map_width, map_height):
+def get_zone_at(world_x, world_y, map_width, map_height, zones):
     """
     Returns the name of the zone containing the given world-space
     point, or "Wilderness" if the point falls outside every defined
-    zone. Earlier entries in ZONES take priority if two ever overlap.
+    zone. Earlier entries in `zones` take priority if two ever overlap.
+
+    `zones` is the loaded stage's own list, so the same point can carry
+    different names in different stages.
     """
 
-    for zone in ZONES:
+    for zone in zones:
         frac_x, frac_y, frac_w, frac_h = zone["rect"]
 
         left = frac_x * map_width
@@ -140,9 +148,9 @@ def get_zone_at(world_x, world_y, map_width, map_height):
     return "Wilderness"
 
 
-def get_zone_record_at(world_x, world_y, map_width, map_height):
+def get_zone_record_at(world_x, world_y, map_width, map_height, zones):
     """Return the authored zone record and its world-space rectangle."""
-    for zone in ZONES:
+    for zone in zones:
         frac_x, frac_y, frac_w, frac_h = zone["rect"]
         rect = (
             round(frac_x * map_width), round(frac_y * map_height),

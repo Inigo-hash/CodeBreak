@@ -85,7 +85,7 @@ STAGES = {
 
         "world": {
 
-            "map": "assets/map/tmx/basic.tmx",
+            "map": "assets/map/tmx/map1.tmx",
 
             "music": "assets/audios/gameStage1Bgm.mp3",
 

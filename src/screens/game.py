@@ -28,9 +28,9 @@ from src.ui.chart import (
 )
 from src.systems.combat import (
     COMBAT_DEBUG, DEBUG_ENEMY_AI, FACING_VECTORS, PLAYER_DODGE_SPEED,
-    PLAYER_ENERGY_REGEN, PLAYER_TORCH_ENERGY_REGEN, PlayerCombat,
-    attack_hitbox, attack_path_blocked, boss_phase_table, move_rect,
-    selected_weapon_damage,
+    PLAYER_ENERGY_REGEN, PLAYER_TORCH_ENERGY_REGEN, PLAYER_TORCH_HP_REGEN,
+    PlayerCombat, attack_hitbox, attack_path_blocked, boss_phase_table,
+    move_rect, selected_weapon_damage,
 )
 from src.systems.audio import (
     CombatAudio, apply_music_volume, handle_music_shortcut, play_crumble_sfx,
@@ -1564,6 +1564,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             dt,
             PLAYER_TORCH_ENERGY_REGEN if warmed_by_torch
             else PLAYER_ENERGY_REGEN,
+            PLAYER_TORCH_HP_REGEN if warmed_by_torch else 0.0,
         )
         main_character.set_combat_state(player_combat.state)
         keys = pygame.key.get_pressed()
@@ -2356,6 +2357,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             current_energy=int(player_combat.energy),
             max_energy=player_combat.max_energy,
             energy_boosted=warmed_by_torch,
+            hp_healing=warmed_by_torch and player_combat.hp < player_combat.max_hp,
             bonus_time=gameplay_state["bonus_time"],
         )
 

@@ -1,26 +1,32 @@
 import pygame
 from src.systems.audio import handle_music_shortcut
 
-from src.ui.theme import body_font, title_font
+from src.ui.theme import UI_COLORS, body_font, title_font
 
 
 # ---------------------------------------------------------
 # Colors
 # ---------------------------------------------------------
+#
+# The shared modal palette from ui/theme.py. These exact values used to be
+# written out here, and again in topic_lesson.py, and again in
+# inventory.py, under three different sets of names - so a change to "the
+# colour of a modal window" meant finding every copy. Names are kept local
+# because they read better at the call sites below.
 
-PANEL_BG = (36, 38, 48)
-PANEL_INNER = (26, 28, 36)
+PANEL_BG = UI_COLORS["modal_panel"]
+PANEL_INNER = UI_COLORS["modal_inner"]
 
-FRAME = (90, 94, 110)
-FRAME_HOVER = (140, 146, 165)
+FRAME = UI_COLORS["modal_frame"]
+FRAME_HOVER = UI_COLORS["modal_frame_hover"]
 
-ACCENT = (255, 220, 120)
+ACCENT = UI_COLORS["modal_accent"]
 
-TEXT_MAIN = (255, 255, 255)
-TEXT_DIM = (170, 175, 190)
+TEXT_MAIN = UI_COLORS["modal_text"]
+TEXT_DIM = UI_COLORS["modal_text_dim"]
 
-BUTTON_BG = (42, 46, 58)
-BUTTON_HOVER = (60, 90, 130)
+BUTTON_BG = UI_COLORS["modal_button"]
+BUTTON_HOVER = UI_COLORS["modal_button_hover"]
 
 
 class TopicFoundScreen:

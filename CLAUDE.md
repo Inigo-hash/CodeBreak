@@ -128,6 +128,19 @@ the main menu).
   condition: keys only come from those lessons, one each.
 - Hearts reset to 5 on reaching zero, so death has no lasting cost.
 
+## Design docs
+
+`docs/` holds the design references, written from the code and dated:
+
+| File | What it answers |
+|---|---|
+| `style-guide.md` | Every colour token and what it means, the type scale, and which screens still declare their own palette |
+| `style-guide-migration.md` | The worked example - two screens moved onto the shared tokens, with the pixel-diff proof |
+| `screen-flow.md` | How all 19 screens connect, what opens and closes each one, and the navigation inconsistencies found |
+
+They describe the code on the day they were audited (31 Aug 2026). Re-check
+them before relying on the per-screen tables.
+
 ## Older docs
 
 `project_structure_v1.md`, `v2.md` and `v3.md` are historical snapshots of

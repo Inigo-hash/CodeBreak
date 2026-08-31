@@ -18,16 +18,20 @@ from src.systems.audio import handle_music_shortcut
 import sys
 
 from src.data.controls import CONTROL_NOTES, CONTROL_SECTIONS
-from src.ui.theme import body_font, title_font
+from src.ui.theme import UI_COLORS, body_font, title_font
 
-STONE_DARK = (28, 30, 38)
-STONE_MID = (42, 46, 58)
-STONE_LIGHT = (62, 68, 82)
-METAL_FRAME = (90, 94, 110)
-YELLOW_GLOW = (255, 220, 120)
-BLUE_GLOW = (80, 180, 255)
-WHITE = (255, 255, 255)
-BODY_TEXT = (215, 215, 220)
+# Every color here now comes from the shared modal palette in
+# ui/theme.py rather than being redeclared. The old names are kept because
+# tutorial.py imports two of them to draw the same manual - see
+# docs/style-guide.md for what each token means.
+STONE_DARK = UI_COLORS["modal_inner"]
+STONE_MID = UI_COLORS["modal_button"]
+STONE_LIGHT = UI_COLORS["modal_button_edge"]
+METAL_FRAME = UI_COLORS["modal_frame"]
+YELLOW_GLOW = UI_COLORS["modal_accent"]
+BLUE_GLOW = UI_COLORS["modal_heading"]
+WHITE = UI_COLORS["modal_text"]
+BODY_TEXT = UI_COLORS["modal_text_soft"]
 
 # What the player is told about the rules of a challenge. Every line has
 # been checked against what the game actually does - the old list
@@ -151,7 +155,7 @@ def draw_manual_footer(surface, rect, font):
 
     y = rect.top
     for note in CONTROL_NOTES:
-        rendered = font.render(note, True, (170, 175, 190))
+        rendered = font.render(note, True, UI_COLORS["modal_text_dim"])
         surface.blit(rendered, (rect.centerx - rendered.get_width() // 2, y))
         y += FOOTER_LINE_HEIGHT
     return y
@@ -230,9 +234,10 @@ def how_to_play_screen(screen):
         overlay.fill((0, 0, 0, 170))
         screen.blit(overlay, (0, 0))
 
-        pygame.draw.rect(screen, (36, 38, 48), panel_rect, border_radius=8)
+        pygame.draw.rect(screen, UI_COLORS["modal_panel"], panel_rect, border_radius=8)
         pygame.draw.rect(screen, METAL_FRAME, panel_rect, 4, border_radius=8)
-        pygame.draw.rect(screen, (26, 28, 36), panel_rect.inflate(-24, -24), border_radius=6)
+        pygame.draw.rect(screen, UI_COLORS["modal_inner"], panel_rect.inflate(-24, -24),
+                         border_radius=6)
 
         title = heading_font.render("HOW TO PLAY", True, WHITE)
         screen.blit(title, (panel_rect.centerx - title.get_width() // 2, panel_rect.top + 24))
@@ -244,7 +249,9 @@ def how_to_play_screen(screen):
                             header_font, key_font, line_font, note_font)
 
         back_hovered = back_rect.collidepoint(mouse_pos)
-        pygame.draw.rect(screen, (60, 90, 130) if back_hovered else STONE_MID, back_rect, border_radius=4)
+        pygame.draw.rect(screen,
+                         UI_COLORS["modal_button_hover"] if back_hovered else STONE_MID,
+                         back_rect, border_radius=4)
         pygame.draw.rect(screen, STONE_LIGHT, back_rect, 2, border_radius=4)
         bt = btn_font.render("BACK", True, WHITE)
         screen.blit(bt, (back_rect.centerx - bt.get_width() // 2, back_rect.centery - bt.get_height() // 2))

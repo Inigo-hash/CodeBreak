@@ -30,6 +30,27 @@ UI_COLORS = {
     "gold_deep": (139, 105, 20),
     "gold_bright": (226, 186, 96),
     "gold_text_dark": (26, 19, 6),
+
+    # Modal window palette. The dark carved panel above belongs to the HUD,
+    # which sits on top of the world and must not compete with it; these
+    # lighter values belong to the full-screen windows the game pauses for.
+    # They are not new - How To Play, Topic Found, Topic Lesson and the
+    # inventory each defined the same numbers privately under four
+    # different names. Naming them here is what makes them one system.
+    # See docs/style-guide.md.
+    "modal_panel": (36, 38, 48),
+    "modal_inner": (26, 28, 36),
+    "modal_frame": (90, 94, 110),
+    "modal_frame_hover": (140, 146, 165),
+    "modal_accent": (255, 220, 120),
+    "modal_heading": (80, 180, 255),
+    "modal_button": (42, 46, 58),
+    "modal_button_hover": (60, 90, 130),
+    "modal_button_edge": (62, 68, 82),
+    "modal_text": (255, 255, 255),
+    "modal_text_soft": (215, 215, 220),
+    "modal_text_dim": (170, 175, 190),
+    "modal_success": (120, 200, 140),
 }
 
 # Button emphasis tiers. A menu where every row looks identical gives the eye

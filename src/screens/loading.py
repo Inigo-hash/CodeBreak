@@ -233,7 +233,6 @@ class StageLoadingScreen:
         """Handle loading controls and report a valid SPACE continuation."""
 
         continue_requested = False
-        left_arrow, right_arrow = self._tip_navigation_rects()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
@@ -251,10 +250,13 @@ class StageLoadingScreen:
                     and self.progress >= 100
                 ):
                     continue_requested = True
-            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if left_arrow.collidepoint(event.pos):
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                # Mouse buttons page the note directly. The loading screen is
+                # deliberately click-anywhere so the player never has to aim
+                # at a small on-screen arrow while assets are still loading.
+                if event.button == 1:
                     self._change_tip(-1)
-                elif right_arrow.collidepoint(event.pos):
+                elif event.button == 3:
                     self._change_tip(1)
         return continue_requested
 
@@ -366,28 +368,6 @@ class StageLoadingScreen:
         )
         self.screen.blit(label, label.get_rect(center=header.center))
 
-        left_arrow, right_arrow = self._tip_navigation_rects()
-        mouse = pygame.mouse.get_pos()
-        for arrow_rect, direction in ((left_arrow, -1), (right_arrow, 1)):
-            hovered = arrow_rect.collidepoint(mouse)
-            fill = (54, 58, 68) if hovered else UI_COLORS["stone_deep"]
-            border = UI_COLORS["gold"] if hovered else UI_COLORS["bronze"]
-            pygame.draw.rect(self.screen, fill, arrow_rect,
-                             border_radius=arrow_rect.height // 2)
-            pygame.draw.rect(self.screen, border, arrow_rect, 2,
-                             border_radius=arrow_rect.height // 2)
-            cx, cy = arrow_rect.center
-            offset = max(5, arrow_rect.width // 7)
-            points = (
-                ((cx + offset, cy - offset), (cx - offset, cy),
-                 (cx + offset, cy + offset))
-                if direction < 0 else
-                ((cx - offset, cy - offset), (cx + offset, cy),
-                 (cx - offset, cy + offset))
-            )
-            pygame.draw.lines(self.screen, UI_COLORS["gold"], False,
-                              points, max(2, round(3 * scale)))
-
         counter = self.navigation_font.render(
             f"NOTE {self.tip_index + 1} / {len(self.tips)}",
             True,
@@ -446,10 +426,10 @@ class StageLoadingScreen:
         self.screen.blit(percent, percent.get_rect(center=bar.center))
 
         if self.progress >= 100:
-            footer_text = "PRESS SPACE TO CONTINUE   |   LEFT / RIGHT = CHANGE NOTE"
+            footer_text = "PRESS SPACE TO CONTINUE   |   MOUSE LEFT / RIGHT = CHANGE NOTE"
             footer_color = UI_COLORS["gold"]
         else:
-            footer_text = "LEFT / RIGHT = CHANGE NOTE"
+            footer_text = "MOUSE LEFT / RIGHT = CHANGE NOTE"
             footer_color = UI_COLORS["text_dim"]
         footer_font = (
             self.prompt_font if self.progress >= 100 else self.navigation_font

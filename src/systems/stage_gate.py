@@ -125,3 +125,16 @@ def evaluate_stage_gate(stage, keys, challenges_passed, defeated_enemies=()):
         required_boss_id=boss_id,
         boss_defeated=boss_defeated,
     )
+
+
+def evaluate_boss_access(stage, keys, challenges_passed):
+    """Require the stage's keys and lessons before its boss territory.
+
+    The boss itself is intentionally treated as satisfied here: defeating it
+    cannot be a prerequisite for reaching it. All other gate requirements use
+    the same evaluator as the final exit, preventing the two gates drifting.
+    """
+
+    boss_id = required_boss_id(stage)
+    defeated = (boss_id,) if boss_id else ()
+    return evaluate_stage_gate(stage, keys, challenges_passed, defeated)

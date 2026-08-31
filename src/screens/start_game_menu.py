@@ -25,6 +25,21 @@ _password_failures = {}
 _password_locked_until = {}
 
 
+def start_menu_layout(width, height):
+    """The button rows this menu uses, for anything that has to match them.
+
+    The crumble transition on the main menu assembles its debris into these
+    rects, so it asks for them here rather than working them out from its
+    own labels - which is how the animation ended up settling into
+    main-menu-sized buttons and then snapping wider.
+    """
+
+    from src.screens.main_menu import compute_menu_layout
+
+    rects, *_ = compute_menu_layout(width, height, len(SG_LABELS), SG_LABELS)
+    return rects
+
+
 def slot_layout(panel_rect, slot_count):
     """Return each save slot's row and the delete button sitting on it.
 
@@ -65,7 +80,7 @@ def start_game_menu(screen, clean_backdrop=None):
     # longer what this menu paints each frame: blitting a snapshot is what
     # used to stop the dungeon's lights dead the moment this screen opened.
     background = clean_backdrop.copy() if clean_backdrop is not None else screen.copy()
-    rects, *_ = compute_menu_layout(width, height, len(SG_LABELS))
+    rects = start_menu_layout(width, height)
     icons, labels, seeds, tiers = SG_ICONS, SG_LABELS, SG_SEEDS, SG_TIERS
 
     show_slot_panel = None
@@ -446,7 +461,9 @@ def start_game_menu(screen, clean_backdrop=None):
             MM_LABELS, compute_menu_layout, render_main_menu_buttons,
         )
         old_source = screen.copy()
-        main_rects, *_ = compute_menu_layout(width, height, len(MM_LABELS))
+        main_rects, *_ = compute_menu_layout(
+            width, height, len(MM_LABELS), MM_LABELS
+        )
         new_source = background.copy()
         render_main_menu_buttons(new_source, main_rects, t)
         crumble_transition(screen, background, old_source, rects,

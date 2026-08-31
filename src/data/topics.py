@@ -303,7 +303,12 @@ Common Python data types include:
     bool
 """,
 
-        "challenge_id": "data_types_001"
+        "challenge_id": "data_types_001",
+
+        "requirements": [
+            "python_syntax_basics",
+            "variables"
+        ]
     },
 
 

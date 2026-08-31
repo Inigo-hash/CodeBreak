@@ -38,6 +38,7 @@ from src.systems.audio import (
 from src.data.zones import get_zone_at
 from src.data.stages import get_stage, stage_world
 from src.screens.topic_found import open_topic_found
+from src.screens.topic_requirements import open_topic_requirements
 from src.data.topics import get_topic
 from src.data.challenges import get_challenge
 from src.data.enemies import get_enemy
@@ -543,6 +544,28 @@ def game_screen(screen, slot_num=None, save_state=None):
             )
 
             return "close"
+
+        # -----------------------------------------------------
+        # Topic Requirements
+        # -----------------------------------------------------
+
+        requirements = topic.get(
+            "requirements",
+            []
+        )
+
+        if requirements:
+
+            requirement_result = open_topic_requirements(
+                screen,
+                topic_id,
+                gameplay_state["topics_completed"],
+                background
+            )
+
+            if requirement_result != "continue":
+
+                return "locked"
 
         # -----------------------------------------------------
         # Topic Lesson
@@ -1918,57 +1941,104 @@ def game_screen(screen, slot_num=None, save_state=None):
                         
                         background_snapshot = screen.copy()
 
-                        decision = open_topic_found(
-                            screen,
-                            topic_id,
-                            background_snapshot
-                        )
+                        while True:
 
-                        if decision == "start":
-                            topic_result = open_topic_flow(
+                            decision = open_topic_found(
+                                screen,
                                 topic_id,
                                 background_snapshot
                             )
-                            # Closing a lesson or an unsolved editor must not
-                            # consume the only map terminal for that topic.
-                            # Completed or stored lessons remain handled.
-                            near_interactable['topic_handled'] = (
-                                topic_result == "solved"
-                            )
-                            near_interactable['inspect_progress'] = 0.0
-                            near_interactable['inspecting'] = False
 
-                        elif decision == "store":
+                            # -------------------------------------------------
+                            # Start Topic
+                            # -------------------------------------------------
 
-                            topic = get_topic(topic_id)
+                            if decision == "start":
 
-                            if topic is None:
-
-                                print(
-                                    f"Unknown topic id: {topic_id}"
-                                )
-
-                            else:
-
-                                stored = player_inventory.add_topic(
+                                topic_result = open_topic_flow(
                                     topic_id,
-                                    topic["title"]
+                                    background_snapshot
                                 )
 
-                                if stored:
+                                # Requirements were not completed.
+                                #
+                                # Return immediately to the Topic Discovered
+                                # window so the player may still choose
+                                # STORE IN BAG.
+                                if topic_result == "locked":
+                                    continue
 
-                                    near_interactable['topic_handled'] = True
+                                # Closing a lesson or an unsolved editor must
+                                # not permanently consume this topic.
+                                near_interactable[
+                                    "topic_handled"
+                                ] = (
+                                    topic_result == "solved"
+                                )
+
+                                break
+
+                            # -------------------------------------------------
+                            # Store Topic
+                            # -------------------------------------------------
+
+                            elif decision == "store":
+
+                                topic = get_topic(
+                                    topic_id
+                                )
+
+                                if topic is None:
 
                                     print(
-                                        f"Stored topic: {topic['title']}"
+                                        f"Unknown topic id: {topic_id}"
                                     )
 
                                 else:
 
-                                    print(
-                                        f"Topic already stored or bag is full: "
-                                        f"{topic['title']}"
+                                    stored = (
+                                        player_inventory.add_topic(
+                                            topic_id,
+                                            topic["title"]
+                                        )
                                     )
+
+                                    if stored:
+
+                                        near_interactable[
+                                            "topic_handled"
+                                        ] = True
+
+                                        print(
+                                            f"Stored topic: "
+                                            f"{topic['title']}"
+                                        )
+
+                                    else:
+
+                                        print(
+                                            f"Topic already stored "
+                                            f"or bag is full: "
+                                            f"{topic['title']}"
+                                        )
+
+                                break
+
+                            # -------------------------------------------------
+                            # Cancel
+                            # -------------------------------------------------
+
+                            else:
+                                break
+
+
+                        near_interactable[
+                            "inspect_progress"
+                        ] = 0.0
+
+                        near_interactable[
+                            "inspecting"
+                        ] = False
                             
                     # Finishing a search is what counts as discovering the
                     # object, so it fills in its entry in the Items tab.

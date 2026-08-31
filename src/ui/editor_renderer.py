@@ -1271,7 +1271,9 @@ class EditorRenderer:
         shortcut_rect = shortcut.get_rect(
             midleft=(self.button_rect.left + 14, self.button_rect.centery)
         )
-        if shortcut_rect.right < self.leave_button.rect.left - 10:
+        # RUN is the leftmost button in this row now that leaving moved
+        # up to the title bar, so that is what the hint must clear.
+        if shortcut_rect.right < self.run_button.rect.left - 10:
             self.screen.blit(shortcut, shortcut_rect)
 
 

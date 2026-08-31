@@ -29,6 +29,13 @@ class SettingsPanel:
         self.is_open = True
         self.dragging_music = self.dragging_sfx = False
         self.focus = 0
+
+        # The focus ring exists so keyboard players can see which row the
+        # arrow keys will change. A mouse user already knows - the pointer
+        # is right there - so the ring stays hidden until an arrow key is
+        # actually pressed, and a click puts it away again.
+        self.keyboard_focus = False
+
         self.help_topic = None
         self.editing_font_size = False
         self.font_size_text = str(current_font_size())
@@ -82,9 +89,14 @@ class SettingsPanel:
         self.is_open = True
         self.dragging_music = self.dragging_sfx = False
 
+        # Opening the panel is not itself arrow-key navigation, so start
+        # with no ring showing whichever way the player got here.
+        self.keyboard_focus = False
+
     def close(self):
         self.is_open = False
         self.dragging_music = self.dragging_sfx = False
+        self.keyboard_focus = False
 
     def handle_event(self, event):
         if not self.is_open:
@@ -103,6 +115,7 @@ class SettingsPanel:
                 return True
             return self._handle_key(event)
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            self.keyboard_focus = False
             for topic, rect in self.help_rects.items():
                 if rect.collidepoint(event.pos):
                     self.help_topic = None if self.help_topic == topic else topic
@@ -157,9 +170,11 @@ class SettingsPanel:
         if event.key in (pygame.K_UP, pygame.K_DOWN):
             step = -1 if event.key == pygame.K_UP else 1
             self.focus = (self.focus + step) % len(ROWS)
+            self.keyboard_focus = True
             return True
         if event.key in (pygame.K_LEFT, pygame.K_RIGHT):
             self._adjust(-1 if event.key == pygame.K_LEFT else 1)
+            self.keyboard_focus = True
             return True
         if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
             self.close()
@@ -359,6 +374,9 @@ class SettingsPanel:
             )
 
     def _draw_focus_ring(self):
+        # Keyboard-only affordance - see keyboard_focus in __init__.
+        if not self.keyboard_focus:
+            return
         row = ROWS[self.focus]
         if row == "font_size":
             target = self.font_minus.union(self.font_plus).inflate(8, 8)

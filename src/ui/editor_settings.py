@@ -69,6 +69,12 @@ class EditorSettingsPanel:
         # menu and pause panel.
         self.focus = 0
 
+        # The focus ring is a keyboard affordance only. A mouse user can
+        # see where they are from the pointer, so the ring stays hidden
+        # until an arrow key is pressed and a click puts it away again -
+        # matching the menu panel's behaviour.
+        self.keyboard_focus = False
+
         # Rects are built in layout(), which the renderer calls with the
         # editor popup's own rect so the panel stays centered on it even
         # after the window is resized.
@@ -88,6 +94,9 @@ class EditorSettingsPanel:
 
         self.is_open = True
 
+        # Opening the panel is not arrow-key navigation, so no ring yet.
+        self.keyboard_focus = False
+
     def close(self):
 
         self.is_open = False
@@ -96,6 +105,8 @@ class EditorSettingsPanel:
         # opening would jump the slider to wherever the mouse happens
         # to be.
         self.dragging = None
+
+        self.keyboard_focus = False
 
     # -------------------------------------------------
     # Layout
@@ -199,13 +210,17 @@ class EditorSettingsPanel:
             if event.key in (pygame.K_UP, pygame.K_DOWN):
                 step = -1 if event.key == pygame.K_UP else 1
                 self.focus = (self.focus + step) % len(ROWS)
+                self.keyboard_focus = True
 
             elif event.key in (pygame.K_LEFT, pygame.K_RIGHT):
                 self._adjust(-1 if event.key == pygame.K_LEFT else 1)
+                self.keyboard_focus = True
 
             return True
 
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+
+            self.keyboard_focus = False
 
             if self.close_rect.collidepoint(event.pos):
                 self.close()
@@ -384,7 +399,10 @@ class EditorSettingsPanel:
             )
 
     def _draw_focus_ring(self):
-        """Marks the row the arrow keys will change."""
+        """Marks the row the arrow keys will change, for keyboard players."""
+
+        if not self.keyboard_focus:
+            return
 
         row = ROWS[self.focus]
 

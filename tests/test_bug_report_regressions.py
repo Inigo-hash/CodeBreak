@@ -17,7 +17,7 @@ from src.systems.enemy_spawns import resolve_encounter_spawns
 from src.screens.game import load_interactables, nearest_interactable
 from src.screens.world_map import enemy_marker_positions
 from src.screens.intro import PAGES
-from src.screens.settings import HELP_COPY
+from src.screens.settings import HELP_COPY, SettingsPanel
 from src.settings_state import settings_state
 from src.ui.ambient_particles import AmbientParticles
 
@@ -157,6 +157,29 @@ class OnboardingAndSettingsRegressionTests(unittest.TestCase):
         self.assertIn("self.exit_button", source)
         self.assertNotIn("self.leave_button", source)
         self.assertIn("self.settings_gear_rect.left - EXIT_BUTTON_GAP", source)
+
+    def test_focus_ring_is_keyboard_only_in_both_settings_panels(self):
+        # The blue ring tells a keyboard player which row the arrow keys
+        # will change. A mouse user can see that from the pointer, so a
+        # click has to put the ring away again.
+        from src.ui.editor_settings import EditorSettingsPanel
+
+        screen = pygame.display.set_mode((1280, 720))
+
+        for panel in (SettingsPanel(screen), EditorSettingsPanel(screen)):
+            panel.open()
+            with self.subTest(panel=type(panel).__name__):
+                self.assertFalse(panel.keyboard_focus)
+
+                panel.handle_event(pygame.event.Event(
+                    pygame.KEYDOWN, key=pygame.K_DOWN, unicode="", mod=0
+                ))
+                self.assertTrue(panel.keyboard_focus)
+
+                panel.handle_event(pygame.event.Event(
+                    pygame.MOUSEBUTTONDOWN, button=1, pos=(1, 1)
+                ))
+                self.assertFalse(panel.keyboard_focus)
 
     def test_main_menu_still_launches_the_walkthrough(self):
         source = Path("src/screens/main_menu.py").read_text(encoding="utf-8")

@@ -139,11 +139,24 @@ class OnboardingAndSettingsRegressionTests(unittest.TestCase):
             self.assertIn("- / +", copy)
             self.assertTrue("drag" in copy or "click" in copy)
 
-    def test_editor_keeps_numbered_workflow_and_line_numbers(self):
+    def test_editor_action_row_is_unnumbered_and_keeps_line_numbers(self):
+        # The step numbers were dropped from the button labels; the header
+        # still spells the workflow out, and the gutter still numbers lines.
         source = Path("src/ui/editor_renderer.py").read_text(encoding="utf-8")
-        self.assertIn('"2  RUN"', source)
-        self.assertIn('"3  SUBMIT"', source)
+        self.assertIn('"RUN"', source)
+        self.assertIn('"SUBMIT"', source)
+        self.assertNotIn('"2  RUN"', source)
+        self.assertNotIn('"3  SUBMIT"', source)
+        self.assertIn("TYPE CODE", source)
         self.assertIn("line_number =", source)
+
+    def test_exit_sits_in_the_title_bar_not_beside_submit(self):
+        # Unsaved code makes a LEAVE button next to SUBMIT a misclick away
+        # from losing everything, so leaving lives up by the settings wheel.
+        source = Path("src/ui/editor_renderer.py").read_text(encoding="utf-8")
+        self.assertIn("self.exit_button", source)
+        self.assertNotIn("self.leave_button", source)
+        self.assertIn("self.settings_gear_rect.left - EXIT_BUTTON_GAP", source)
 
     def test_main_menu_still_launches_the_walkthrough(self):
         source = Path("src/screens/main_menu.py").read_text(encoding="utf-8")

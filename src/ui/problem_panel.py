@@ -23,16 +23,31 @@ import pygame
 from src.ui.editor_theme import *
 from src.ui.editor_widgets import VerticalScrollbar, wrap_text
 
-# Height of one line of body text. Every row uses the same height,
-# which is what lets the scrollbar treat the content as a simple
-# list of lines regardless of which font each row uses.
-ROW_HEIGHT = 24
+# Every row carries its own height instead of sharing one fixed number.
+# The panel mixes three faces - a big title, body copy and small grey
+# labels - and forcing all of them into a single 24px slot was what made
+# the title collide with the difficulty line underneath it.
+def row_height(font):
+    """Vertical space one line drawn in `font` needs."""
+
+    return font.get_linesize() + 2
+
+
+# Blank rows used purely as breathing room between sections.
+GAP_SMALL = 6
+
+GAP_MEDIUM = 12
+
+GAP_LARGE = 20
 
 # Space between the pane's edge and its text.
 INNER_PADDING = 14
 
+# Gap between the title strip and the first row of body text.
+BODY_TOP_PADDING = 10
+
 # Height of the fixed "OBJECTIVE" strip at the top of the pane.
-TITLE_STRIP_HEIGHT = 38
+TITLE_STRIP_HEIGHT = PANE_TITLE_HEIGHT
 MAX_HINT_LEVEL = 4
 
 
@@ -169,23 +184,34 @@ class ProblemPanel:
         """
         Turn the challenge into a flat list of drawable rows:
 
-            (text, font, color)
+            (text, font, color, height)
 
-        Each row is one line that already fits inside `max_width`.
+        Each row is one line that already fits inside `max_width`, and
+        each carries the vertical space it needs. Rows with empty text
+        are pure spacers - that is how the sections are kept apart.
         """
 
         rows = []
+
+        def line(text, font, color):
+            rows.append((text, font, color, row_height(font)))
+
+        def gap(height):
+            rows.append(("", SMALL_FONT, SECONDARY_TEXT, height))
+
+        def paragraph(text, font, color):
+            for wrapped in wrap_text(text, font, max_width):
+                line(wrapped, font, color)
 
         # --------------------------------------
         # Challenge Title
         # --------------------------------------
 
-        for line in wrap_text(
+        paragraph(
             self.challenge.get("title", "Challenge"),
             HEADER_FONT,
-            max_width
-        ):
-            rows.append((line, HEADER_FONT, TEXT_COLOR))
+            TEXT_COLOR
+        )
 
         # --------------------------------------
         # Difficulty (optional)
@@ -196,97 +222,90 @@ class ProblemPanel:
         difficulty = self.challenge.get("difficulty")
 
         if difficulty:
-            rows.append((difficulty, SMALL_FONT, SECONDARY_TEXT))
+            gap(GAP_SMALL)
+            line(str(difficulty).upper(), SMALL_FONT, SECONDARY_TEXT)
 
-        rows.append(("", SMALL_FONT, SECONDARY_TEXT))
+        gap(GAP_LARGE)
 
         # --------------------------------------
         # Problem
         # --------------------------------------
 
-        problem = self.challenge.get(
-            "problem",
-            ""
-        )
+        problem = self.challenge.get("problem", "")
 
         if problem:
 
-            rows.append(
-                ("Problem", SMALL_FONT, SECONDARY_TEXT)
-            )
+            line("PROBLEM", SMALL_FONT, SECONDARY_TEXT)
+
+            gap(GAP_SMALL)
 
             for raw_line in problem.strip().splitlines():
 
                 if not raw_line.strip():
-
-                    rows.append(
-                        ("", TEXT_FONT, TEXT_COLOR)
-                    )
-
+                    gap(GAP_MEDIUM)
                     continue
 
-                for line in wrap_text(
-                    raw_line,
-                    TEXT_FONT,
-                    max_width
-                ):
+                paragraph(raw_line, TEXT_FONT, TEXT_COLOR)
 
-                    rows.append(
-                        (
-                            line,
-                            TEXT_FONT,
-                            TEXT_COLOR
-                        )
-                    )
-
-            rows.append(
-                ("", SMALL_FONT, SECONDARY_TEXT)
-            )
+            gap(GAP_LARGE)
 
         # --------------------------------------
         # Objective
         # --------------------------------------
 
-        rows.append(
-            ("Objective", SMALL_FONT, SECONDARY_TEXT)
-        )
+        line("OBJECTIVE", SMALL_FONT, SECONDARY_TEXT)
 
-        for line in wrap_text(
+        gap(GAP_SMALL)
+
+        paragraph(
             self.challenge.get("objective", ""),
             TEXT_FONT,
-            max_width
-        ):
+            TEXT_COLOR
+        )
 
-            rows.append(
-                (
-                    line,
-                    TEXT_FONT,
-                    TEXT_COLOR
-                )
-            )
+        gap(GAP_LARGE)
 
-        rows.append(("", SMALL_FONT, SECONDARY_TEXT))
+        # --------------------------------------
+        # Hints
+        # --------------------------------------
+        # Every string here goes through wrap_text. The locked-hint
+        # notice used to be appended raw, so it ran straight off the
+        # side of the pane the moment the divider was dragged inward.
+
         if self.hint_level:
-            hint = self.hint_steps()[self.hint_level - 1]
-            rows.append((
+
+            line(
                 f"HINT {self.hint_level} OF {MAX_HINT_LEVEL}",
                 SMALL_FONT,
-                SUCCESS_COLOR,
-            ))
-            for line in wrap_text(hint, SMALL_FONT, max_width):
-                rows.append((line, SMALL_FONT, SECONDARY_TEXT))
+                SUCCESS_COLOR
+            )
+
+            gap(GAP_SMALL)
+
+            paragraph(
+                self.hint_steps()[self.hint_level - 1],
+                TEXT_FONT,
+                TEXT_COLOR
+            )
+
             if self.hint_level < MAX_HINT_LEVEL:
-                rows.append((
+                gap(GAP_MEDIUM)
+                paragraph(
                     "Another failed SUBMIT reveals the next hint.",
                     SMALL_FONT,
-                    SECONDARY_TEXT,
-                ))
+                    SECONDARY_TEXT
+                )
+
         else:
-            rows.append((
+
+            paragraph(
                 "Hints unlock after an unsuccessful SUBMIT.",
                 SMALL_FONT,
-                SECONDARY_TEXT,
-            ))
+                SECONDARY_TEXT
+            )
+
+        gap(GAP_MEDIUM)
+
         return rows
 
     def _rows_for_width(self, max_width):
@@ -313,27 +332,64 @@ class ProblemPanel:
             rect.height - TITLE_STRIP_HEIGHT
         )
 
-    def get_visible_rows(self, rect):
-        """How many rows of text fit inside the pane at once."""
+    def _body_capacity(self, rect):
+        """Pixels of vertical room the body has for text."""
 
         body = self.get_body_rect(rect)
 
-        return max(
-            0,
-            (body.height - INNER_PADDING) // ROW_HEIGHT
-        )
+        return max(0, body.height - BODY_TOP_PADDING - INNER_PADDING)
+
+    def get_visible_rows(self, rect, start=None):
+        """
+        How many rows fit inside the pane when drawing begins at row
+        `start`. Rows are different heights now, so this has to be
+        measured rather than divided out.
+        """
+
+        if start is None:
+            start = self.scroll_offset
+
+        rows = self._rows_for_width(self._text_width(rect))
+
+        capacity = self._body_capacity(rect)
+
+        used = 0
+        count = 0
+
+        for _, _, _, height in rows[max(0, start):]:
+
+            if used + height > capacity:
+                break
+
+            used += height
+            count += 1
+
+        return count
 
     def get_max_scroll_offset(self, rect):
-        """The furthest down the panel can be scrolled."""
+        """
+        The furthest down the panel can be scrolled: the first row that
+        still leaves every remaining row on screen.
+        """
 
-        text_width = self._text_width(rect)
+        rows = self._rows_for_width(self._text_width(rect))
 
-        total_rows = len(self._rows_for_width(text_width))
+        capacity = self._body_capacity(rect)
 
-        return max(
-            0,
-            total_rows - self.get_visible_rows(rect)
-        )
+        used = 0
+        index = len(rows)
+
+        while index > 0:
+
+            height = rows[index - 1][3]
+
+            if used + height > capacity:
+                break
+
+            used += height
+            index -= 1
+
+        return index
 
     def clamp_scroll(self):
         """Keep the scroll position inside the valid range."""
@@ -443,11 +499,13 @@ class ProblemPanel:
             TEXT_COLOR
         )
 
+        # Centered in the strip rather than nailed to a fixed offset, so
+        # the heading keeps its breathing room at any font size.
         screen.blit(
             label,
             (
                 rect.x + INNER_PADDING,
-                rect.y + 8
+                rect.y + (TITLE_STRIP_HEIGHT - label.get_height()) // 2
             )
         )
 
@@ -467,9 +525,9 @@ class ProblemPanel:
 
         rows = self._rows_for_width(self._text_width(rect))
 
-        visible_rows = self.get_visible_rows(rect)
-
         self.clamp_scroll()
+
+        visible_rows = self.get_visible_rows(rect)
 
         # Text is clipped to the body so a long word can never
         # spill over the divider into the code editor.
@@ -477,9 +535,9 @@ class ProblemPanel:
 
         screen.set_clip(body.clip(previous_clip) if previous_clip else body)
 
-        y = body.y + 6
+        y = body.y + BODY_TOP_PADDING
 
-        for text, font, color in rows[
+        for text, font, color, height in rows[
             self.scroll_offset:
             self.scroll_offset + visible_rows
         ]:
@@ -491,7 +549,7 @@ class ProblemPanel:
                     (rect.x + INNER_PADDING, y)
                 )
 
-            y += ROW_HEIGHT
+            y += height
 
         screen.set_clip(previous_clip)
 

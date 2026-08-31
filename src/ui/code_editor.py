@@ -129,7 +129,7 @@ class CodeEditor:
         # UI Buttons
         self.run_button = self.renderer.get_run_button()
         self.submit_button = self.renderer.get_submit_button()
-        self.leave_button = self.renderer.get_leave_button()
+        self.exit_button = self.renderer.get_exit_button()
 
         # Volume / theme settings, opened by the wheel in the title bar.
         # Kept in here rather than making the player walk back to the
@@ -311,7 +311,7 @@ class CodeEditor:
             # Mouse Buttons
             # -------------------------------
 
-            if self.leave_button.is_clicked(event):
+            if self.exit_button.is_clicked(event):
 
                 self.running = False
 
@@ -962,11 +962,13 @@ class CodeEditor:
         width, height = self.screen.get_size()
         panel = pygame.Rect(0, 0, min(720, width - 70), min(440, height - 70))
         panel.center = (width // 2, height // 2)
+        # Lifted clear of the keyboard hint along the bottom edge, which
+        # grew when the editor's body text did.
         if self.submission_feedback and self.submission_feedback["passed"]:
-            primary = pygame.Rect(panel.centerx - 190, panel.bottom - 72, 180, 46)
-            secondary = pygame.Rect(panel.centerx + 10, panel.bottom - 72, 180, 46)
+            primary = pygame.Rect(panel.centerx - 190, panel.bottom - 82, 180, 46)
+            secondary = pygame.Rect(panel.centerx + 10, panel.bottom - 82, 180, 46)
         else:
-            primary = pygame.Rect(panel.centerx - 100, panel.bottom - 72, 200, 46)
+            primary = pygame.Rect(panel.centerx - 100, panel.bottom - 82, 200, 46)
             secondary = None
         return primary, secondary, panel
 

@@ -316,23 +316,32 @@ pygame.font.init()
 # Chrome (window title, panel headers) uses the display face so the editor
 # matches the menus; everything that has to line up with code — the buffer
 # itself, the gutter, the output log — stays monospace.
+# Every pane draws its body copy at the SAME size. The objective used to
+# read at one size, the code at another and the output at a third, which
+# made the three panes look like three different programs sitting next to
+# each other. TEXT_FONT is now the single body size shared by all of them,
+# and SMALL_FONT is only for the little grey section labels.
+
 TITLE_FONT = _title_font(28)
 
-HEADER_FONT = _title_font(22, bold=False)
+HEADER_FONT = _title_font(23, bold=False)
 
-BUTTON_FONT = _title_font(20, bold=False)
+BUTTON_FONT = _title_font(21, bold=False)
 
-TEXT_FONT = _body_font(20)
+# Shared body size: objective text, code, and output all render at this.
+TEXT_FONT = _body_font(24)
 
-CODE_FONT = _body_font(22)
+CODE_FONT = TEXT_FONT
 
-SMALL_FONT = _body_font(16)
+SMALL_FONT = _body_font(20)
 
 # --------------------------------------------------
 # Layout
 # --------------------------------------------------
 
-HEADER_HEIGHT = 50
+# Tall enough for the title face plus the EXIT button and settings
+# wheel that share the title bar with it.
+HEADER_HEIGHT = 56
 
 BUTTON_HEIGHT = 50
 
@@ -344,11 +353,17 @@ PANEL_RADIUS = 8
 
 BUTTON_RADIUS = 8
 
-# Vertical distance between two lines of code in the editor.
-LINE_SPACING = 20
+# Vertical distance between two lines of code in the editor. Kept a
+# little taller than TEXT_FONT's own line height so the code breathes.
+LINE_SPACING = TEXT_FONT.get_linesize() + 2
 
 # Tab strip that sits above the code area and shows the file name.
-EDITOR_TAB_HEIGHT = 30
+EDITOR_TAB_HEIGHT = 32
+
+# Height of the fixed title strip ("OBJECTIVE" / "OUTPUT") at the top of
+# the side panes. Derived from HEADER_FONT so bumping the font size here
+# never clips those headings.
+PANE_TITLE_HEIGHT = HEADER_FONT.get_height() + 14
 
 # --------------------------------------------------
 # Three-Pane Layout
@@ -368,14 +383,14 @@ SPLITTER_WIDTH = 10
 
 # A pane can never be dragged smaller than these widths, so no pane
 # can be squashed until its content becomes unreadable.
-MIN_SIDE_PANE_WIDTH = 160
+MIN_SIDE_PANE_WIDTH = 200
 
 MIN_EDITOR_PANE_WIDTH = 280
 
 # Default divider positions, as fractions of the body width.
-DEFAULT_LEFT_SPLIT = 0.22
+DEFAULT_LEFT_SPLIT = 0.25
 
-DEFAULT_RIGHT_SPLIT = 0.72
+DEFAULT_RIGHT_SPLIT = 0.73
 
 # --------------------------------------------------
 # Scrollbars

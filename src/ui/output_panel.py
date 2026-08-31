@@ -24,14 +24,19 @@ import pygame
 from src.ui.editor_theme import *
 from src.ui.editor_widgets import VerticalScrollbar, wrap_text
 
-# Height of one output line.
-ROW_HEIGHT = 22
+# Height of one output line. Derived from the font rather than fixed,
+# so the output stays legible at the same size as the objective text
+# and the code beside it.
+ROW_HEIGHT = TEXT_FONT.get_linesize() + 2
 
 # Space between the pane's edge and its text.
 INNER_PADDING = 14
 
+# Gap between the title strip and the first line of output.
+BODY_TOP_PADDING = 10
+
 # Height of the fixed "OUTPUT" strip at the top of the pane.
-TITLE_STRIP_HEIGHT = 38
+TITLE_STRIP_HEIGHT = PANE_TITLE_HEIGHT
 
 
 class OutputPanel:
@@ -119,7 +124,7 @@ class OutputPanel:
 
             for message, color in self.messages:
 
-                for line in wrap_text(str(message), SMALL_FONT, max_width):
+                for line in wrap_text(str(message), TEXT_FONT, max_width):
                     rows.append((line, color))
 
             self._wrapped_rows = rows
@@ -149,7 +154,7 @@ class OutputPanel:
 
         return max(
             0,
-            (body.height - INNER_PADDING) // ROW_HEIGHT
+            (body.height - BODY_TOP_PADDING - INNER_PADDING) // ROW_HEIGHT
         )
 
     def get_max_scroll_offset(self, rect):
@@ -252,11 +257,13 @@ class OutputPanel:
             TEXT_COLOR
         )
 
+        # Centered in the strip rather than nailed to a fixed offset, so
+        # the heading keeps its breathing room at any font size.
         screen.blit(
             title,
             (
                 rect.x + INNER_PADDING,
-                rect.y + 8
+                rect.y + (TITLE_STRIP_HEIGHT - title.get_height()) // 2
             )
         )
 
@@ -284,7 +291,7 @@ class OutputPanel:
 
         screen.set_clip(body.clip(previous_clip) if previous_clip else body)
 
-        y = body.y + 6
+        y = body.y + BODY_TOP_PADDING
 
         for text, color in rows[
             self.scroll_offset:
@@ -294,7 +301,7 @@ class OutputPanel:
             if text:
 
                 screen.blit(
-                    SMALL_FONT.render(text, True, color),
+                    TEXT_FONT.render(text, True, color),
                     (rect.x + INNER_PADDING, y)
                 )
 

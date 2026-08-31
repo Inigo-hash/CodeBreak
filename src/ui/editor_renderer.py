@@ -40,6 +40,14 @@ from src.ui.gear_icon import draw_gear_medallion
 # player does not have to hit a 10px target exactly.
 SPLITTER_GRAB_MARGIN = 3
 
+# The EXIT button parked in the title bar, left of the settings wheel.
+EXIT_BUTTON_WIDTH = 92
+
+EXIT_BUTTON_HEIGHT = 36
+
+# Gap between the EXIT button and the settings wheel beside it.
+EXIT_BUTTON_GAP = 10
+
 
 class EditorRenderer:
     """
@@ -89,13 +97,17 @@ class EditorRenderer:
         # CodeEditor can safely hold on to these exact objects.
 
         self.run_button = Button(
-            0, 0, BUTTON_WIDTH, BUTTON_HEIGHT - 10, "2  RUN", "secondary"
+            0, 0, BUTTON_WIDTH, BUTTON_HEIGHT - 10, "RUN", "secondary"
         )
         self.submit_button = Button(
-            0, 0, BUTTON_WIDTH, BUTTON_HEIGHT - 10, "3  SUBMIT", "primary"
+            0, 0, BUTTON_WIDTH, BUTTON_HEIGHT - 10, "SUBMIT", "primary"
         )
-        self.leave_button = Button(
-            0, 0, BUTTON_WIDTH, BUTTON_HEIGHT - 10, "LEAVE", "tertiary"
+
+        # Leaving lives in the title bar, next to the settings wheel -
+        # NOT in the action row. Typed code is not saved yet, so a button
+        # that throws it away must not sit a few pixels from SUBMIT.
+        self.exit_button = Button(
+            0, 0, EXIT_BUTTON_WIDTH, EXIT_BUTTON_HEIGHT, "EXIT", "tertiary"
         )
 
         # Window size the current layout was built for. Comparing
@@ -250,6 +262,14 @@ class EditorRenderer:
         self.settings_gear_rect.size = (gear_radius * 2 + 12, gear_radius * 2 + 12)
         self.settings_gear_rect.center = self.settings_gear_center
 
+        # EXIT sits immediately left of the wheel, both of them in the
+        # title bar and well away from RUN / SUBMIT at the bottom.
+        self.exit_button.rect.size = (EXIT_BUTTON_WIDTH, EXIT_BUTTON_HEIGHT)
+        self.exit_button.rect.midright = (
+            self.settings_gear_rect.left - EXIT_BUTTON_GAP,
+            self.header_rect.centery
+        )
+
         # ----------------------------------
         # Body: everything between them
         # ----------------------------------
@@ -341,9 +361,11 @@ class EditorRenderer:
         # Button Positions
         # ----------------------------------
 
+        # Only the two safe actions live down here now.
+
         spacing = 25
 
-        total_width = (BUTTON_WIDTH * 3) + (spacing * 2)
+        total_width = (BUTTON_WIDTH * 2) + spacing
 
         start_x = self.panel_rect.x + (
             self.panel_rect.width - total_width
@@ -355,11 +377,6 @@ class EditorRenderer:
 
         self.submit_button.rect.topleft = (
             start_x + BUTTON_WIDTH + spacing,
-            button_y
-        )
-
-        self.leave_button.rect.topleft = (
-            start_x + (BUTTON_WIDTH + spacing) * 2,
             button_y
         )
 
@@ -506,16 +523,19 @@ class EditorRenderer:
 
         # A persistent three-step map answers the beginner's most common
         # question before they need to ask it: what do I do after typing?
-        guide_text = "1  TYPE CODE    >    2  RUN    >    3  SUBMIT"
+        guide_text = "TYPE CODE    >    RUN    >    SUBMIT"
         guide = SMALL_FONT.render(guide_text, True, SECONDARY_TEXT)
         guide_rect = guide.get_rect(center=self.header_rect.center)
         title_right = self.header_rect.x + 20 + title.get_width() + 24
-        if guide_rect.left >= title_right and guide_rect.right < self.settings_gear_rect.left - 12:
+        if guide_rect.left >= title_right and guide_rect.right < self.exit_button.rect.left - 12:
             badge = guide_rect.inflate(22, 12)
             pygame.draw.rect(self.screen, PANEL_COLOR, badge, border_radius=badge.height // 2)
             pygame.draw.rect(self.screen, BORDER_COLOR, badge, 1,
                              border_radius=badge.height // 2)
             self.screen.blit(guide, guide_rect)
+
+        self.exit_button.update()
+        self.exit_button.draw(self.screen)
 
         self.draw_settings_gear()
 
@@ -1241,11 +1261,9 @@ class EditorRenderer:
 
         self.run_button.update()
         self.submit_button.update()
-        self.leave_button.update()
 
         self.run_button.draw(self.screen)
         self.submit_button.draw(self.screen)
-        self.leave_button.draw(self.screen)
 
         shortcut = SMALL_FONT.render(
             "F1 = Light   F2 = Dark   F10 = Mute", True, SECONDARY_TEXT
@@ -1285,7 +1303,7 @@ class EditorRenderer:
         return self.submit_button
 
 
-    def get_leave_button(self):
-        """Return the Leave button."""
+    def get_exit_button(self):
+        """Return the title-bar Exit button."""
 
-        return self.leave_button
+        return self.exit_button

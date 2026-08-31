@@ -120,8 +120,24 @@ class EditorFeedbackTests(unittest.TestCase):
             self.assertEqual(panel.hint_level, expected_level)
             self.editor.submission_feedback = None
 
+        # Rows are (text, font, color, height) - each line carries the
+        # vertical space it needs so the panel can mix three faces.
         rows = panel._build_rows(300)
-        self.assertTrue(any(text == "HINT 4 OF 4" for text, _font, _color in rows))
+        self.assertTrue(
+            any(text == "HINT 4 OF 4" for text, _font, _color, _height in rows)
+        )
+        self.assertTrue(all(height > 0 for _t, _f, _c, height in rows))
+
+    def test_every_hint_row_is_wrapped_to_the_pane_width(self):
+        # The locked-hint notice used to be appended unwrapped, so it ran
+        # straight off the side of a narrowed objective pane.
+        panel = self.editor.renderer.problem_panel
+
+        for _ in range(2):
+            width = 150
+            for text, font, _color, _height in panel._build_rows(width):
+                self.assertLessEqual(font.size(text)[0], width)
+            panel.record_failure()
 
     def test_feedback_layout_renders_at_supported_window_sizes(self):
         for size in ((800, 600), (1280, 720), (1920, 1080)):

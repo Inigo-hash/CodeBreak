@@ -59,8 +59,12 @@ class Button:
                           for channel in base[:3])
             border = tuple(min(255, channel + 45) for channel in base[:3])
         elif self.variant == "tertiary":
-            color = BUTTON_COLOR if self.hovered else HEADER_COLOR
-            border = BUTTON_HOVER_COLOR if self.hovered else BORDER_COLOR
+            # Sits on the title bar, which is HEADER_COLOR - so its resting
+            # fill has to be the panel shade, or the button would vanish
+            # into the bar until the mouse happened to pass over it.
+            base = pygame.Color(ERROR_COLOR) if self.hovered else pygame.Color(PANEL_COLOR)
+            color = tuple(base[:3])
+            border = tuple(ERROR_COLOR[:3]) if self.hovered else tuple(BORDER_COLOR[:3])
         else:
             color = BUTTON_HOVER_COLOR if self.hovered else BUTTON_COLOR
             border = BORDER_COLOR
@@ -96,7 +100,8 @@ class Button:
         label = BUTTON_FONT.render(
             self.text,
             True,
-            BUTTON_TEXT_COLOR
+            BUTTON_TEXT_COLOR if self.variant != "tertiary" or self.hovered
+            else TEXT_COLOR
         )
 
         screen.blit(

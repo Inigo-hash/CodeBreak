@@ -10,10 +10,13 @@ def _env_flag(name, default=False):
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
-# Developer preview keys (F5/F6/F8) are disabled in normal builds. F1/F2
-# remain available to every player for light and fog control.
-# Launch with CODEBREAK_DEBUG=1 to enable them deliberately.
-DEBUG_MODE = _env_flag("CODEBREAK_DEBUG", False)
+# Developer preview keys (F5/F6/F8). F1/F2 remain available to every player
+# for light and fog control.
+#
+# TEMPORARY: default flipped to True for development. Set this back to
+# False before any build a player will run, or set CODEBREAK_DEBUG=0 to
+# turn the keys off for a single launch.
+DEBUG_MODE = _env_flag("CODEBREAK_DEBUG", True)
 
 # Must be set before pygame.init() (SDL reads this hint at video subsystem
 # init). Without it, SDL auto-minimizes the exclusive-fullscreen window the

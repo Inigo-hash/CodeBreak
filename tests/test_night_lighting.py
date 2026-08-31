@@ -10,7 +10,8 @@ os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 import pygame
 
 from src.systems.combat import (
-    PLAYER_ENERGY_REGEN, PLAYER_TORCH_ENERGY_REGEN, PlayerCombat,
+    PLAYER_ENERGY_REGEN, PLAYER_TORCH_ENERGY_REGEN, PLAYER_TORCH_HP_REGEN,
+    PlayerCombat,
 )
 from src.ui.night_lighting import (
     LIGHT_CENTER_LIFT,
@@ -138,12 +139,59 @@ class TorchWarmthTests(unittest.TestCase):
         combat.update(1.0, PLAYER_TORCH_ENERGY_REGEN)
         self.assertEqual(combat.energy, float(combat.max_energy))
 
+    def test_torchlight_heals_at_the_authored_rate(self):
+        combat = PlayerCombat()
+        combat.take_damage(40)
+        self.assertEqual(combat.hp, 60)
+
+        combat.update(1.0, PLAYER_ENERGY_REGEN, PLAYER_TORCH_HP_REGEN)
+        self.assertEqual(combat.hp, 60 + int(PLAYER_TORCH_HP_REGEN))
+
+    def test_healing_banks_fractions_across_frames(self):
+        """A rate below one point per frame still heals over time."""
+
+        combat = PlayerCombat()
+        combat.take_damage(80)                   # low enough to heal freely
+        for _ in range(120):                     # two seconds at 60fps
+            combat.update(1 / 60, PLAYER_ENERGY_REGEN, PLAYER_TORCH_HP_REGEN)
+
+        self.assertIsInstance(combat.hp, int)
+        self.assertLessEqual(combat.hp, 20 + 2 * PLAYER_TORCH_HP_REGEN)
+        self.assertGreaterEqual(combat.hp, 20 + 2 * PLAYER_TORCH_HP_REGEN - 1)
+
+    def test_healing_stops_at_full_health(self):
+        combat = PlayerCombat()
+        combat.take_damage(3)
+        for _ in range(600):
+            combat.update(1 / 60, PLAYER_ENERGY_REGEN, PLAYER_TORCH_HP_REGEN)
+
+        self.assertEqual(combat.hp, combat.max_hp)
+
+    def test_torchlight_does_not_revive_a_downed_player(self):
+        combat = PlayerCombat()
+        combat.take_damage(combat.max_hp)
+        self.assertEqual(combat.state, "defeated")
+
+        for _ in range(300):
+            combat.update(1 / 60, PLAYER_ENERGY_REGEN, PLAYER_TORCH_HP_REGEN)
+
+        self.assertEqual(combat.hp, 0)
+
+    def test_open_ground_heals_nothing(self):
+        combat = PlayerCombat()
+        combat.take_damage(30)
+        for _ in range(600):                     # ten seconds away from light
+            combat.update(1 / 60)
+
+        self.assertEqual(combat.hp, 70)
+
     def test_gameplay_loop_feeds_the_boost_from_torch_positions(self):
         source = (
             Path(__file__).resolve().parents[1] / "src" / "screens" / "game.py"
         ).read_text(encoding="utf-8")
         self.assertIn("in_torch_light(", source)
         self.assertIn("PLAYER_TORCH_ENERGY_REGEN", source)
+        self.assertIn("PLAYER_TORCH_HP_REGEN", source)
 
 
 if __name__ == "__main__":

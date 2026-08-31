@@ -1,3 +1,8 @@
+> **Outdated.** This is a snapshot of an earlier layout, kept for history.
+> It predates `src/systems/`, `src/data/stages.py`, `tests/`, the learning
+> sandbox, and the stage/boss systems. See `CLAUDE.md` in the repo root for
+> the current structure.
+
 # CodeBreak Project Structure v3
 
 ## Overview

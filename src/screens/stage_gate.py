@@ -12,7 +12,8 @@ from src.ui.theme import (
 )
 
 
-def open_stage_gate(screen, status, gate_name="Stage Exit", background=None):
+def open_stage_gate(screen, status, gate_name="Stage Exit", background=None,
+                    show_boss_requirement=True):
     """Explain the gate requirements and confirm an unlocked stage exit.
 
     Returns ``"exit"`` only after the player deliberately confirms an
@@ -107,7 +108,7 @@ def open_stage_gate(screen, status, gate_name="Stage Exit", background=None):
                 not status.missing_topic_ids,
             ),
         )
-        if status.required_boss_id:
+        if status.required_boss_id and show_boss_requirement:
             boss = get_enemy(status.required_boss_id) or {}
             rows += ((
                 boss.get("name", "CORE BOSS").upper(),
@@ -146,8 +147,13 @@ def open_stage_gate(screen, status, gate_name="Stage Exit", background=None):
                     center=(panel.centerx, list_y + index * 34)
                 ))
         else:
+            instruction_text = (
+                "Finish every requirement before this exit can open."
+                if show_boss_requirement else
+                "Collect every key and finish every lesson to enter the Core."
+            )
             instruction = text_font.render(
-                "Finish every requirement before this exit can open.",
+                instruction_text,
                 True,
                 UI_COLORS["text"],
             )

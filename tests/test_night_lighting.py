@@ -130,7 +130,9 @@ class TorchWarmthTests(unittest.TestCase):
 
         combat.energy = 5.0
         combat.update(1.0, PLAYER_TORCH_ENERGY_REGEN)
-        self.assertAlmostEqual(combat.energy, 25.0)
+        self.assertAlmostEqual(
+            combat.energy, 5.0 + PLAYER_TORCH_ENERGY_REGEN
+        )
         self.assertEqual(PLAYER_TORCH_ENERGY_REGEN, PLAYER_ENERGY_REGEN * 4)
 
     def test_boosted_regen_still_stops_at_full_energy(self):

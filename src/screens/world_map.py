@@ -460,16 +460,97 @@ def _draw_marker(surface, center, heading, pulse):
     draw_marker(surface, center, heading, MARKER_SIZE)
 
 
-def enemy_marker_positions(enemies, paper_pos, map_rect, scale):
-    """Translate active enemy world positions onto the paper map."""
+def enemy_is_tracking_player(enemy):
+    """Whether an enemy currently knows where the player is.
+
+    Alert, chase, and attack are direct acquisition states. A flinching enemy
+    remains visible only when it will resume chasing; returning and idle
+    enemies disappear so neither map acts as permanent radar.
+    """
+
+    state = getattr(enemy, "state", "")
+    if state == "flinch":
+        return getattr(enemy, "_resume_state", "") == "chase"
+    return state in {"alert", "chase", "attack"}
+
+
+def enemy_marker_positions(enemies, paper_pos, map_rect, scale, zoom=1.0):
+    """Translate only player-aware enemies onto the paper map.
+
+    ``zoom`` is the viewer's magnification: the chart is drawn once at the
+    fitted size, so a mark is placed on the sheet first and then scaled
+    with it, exactly like every other feature printed on the paper.
+    """
     return [
         (
-            round(paper_pos[0] + map_rect.left + enemy.rect.centerx * scale),
-            round(paper_pos[1] + map_rect.top + enemy.rect.centery * scale),
+            round(paper_pos[0] + (map_rect.left + enemy.rect.centerx * scale) * zoom),
+            round(paper_pos[1] + (map_rect.top + enemy.rect.centery * scale) * zoom),
         )
         for enemy in enemies
-        if enemy.active and enemy.state != "defeated"
+        if enemy.active and enemy_is_tracking_player(enemy)
     ]
+
+
+# --- Viewing the sheet: how close the reader leans, and where they hold it -
+MAP_ZOOM_MIN = 1.0          # the whole island on one sheet
+MAP_ZOOM_MAX = 3.0          # about as far as a rasterised chart bears
+MAP_ZOOM_STEP = 1.25        # one wheel notch
+
+
+def zoomed_view(view, zoom, new_zoom, anchor):
+    """The sheet's new top-left after zooming about ``anchor``.
+
+    Whatever sits under the cursor stays under it, so scrolling reads as
+    leaning closer to a point on the chart rather than the map jumping.
+    """
+
+    paper_x = (anchor[0] - view[0]) / zoom
+    paper_y = (anchor[1] - view[1]) / zoom
+    return (anchor[0] - paper_x * new_zoom, anchor[1] - paper_y * new_zoom)
+
+
+def clamped_view(view, sheet_size, screen_size):
+    """Keep the sheet over the screen, or centred while it is smaller.
+
+    An axis with room to spare is centred rather than pannable: there is
+    nothing to look for out in the dark beyond the paper's edge.
+    """
+
+    placed = []
+    for axis in (0, 1):
+        size, screen = sheet_size[axis], screen_size[axis]
+        if size <= screen:
+            placed.append((screen - size) / 2)
+        else:
+            placed.append(min(0, max(screen - size, view[axis])))
+    return tuple(placed)
+
+
+def _blit_scaled(target, source, dest_rect):
+    """Draw ``source`` into ``dest_rect``, scaling only what is on screen.
+
+    Scaling the whole sheet at high zoom would build a surface many times
+    the screen and throw most of it away; this pays for visible pixels
+    only, so the cost of zooming in does not grow with the zoom.
+    """
+
+    visible = dest_rect.clip(target.get_rect())
+    if not visible.width or not visible.height:
+        return
+    scale_x = source.get_width() / dest_rect.width
+    scale_y = source.get_height() / dest_rect.height
+    source_rect = pygame.Rect(
+        int((visible.x - dest_rect.x) * scale_x),
+        int((visible.y - dest_rect.y) * scale_y),
+        max(1, round(visible.width * scale_x)),
+        max(1, round(visible.height * scale_y)),
+    ).clip(source.get_rect())
+    if not source_rect.width or not source_rect.height:
+        return
+    patch = source.subsurface(source_rect)
+    target.blit(
+        pygame.transform.smoothscale(patch, visible.size), visible.topleft
+    )
 
 
 def _draw_enemy_marker(surface, center):
@@ -544,25 +625,23 @@ def open_world_map(screen, map_texture, player_rect, map_width, map_height,
     overlay.fill((0, 0, 0, 150))
     backdrop.blit(overlay, (0, 0))
 
-    marker_center = (
-        paper_pos[0] + map_rect.left + player_rect.centerx * scale,
-        paper_pos[1] + map_rect.top + player_rect.centery * scale,
-    )
-    enemy_markers = enemy_marker_positions(
-        enemies, paper_pos, map_rect, scale
-    )
+    # --- Viewing state ----------------------------------------------------
+    # The sheet is rasterised once at the fitted size; zoom and pan are a
+    # transform applied when it is drawn, so leaning in costs no rebuild.
+    zoom = MAP_ZOOM_MIN
+    view = tuple(float(value) for value in paper_pos)
+    dragging = False
+    drag_from = (0, 0)
+    drag_distance = 0.0
 
-    # Rendered once, not per frame - the caption never changes while the
-    # map is open. Kept below the marker unless that would push it off the
-    # plate, in which case it flips above it.
+    # Rendered once - the caption never changes while the map is open.
     caption = _paper_font(12).render("YOU ARE HERE", True, MARKER_INK)
-    caption_rect = caption.get_rect(
-        center=(marker_center[0], marker_center[1] + 34)
+    hint = _paper_font(12).render(
+        "SCROLL to zoom     DRAG to pan     R to reset", True, PARCHMENT
     )
-    plate = map_rect.move(paper_pos).inflate(-8, -8)
-    if caption_rect.bottom > plate.bottom:
-        caption_rect.center = (marker_center[0], marker_center[1] - 34)
-    caption_rect.clamp_ip(plate)
+    # Bottom-left, where the menus put their control hints - the centre
+    # belongs to the sheet's own footer and the "you are here" caption.
+    hint_rect = hint.get_rect(bottomleft=(28, SCREEN_H - 20))
 
     # A zero heading would collapse the arrow into a dot - only possible
     # if the player somehow opens the map before ever moving.
@@ -579,7 +658,68 @@ def open_world_map(screen, map_texture, player_rect, map_width, map_height,
 
     night_veil = make_night_veil() if night else None
 
+    def sheet_rect():
+        """Where the paper currently lies on screen."""
+
+        return pygame.Rect(
+            round(view[0]), round(view[1]),
+            max(1, round(paper_size[0] * zoom)),
+            max(1, round(paper_size[1] * zoom)),
+        )
+
+    def settle_view():
+        """Re-clamp after a zoom or a drag, and repaint the static layers."""
+
+        nonlocal view
+        view = clamped_view(
+            view, (paper_size[0] * zoom, paper_size[1] * zoom),
+            (SCREEN_W, SCREEN_H),
+        )
+        compose()
+
+    # The backdrop, the sheet and the night veil only change when the view
+    # does, so they are composed into one surface and reused every frame.
+    composed = pygame.Surface((SCREEN_W, SCREEN_H)).convert()
+
+    def compose():
+        placed = sheet_rect()
+        # Zoomed in far enough, the sheet covers the screen: the blurred
+        # scene behind it and its drop shadow are then invisible, and
+        # scaling them anyway is what would make dragging stutter.
+        covered = placed.contains(composed.get_rect())
+        if not covered:
+            composed.blit(backdrop, (0, 0))
+            _blit_scaled(
+                composed, shadow,
+                placed.move(round(7 * zoom), round(9 * zoom)),
+            )
+        _blit_scaled(composed, paper, placed)
+        if night_veil is not None:
+            _blit_scaled(composed, night_veil, placed)
+
+    def apply_zoom(direction, anchor):
+        """One wheel notch in or out, about the cursor."""
+
+        nonlocal zoom, view
+        target = zoom * (MAP_ZOOM_STEP if direction > 0 else 1 / MAP_ZOOM_STEP)
+        target = max(MAP_ZOOM_MIN, min(MAP_ZOOM_MAX, target))
+        if target == zoom:
+            return
+        view = zoomed_view(view, zoom, target, anchor)
+        zoom = target
+        settle_view()
+
+    def on_paper(position):
+        return sheet_rect().collidepoint(position)
+
+    settle_view()
+
     running = True
+    # pygame can report a wheel notch twice - as MOUSEWHEEL and as button
+    # 4/5 - depending on platform. Once a real wheel event has been seen,
+    # the button form is ignored so one notch never zooms two steps.
+    wheel_events_seen = False
+
     while running:
         clock.tick(60)
 
@@ -594,29 +734,66 @@ def open_world_map(screen, map_texture, player_rect, map_width, map_height,
                 if event.key in (pygame.K_ESCAPE, pygame.K_m):
                     running = False
 
+                elif event.key == pygame.K_r:
+                    zoom = MAP_ZOOM_MIN
+                    view = tuple(float(value) for value in paper_pos)
+                    settle_view()
+
                 elif event.key == pygame.K_F1:
                     night = not night
                     night_veil = make_night_veil() if night else None
+                    compose()
 
-            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                # Clicking off the sheet closes it, the way putting a map
-                # down does; clicking on the sheet does nothing.
-                local = (event.pos[0] - paper_pos[0],
-                         event.pos[1] - paper_pos[1])
-                if not paper.get_rect().collidepoint(local):
+            elif event.type == pygame.MOUSEWHEEL:
+                wheel_events_seen = True
+                apply_zoom(event.y, pygame.mouse.get_pos())
+
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button in (4, 5) and not wheel_events_seen:
+                    apply_zoom(1 if event.button == 4 else -1, event.pos)
+                elif event.button == 1:
+                    dragging = True
+                    drag_from = event.pos
+                    drag_distance = 0.0
+
+            elif event.type == pygame.MOUSEMOTION and dragging:
+                shift = (event.pos[0] - drag_from[0],
+                         event.pos[1] - drag_from[1])
+                drag_distance += abs(shift[0]) + abs(shift[1])
+                view = (view[0] + shift[0], view[1] + shift[1])
+                drag_from = event.pos
+                settle_view()
+
+            elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                # A release with no press behind it belongs to the click
+                # that opened this map - clicking the minimap presses in
+                # the gameplay loop and releases in this one. Closing on
+                # it would shut the sheet the instant it appeared.
+                if not dragging:
+                    continue
+                # Putting the sheet down: a click off the paper closes the
+                # map, but only when it was a click rather than a drag that
+                # happened to finish out in the dark.
+                was_drag = drag_distance > 6
+                dragging = False
+                if not was_drag and not on_paper(event.pos):
                     running = False
 
-        screen.blit(backdrop, (0, 0))
-        screen.blit(shadow, (paper_pos[0] + 7, paper_pos[1] + 9))
-        screen.blit(paper, paper_pos)
+        screen.blit(composed, (0, 0))
 
-        # Over the whole sheet, but under the marker: where the player is
-        # standing is the one thing on the map that has to stay findable
-        # in the dark.
-        if night_veil is not None:
-            screen.blit(night_veil, paper_pos)
+        # Marks are placed on the sheet, then carried by the view, so they
+        # track the chart under any zoom or pan.
+        def to_screen(paper_x, paper_y):
+            return (round(view[0] + paper_x * zoom),
+                    round(view[1] + paper_y * zoom))
 
-        for enemy_center in enemy_markers:
+        marker_center = to_screen(
+            map_rect.left + player_rect.centerx * scale,
+            map_rect.top + player_rect.centery * scale,
+        )
+        for enemy_center in enemy_marker_positions(
+            enemies, view, map_rect, scale, zoom
+        ):
             _draw_enemy_marker(screen, enemy_center)
 
         # 0 -> 1 -> 0 over roughly a second and a half.
@@ -625,13 +802,42 @@ def open_world_map(screen, map_texture, player_rect, map_width, map_height,
         if pulse > 1.0:
             pulse = 2.0 - pulse
 
-        _draw_marker(screen, marker_center, heading, pulse)
+        # Panning can carry the player off the edge of the view. Neither
+        # the mark nor its caption is drawn then - a label pinned to the
+        # screen edge would point at nothing. R brings the sheet back.
+        marker_on_screen = screen.get_rect().collidepoint(marker_center)
+        if marker_on_screen:
+            _draw_marker(screen, marker_center, heading, pulse)
 
-        halo = pygame.Surface(caption_rect.inflate(10, 4).size, pygame.SRCALPHA)
-        pygame.draw.rect(halo, (*PARCHMENT, 150), halo.get_rect(),
-                         border_radius=5)
-        screen.blit(halo, caption_rect.inflate(10, 4).topleft)
-        screen.blit(caption, caption_rect.topleft)
+            # Kept below the marker unless that would push it off the
+            # plate, in which case it flips above it.
+            plate = pygame.Rect(
+                to_screen(map_rect.left, map_rect.top),
+                (round(map_rect.width * zoom), round(map_rect.height * zoom)),
+            ).inflate(-8, -8).clip(screen.get_rect())
+            caption_rect = caption.get_rect(
+                center=(marker_center[0], marker_center[1] + 34)
+            )
+            if caption_rect.bottom > plate.bottom:
+                caption_rect.center = (marker_center[0], marker_center[1] - 34)
+            if (plate.width > caption_rect.width
+                    and plate.height > caption_rect.height):
+                caption_rect.clamp_ip(plate)
+
+            halo = pygame.Surface(
+                caption_rect.inflate(10, 4).size, pygame.SRCALPHA
+            )
+            pygame.draw.rect(halo, (*PARCHMENT, 150), halo.get_rect(),
+                             border_radius=5)
+            screen.blit(halo, caption_rect.inflate(10, 4).topleft)
+            screen.blit(caption, caption_rect.topleft)
+
+        hint_halo = pygame.Surface(hint_rect.inflate(20, 10).size,
+                                   pygame.SRCALPHA)
+        pygame.draw.rect(hint_halo, (12, 12, 16, 170), hint_halo.get_rect(),
+                         border_radius=6)
+        screen.blit(hint_halo, hint_rect.inflate(20, 10).topleft)
+        screen.blit(hint, hint_rect.topleft)
 
         pygame.display.flip()
 

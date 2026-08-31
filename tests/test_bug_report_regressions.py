@@ -23,15 +23,19 @@ from src.ui.ambient_particles import AmbientParticles
 
 
 class MapAndInteractionRegressionTests(unittest.TestCase):
-    def test_world_map_marks_only_living_active_enemies(self):
+    def test_world_map_marks_only_active_enemies_tracking_the_player(self):
         alive = SimpleNamespace(
-            active=True, state="idle", rect=pygame.Rect(90, 40, 20, 20)
+            active=True, state="chase", rect=pygame.Rect(90, 40, 20, 20)
+        )
+        unaware = SimpleNamespace(
+            active=True, state="idle", rect=pygame.Rect(50, 40, 20, 20)
         )
         defeated = SimpleNamespace(
             active=True, state="defeated", rect=pygame.Rect(10, 10, 20, 20)
         )
         positions = enemy_marker_positions(
-            (alive, defeated), (100, 50), pygame.Rect(20, 30, 300, 200), 0.5
+            (alive, unaware, defeated), (100, 50),
+            pygame.Rect(20, 30, 300, 200), 0.5
         )
         self.assertEqual(positions, [(170, 105)])
 

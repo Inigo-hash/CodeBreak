@@ -4,7 +4,7 @@ The rules live outside ``game.py`` so loading old saves, awarding a newly
 completed lesson, boss victory, and checking the exit use one source of truth.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from src.data.challenges import CHALLENGES
 from src.systems.boss_trigger import required_boss_id
@@ -135,6 +135,12 @@ def evaluate_boss_access(stage, keys, challenges_passed):
     the same evaluator as the final exit, preventing the two gates drifting.
     """
 
-    boss_id = required_boss_id(stage)
-    defeated = (boss_id,) if boss_id else ()
-    return evaluate_stage_gate(stage, keys, challenges_passed, defeated)
+    status = evaluate_stage_gate(stage, keys, challenges_passed)
+    prerequisites_met = (
+        status.keys >= status.required_keys
+        and not status.missing_topic_ids
+    )
+    # Keep the boss's real, not-yet-defeated state for the modal. Boss access
+    # ignores that row when deciding whether the player may enter, but must not
+    # lie about victory just to reuse the stage-exit status shape.
+    return replace(status, unlocked=prerequisites_met)

@@ -8,6 +8,7 @@ BEGINNER_STAGE_ENCOUNTERS = (
     {
         "id": "bottom_right_lower",
         "anchor": (0.751915, 0.756250),
+        "topic_id": "python_syntax_basics",
         "zone_size": (360, 300),
         "enemies": ("tiyanak_sinta",) * 5
     },
@@ -15,6 +16,7 @@ BEGINNER_STAGE_ENCOUNTERS = (
     {
         "id": "bottom_left",
         "anchor": (0.227660, 0.750000),
+        "topic_id": "variables",
         "zone_size": (360, 300),
         "enemies": ("tiyanak_sinta",) * 5
     },
@@ -22,6 +24,7 @@ BEGINNER_STAGE_ENCOUNTERS = (
     {
         "id": "bottom_right_upper",
         "anchor": (0.697447, 0.731250),
+        "topic_id": "data_types",
         "zone_size": (360, 300),
         "enemies": ("manananggal",) * 4
     },
@@ -29,6 +32,7 @@ BEGINNER_STAGE_ENCOUNTERS = (
     {
         "id": "middle_right",
         "anchor": (0.622553, 0.556250),
+        "topic_id": "type_casting",
         "zone_size": (400, 340),
         "enemies": ("manananggal", "tiyanak_sinta") * 4
     },
@@ -36,6 +40,7 @@ BEGINNER_STAGE_ENCOUNTERS = (
     {
         "id": "left_middle",
         "anchor": (0.296221, 0.484750),
+        "topic_id": "input_lesson",
         "zone_size": (400, 340),
         "spawn_margin": 56,
         "enemies": ("tikbalang",) * 3
@@ -44,6 +49,7 @@ BEGINNER_STAGE_ENCOUNTERS = (
     {
         "id": "far_right_middle",
         "anchor": (0.792766, 0.550000),
+        "topic_id": "formatted_output",
         "zone_size": (360, 340),
         "enemies": ("tikbalang", "tiyanak_sinta") * 3
     },
@@ -51,6 +57,7 @@ BEGINNER_STAGE_ENCOUNTERS = (
     {
         "id": "upper_right_center",
         "anchor": (0.724681, 0.450000),
+        "topic_id": "operators",
         "zone_size": (400, 340),
         "enemies": ("manananggal", "tikbalang") * 3
     },
@@ -58,6 +65,7 @@ BEGINNER_STAGE_ENCOUNTERS = (
     {
         "id": "top_right",
         "anchor": (0.772340, 0.256250),
+        "topic_id": "string_basics",
         "zone_size": (380, 320),
         "enemies": (
             "manananggal",
@@ -69,6 +77,7 @@ BEGINNER_STAGE_ENCOUNTERS = (
     {
         "id": "top_left",
         "anchor": (0.302553, 0.281250),
+        "topic_id": "conditionals",
         "zone_size": (420, 340),
         "enemies": (
             "tikbalang",

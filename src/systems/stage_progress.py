@@ -33,13 +33,15 @@ class StageProgress:
 
     def __init__(self, discovered_enemies=None, discovered_items=None,
                  objectives_done=None, defeated_enemies=None,
-                 discovered_zones=None, opened_interactables=None):
+                 discovered_zones=None, opened_interactables=None,
+                 cleared_encounters=None):
         self.discovered_enemies = set(discovered_enemies or ())
         self.discovered_items = set(discovered_items or ())
         self.objectives_done = set(objectives_done or ())
         self.defeated_enemies = set(defeated_enemies or ())
         self.discovered_zones = set(discovered_zones or ())
         self.opened_interactables = set(opened_interactables or ())
+        self.cleared_encounters = set(cleared_encounters or ())
 
     # -- discovery ----------------------------------------------------------
     # Each of these returns True only the *first* time an id is recorded,
@@ -101,6 +103,18 @@ class StageProgress:
 
     def has_opened_interactable(self, interaction_id):
         return str(interaction_id or "") in self.opened_interactables
+
+    def clear_encounter(self, encounter_id):
+        """Persist a camp clear and its one-time coding trigger."""
+
+        encounter_id = str(encounter_id or "")
+        if not encounter_id or encounter_id in self.cleared_encounters:
+            return False
+        self.cleared_encounters.add(encounter_id)
+        return True
+
+    def has_cleared_encounter(self, encounter_id):
+        return str(encounter_id or "") in self.cleared_encounters
 
     # -- objectives ---------------------------------------------------------
 
@@ -203,6 +217,7 @@ class StageProgress:
             "defeated_enemies": sorted(self.defeated_enemies),
             "discovered_zones": sorted(self.discovered_zones),
             "opened_interactables": sorted(self.opened_interactables),
+            "cleared_encounters": sorted(self.cleared_encounters),
         }
 
     @classmethod
@@ -223,4 +238,5 @@ class StageProgress:
             defeated_enemies=data.get("defeated_enemies", []),
             discovered_zones=data.get("discovered_zones", []),
             opened_interactables=data.get("opened_interactables", []),
+            cleared_encounters=data.get("cleared_encounters", []),
         )

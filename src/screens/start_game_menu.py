@@ -17,10 +17,32 @@ SG_LABELS = ["START NEW GAME", "CONTINUE GAME", "RETURN TO MAIN MENU"]
 SG_SEEDS = [55, 66, 77]
 SG_TIERS = [TIER_PRIMARY, TIER_SECONDARY, TIER_TERTIARY]
 
+DELETE_BUTTON_SIZE = 30
+
 PASSWORD_MAX_ATTEMPTS = 3
 PASSWORD_LOCKOUT_SECONDS = 30
 _password_failures = {}
 _password_locked_until = {}
+
+
+def slot_layout(panel_rect, slot_count):
+    """Return each save slot's row and the delete button sitting on it.
+
+    Shared by the panel, its click handling and the tests, so the button
+    the player taps and the rectangle the menu tests can never drift apart.
+    """
+
+    slot_rects = [
+        pygame.Rect(panel_rect.left + 40, panel_rect.top + 122 + index * 136,
+                    panel_rect.width - 80, 124)
+        for index in range(slot_count)
+    ]
+    delete_rects = [
+        pygame.Rect(rect.right - 12 - DELETE_BUTTON_SIZE, rect.top + 12,
+                    DELETE_BUTTON_SIZE, DELETE_BUTTON_SIZE)
+        for rect in slot_rects
+    ]
+    return slot_rects, delete_rects
 
 
 def render_start_menu_buttons(surface, rects, t=0.0):
@@ -48,6 +70,7 @@ def start_game_menu(screen, clean_backdrop=None):
 
     show_slot_panel = None
     confirm_slot = None
+    confirm_mode = "replace"
     password_action = None
     password_stage = "enter"
     password_slot = None
@@ -59,11 +82,7 @@ def start_game_menu(screen, clean_backdrop=None):
         0, 0, min(720, width - 60), min(620, height - 50)
     )
     panel_rect.center = (width // 2, height // 2)
-    slot_rects = [
-        pygame.Rect(panel_rect.left + 40, panel_rect.top + 122 + i * 136,
-                    panel_rect.width - 80, 124)
-        for i in range(save_manager.NUM_SLOTS)
-    ]
+    slot_rects, delete_rects = slot_layout(panel_rect, save_manager.NUM_SLOTS)
     back_rect = pygame.Rect(panel_rect.centerx - 80, panel_rect.bottom - 56, 160, 38)
     confirm_rect = pygame.Rect(width // 2 - 240, height // 2 - 100, 480, 200)
     confirm_yes = pygame.Rect(confirm_rect.centerx - 160, confirm_rect.bottom - 58, 140, 42)
@@ -144,7 +163,9 @@ def start_game_menu(screen, clean_backdrop=None):
                 )
                 badge = lock.get_rect()
                 badge.inflate_ip(18, 10)
-                badge.topright = (rect.right - 14, rect.top + 12)
+                # The delete button owns the corner, so the badge sits to
+                # its left rather than underneath it.
+                badge.topright = (delete_rects[i].left - 10, rect.top + 12)
                 pygame.draw.rect(
                     surf, (20, 34, 46) if protected else (48, 39, 24),
                     badge, border_radius=4,
@@ -183,28 +204,64 @@ def start_game_menu(screen, clean_backdrop=None):
                     content_left,
                     progress_label_y,
                 ))
+                delete_rect = delete_rects[i]
+                delete_hover = delete_rect.collidepoint(mouse)
+                pygame.draw.rect(
+                    surf, (74, 30, 32) if delete_hover else (44, 30, 34),
+                    delete_rect, border_radius=5,
+                )
+                pygame.draw.rect(
+                    surf, (226, 118, 118) if delete_hover else (150, 92, 92),
+                    delete_rect, 2, border_radius=5,
+                )
+                cross = delete_rect.inflate(-14, -14)
+                cross_color = (255, 190, 190) if delete_hover else (219, 150, 150)
+                pygame.draw.line(surf, cross_color, cross.topleft,
+                                 cross.bottomright, 3)
+                pygame.draw.line(surf, cross_color, cross.bottomleft,
+                                 cross.topright, 3)
         pygame.draw.rect(surf, STONE_MID, back_rect, border_radius=4)
         pygame.draw.rect(surf, STONE_LIGHT, back_rect, 2, border_radius=4)
         label = _button_font.render("BACK", True, WHITE)
         surf.blit(label, label.get_rect(center=back_rect.center))
 
-    def _draw_confirm(surf, slot_num):
+    def _draw_confirm(surf, slot_num, mode):
+        deleting = mode == "delete"
         overlay = pygame.Surface((width, height), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 185))
         surf.blit(overlay, (0, 0))
         pygame.draw.rect(surf, (36, 38, 48), confirm_rect, border_radius=8)
-        pygame.draw.rect(surf, (200, 90, 90), confirm_rect, 3, border_radius=8)
-        line = _button_font.render("REPLACE THIS ADVENTURE?", True, WHITE)
+        pygame.draw.rect(
+            surf, (224, 96, 96) if deleting else (200, 90, 90),
+            confirm_rect, 3, border_radius=8,
+        )
+        line = _button_font.render(
+            "DELETE THIS ADVENTURE?" if deleting else "REPLACE THIS ADVENTURE?",
+            True, WHITE,
+        )
         surf.blit(line, line.get_rect(center=(confirm_rect.centerx, confirm_rect.top + 42)))
-        note = _small.render(f"Slot {slot_num} progress will be overwritten.", True, (210, 210, 220))
+        note = _small.render(
+            f"Slot {slot_num} will be erased. This cannot be undone."
+            if deleting else
+            f"Slot {slot_num} progress will be overwritten.",
+            True, (210, 210, 220),
+        )
         surf.blit(note, note.get_rect(center=(confirm_rect.centerx, confirm_rect.top + 82)))
-        for rect, label, color in ((confirm_yes, "YES", (70, 140, 70)),
-                                   (confirm_no, "NO", (140, 70, 70))):
+        # The destructive choice has to look unlike the safe one, or the
+        # two buttons read as the same answer twice.
+        if deleting:
+            labels, colors = ("DELETE", "KEEP"), ((176, 52, 52), (72, 76, 90))
+        else:
+            labels, colors = ("YES", "NO"), ((70, 140, 70), (140, 70, 70))
+        for rect, label, color in ((confirm_yes, labels[0], colors[0]),
+                                   (confirm_no, labels[1], colors[1])):
             pygame.draw.rect(surf, color, rect, border_radius=4)
             text = _button_font.render(label, True, WHITE)
             surf.blit(text, text.get_rect(center=rect.center))
 
     def _password_heading():
+        if password_action == "delete_unlock":
+            return "PASSWORD REQUIRED TO DELETE"
         if password_action in ("load_unlock", "overwrite_unlock"):
             return "ENTER SAVE PASSWORD"
         if password_stage == "confirm":
@@ -223,7 +280,9 @@ def start_game_menu(screen, clean_backdrop=None):
         pygame.draw.rect(surf, BLUE_GLOW, password_rect, 3, border_radius=10)
         heading = _button_font.render(_password_heading(), True, WHITE)
         surf.blit(heading, heading.get_rect(center=(password_rect.centerx, password_rect.top + 44)))
-        if password_action in ("load_unlock", "overwrite_unlock"):
+        if password_action == "delete_unlock":
+            instruction = "This save is protected. Type its password to erase it."
+        elif password_action in ("load_unlock", "overwrite_unlock"):
             instruction = "This save is protected. Type its password to continue."
         elif password_stage == "confirm":
             instruction = "Type the same password again."
@@ -312,7 +371,7 @@ def start_game_menu(screen, clean_backdrop=None):
     def _submit_password():
         nonlocal password_stage, password_text, first_password, password_error
         state = save_manager.load_slot(password_slot)
-        if password_action in ("load_unlock", "overwrite_unlock"):
+        if password_action in ("load_unlock", "overwrite_unlock", "delete_unlock"):
             remaining = _lockout_remaining(password_slot)
             if remaining:
                 password_error = (
@@ -347,6 +406,11 @@ def start_game_menu(screen, clean_backdrop=None):
             _close_password()
             if action == "load_unlock":
                 return _run_loaded(slot, state)
+            if action == "delete_unlock":
+                # The password guards deletion exactly as it guards loading;
+                # otherwise a protected save is only protected from its owner.
+                save_manager.delete_slot(slot)
+                return None
             fresh = save_manager.new_game_state()
             fresh["_security"] = security
             return _run_new(slot, fresh)
@@ -395,7 +459,16 @@ def start_game_menu(screen, clean_backdrop=None):
         dt = clock.tick(60) / 1000.0
         t = pygame.time.get_ticks() / 1000.0
         mouse = pygame.mouse.get_pos()
-        hovers = [rect.collidepoint(mouse) for rect in rects]
+        # A modal owns the screen: the buttons behind it must not light up
+        # under the pointer, which reads as though they can still be used.
+        modal_open = (
+            show_slot_panel is not None
+            or confirm_slot is not None
+            or password_action is not None
+        )
+        hovers = [
+            not modal_open and rect.collidepoint(mouse) for rect in rects
+        ]
         _update_icon_anims(dict(zip(icons, hovers)), dt)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -439,7 +512,13 @@ def start_game_menu(screen, clean_backdrop=None):
                 if confirm_slot is not None:
                     if confirm_yes.collidepoint(event.pos):
                         existing = save_manager.load_slot(confirm_slot)
-                        if save_manager.is_protected(existing):
+                        protected = save_manager.is_protected(existing)
+                        if confirm_mode == "delete":
+                            if protected:
+                                _open_password("delete_unlock", confirm_slot)
+                            else:
+                                save_manager.delete_slot(confirm_slot)
+                        elif protected:
                             _open_password("overwrite_unlock", confirm_slot)
                         else:
                             _open_password("new_create", confirm_slot)
@@ -451,6 +530,16 @@ def start_game_menu(screen, clean_backdrop=None):
                     if back_rect.collidepoint(event.pos):
                         show_slot_panel = None
                         continue
+                    # The delete button sits inside its slot's row, so it has
+                    # to be answered before the row itself is.
+                    for i, delete_rect in enumerate(delete_rects):
+                        if (delete_rect.collidepoint(event.pos)
+                                and save_manager.slot_exists(i + 1)):
+                            confirm_slot = i + 1
+                            confirm_mode = "delete"
+                            break
+                    if confirm_slot is not None:
+                        continue
                     for i, rect in enumerate(slot_rects):
                         if not rect.collidepoint(event.pos):
                             continue
@@ -459,6 +548,7 @@ def start_game_menu(screen, clean_backdrop=None):
                         if show_slot_panel == "new":
                             if filled:
                                 confirm_slot = slot
+                                confirm_mode = "replace"
                             else:
                                 _open_password("new_create", slot)
                         elif show_slot_panel == "load" and filled:
@@ -484,7 +574,7 @@ def start_game_menu(screen, clean_backdrop=None):
         if show_slot_panel is not None:
             _draw_slot_panel(screen, show_slot_panel)
         if confirm_slot is not None:
-            _draw_confirm(screen, confirm_slot)
+            _draw_confirm(screen, confirm_slot, confirm_mode)
         if password_action is not None:
             _draw_password(screen)
         pygame.display.flip()

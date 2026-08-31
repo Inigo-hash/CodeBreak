@@ -43,6 +43,7 @@ from src.data.challenges import get_challenge
 from src.data.enemies import get_enemy
 from src.screens.topic_lesson import open_topic_lesson
 from src.systems.enemy_spawns import resolve_encounter_spawns
+from src.systems.guards import assign_guards, remaining_guards
 from src.ui.theme import UI_COLORS, body_font, draw_button, draw_panel, title_font
 from src.ui.night_lighting import (
     LIGHT_CENTER_LIFT, WORLD_IS_NIGHT, draw_night_and_map_torches,
@@ -122,6 +123,9 @@ def load_interactables(tmx_data):
                 "interaction_id": str(getattr(obj, "id", "")),
                 "entity": entity,
                 "interaction_message": "",
+                # Filled in by systems.guards once the stage's enemies are
+                # spawned; an unguarded prop simply keeps the empty list.
+                "guards": [],
                 "inspecting": False,
                 "inspect_progress": 0.0,
                 "topic_handled": False,
@@ -1109,6 +1113,11 @@ def game_screen(screen, slot_num=None, save_state=None):
     for enemy in enemies:
         keep_enemy_on_dirt(enemy)
 
+    # A prop standing inside a camp's patrol zone stays shut until that camp
+    # is cleared, so searching the island is something the player fights for
+    # rather than walks to.
+    assign_guards(interactables, enemies)
+
     # Bosses are not part of the normal encounter list. Their spawn is
     # resolved up front, but the enemy itself is created only when the player
     # crosses into whichever authored zone carries is_boss_zone=True.
@@ -1866,7 +1875,16 @@ def game_screen(screen, slot_num=None, save_state=None):
             near_interactable = None
 
         # --- Handle E key hold ---
+        blocking_guards = []
         if near_interactable:
+            blocking_guards = remaining_guards(near_interactable)
+
+        if near_interactable and blocking_guards:
+            # Locked. Holding E on a guarded prop must not bank progress
+            # that finishes the moment the last guard falls.
+            near_interactable['inspect_progress'] = 0.0
+            near_interactable['inspecting'] = False
+        elif near_interactable:
             if keys[pygame.K_e]:
                 near_interactable['inspect_progress'] += dt / INSPECT_TIME
                 near_interactable['inspect_progress'] = min(near_interactable['inspect_progress'], 1.0)
@@ -2090,7 +2108,21 @@ def game_screen(screen, slot_num=None, save_state=None):
             cam_x = near_interactable['rect'].x * ZOOM - camera_x
             cam_y = near_interactable['rect'].y * ZOOM - camera_y - 30
 
-            if not near_interactable['inspecting']:
+            if blocking_guards:
+                guard_label = font.render(
+                    f"GUARDED  x{len(blocking_guards)}", True, (255, 138, 138)
+                )
+                guard_box = guard_label.get_rect(
+                    midbottom=(cam_x + 40, cam_y + 8)
+                ).inflate(16, 10)
+                pygame.draw.rect(screen, (15, 16, 21), guard_box, border_radius=5)
+                pygame.draw.rect(
+                    screen, (196, 74, 74), guard_box, 2, border_radius=5
+                )
+                screen.blit(
+                    guard_label, guard_label.get_rect(center=guard_box.center)
+                )
+            elif not near_interactable['inspecting']:
                 # Keep progress anchored to the object; the contextual action
                 # text itself is rendered once by GameplayHUD at bottom-centre.
                 bar_w = 80
@@ -2192,6 +2224,12 @@ def game_screen(screen, slot_num=None, save_state=None):
             )
             interaction_prompt = (
                 "Complete Stage" if gate_status.unlocked else "Inspect Sealed Exit"
+            )
+        elif near_interactable and blocking_guards:
+            remaining = len(blocking_guards)
+            interaction_prompt = (
+                f"Guarded - {remaining} enemies remain" if remaining > 1
+                else "Guarded - 1 enemy remains"
             )
         elif near_interactable and not near_interactable["inspecting"]:
             action = near_interactable.get("actions", "")

@@ -91,10 +91,36 @@ GREEN_PLAY = (80, 220, 120)
 WHITE = (255, 255, 255)
 METAL_FRAME = (90, 94, 110)
 
-def compute_menu_layout(screen_w, screen_h, count):
+# Space a button reserves for the medallion on its left, and the gap kept
+# between the end of a label and the rim. _draw_stone_button pushes labels
+# clear of the medallion, so both have to be paid for out of the width.
+MEDALLION_CLEARANCE = 68
+LABEL_RIM_MARGIN = 20
+
+
+def menu_button_width(screen_w, labels=()):
+    """Button width for a menu, wide enough for its longest label.
+
+    A share of the screen sets the base size, but a label that would not
+    fit beside the medallion widens the button instead of running past its
+    rim - the same rule the pause menu uses for "RETURN TO MAIN MENU".
+    """
+
+    width = int(screen_w * 0.20)
+    if not labels:
+        return width
+    longest = max(_button_font.size(str(label))[0] for label in labels)
+    return max(width, longest + MEDALLION_CLEARANCE + LABEL_RIM_MARGIN)
+
+
+def compute_menu_layout(screen_w, screen_h, count, labels=()):
     """Shared button-layout math so every menu screen (main menu,
-    start-game menu, etc.) lines up under the logo identically."""
-    bw = int(screen_w * 0.20)
+    start-game menu, etc.) lines up under the logo identically.
+
+    Passing that menu's `labels` lets the buttons grow for a long one; a
+    caller that omits them keeps the plain screen-share width.
+    """
+    bw = menu_button_width(screen_w, labels)
     bh = int(screen_h * 0.075)
     gap = int(screen_h * 0.02)
 
@@ -511,14 +537,17 @@ def menu_ambient():
 
     One instance for the whole menu rather than one per screen, so the motes
     and fireflies keep their phase and position across a screen change instead
-    of restarting from the top. The main menu and the start-game menu both lay
-    out three buttons, so the same rects are what the fireflies steer around.
+    of restarting from the top. Both menus lay out three buttons in the same
+    place; this block is padded well past the widest of them, so the
+    start-game menu's longer buttons stay inside what the fireflies avoid.
     """
 
     global _menu_ambient_cache
     if _menu_ambient_cache is None:
         art, pos = menu_logo()
-        rects, *_ = compute_menu_layout(SCREEN_WIDTH, SCREEN_HEIGHT, 3)
+        rects, *_ = compute_menu_layout(
+            SCREEN_WIDTH, SCREEN_HEIGHT, 3, MM_LABELS
+        )
         button_block = pygame.Rect(
             rects[0].left, rects[0].top,
             rects[0].width, rects[-1].bottom - rects[0].top,
@@ -612,7 +641,7 @@ def main_menu():
         block_height = button_count * bh + (button_count - 1) * gap
 
     rects, bw, bh, gap, center_x, by0 = compute_menu_layout(
-        SCREEN_WIDTH, SCREEN_HEIGHT, button_count
+        SCREEN_WIDTH, SCREEN_HEIGHT, button_count, MM_LABELS
     )
 
     gear_rect = pygame.Rect(SCREEN_WIDTH - 74, 18, 54, 54)
@@ -669,11 +698,16 @@ def main_menu():
                         continue
                     if rects[0].collidepoint(event.pos):
                         from src.ui.transitions import crumble_transition
-                        from src.screens.start_game_menu import start_game_menu, render_start_menu_buttons
+                        from src.screens.start_game_menu import (
+                            render_start_menu_buttons, start_game_menu,
+                            start_menu_layout,
+                        )
 
                         old_source = screen.copy()  # current frame, main menu buttons already on it
 
-                        new_rects, *_ = compute_menu_layout(SCREEN_WIDTH, SCREEN_HEIGHT, 3)
+                        # The destination screen owns these, so the debris
+                        # settles into the buttons the player actually gets.
+                        new_rects = start_menu_layout(SCREEN_WIDTH, SCREEN_HEIGHT)
                         new_source = menu_backdrop.copy()
                         render_start_menu_buttons(new_source, new_rects, t)
 

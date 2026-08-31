@@ -63,6 +63,15 @@ from src.systems.stage_gate import (
 )
 
 
+# --------------------------------------------------------------------
+# Music tracks used during a stage run. Named here so every swap in the
+# game loop (stage <-> boss fight) points at the same two constants
+# instead of retyping the paths at each call site.
+# --------------------------------------------------------------------
+STAGE_BGM_PATH = "assets/audios/gameStage1Bgm.mp3"
+BOSS_FIGHT_BGM_PATH = "assets/audios/bgm/boss_fight/easy/Boss_fight_easy_sound_01.mp3"
+
+
 BOSS_PHASE_DAMAGE = (
     (750, 25),
     (500, 35),
@@ -162,7 +171,7 @@ def game_screen(screen, slot_num=None, save_state=None):
         previous_frame=screen,
     )
 
-    pygame.mixer.music.load("assets/audios/gameStage1Bgm.mp3")  
+    pygame.mixer.music.load(STAGE_BGM_PATH)
     apply_music_volume()
     pygame.mixer.music.play(-1)
     loading.update(5, "Loading island terrain...")
@@ -1314,7 +1323,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                         screen, play_music=False, show_loading=False,
                         practice_only=True,
                     )
-                    pygame.mixer.music.load("assets/audios/gameStage1Bgm.mp3")
+                    pygame.mixer.music.load(STAGE_BGM_PATH)
                     apply_music_volume()
                     pygame.mixer.music.play(-1)
                 elif event.key == pygame.K_b and not paused:
@@ -1587,6 +1596,12 @@ def game_screen(screen, slot_num=None, save_state=None):
                     zone_pixel_rects, player_rect.center
                 )
             else:
+                # Abandoning the fight mid-encounter - revert to the
+                # ordinary stage music.
+                pygame.mixer.music.load(STAGE_BGM_PATH)
+                apply_music_volume()
+                pygame.mixer.music.play(-1)
+
                 enemies[:] = [
                     enemy for enemy in enemies
                     if enemy is not boss_enemy
@@ -1607,10 +1622,23 @@ def game_screen(screen, slot_num=None, save_state=None):
         ):
             boss_trigger_armed = False
             boss_entry_position = (player_rect.x, player_rect.y)
+
+            # Swap to boss battle music the moment the encounter popup
+            # appears, so the fight has its own theme from the very start.
+            pygame.mixer.music.load(BOSS_FIGHT_BGM_PATH)
+            apply_music_volume()
+            pygame.mixer.music.play(-1)
+
             decision = open_boss_intro(
                 screen, boss_id, background=screen.copy()
             )
             if decision == "retreat":
+                # Player backed out of the intro without fighting -
+                # go back to the regular stage track.
+                pygame.mixer.music.load(STAGE_BGM_PATH)
+                apply_music_volume()
+                pygame.mixer.music.play(-1)
+
                 player_rect.topleft = last_safe_position
                 player_x, player_y = map(float, last_safe_position)
                 current_boss_zone = None
@@ -1701,6 +1729,12 @@ def game_screen(screen, slot_num=None, save_state=None):
             boss_victory_handled = True
             if slot_num is not None:
                 save_manager.save_slot(slot_num, build_save_state())
+
+            # Fight won - drop the boss theme and return to stage music.
+            pygame.mixer.music.load(STAGE_BGM_PATH)
+            apply_music_volume()
+            pygame.mixer.music.play(-1)
+
             boss_result = open_boss_result(
                 screen, victory=True, background=screen.copy()
             )
@@ -1713,6 +1747,12 @@ def game_screen(screen, slot_num=None, save_state=None):
                 and boss_enemy.active
             )
             if boss_loss:
+                # Fight lost - drop the boss theme before showing the
+                # retry/retreat modal.
+                pygame.mixer.music.load(STAGE_BGM_PATH)
+                apply_music_volume()
+                pygame.mixer.music.play(-1)
+
                 result = open_boss_result(
                     screen, victory=False, background=screen.copy()
                 )
@@ -1734,6 +1774,12 @@ def game_screen(screen, slot_num=None, save_state=None):
                     previous_boss_zone = boss_zone_at(
                         zone_pixel_rects, player_rect.center
                     )
+                    # Retrying goes straight back into the fight, so the
+                    # boss theme should resume rather than staying on the
+                    # stage track.
+                    pygame.mixer.music.load(BOSS_FIGHT_BGM_PATH)
+                    apply_music_volume()
+                    pygame.mixer.music.play(-1)
                 else:
                     # Retreat returns to the safe campaign spawn. Re-entering
                     # the Core creates a fresh boss encounter and intro.

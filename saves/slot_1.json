@@ -1,14 +1,14 @@
 {
   "stage": "Island",
-  "hearts": 2,
+  "hearts": 5,
   "keys": 0,
   "topics_completed": [],
-  "bonus_time": 100,
+  "bonus_time": 106,
   "challenges_passed": [],
   "completed_stages": [],
   "map_layout_version": 2,
   "map_position": [
-    1530.0,
+    1508.0,
     982.0
   ],
   "inventory": [],

@@ -963,6 +963,7 @@ def game_screen(screen, slot_num=None, save_state=None):
     # the same scene in daylight.
     night_mode = WORLD_IS_NIGHT
 
+    debug_boss_access = False
     # F2 restores the optional atmospheric fog preview.
     fog_mode = False
     fog_drift_x = 0.0
@@ -1447,6 +1448,13 @@ def game_screen(screen, slot_num=None, save_state=None):
                     if fog_mode and fog_texture is None:
                         fog_texture = build_fog_texture(1100, 750)
 
+                elif DEBUG_MODE and event.key == pygame.K_F3 and not paused:
+                    debug_boss_access = not debug_boss_access
+                    print(
+                        "Boss area debug access:",
+                        "ON" if debug_boss_access else "OFF"
+                    )
+
                 elif event.key == pygame.K_m and not paused:
                     # M opens the full paper chart. It is handed the same
                     # baked texture and zone rects the minimap draws from,
@@ -1668,8 +1676,12 @@ def game_screen(screen, slot_num=None, save_state=None):
         boss_access = evaluate_boss_access(
             stage, gameplay_state["keys"], save_challenges_passed
         )
-        if (current_boss_zone is not None and previous_boss_zone is None
-                and not boss_access.unlocked):
+        if (
+            current_boss_zone is not None
+            and previous_boss_zone is None
+            and not boss_access.unlocked
+            and not debug_boss_access
+        ):
             # The Core is progression space, not an early-game shortcut.
             # Put the player back on the last non-boss tile and show the same
             # concrete missing requirements used by the final stage gate.

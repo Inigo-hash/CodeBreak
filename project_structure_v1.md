@@ -1,3 +1,8 @@
+> **Outdated.** This is a snapshot of an earlier layout, kept for history.
+> It predates `src/systems/`, `src/data/stages.py`, `tests/`, the learning
+> sandbox, and the stage/boss systems. See `CLAUDE.md` in the repo root for
+> the current structure.
+
 This file is a merged representation of a subset of the codebase, containing files not matching ignore patterns, combined into a single document by Repomix.
 
 # File Summary

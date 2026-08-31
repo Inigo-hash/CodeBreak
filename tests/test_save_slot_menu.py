@@ -82,7 +82,9 @@ class SlotMenuTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.screen = pygame.Surface(CANVAS)
-        rects, *_ = main_menu.compute_menu_layout(*CANVAS, len(SG_LABELS))
+        rects, *_ = main_menu.compute_menu_layout(
+            *CANVAS, len(SG_LABELS), SG_LABELS
+        )
         cls.new_game_button = rects[0].center
         cls.continue_button = rects[1].center
         cls.return_button = rects[2].center

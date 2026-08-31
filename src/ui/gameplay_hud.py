@@ -29,8 +29,11 @@ PORTRAIT_INNER = (194, 126, 48)
 PORTRAIT_BACKING = (8, 16, 25)
 NAME_GOLD = (236, 205, 149)
 # Warm amber for the energy bar while torchlight is accelerating regen, so
-# the boost is readable without adding another HUD element.
+# the boost is readable without adding another HUD element. Health uses a
+# green instead: both bars turning the same colour would read as one
+# effect, and a red bar filling back up needs to look like healing.
 TORCH_AMBER = (255, 176, 74)
+HEAL_GREEN = (104, 198, 122)
 LOW_HP_THRESHOLD = 0.30
 
 _low_health_overlay_cache = {}
@@ -336,7 +339,8 @@ class GameplayHUD:
 
     def draw(self, interaction_prompt=None, in_combat=False,
              current_hp=None, max_hp=None, bonus_time=None,
-             current_energy=None, max_energy=None, energy_boosted=False):
+             current_energy=None, max_energy=None, energy_boosted=False,
+             hp_healing=False):
         width, height = self.screen.get_size()
         margin = max(10, round(min(width, height) * 0.016))
         # 152 tall rather than 134: the card carries two stat bars now.
@@ -349,7 +353,7 @@ class GameplayHUD:
 
         self.draw_character_profile(current_hp, max_hp, in_combat,
                                     current_energy, max_energy,
-                                    energy_boosted)
+                                    energy_boosted, hp_healing)
         self.draw_stage_progress(progress_rect)
         self.draw_bonus_time(bonus_rect.left, bonus_rect.top,
                              self.bonus_time if bonus_time is None else bonus_time)
@@ -366,7 +370,7 @@ class GameplayHUD:
 
     def draw_character_profile(self, current_hp, max_hp, in_combat=False,
                                current_energy=None, max_energy=None,
-                               energy_boosted=False):
+                               energy_boosted=False, hp_healing=False):
         self._profile_panel(self.profile_rect, emphasized=in_combat)
         portrait_rect = pygame.Rect(
             self.profile_rect.left + 13,
@@ -385,7 +389,8 @@ class GameplayHUD:
                          (text_left, self.profile_rect.top + 20))
         self.draw_hearts(text_left, self.profile_rect.top + 50)
         self.draw_hp_bar(text_left, self.profile_rect.top + 88, bar_width,
-                         current_hp, max_hp, in_combat, label_width)
+                         current_hp, max_hp, in_combat, label_width,
+                         hp_healing)
         self.draw_energy_bar(text_left, self.profile_rect.top + 112, bar_width,
                              current_energy, max_energy, label_width,
                              energy_boosted)
@@ -398,9 +403,12 @@ class GameplayHUD:
         draw_heart_row(self.screen, self.icons, x, y, self.state.get("hearts", 0))
 
     def draw_hp_bar(self, x, y, width, current_hp, max_hp, emphasized=False,
-                    label_width=92):
+                    label_width=92, healing=False):
+        """Health, in crimson - or green while torchlight is closing it."""
+
         draw_stat_bar(self.screen, self.small, x, y, width, "HP",
                       current_hp, max_hp, emphasized=emphasized,
+                      fill_color=HEAL_GREEN if healing else CRIMSON,
                       label_width=label_width)
 
     def draw_energy_bar(self, x, y, width, current_energy, max_energy,

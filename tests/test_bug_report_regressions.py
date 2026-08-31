@@ -12,7 +12,7 @@ os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 import pygame
 
 from src.entities.enemy import Enemy
-from src.systems.combat import ENEMY_STATS
+from src.systems.combat import ENEMY_STATS, attack_hitbox
 from src.systems.enemy_spawns import resolve_encounter_spawns
 from src.screens.game import load_interactables, nearest_interactable
 from src.screens.world_map import enemy_marker_positions
@@ -50,6 +50,30 @@ class MapAndInteractionRegressionTests(unittest.TestCase):
             zones=(),
         )
         self.assertEqual(spawns, [])
+
+    def test_sword_reaches_past_the_body_without_out_ranging_enemies(self):
+        """The blade has to cover both a closed-in target and a step of gap."""
+
+        player = pygame.Rect(0, 0, 16, 16)
+        player.center = (100, 100)
+
+        for facing in ("right", "left", "forward", "backward"):
+            with self.subTest(facing=facing):
+                box = attack_hitbox(player, facing)
+                # An enemy that has walked into the player is still hittable.
+                self.assertTrue(box.collidepoint(player.center))
+
+                furthest = max(
+                    abs(box.left - player.centerx),
+                    abs(box.right - player.centerx),
+                    abs(box.top - player.centery),
+                    abs(box.bottom - player.centery),
+                )
+                self.assertGreaterEqual(furthest, 60)
+                # Enemies keep the range advantage: a tiyanak strikes from 72.
+                self.assertLess(
+                    furthest, ENEMY_STATS["tiyanak_sinta"].attack_range
+                )
 
     def test_wilderness_enemy_reach_matches_visible_sprite_distance(self):
         self.assertGreaterEqual(ENEMY_STATS["tiyanak_sinta"].attack_range, 72)

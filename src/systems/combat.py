@@ -15,7 +15,12 @@ PLAYER_ENERGY_REGEN = 8.0
 # Standing in a lit torch's pool restores the dodge budget four times as
 # fast: a full dodge back roughly every second and a quarter, which makes
 # the lit stretches of path worth retreating to during a night fight.
-PLAYER_TORCH_ENERGY_REGEN = 20.0
+PLAYER_TORCH_ENERGY_REGEN = 32.0
+# The same light closes wounds at the same rate it restores energy: five
+# seconds in a pool takes the player from near death back to full. A lit
+# stretch of path is therefore a genuine refuge rather than a slow drip,
+# and the pressure comes from reaching one rather than from waiting in it.
+PLAYER_TORCH_HP_REGEN = 20.0
 ATTACK_FRAME_COUNT = 9
 ATTACK_FRAME_DURATION = 0.055
 PLAYER_ATTACK_DURATION = ATTACK_FRAME_COUNT * ATTACK_FRAME_DURATION
@@ -34,6 +39,7 @@ DEATH_FRAME_COUNT = 7
 DEATH_FRAME_DURATION = 0.14
 DEATH_FINAL_HOLD = 0.65
 PLAYER_DEFEAT_DURATION = (DEATH_FRAME_COUNT - 1) * DEATH_FRAME_DURATION + DEATH_FINAL_HOLD
+# Player combat is slightly more forgiving against large enemy groups.
 PLAYER_ATTACK_REACH = 48
 PLAYER_ATTACK_WIDTH = 40
 BASE_SWORD_DAMAGE = 25
@@ -140,6 +146,9 @@ class PlayerCombat:
         # Kept as a float so partial-second regen accumulates instead of
         # being rounded away every frame; the HUD is what rounds it.
         self.energy = float(self.max_energy)
+        # Health is a whole number everywhere it is read, so partial points
+        # of healing are banked here until they add up to one.
+        self._hp_regen_pool = 0.0
         self.attack_cooldown = 0.0
         self.dodge_cooldown = 0.0
         self.invulnerable = 0.0
@@ -160,18 +169,42 @@ class PlayerCombat:
         elapsed = PLAYER_ATTACK_DURATION - self.action_time
         return self.state == "attacking" and PLAYER_ATTACK_ACTIVE_START <= elapsed <= PLAYER_ATTACK_ACTIVE_END
 
-    def update(self, dt, energy_regen=PLAYER_ENERGY_REGEN):
-        """Advance timers and regen. ``energy_regen`` is per second, so a
-        caller standing somewhere restorative can pass a faster rate."""
+    def update(self, dt, energy_regen=PLAYER_ENERGY_REGEN, hp_regen=0.0):
+        """Advance timers and regen, both rates given per second.
+
+        A caller standing somewhere restorative passes faster rates; health
+        regen defaults to zero because nothing heals the player by simply
+        existing.
+        """
 
         self.attack_cooldown = max(0.0, self.attack_cooldown - dt)
         self.dodge_cooldown = max(0.0, self.dodge_cooldown - dt)
         self.invulnerable = max(0.0, self.invulnerable - dt)
         self.energy = min(float(self.max_energy), self.energy + energy_regen * dt)
+        self._regenerate_health(dt, hp_regen)
         if self.action_time > 0:
             self.action_time = max(0.0, self.action_time - dt)
             if self.action_time == 0 and self.state != "defeated":
                 self.state = "idle"
+
+    def _regenerate_health(self, dt, hp_regen):
+        """Heal in whole points, keeping the fraction for the next frame.
+
+        A downed player is never healed: torchlight closes wounds, it does
+        not raise the dead. Standing at full health banks nothing, so the
+        first point of healing after taking a hit still costs its time.
+        """
+
+        if (hp_regen <= 0 or self.state == "defeated"
+                or not 0 < self.hp < self.max_hp):
+            self._hp_regen_pool = 0.0
+            return
+
+        self._hp_regen_pool += hp_regen * dt
+        healed = int(self._hp_regen_pool)
+        if healed:
+            self._hp_regen_pool -= healed
+            self.hp = min(self.max_hp, self.hp + healed)
 
     def start_attack(self):
         if self.attack_cooldown or self.locked:
@@ -210,6 +243,7 @@ class PlayerCombat:
     def reset(self):
         self.hp = self.max_hp
         self.energy = float(self.max_energy)
+        self._hp_regen_pool = 0.0
         self.state = "idle"
         self.action_time = 0
         self.invulnerable = 0

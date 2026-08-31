@@ -108,7 +108,8 @@ torches, save slots with PBKDF2-protected passwords (deletable from the slot
 panel, password required for a protected one), a paper world map, and
 a stage information panel. Searchable props are guarded (`systems/guards.py`):
 a prop with enemies camped around it stays shut until they are defeated, and
-standing in torchlight regenerates energy four times as fast.
+standing in torchlight regenerates energy four times as fast and heals
+at the same rate.
 
 **Stage 2 (Castle)** exists only as a data scaffold in `stages.py`. It
 needs: a TMX map, 10 intermediate lessons with validators, enemies, a boss,

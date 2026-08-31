@@ -11,6 +11,17 @@ WORLD_IS_NIGHT = True
 NIGHT_COLOR = (8, 15, 40)
 NIGHT_ALPHA = 228
 
+# _light_mask's contour wobbles, so the drawn pool is both smaller and less
+# round than the radius handed to the renderer. Measured against rendered
+# frames: every direction is still visibly lit at 0.78 of the radius, while
+# past 0.80 some directions have faded to full night. Gameplay uses 0.75 so
+# an effect tied to "standing in the light" is never granted on ground the
+# player can see is dark.
+LIT_RADIUS_SCALE = 0.75
+
+# The rendered pool sits slightly above the fixture itself.
+LIGHT_CENTER_LIFT = 4
+
 _NIGHT_VEIL_CACHE = {}
 _LIGHT_MASK_CACHE = {}
 _WARM_GLOW_CACHE = {}
@@ -180,6 +191,24 @@ def place_path_torches(path_cells, tile_size, placement_radius,
         uncovered.difference_update(best_coverage)
 
     return torches
+
+
+def in_torch_light(point, torch_positions, radius, center_lift=0):
+    """Whether ``point`` stands inside any fixed torch's visible pool.
+
+    Units are the caller's: game.py works in unscaled world pixels and
+    passes the light radius already divided by the camera zoom. The
+    renderer's per-frame flicker is deliberately ignored - a boundary that
+    breathed in and out would make the light's effect feel unreliable.
+    """
+
+    limit = (radius * LIT_RADIUS_SCALE) ** 2
+    for torch_x, torch_y in torch_positions:
+        offset_x = point[0] - torch_x
+        offset_y = point[1] - (torch_y - center_lift)
+        if offset_x * offset_x + offset_y * offset_y <= limit:
+            return True
+    return False
 
 
 def _night_veil(size):

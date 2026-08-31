@@ -28,6 +28,9 @@ PORTRAIT_FRAME = (80, 55, 32)
 PORTRAIT_INNER = (194, 126, 48)
 PORTRAIT_BACKING = (8, 16, 25)
 NAME_GOLD = (236, 205, 149)
+# Warm amber for the energy bar while torchlight is accelerating regen, so
+# the boost is readable without adding another HUD element.
+TORCH_AMBER = (255, 176, 74)
 LOW_HP_THRESHOLD = 0.30
 
 _low_health_overlay_cache = {}
@@ -333,7 +336,7 @@ class GameplayHUD:
 
     def draw(self, interaction_prompt=None, in_combat=False,
              current_hp=None, max_hp=None, bonus_time=None,
-             current_energy=None, max_energy=None):
+             current_energy=None, max_energy=None, energy_boosted=False):
         width, height = self.screen.get_size()
         margin = max(10, round(min(width, height) * 0.016))
         # 152 tall rather than 134: the card carries two stat bars now.
@@ -345,7 +348,8 @@ class GameplayHUD:
         bonus_rect = pygame.Rect(margin, progress_rect.bottom + 8, 112, 42)
 
         self.draw_character_profile(current_hp, max_hp, in_combat,
-                                    current_energy, max_energy)
+                                    current_energy, max_energy,
+                                    energy_boosted)
         self.draw_stage_progress(progress_rect)
         self.draw_bonus_time(bonus_rect.left, bonus_rect.top,
                              self.bonus_time if bonus_time is None else bonus_time)
@@ -361,7 +365,8 @@ class GameplayHUD:
             )
 
     def draw_character_profile(self, current_hp, max_hp, in_combat=False,
-                               current_energy=None, max_energy=None):
+                               current_energy=None, max_energy=None,
+                               energy_boosted=False):
         self._profile_panel(self.profile_rect, emphasized=in_combat)
         portrait_rect = pygame.Rect(
             self.profile_rect.left + 13,
@@ -382,7 +387,8 @@ class GameplayHUD:
         self.draw_hp_bar(text_left, self.profile_rect.top + 88, bar_width,
                          current_hp, max_hp, in_combat, label_width)
         self.draw_energy_bar(text_left, self.profile_rect.top + 112, bar_width,
-                             current_energy, max_energy, label_width)
+                             current_energy, max_energy, label_width,
+                             energy_boosted)
 
     def _stat_label_width(self):
         return max(self.small.size("HP 000 / 000")[0],
@@ -398,10 +404,15 @@ class GameplayHUD:
                       label_width=label_width)
 
     def draw_energy_bar(self, x, y, width, current_energy, max_energy,
-                        label_width=92):
-        """The dodge budget, in gold under the red HP bar."""
+                        label_width=92, boosted=False):
+        """The dodge budget, in gold under the red HP bar.
+
+        It burns amber while something - torchlight, today - is refilling
+        it faster than the player's own recovery would.
+        """
         draw_stat_bar(self.screen, self.small, x, y, width, "ENERGY",
-                      current_energy, max_energy, fill_color=GOLD,
+                      current_energy, max_energy,
+                      fill_color=TORCH_AMBER if boosted else GOLD,
                       label_width=label_width)
 
     def draw_stage_progress(self, rect):

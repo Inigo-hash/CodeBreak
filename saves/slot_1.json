@@ -3,13 +3,13 @@
   "hearts": 5,
   "keys": 0,
   "topics_completed": [],
-  "bonus_time": 106,
+  "bonus_time": 170,
   "challenges_passed": [],
   "completed_stages": [],
   "map_layout_version": 2,
   "map_position": [
-    1508.0,
-    982.0
+    1698.0,
+    1344.0
   ],
   "inventory": [],
   "weapon_obtained": true,
@@ -29,6 +29,7 @@
       "tiyanak_sinta"
     ],
     "discovered_zones": [
+      "Driftwood Crossing",
       "The Corrupted Core"
     ],
     "opened_interactables": []

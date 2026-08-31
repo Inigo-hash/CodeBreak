@@ -14,7 +14,7 @@ from src.screens.game_over import game_over_screen
 from src.screens.profile import profile_screen
 from src.screens.inventory import PlayerInventory, Toolbar, open_inventory
 from src.screens.stage_info import open_stage_info
-from src.screens.world_map import open_world_map
+from src.screens.world_map import enemy_is_tracking_player, open_world_map
 from src.systems import save_manager
 from src.systems.stage_progress import StageProgress
 from src.ui.stage_panel import StagePanel
@@ -44,6 +44,7 @@ from src.data.challenges import get_challenge
 from src.data.enemies import get_enemy
 from src.screens.topic_lesson import open_topic_lesson
 from src.systems.enemy_spawns import resolve_encounter_spawns
+from src.systems.encounter_progress import newly_cleared_encounter_ids
 from src.systems.guards import assign_guards, remaining_guards
 from src.ui.theme import UI_COLORS, body_font, draw_button, draw_panel, title_font
 from src.ui.night_lighting import (
@@ -523,7 +524,8 @@ def game_screen(screen, slot_num=None, save_state=None):
 
     def open_topic_flow(
         topic_id,
-        background
+        background,
+        enforce_requirements=True,
     ):
         """
         Open a topic lesson and, if requested,
@@ -555,7 +557,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             []
         )
 
-        if requirements:
+        if requirements and enforce_requirements:
 
             requirement_result = open_topic_requirements(
                 screen,
@@ -887,12 +889,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             # It vanishes as soon as the enemy disengages and starts returning
             # home, restoring uncertainty and making the minimap useful as a
             # readable stealth/combat signal instead of permanent radar.
-            tracking_states = {"alert", "chase", "attack"}
-            if enemy.state == "flinch":
-                visible = getattr(enemy, "_resume_state", "") == "chase"
-            else:
-                visible = enemy.state in tracking_states
-            if not enemy.active or not visible:
+            if not enemy.active or not enemy_is_tracking_player(enemy):
                 continue
             enemy_x = (
                 view_rect.left - src_left
@@ -1124,6 +1121,15 @@ def game_screen(screen, slot_num=None, save_state=None):
         (stage_spawn[0] + player_size // 2, stage_spawn[1] + player_size),
         zones=world["zones"],
     )
+    encounter_topics = {
+        encounter["id"]: encounter.get("topic_id")
+        for encounter in world["encounters"]
+    }
+    authored_encounter_ids = tuple(encounter_topics)
+    enemy_spawns = [
+        spawn for spawn in enemy_spawns
+        if not stage_progress.has_cleared_encounter(spawn["encounter_id"])
+    ]
     loading.update(92, "Awakening creatures...")
     enemies = [
         Enemy(screen, map_width, map_height,
@@ -1671,7 +1677,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             current_boss_zone = None
             open_stage_gate(
                 screen, boss_access, background=screen.copy(),
-                gate_name="Corrupted Core",
+                gate_name="Corrupted Core", show_boss_requirement=False,
             )
         boss_is_active = (
             boss_enemy is not None
@@ -1821,6 +1827,20 @@ def game_screen(screen, slot_num=None, save_state=None):
                 if enemy is boss_enemy:
                     boss_defeated = True
 
+        newly_cleared = newly_cleared_encounter_ids(
+            enemies, authored_encounter_ids, stage_progress.cleared_encounters
+        )
+        for encounter_id in newly_cleared:
+            if not stage_progress.clear_encounter(encounter_id):
+                continue
+            topic_id = encounter_topics.get(encounter_id)
+            if topic_id:
+                open_topic_flow(
+                    topic_id, screen.copy(), enforce_requirements=False
+                )
+            if slot_num is not None:
+                save_manager.save_slot(slot_num, build_save_state())
+
         if (boss_enemy is not None and boss_defeated
                 and not boss_victory_handled and not boss_enemy.active):
             boss_victory_handled = True
@@ -1856,6 +1876,13 @@ def game_screen(screen, slot_num=None, save_state=None):
                 enemies[:] = [
                     enemy for enemy in enemies
                     if not enemy.group_id.startswith("boss_wave_")
+                ]
+                enemies[:] = [
+                    enemy for enemy in enemies
+                    if (enemy is boss_enemy
+                        or not stage_progress.has_cleared_encounter(
+                            enemy.group_id
+                        ))
                 ]
                 for enemy in enemies:
                     enemy.reset()
@@ -1894,6 +1921,13 @@ def game_screen(screen, slot_num=None, save_state=None):
                 death_animation_complete = False
                 player_rect.topleft = stage_spawn
                 player_x, player_y = map(float, stage_spawn)
+                enemies[:] = [
+                    enemy for enemy in enemies
+                    if (enemy is boss_enemy
+                        or not stage_progress.has_cleared_encounter(
+                            enemy.group_id
+                        ))
+                ]
                 for enemy in enemies:
                     if enemy is boss_enemy and boss_defeated:
                         continue

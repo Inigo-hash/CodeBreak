@@ -11,7 +11,7 @@ PLAYER_MAX_ENERGY = 100
 # back so a fight is paced by when the player spends it, not by a cooldown
 # alone. Regen is per second and applied continuously, not in 1s ticks.
 PLAYER_DODGE_ENERGY_COST = 25
-PLAYER_ENERGY_REGEN = 5.0
+PLAYER_ENERGY_REGEN = 8.0
 # Standing in a lit torch's pool restores the dodge budget four times as
 # fast: a full dodge back roughly every second and a quarter, which makes
 # the lit stretches of path worth retreating to during a night fight.
@@ -25,7 +25,7 @@ PLAYER_ATTACK_COOLDOWN = 0.65
 # Authored frames 4-5 are the visible blade-contact portion of the swing.
 PLAYER_ATTACK_ACTIVE_START = 4 * ATTACK_FRAME_DURATION
 PLAYER_ATTACK_ACTIVE_END = 6 * ATTACK_FRAME_DURATION
-PLAYER_INVULNERABILITY = 0.65
+PLAYER_INVULNERABILITY = 0.85
 PLAYER_DODGE_SPEED = 8.0
 PLAYER_DODGE_DURATION = 0.20
 PLAYER_DODGE_COOLDOWN = 0.85
@@ -34,9 +34,9 @@ DEATH_FRAME_COUNT = 7
 DEATH_FRAME_DURATION = 0.14
 DEATH_FINAL_HOLD = 0.65
 PLAYER_DEFEAT_DURATION = (DEATH_FRAME_COUNT - 1) * DEATH_FRAME_DURATION + DEATH_FINAL_HOLD
-PLAYER_ATTACK_REACH = 34
-PLAYER_ATTACK_WIDTH = 34
-BASE_SWORD_DAMAGE = 20
+PLAYER_ATTACK_REACH = 48
+PLAYER_ATTACK_WIDTH = 40
+BASE_SWORD_DAMAGE = 25
 COMBAT_DEBUG = False
 DEBUG_ENEMY_AI = False
 
@@ -61,9 +61,9 @@ class EnemyStats:
 ENEMY_STATS = {
     # Ranges are unscaled world pixels (the map uses 16-pixel tiles).
     "duwende_mandurug": EnemyStats(60, 8, 1.15, 58, 144, 96, 220, 280, 120, 4, 1.15, 0.52, 10),
-    "tiyanak_sinta": EnemyStats(40, 6, 1.10, 72, 160, 96, 240, 300, 120, 4, 1.30, 0.52, 6),
-    "manananggal": EnemyStats(70, 10, 1.25, 96, 200, 112, 290, 360, 150, 4, 1.15, 0.55, 10),
-    "tikbalang": EnemyStats(110, 14, 1.05, 104, 176, 112, 270, 330, 140, 5, 1.25, 0.60, 16),
+    "tiyanak_sinta": EnemyStats(40, 5, 1.00, 72, 145, 88, 220, 280, 110, 4, 1.45, 0.58, 6),
+    "manananggal": EnemyStats(60, 8, 1.10, 96, 175, 100, 255, 320, 130, 4, 1.35, 0.62, 10),
+    "tikbalang": EnemyStats(80, 10, 0.95, 104, 155, 100, 240, 300, 125, 5, 1.45, 0.68, 16),
     "corrupted_core_kapre": EnemyStats(
         1000, 18, 1.10, 46, 260, 180, 520, 640, 220, 6, 1.10, 0.66, 45
     ),

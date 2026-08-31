@@ -18,7 +18,8 @@ from src.data.stages import get_stage, stage_world
 from src.data.topics import TOPICS
 from src.screens.stage_gate import open_stage_gate
 from src.systems.stage_gate import (
-    award_topic_keys, earned_topic_keys, evaluate_stage_gate,
+    award_topic_keys, earned_topic_keys, evaluate_boss_access,
+    evaluate_stage_gate,
     migrate_key_count, required_topic_ids,
 )
 
@@ -206,6 +207,15 @@ class StageGateTests(unittest.TestCase):
             status.required_boss_id,
             self.stage["completion"]["required_boss"],
         )
+
+    def test_boss_access_does_not_report_an_unfought_boss_as_defeated(self):
+        locked = evaluate_boss_access(self.stage, 0, ())
+        self.assertFalse(locked.unlocked)
+        self.assertFalse(locked.boss_defeated)
+
+        ready = evaluate_boss_access(self.stage, 10, self.required_topics)
+        self.assertTrue(ready.unlocked)
+        self.assertFalse(ready.boss_defeated)
 
     def test_first_completion_rewards_cap_at_ten(self):
         keys = 0

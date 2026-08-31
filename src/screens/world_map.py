@@ -460,15 +460,29 @@ def _draw_marker(surface, center, heading, pulse):
     draw_marker(surface, center, heading, MARKER_SIZE)
 
 
+def enemy_is_tracking_player(enemy):
+    """Whether an enemy currently knows where the player is.
+
+    Alert, chase, and attack are direct acquisition states. A flinching enemy
+    remains visible only when it will resume chasing; returning and idle
+    enemies disappear so neither map acts as permanent radar.
+    """
+
+    state = getattr(enemy, "state", "")
+    if state == "flinch":
+        return getattr(enemy, "_resume_state", "") == "chase"
+    return state in {"alert", "chase", "attack"}
+
+
 def enemy_marker_positions(enemies, paper_pos, map_rect, scale):
-    """Translate active enemy world positions onto the paper map."""
+    """Translate only player-aware enemies onto the paper map."""
     return [
         (
             round(paper_pos[0] + map_rect.left + enemy.rect.centerx * scale),
             round(paper_pos[1] + map_rect.top + enemy.rect.centery * scale),
         )
         for enemy in enemies
-        if enemy.active and enemy.state != "defeated"
+        if enemy.active and enemy_is_tracking_player(enemy)
     ]
 
 

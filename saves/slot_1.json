@@ -1,0 +1,44 @@
+{
+  "stage": "Island",
+  "hearts": 5,
+  "keys": 0,
+  "topics_completed": [],
+  "bonus_time": 170,
+  "challenges_passed": [],
+  "completed_stages": [],
+  "map_layout_version": 2,
+  "map_position": [
+    1698.0,
+    1344.0
+  ],
+  "inventory": [],
+  "weapon_obtained": true,
+  "weapon_equipped": true,
+  "stage_progress": {
+    "discovered_enemies": [
+      "corrupted_core_kapre",
+      "manananggal",
+      "tikbalang",
+      "tiyanak_sinta"
+    ],
+    "discovered_items": [],
+    "objectives_done": [],
+    "defeated_enemies": [
+      "manananggal",
+      "tikbalang",
+      "tiyanak_sinta"
+    ],
+    "discovered_zones": [
+      "Driftwood Crossing",
+      "The Corrupted Core"
+    ],
+    "opened_interactables": []
+  },
+  "_security": {
+    "version": 1,
+    "algorithm": "pbkdf2_sha256",
+    "rounds": 180000,
+    "salt": "iNLqiH12ztetwLj3Cgx/ig==",
+    "password_hash": "ioYuIcvIq4x3WdjPABpPPZj452fPJU454ZiTsZ+ez/o="
+  }
+}

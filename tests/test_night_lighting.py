@@ -9,9 +9,15 @@ os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 
 import pygame
 
+from src.systems.combat import (
+    PLAYER_ENERGY_REGEN, PLAYER_TORCH_ENERGY_REGEN, PlayerCombat,
+)
 from src.ui.night_lighting import (
+    LIGHT_CENTER_LIFT,
+    LIT_RADIUS_SCALE,
     WORLD_IS_NIGHT,
     draw_night_and_map_torches,
+    in_torch_light,
     place_path_torches,
 )
 from src.ui.fog import build_fog_texture, draw_fog
@@ -76,6 +82,68 @@ class NightLightingTests(unittest.TestCase):
             pygame.image.tobytes(surface, "RGBA"),
             pygame.image.tobytes(before, "RGBA"),
         )
+
+
+class TorchWarmthTests(unittest.TestCase):
+    """Standing in a lit pool refills the dodge budget far faster."""
+
+    RADIUS = 60
+    TORCH = (100, 100)
+
+    def test_light_membership_follows_the_visible_pool_not_the_radius(self):
+        lit_center = (self.TORCH[0], self.TORCH[1] - LIGHT_CENTER_LIFT)
+        visible_edge = self.RADIUS * LIT_RADIUS_SCALE
+
+        self.assertTrue(in_torch_light(
+            lit_center, [self.TORCH], self.RADIUS, LIGHT_CENTER_LIFT
+        ))
+        inside = (lit_center[0] + visible_edge - 5, lit_center[1])
+        self.assertTrue(in_torch_light(
+            inside, [self.TORCH], self.RADIUS, LIGHT_CENTER_LIFT
+        ))
+
+        # Past the drawn contour but still inside the nominal radius: the
+        # player can see they are out of the light, so it must not count.
+        beyond_contour = (lit_center[0] + visible_edge + 4, lit_center[1])
+        self.assertLess(beyond_contour[0] - lit_center[0], self.RADIUS)
+        self.assertFalse(in_torch_light(
+            beyond_contour, [self.TORCH], self.RADIUS, LIGHT_CENTER_LIFT
+        ))
+
+    def test_open_ground_and_unlit_maps_are_never_warmed(self):
+        self.assertFalse(in_torch_light((900, 900), [self.TORCH], self.RADIUS))
+        self.assertFalse(in_torch_light(self.TORCH, [], self.RADIUS))
+
+    def test_any_torch_in_range_warms_the_player(self):
+        torches = [(1000, 1000), self.TORCH, (2000, 40)]
+        self.assertTrue(in_torch_light(
+            self.TORCH, torches, self.RADIUS, LIGHT_CENTER_LIFT
+        ))
+
+    def test_torchlight_regenerates_four_times_the_open_ground_rate(self):
+        combat = PlayerCombat()
+
+        combat.energy = 5.0
+        combat.update(1.0)
+        self.assertAlmostEqual(combat.energy, 5.0 + PLAYER_ENERGY_REGEN)
+
+        combat.energy = 5.0
+        combat.update(1.0, PLAYER_TORCH_ENERGY_REGEN)
+        self.assertAlmostEqual(combat.energy, 25.0)
+        self.assertEqual(PLAYER_TORCH_ENERGY_REGEN, PLAYER_ENERGY_REGEN * 4)
+
+    def test_boosted_regen_still_stops_at_full_energy(self):
+        combat = PlayerCombat()
+        combat.energy = combat.max_energy - 5
+        combat.update(1.0, PLAYER_TORCH_ENERGY_REGEN)
+        self.assertEqual(combat.energy, float(combat.max_energy))
+
+    def test_gameplay_loop_feeds_the_boost_from_torch_positions(self):
+        source = (
+            Path(__file__).resolve().parents[1] / "src" / "screens" / "game.py"
+        ).read_text(encoding="utf-8")
+        self.assertIn("in_torch_light(", source)
+        self.assertIn("PLAYER_TORCH_ENERGY_REGEN", source)
 
 
 if __name__ == "__main__":

@@ -12,6 +12,10 @@ PLAYER_MAX_ENERGY = 100
 # alone. Regen is per second and applied continuously, not in 1s ticks.
 PLAYER_DODGE_ENERGY_COST = 25
 PLAYER_ENERGY_REGEN = 5.0
+# Standing in a lit torch's pool restores the dodge budget four times as
+# fast: a full dodge back roughly every second and a quarter, which makes
+# the lit stretches of path worth retreating to during a night fight.
+PLAYER_TORCH_ENERGY_REGEN = 20.0
 ATTACK_FRAME_COUNT = 9
 ATTACK_FRAME_DURATION = 0.055
 PLAYER_ATTACK_DURATION = ATTACK_FRAME_COUNT * ATTACK_FRAME_DURATION
@@ -156,11 +160,14 @@ class PlayerCombat:
         elapsed = PLAYER_ATTACK_DURATION - self.action_time
         return self.state == "attacking" and PLAYER_ATTACK_ACTIVE_START <= elapsed <= PLAYER_ATTACK_ACTIVE_END
 
-    def update(self, dt):
+    def update(self, dt, energy_regen=PLAYER_ENERGY_REGEN):
+        """Advance timers and regen. ``energy_regen`` is per second, so a
+        caller standing somewhere restorative can pass a faster rate."""
+
         self.attack_cooldown = max(0.0, self.attack_cooldown - dt)
         self.dodge_cooldown = max(0.0, self.dodge_cooldown - dt)
         self.invulnerable = max(0.0, self.invulnerable - dt)
-        self.energy = min(float(self.max_energy), self.energy + PLAYER_ENERGY_REGEN * dt)
+        self.energy = min(float(self.max_energy), self.energy + energy_regen * dt)
         if self.action_time > 0:
             self.action_time = max(0.0, self.action_time - dt)
             if self.action_time == 0 and self.state != "defeated":

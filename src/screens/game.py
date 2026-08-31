@@ -28,8 +28,9 @@ from src.ui.chart import (
 )
 from src.systems.combat import (
     COMBAT_DEBUG, DEBUG_ENEMY_AI, FACING_VECTORS, PLAYER_DODGE_SPEED,
-    PlayerCombat, attack_hitbox, attack_path_blocked, boss_phase_table,
-    move_rect, selected_weapon_damage,
+    PLAYER_ENERGY_REGEN, PLAYER_TORCH_ENERGY_REGEN, PlayerCombat,
+    attack_hitbox, attack_path_blocked, boss_phase_table, move_rect,
+    selected_weapon_damage,
 )
 from src.systems.audio import (
     CombatAudio, apply_music_volume, handle_music_shortcut, play_crumble_sfx,
@@ -44,7 +45,8 @@ from src.screens.topic_lesson import open_topic_lesson
 from src.systems.enemy_spawns import resolve_encounter_spawns
 from src.ui.theme import UI_COLORS, body_font, draw_button, draw_panel, title_font
 from src.ui.night_lighting import (
-    WORLD_IS_NIGHT, draw_night_and_map_torches, place_path_torches,
+    LIGHT_CENTER_LIFT, WORLD_IS_NIGHT, draw_night_and_map_torches,
+    in_torch_light, place_path_torches,
 )
 from src.ui.fog import build_fog_texture, draw_fog
 from src.screens.loading import StageLoadingScreen
@@ -637,6 +639,10 @@ def game_screen(screen, slot_num=None, save_state=None):
     # A compact pool of light (60 world pixels at 2x zoom) keeps the scene
     # visibly nocturnal instead of producing broad daylight-sized circles.
     MAP_TORCH_LIGHT_RADIUS = 120
+    # The same pool measured in unscaled world pixels, which is what the
+    # player's position is in. Standing inside it accelerates energy regen.
+    TORCH_LIGHT_WORLD_RADIUS = MAP_TORCH_LIGHT_RADIUS / ZOOM
+    TORCH_LIGHT_WORLD_LIFT = LIGHT_CENTER_LIFT / ZOOM
     map_torches = place_path_torches(
         path_cells,
         TILE_SIZE,
@@ -1257,6 +1263,9 @@ def game_screen(screen, slot_num=None, save_state=None):
         summon_boss_reinforcements(threshold)
 
     attack_key_ready = True
+    # Recomputed every unpaused frame; predefined so a frame that returns
+    # early still has a value for the HUD to read.
+    warmed_by_torch = False
     death_animation_complete = False
     near_interactable = None
     near_stage_exit = False
@@ -1502,7 +1511,18 @@ def game_screen(screen, slot_num=None, save_state=None):
             pygame.display.flip()
             continue
         # --- Movement / combat action state ---
-        player_combat.update(dt)
+        # Torchlight restores the dodge budget far faster than open
+        # ground. Only while the torches are actually lit: in the daylight
+        # preview there is no pool on screen to stand in.
+        warmed_by_torch = night_mode and in_torch_light(
+            player_rect.center, map_torches,
+            TORCH_LIGHT_WORLD_RADIUS, TORCH_LIGHT_WORLD_LIFT,
+        )
+        player_combat.update(
+            dt,
+            PLAYER_TORCH_ENERGY_REGEN if warmed_by_torch
+            else PLAYER_ENERGY_REGEN,
+        )
         main_character.set_combat_state(player_combat.state)
         keys = pygame.key.get_pressed()
 
@@ -2191,6 +2211,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             max_hp=player_combat.max_hp,
             current_energy=int(player_combat.energy),
             max_energy=player_combat.max_energy,
+            energy_boosted=warmed_by_torch,
             bonus_time=gameplay_state["bonus_time"],
         )
 

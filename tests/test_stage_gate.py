@@ -14,7 +14,7 @@ import pygame
 from pytmx.util_pygame import load_pygame
 
 from src.data.challenges import CHALLENGES
-from src.data.stages import get_stage
+from src.data.stages import get_stage, stage_world
 from src.data.topics import TOPICS
 from src.screens.stage_gate import open_stage_gate
 from src.systems.stage_gate import (
@@ -31,6 +31,7 @@ class StageGateTests(unittest.TestCase):
 
     def setUp(self):
         self.stage = get_stage("island")
+        self.world = stage_world(self.stage)
         self.required_topics = required_topic_ids(self.stage)
         self.defeated_boss = (self.stage["completion"]["required_boss"],)
 
@@ -40,7 +41,7 @@ class StageGateTests(unittest.TestCase):
         self.assertEqual(earned_topic_keys(self.stage, self.required_topics), 10)
 
     def test_every_required_topic_is_reachable_from_an_authored_map_object(self):
-        map_path = Path(__file__).parents[1] / "assets" / "map" / "tmx" / "basic.tmx"
+        map_path = Path(__file__).parents[1] / self.world["map"]
         root = ET.parse(map_path).getroot()
         mapped_topic_ids = {
             prop.get("value")
@@ -67,10 +68,7 @@ class StageGateTests(unittest.TestCase):
 
         map_width = tmx.width * tile_size
         map_height = tmx.height * tile_size
-        spawn = (
-            (map_width // 2 - tile_size // 2 + tile_size * 7) // tile_size,
-            (map_height - tile_size * 36) // tile_size,
-        )
+        spawn = self._spawn_cell(map_width, map_height, tile_size)
         frontier = deque([spawn])
         reachable_cells = {spawn}
         while frontier:
@@ -116,8 +114,17 @@ class StageGateTests(unittest.TestCase):
             "At least one required Stage 1 lesson cannot be reached from spawn",
         )
 
+    def _spawn_cell(self, map_width, map_height, tile_size):
+        """The authored spawn from stages.py, as a tile coordinate."""
+
+        spawn_x, spawn_y = self.world["spawn"]
+        return (
+            round(spawn_x * map_width) // tile_size,
+            round(spawn_y * map_height) // tile_size,
+        )
+
     def test_castle_exit_trigger_is_reachable_from_player_spawn(self):
-        map_path = Path(__file__).parents[1] / "assets" / "map" / "tmx" / "basic.tmx"
+        map_path = Path(__file__).parents[1] / self.world["map"]
         tmx = load_pygame(str(map_path))
         tile_size = tmx.tilewidth
         blocked = set()
@@ -139,13 +146,8 @@ class StageGateTests(unittest.TestCase):
             round(exit_height * map_height),
         ).inflate(tile_size * 4, tile_size * 4)
 
-        ocean_padding = 30
+        spawn = self._spawn_cell(map_width, map_height, tile_size)
 
-        spawn = (
-            (map_width // 2 - tile_size // 2 + tile_size * 7) // tile_size,
-            (map_height - tile_size * (ocean_padding + 6)) // tile_size,
-        )
-        
         frontier = deque([spawn])
         visited = {spawn}
         reached = False

@@ -11,7 +11,7 @@ os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 import pygame
 
 from src.data.items import item_id_for_action
-from src.data.stages import get_stage, stage_challenges
+from src.data.stages import get_stage, stage_challenges, stage_world
 from src.entities.chest import Chest
 from src.systems.stage_progress import StageProgress
 
@@ -27,7 +27,8 @@ class ChestTests(unittest.TestCase):
         self.assertEqual(trap.open(5)[0], 5)
 
     def test_map_authors_one_reward_chest_and_one_trapped_chest(self):
-        root = ET.parse(Path("assets/map/tmx/basic.tmx")).getroot()
+        map_path = Path(stage_world(get_stage("island"))["map"])
+        root = ET.parse(map_path).getroot()
         chest_objects = []
         for obj in root.findall(".//object"):
             properties = {

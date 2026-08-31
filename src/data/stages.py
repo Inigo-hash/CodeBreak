@@ -9,6 +9,26 @@ Enemies and items are referenced by id (into enemies.py / items.py)
 rather than described here, so an enemy that shows up in three stages is
 still written up exactly once.
 
+World
+-----
+Each stage's `world` dict is everything game.py needs to actually load
+it, so the gameplay screen reads the stage record instead of naming the
+Island's files itself:
+
+    map                 TMX path; a stage without one cannot be entered
+    music               background track, or None for silence
+    boss_music          track for this stage's boss fight, or None to
+                        keep the ordinary stage music playing
+    spawn               where the player starts, as (x, y) fractions of
+                        the map like zone rects and encounter anchors
+    zones               the stage's list from zones.py
+    encounters          the stage's table from encounters.py
+    path_layer          tile layer whose dirt tiles are walkable ground
+    path_gids           authored gids in that layer counting as path
+    map_layout_version  bumped when a map is re-cut, so old saves in
+                        this stage can have their position migrated
+    legacy_shift_tiles  (x, y) tiles an older save must move by
+
 Objectives
 ----------
 Each objective is a dict:
@@ -30,6 +50,24 @@ and named-zone entry as the player moves through the stage.
 
 from src.data.challenges import CHALLENGES
 from src.data.controls import WORLD_CONTROLS
+from src.data.encounters import BEGINNER_PATH_GIDS, BEGINNER_STAGE_ENCOUNTERS
+from src.data.zones import ISLAND_ZONES
+
+
+# Filled in for any stage that leaves a world setting out. A stage with no
+# map is data-only: menus and saves can name it, but it cannot be entered.
+WORLD_DEFAULTS = {
+    "map": None,
+    "music": None,
+    "boss_music": None,
+    "spawn": (0.5, 0.5),
+    "zones": (),
+    "encounters": (),
+    "path_layer": None,
+    "path_gids": frozenset(),
+    "map_layout_version": 1,
+    "legacy_shift_tiles": (0, 0),
+}
 
 
 DEFAULT_STAGE_ID = "island"
@@ -44,6 +82,37 @@ STAGES = {
         "name": "Island",
 
         "subtitle": "Stage 1",
+
+        "world": {
+
+            "map": "assets/map/tmx/basic.tmx",
+
+            "music": "assets/audios/gameStage1Bgm.mp3",
+
+            "boss_music": (
+                "assets/audios/bgm/boss_fight/easy/Boss_fight_easy_sound_01.mp3"
+            ),
+
+            # The original spawn: bottom-centre of the island, seven tiles
+            # right of the middle and six tiles in from the ocean border.
+            "spawn": (0.534574, 0.775),
+
+            "zones": ISLAND_ZONES,
+
+            "encounters": BEGINNER_STAGE_ENCOUNTERS,
+
+            "path_layer": "Ground Layer 1",
+
+            "path_gids": BEGINNER_PATH_GIDS,
+
+            # Version 2 is the resized Island map: the original island was
+            # shifted 30 tiles right and down when ocean space was added
+            # around all four sides.
+            "map_layout_version": 2,
+
+            "legacy_shift_tiles": (30, 30),
+
+        },
 
         "manual": {
 
@@ -260,6 +329,13 @@ STAGES = {
         "name": "Castle",
         "subtitle": "Stage 2 - Intermediate",
         "playable": False,
+        # No map yet, which is exactly what keeps the Castle unenterable:
+        # game.py refuses to load a stage whose world names no TMX file.
+        "world": {
+            "map": None,
+            "music": None,
+            "boss_music": None,
+        },
         "manual": {
             "summary": (
                 "Beyond the Corrupted Core stands a castle whose machinery "
@@ -306,6 +382,19 @@ def get_stage(stage_id):
             return stage
 
     return STAGES[DEFAULT_STAGE_ID]
+
+
+def stage_world(stage):
+    """
+    Return a stage's world settings with every missing key defaulted.
+
+    game.py reads this rather than the raw record so a stage that leaves
+    a setting unwritten loads with a sane value instead of raising.
+    """
+
+    world = dict(WORLD_DEFAULTS)
+    world.update(stage.get("world", {}))
+    return world
 
 
 def stage_challenges(stage):

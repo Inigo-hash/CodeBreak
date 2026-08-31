@@ -11,10 +11,8 @@ os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 import pygame
 from pytmx.util_pygame import load_pygame
 
-from src.data.encounters import BEGINNER_PATH_GIDS
 from src.data.enemies import ENEMIES
-from src.data.stages import get_stage
-from src.data.zones import ZONES
+from src.data.stages import get_stage, stage_world
 from src.entities.enemy import Enemy
 from src.screens.boss_encounter import (
     open_boss_intro, open_boss_result, open_boss_retreat_warning,
@@ -24,7 +22,9 @@ from src.systems.boss_trigger import (
     boss_main_entrance_at, boss_zone_at, required_boss_id,
     should_trigger_boss,
 )
-from src.systems.combat import ENEMY_BODY_SIZES, ENEMY_STATS
+from src.systems.combat import (
+    ENEMY_BODY_SIZES, ENEMY_STATS, boss_phase_table,
+)
 from src.systems.enemy_spawns import resolve_encounter_spawns
 from src.systems.stage_progress import StageProgress
 
@@ -37,6 +37,7 @@ class BossTriggerTests(unittest.TestCase):
 
     def setUp(self):
         self.stage = get_stage("island")
+        self.world = stage_world(self.stage)
         self.boss_id = required_boss_id(self.stage)
         self.zone = {
             "name": "The Corrupted Core",
@@ -45,7 +46,9 @@ class BossTriggerTests(unittest.TestCase):
         }
 
     def test_corrupted_core_is_the_authored_boss_zone(self):
-        boss_zones = [zone for zone in ZONES if zone.get("is_boss_zone")]
+        boss_zones = [
+            zone for zone in self.world["zones"] if zone.get("is_boss_zone")
+        ]
         self.assertEqual(len(boss_zones), 1)
         self.assertEqual(boss_zones[0]["name"], "The Corrupted Core")
 
@@ -110,9 +113,10 @@ class BossTriggerTests(unittest.TestCase):
 
     def test_core_armor_phases_take_exactly_thirty_connected_hits(self):
         hp = ENEMY_STATS[self.boss_id].max_hp
+        phases = boss_phase_table(self.boss_id)
         damage_seen = []
         while hp > 0:
-            damage = boss_sword_damage(hp)
+            damage = boss_sword_damage(hp, phases)
             damage_seen.append(damage)
             hp = max(0, hp - damage)
 
@@ -128,14 +132,14 @@ class BossTriggerTests(unittest.TestCase):
         self.assertIn(self.boss_id, restored.defeated_enemies)
 
     def test_boss_resolves_to_walkable_ground_inside_corrupted_core(self):
-        map_path = Path(__file__).parents[1] / "assets" / "map" / "tmx" / "basic.tmx"
+        map_path = Path(__file__).parents[1] / self.world["map"]
         tmx = load_pygame(str(map_path))
         tile_size = tmx.tilewidth
         map_width = tmx.width * tile_size
         map_height = tmx.height * tile_size
         runtime_path_gids = {
             runtime_gid
-            for authored_gid in BEGINNER_PATH_GIDS
+            for authored_gid in self.world["path_gids"]
             for runtime_gid, _flags in tmx.map_gid(authored_gid)
         }
         collision_rects = []
@@ -146,7 +150,8 @@ class BossTriggerTests(unittest.TestCase):
             for x, y, gid in layer:
                 if not gid:
                     continue
-                if layer.name == "Ground Layer 1" and gid in runtime_path_gids:
+                if (layer.name == self.world["path_layer"]
+                        and gid in runtime_path_gids):
                     path_cells.add((x, y))
                 properties = tmx.get_tile_properties_by_gid(gid)
                 if properties and properties.get("collidable"):
@@ -154,18 +159,18 @@ class BossTriggerTests(unittest.TestCase):
                         x * tile_size, y * tile_size, tile_size, tile_size
                     ))
 
-        core = next(zone for zone in ZONES if zone.get("is_boss_zone"))
+        core = next(
+            zone for zone in self.world["zones"] if zone.get("is_boss_zone")
+        )
         x, y, width, height = core["rect"]
         core_rect = pygame.Rect(
             round(x * map_width), round(y * map_height),
             round(width * map_width), round(height * map_height),
         )
 
-        ocean_padding = 30
-
         player_spawn = (
-            map_width // 2 + tile_size * 7,
-            map_height - tile_size * (ocean_padding + 5),
+            round(self.world["spawn"][0] * map_width),
+            round(self.world["spawn"][1] * map_height),
         )
 
         resolved = resolve_encounter_spawns(
@@ -186,6 +191,7 @@ class BossTriggerTests(unittest.TestCase):
             path_cells,
             tile_size,
             player_spawn,
+            zones=self.world["zones"],
         )[0]
         
         body = pygame.Rect(0, 0, *ENEMY_BODY_SIZES[self.boss_id])

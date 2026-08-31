@@ -104,7 +104,8 @@ map fails the tests rather than stranding a player.
 
 **Stage 1 (Island)** is playable and complete: 10 beginner lessons, three
 roaming enemy types, a boss with four armour phases, night lighting with fixed
-torches, save slots with PBKDF2-protected passwords, a paper world map, and
+torches, save slots with PBKDF2-protected passwords (deletable from the slot
+panel, password required for a protected one), a paper world map, and
 a stage information panel. Searchable props are guarded (`systems/guards.py`):
 a prop with enemies camped around it stays shut until they are defeated, and
 standing in torchlight regenerates energy four times as fast.

@@ -9,5 +9,12 @@
   "inventory": [],
   "weapon_obtained": true,
   "weapon_equipped": true,
-  "stage_progress": {}
+  "stage_progress": {},
+  "_security": {
+    "version": 1,
+    "algorithm": "pbkdf2_sha256",
+    "rounds": 180000,
+    "salt": "pi4tpBHUpizh4qsg6Ey1gQ==",
+    "password_hash": "GOp8Gb4DkEyzFaUi3iwIOoicjmmEFvlqZ5KJHROwr8U="
+  }
 }

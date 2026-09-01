@@ -1,6 +1,7 @@
 """Searchable props stay shut until the camp standing over them is cleared."""
 
 import os
+from collections import Counter
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
@@ -9,7 +10,14 @@ os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 
 import pygame
+from pytmx.util_pygame import load_pygame
 
+from src.data.stages import get_stage, stage_world
+from src.screens.game import (
+    coalesced_collision_rects, load_interactables,
+    load_object_collision_rects,
+)
+from src.systems.enemy_spawns import resolve_encounter_spawns
 from src.systems.guards import (
     GUARD_RADIUS, assign_guards, is_guarded, remaining_guards,
 )
@@ -30,6 +38,11 @@ def prop_at(center):
 
 
 class GuardedPropTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        pygame.init()
+        pygame.display.set_mode((1, 1))
+
     def test_only_props_with_a_camp_around_them_are_guarded(self):
         inside = prop_at((500, 500))
         outside = prop_at((5000, 5000))
@@ -108,12 +121,85 @@ class GuardedPropTests(unittest.TestCase):
         self.assertFalse(is_guarded(prop))
         self.assertEqual(remaining_guards(prop), [])
 
+    def test_readable_signs_are_never_treated_as_guarded_loot(self):
+        sign = prop_at((500, 500))
+        sign["actions"] = "read_sign"
+        assign_guards([sign], [enemy_at((500, 500))])
+        self.assertFalse(is_guarded(sign))
+
     def test_gameplay_loop_assigns_camps_and_blocks_the_hold(self):
         source = (
             Path(__file__).resolve().parents[1] / "src" / "screens" / "game.py"
         ).read_text(encoding="utf-8")
         self.assertIn("assign_guards(interactables, enemies)", source)
         self.assertIn("blocking_guards = remaining_guards(near_interactable)", source)
+
+    def test_every_authored_chest_and_barrel_has_visible_camp_guards(self):
+        stage = get_stage("island")
+        world = stage_world(stage)
+        tmx = load_pygame(world["map"])
+        tile_size = tmx.tilewidth
+        map_width = tmx.width * tile_size
+        map_height = tmx.height * tile_size
+        runtime_path_gids = {
+            runtime_gid
+            for authored_gid in world["path_gids"]
+            for runtime_gid, _flags in (tmx.map_gid(authored_gid) or ())
+        }
+        collision_cells = set()
+        path_cells = set()
+        for layer in tmx.visible_layers:
+            if not hasattr(layer, "data"):
+                continue
+            for x, y, gid in layer:
+                if not gid:
+                    continue
+                if (
+                    layer.name == world["path_layer"]
+                    and gid in runtime_path_gids
+                ):
+                    path_cells.add((x, y))
+                properties = tmx.get_tile_properties_by_gid(gid)
+                if properties and properties.get("collidable"):
+                    collision_cells.add((x, y))
+        collision_rects = coalesced_collision_rects(
+            collision_cells, tile_size
+        )
+        collision_rects.extend(load_object_collision_rects(tmx))
+        player_spawn = (
+            round(world["spawn"][0] * map_width),
+            round(world["spawn"][1] * map_height),
+        )
+        spawns = resolve_encounter_spawns(
+            world["encounters"], map_width, map_height,
+            collision_rects, path_cells, tile_size, player_spawn,
+            zones=world["zones"],
+        )
+        self.assertEqual(
+            Counter(spawn["encounter_id"] for spawn in spawns),
+            Counter({
+                encounter["id"]: len(encounter["enemies"])
+                for encounter in world["encounters"]
+            }),
+        )
+        enemies = [
+            SimpleNamespace(
+                spawn=spawn["position"], state="idle",
+                group_id=spawn["encounter_id"],
+            )
+            for spawn in spawns
+        ]
+        interactables = load_interactables(tmx)
+        assign_guards(interactables, enemies)
+        containers = [
+            item for item in interactables
+            if item["actions"] in ("search_chest", "search_barrel")
+        ]
+        self.assertTrue(containers)
+        for item in containers:
+            with self.subTest(interaction=item["interaction_id"]):
+                self.assertTrue(item["topic_id"])
+                self.assertTrue(item["guards"])
 
 
 if __name__ == "__main__":

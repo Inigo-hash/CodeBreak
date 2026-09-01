@@ -340,7 +340,7 @@ class GameplayHUD:
     def draw(self, interaction_prompt=None, in_combat=False,
              current_hp=None, max_hp=None, bonus_time=None,
              current_energy=None, max_energy=None, energy_boosted=False,
-             hp_healing=False):
+             hp_healing=False, weapon_equipped=True):
         width, height = self.screen.get_size()
         margin = max(10, round(min(width, height) * 0.016))
         # 152 tall rather than 134: the card carries two stat bars now.
@@ -366,6 +366,7 @@ class GameplayHUD:
             self.draw_combat_controls(
                 width, height,
                 dodge_ready=current_energy is None or current_energy >= PLAYER_DODGE_ENERGY_COST,
+                weapon_equipped=weapon_equipped,
             )
 
     def draw_character_profile(self, current_hp, max_hp, in_combat=False,
@@ -462,10 +463,14 @@ class GameplayHUD:
         self._panel(rect, emphasized=True)
         self.screen.blit(text, text.get_rect(center=rect.center))
 
-    def draw_combat_controls(self, width, height, dodge_ready=True):
+    def draw_combat_controls(self, width, height, dodge_ready=True,
+                             weapon_equipped=True):
         # Two renders instead of one line so the dodge half can grey out on
         # its own while energy is below the cost of a dodge.
-        attack = self.small.render("[E] ATTACK     ", True, TEXT)
+        attack_label = "[E] ATTACK     " if weapon_equipped else "[B] EQUIP SWORD     "
+        attack = self.small.render(
+            attack_label, True, TEXT if weapon_equipped else GOLD
+        )
         dodge = self.small.render("[L-SHIFT] DODGE", True, TEXT if dodge_ready else DIM)
         rect = pygame.Rect(0, 0, attack.get_width() + dodge.get_width(),
                            max(attack.get_height(), dodge.get_height()))

@@ -22,7 +22,7 @@ class EncounterProgressTests(unittest.TestCase):
     def test_beginner_camps_allow_up_to_nine_balanced_enemies(self):
         sizes = [len(item["enemies"]) for item in BEGINNER_STAGE_ENCOUNTERS]
         self.assertEqual(max(sizes), 9)
-        self.assertEqual(sum(sizes), 55)
+        self.assertEqual(sum(sizes), 59)
 
     def test_regular_enemies_have_short_beginner_kill_times(self):
         expected_hits = {"tiyanak_sinta": 2, "manananggal": 3, "tikbalang": 4}

@@ -17,10 +17,10 @@ settings_state = {
     # read it, and nothing in the game revealed text a character at a
     # time for it to control either.
     "text_speed": "NORMAL",
-    # Launch one step above the former 18px baseline for easier first-run
-    # reading. Players who prefer a denser interface can still reduce it.
-    # The shared font loaders carry this choice into menus, dialogue and HUDs.
-    "font_size": 20,
+    # The bug report's recommended first-run size. Players who prefer a
+    # denser interface can still reduce it, and every shared font loader
+    # carries the choice into menus, lessons and HUDs.
+    "font_size": 25,
 }
 
 
@@ -42,7 +42,11 @@ TEXT_SPEED_MS = {
 # other does not.
 MIN_FONT_SIZE = 12
 MAX_FONT_SIZE = 28
-DEFAULT_FONT_SIZE = 18
+# 18px is the size the authored UI values were designed around. The default
+# player preference is intentionally larger, so keep the scale baseline and
+# the first-run setting separate.
+FONT_SCALE_BASE = 18
+DEFAULT_FONT_SIZE = 25
 
 ROWS = ("font_size", "text_speed", "music", "sfx", "theme")
 
@@ -174,7 +178,7 @@ def current_font_size():
 
 
 def font_scale():
-    return current_font_size() / DEFAULT_FONT_SIZE
+    return current_font_size() / FONT_SCALE_BASE
 
 
 def set_font_size(value):

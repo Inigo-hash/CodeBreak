@@ -47,6 +47,7 @@ from src.systems.enemy_spawns import resolve_encounter_spawns
 from src.systems.encounter_progress import newly_cleared_encounter_ids
 from src.systems.guards import assign_guards, remaining_guards
 from src.ui.theme import UI_COLORS, body_font, draw_button, draw_panel, title_font
+from src.ui.gear_icon import draw_gear_medallion
 from src.ui.night_lighting import (
     LIGHT_CENTER_LIFT, WORLD_IS_NIGHT, draw_night_and_map_torches,
     in_torch_light, place_path_torches,
@@ -126,6 +127,7 @@ def load_interactables(tmx_data):
                 "interaction_id": str(getattr(obj, "id", "")),
                 "entity": entity,
                 "interaction_message": "",
+                "message": str(properties.get("message") or ""),
                 # Filled in by systems.guards once the stage's enemies are
                 # spawned; an unguarded prop simply keeps the empty list.
                 "guards": [],
@@ -134,6 +136,59 @@ def load_interactables(tmx_data):
                 "topic_handled": False,
             })
     return interactables
+
+
+def coalesced_collision_rects(cells, tile_size):
+    """Merge adjacent blocked tile cells into equivalent horizontal runs.
+
+    The ocean uses one collidable tile across thousands of cells. Keeping a
+    rectangle per tile would make every player and enemy movement scan the
+    whole sea twice per frame, while a row run has the exact same collision
+    area at a fraction of the cost.
+    """
+
+    rows = {}
+    for x, y in cells:
+        rows.setdefault(y, []).append(x)
+
+    rectangles = []
+    for y, x_values in sorted(rows.items()):
+        ordered = sorted(set(x_values))
+        if not ordered:
+            continue
+        start = previous = ordered[0]
+        for x in ordered[1:] + [None]:
+            if x is not None and x == previous + 1:
+                previous = x
+                continue
+            rectangles.append(pygame.Rect(
+                start * tile_size,
+                y * tile_size,
+                (previous - start + 1) * tile_size,
+                tile_size,
+            ))
+            if x is not None:
+                start = previous = x
+    return rectangles
+
+
+def load_object_collision_rects(tmx_data):
+    """Load precise collision boxes authored on visible TMX object layers."""
+
+    rectangles = []
+    for layer in tmx_data.visible_layers:
+        if hasattr(layer, "data"):
+            continue
+        for obj in layer:
+            properties = getattr(obj, "properties", {}) or {}
+            collidable = properties.get("collidable", False)
+            if not (collidable is True or str(collidable).lower() == "true"):
+                continue
+            rectangles.append(pygame.Rect(
+                round(obj.x), round(obj.y),
+                max(1, round(obj.width)), max(1, round(obj.height)),
+            ))
+    return rectangles
 
 
 def nearest_interactable(player_rect, interactables, reach=32):
@@ -233,7 +288,7 @@ def game_screen(screen, slot_num=None, save_state=None):
     }
 
     # --- Build collision rects from tile custom properties ---
-    collision_rects = []
+    collision_cells = set()
     path_cells = set()
     for layer in tmx_data.visible_layers:
         if hasattr(layer, 'data'):
@@ -244,14 +299,11 @@ def game_screen(screen, slot_num=None, save_state=None):
                     path_cells.add((x, y))
                 props = tmx_data.get_tile_properties_by_gid(gid)
                 if props and props.get('collidable'):
-                    collision_rects.append(
-                        pygame.Rect(
-                            x * TILE_SIZE,
-                            y * TILE_SIZE,
-                            TILE_SIZE,
-                            TILE_SIZE
-                        )
-                    )
+                    collision_cells.add((x, y))
+    collision_rects = coalesced_collision_rects(
+        collision_cells, TILE_SIZE
+    )
+    collision_rects.extend(load_object_collision_rects(tmx_data))
     loading.update(30, "Preparing interactables...")
 
     # --- Load interactive objects from all visible object layers ---
@@ -434,11 +486,12 @@ def game_screen(screen, slot_num=None, save_state=None):
     # they can never fall out of sync. Equipment is intentionally limited to
     # the game's single sword; discovered topics still use the bag.
     player_inventory = PlayerInventory()
-    # Existing saves predate these flags and already began with the sword, so
-    # they migrate as obtained/equipped. New-game state supplies them too.
+    # Existing saves that predate these flags keep their former equipped
+    # sword. A new game deliberately starts with the sword inside the bag, so
+    # the player has to equip it before E can attack.
     player_inventory.set_weapon_state(
         True if save_state is None else save_state.get("weapon_obtained", True),
-        True if save_state is None else save_state.get("weapon_equipped", True),
+        False if save_state is None else save_state.get("weapon_equipped", True),
     )
 
     # ---------------------------------------------------------
@@ -496,7 +549,13 @@ def game_screen(screen, slot_num=None, save_state=None):
             "topic_id"
         )
 
-        if topic_id in handled_topic_ids:
+        topic_record = get_topic(topic_id) if topic_id else None
+        topic_challenge_id = (topic_record or {}).get("challenge_id")
+
+        if (
+            topic_id in handled_topic_ids
+            or topic_challenge_id in save_challenges_passed
+        ):
 
             item[
                 "topic_handled"
@@ -649,6 +708,13 @@ def game_screen(screen, slot_num=None, save_state=None):
                 ].append(
                     topic_id
                 )
+
+            # A topic can be attached to a camp and to a physical prop. Once
+            # its challenge is solved, every copy is complete immediately;
+            # the next barrel must not reopen the same editor in this run.
+            for interactable in interactables:
+                if interactable.get("topic_id") == topic_id:
+                    interactable["topic_handled"] = True
 
             stage_progress.sync_objectives(
                 stage,
@@ -977,6 +1043,7 @@ def game_screen(screen, slot_num=None, save_state=None):
 
     settings_panel = SettingsPanel(screen)
     settings_panel.close()
+    settings_gear_rect = pygame.Rect(SCREEN_W - 68, 10, 54, 54)
 
     PAUSE_MENU_OPTIONS = [
         ("RESUME", "resume"),
@@ -1526,7 +1593,12 @@ def game_screen(screen, slot_num=None, save_state=None):
                     settings_panel.handle_event(event)
                     show_pause_settings = settings_panel.is_open
                 elif not paused:
-                    if minimap_panel_rect.collidepoint(event.pos):
+                    if settings_gear_rect.collidepoint(event.pos):
+                        paused = True
+                        pause_snapshot = blur_frame(screen)
+                        show_pause_settings = True
+                        settings_panel.open()
+                    elif minimap_panel_rect.collidepoint(event.pos):
                         night_mode = show_world_map(night_mode)
                     elif gameplay_hud.profile_rect.collidepoint(event.pos):
                         background_snapshot = screen.copy()
@@ -1879,9 +1951,12 @@ def game_screen(screen, slot_num=None, save_state=None):
                 continue
             topic_id = encounter_topics.get(encounter_id)
             if topic_id:
-                open_topic_flow(
-                    topic_id, screen.copy(), enforce_requirements=False
-                )
+                topic = get_topic(topic_id)
+                challenge_id = (topic or {}).get("challenge_id")
+                if challenge_id not in save_challenges_passed:
+                    open_topic_flow(
+                        topic_id, screen.copy(), enforce_requirements=False
+                    )
             if slot_num is not None:
                 save_manager.save_slot(slot_num, build_save_state())
 
@@ -2333,13 +2408,16 @@ def game_screen(screen, slot_num=None, save_state=None):
                         "This chest has already been opened.",
                     )
                 else:
+                    configured_message = near_interactable.get("message", "")
                     object_name = (
                         action
                         .removeprefix("search_")
                         .replace("_", " ")
                     )
 
-                    if object_name:
+                    if configured_message:
+                        message = configured_message
+                    elif object_name:
                         message = f"The {object_name} is empty."
                     else:
                         message = "Nothing here."
@@ -2420,6 +2498,8 @@ def game_screen(screen, slot_num=None, save_state=None):
             action = near_interactable.get("actions", "")
             if near_interactable.get("topic_id"):
                 interaction_prompt = "Read Topic"
+            elif action == "read_sign":
+                interaction_prompt = "Read Sign"
             elif action.startswith("search_"):
                 target = action.removeprefix("search_").replace("_", " ").title()
                 interaction_prompt = f"Search {target}" if target else "Interact"
@@ -2437,6 +2517,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             energy_boosted=warmed_by_torch,
             hp_healing=warmed_by_torch and player_combat.hp < player_combat.max_hp,
             bonus_time=gameplay_state["bonus_time"],
+            weapon_equipped=player_inventory.weapon_equipped,
         )
 
         if boss_phase_effect_timer > 0:
@@ -2567,20 +2648,37 @@ def game_screen(screen, slot_num=None, save_state=None):
         # Stage info rail (right side)
         stage_panel.draw(mouse_pos)
 
+        # Persistent access to the same SettingsPanel used by the pause menu.
+        # It is deliberately visible during exploration, matching the gear in
+        # the main menu and editor instead of hiding settings behind Escape.
+        gear_hover = settings_gear_rect.collidepoint(mouse_pos)
+        gear_time = pygame.time.get_ticks() / 1000.0
+        draw_gear_medallion(
+            screen, settings_gear_rect.center, 24,
+            spin_degrees=gear_time * (80 if gear_hover else 18),
+        )
+
         # Key hints (top-right, out of the way of the profile HUD)
         hint = font.render(
             "P = Practice    F1 = Light    F2 = Fog    F10 = Mute",
             True,
             (255, 255, 255)
         )
-        screen.blit(hint, (SCREEN_W - hint.get_width() - 10, 10))
-
-        draw_low_health_warning(
-            screen,
-            player_combat.hp,
-            player_combat.max_hp,
-            pygame.time.get_ticks() / 1000.0,
+        screen.blit(
+            hint,
+            hint.get_rect(topright=(settings_gear_rect.left - 12, 10)),
         )
+
+        # The red corners communicate immediate combat danger. Leaving them
+        # on during exploration made them look like boss-area decoration that
+        # never cleared after a fight.
+        if engaged:
+            draw_low_health_warning(
+                screen,
+                player_combat.hp,
+                player_combat.max_hp,
+                pygame.time.get_ticks() / 1000.0,
+            )
 
         pygame.display.flip()
         if player_combat.state == "defeated" and player_combat.action_time == 0:

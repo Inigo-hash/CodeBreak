@@ -897,6 +897,32 @@ Conditions can also use:
             "strings_lesson"
         ]
     },
+
+
+    # =========================================================
+    # Boolean Logic
+    # =========================================================
+
+    "boolean_logic": {
+        "id": "boolean_logic",
+        "title": "Boolean Logic",
+        "difficulty": "Beginner",
+        "lesson": """
+BOOLEAN LOGIC
+
+Booleans have only two values: True and False.
+
+Use and when both conditions must be true. Use not to reverse a value.
+
+    can_enter = has_key and not gate_locked
+
+This is true only when the player has a key and the gate is not locked.
+""",
+        "challenge_id": "boolean_logic_001",
+        "requirements": [
+            "control_flow_lesson"
+        ]
+    },
 }
 
 def get_topic(topic_id):

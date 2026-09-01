@@ -347,6 +347,11 @@
    <object id="1" x="0.0393507" y="0" width="8.02755" height="15.9764"/>
   </objectgroup>
  </tile>
+ <tile id="109">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
  <tile id="111">
   <properties>
    <property name="collidable" type="bool" value="true"/>

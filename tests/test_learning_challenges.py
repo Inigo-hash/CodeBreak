@@ -19,21 +19,13 @@ VALID_SOLUTIONS = {
     "formatted_output_001": (
         'name = "Alex"\nprint(f"Welcome, {name}!")'
     ),
-    "operators_lesson_001": (
-        "score = 5\nscore += 3\npassed = score >= 8"
-    ),
-    "strings_lesson_001": (
-        'game_name = "CodeBreak"\n'
-        'message = "Welcome to\\n" + game_name\n'
-        "result = message.upper()"
-    ),
-    "control_flow_lesson_001": (
+    "operators_001": "total = 12 + 8",
+    "string_basics_001": 'title = "Code" + " Breaker"',
+    "conditionals_001": (
         'score = 85\n'
-        'has_key = True\n'
         'if score >= 90:\n    rank = "Gold"\n'
         'elif score >= 75:\n    rank = "Silver"\n'
-        'else:\n    rank = "Bronze"\n'
-        'can_enter = has_key and score >= 75'
+        'else:\n    rank = "Bronze"'
     ),
     "boolean_logic_001": (
         "has_key = True\ngate_locked = False\n"
@@ -71,17 +63,10 @@ class LearningChallengeTests(unittest.TestCase):
             "formatted_output_001": (
                 'name = "Alex"\nprint("Welcome, Alex!")'
             ),
-            "operators_lesson_001": (
-                "score = 5\nscore += 2\npassed = score >= 8"
-            ),
-            "strings_lesson_001": (
-                'game_name = "CodeBreak"\n'
-                'message = "Welcome to " + game_name\n'
-                "result = message.lower()"
-            ),
-            "control_flow_lesson_001": (
-                'score = 85\nhas_key = True\n'
-                'if score >= 75:\n    rank = "Silver"'
+            "operators_001": "total = 12 - 8",
+            "string_basics_001": 'title = "Code Breaker"',
+            "conditionals_001": (
+                'score = 85\nif score >= 75:\n    rank = "Silver"'
             ),
             "boolean_logic_001": (
                 "has_key = True\ngate_locked = False\n"

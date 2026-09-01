@@ -36,7 +36,7 @@ CONTROL_SECTIONS = [
 
     ("MOVING AND FIGHTING", [
         ("W A S D / Arrows", "Move"),
-        ("E", "Attack with the equipped sword"),
+        ("E", "Attack with your sword"),
         ("Left Shift", "Dodge (costs energy)"),
     ]),
 
@@ -81,7 +81,6 @@ CONTROL_SECTIONS = [
 # nobody says so out loud.
 CONTROL_NOTES = [
     "E attacks - but next to a searchable object, hold E to search instead.",
-    "Open the bag with B and drag the sword to the hotbar before attacking.",
     "Dodging spends 25 energy; energy refills by 5 every second.",
     "Run and Submit inside the editor are buttons you click.",
 ]

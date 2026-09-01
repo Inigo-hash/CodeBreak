@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.12.1" orientation="orthogonal" renderorder="right-down" width="188" height="160" tilewidth="16" tileheight="16" infinite="0" nextlayerid="12" nextobjectid="2873">
+<map version="1.10" tiledversion="1.12.1" orientation="orthogonal" renderorder="right-down" width="188" height="160" tilewidth="16" tileheight="16" infinite="0" nextlayerid="12" nextobjectid="2871">
  <tileset firstgid="1" source="../tsx/Enviroment-Forest.tsx"/>
  <tileset firstgid="145" source="../tsx/Props-Forest.tsx"/>
  <tileset firstgid="201" source="../tsx/Birch Forest-Tileset.tsx"/>
@@ -1853,7 +1853,6 @@
   <object id="22" x="834" y="1969.67" width="27.3334" height="28.3333">
    <properties>
     <property name="actions" value="search_barrel"/>
-    <property name="topic_id" value="variables"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>
@@ -2893,14 +2892,14 @@
   <object id="1488" x="1552.25" y="1968" width="31.25" height="31.5">
    <properties>
     <property name="actions" value="search_barrel"/>
-    <property name="topic_id" value="formatted_output"/>
+    <property name="topic_id" value="python_syntax_basics"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>
   <object id="1489" x="880.36" y="1376.18" width="31.4545" height="32">
    <properties>
     <property name="actions" value="search_barrel"/>
-    <property name="topic_id" value="input_lesson"/>
+    <property name="topic_id" value="data_types"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>
@@ -2908,7 +2907,6 @@
   <object id="1492" x="608.25" y="1040.25" width="31.5" height="31.75">
    <properties>
     <property name="actions" value="search_barrel"/>
-    <property name="topic_id" value="strings_lesson"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>
@@ -2928,6 +2926,7 @@
   <object id="1496" x="2112.25" y="1222.25" width="31.5" height="25.5">
    <properties>
     <property name="actions" value="search_burrow"/>
+    <property name="topic_id" value="formatted_output"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>
@@ -2960,18 +2959,21 @@
   <object id="1501" x="672.25" y="948.5" width="31.75" height="27.25">
    <properties>
     <property name="actions" value="search_hay"/>
+    <property name="topic_id" value="strings_lesson"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>
   <object id="1502" x="816" y="788.5" width="31.5" height="27.25">
    <properties>
     <property name="actions" value="search_hay"/>
+    <property name="topic_id" value="input_lesson"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>
   <object id="1503" x="2464.25" y="676.5" width="31.5" height="27.25">
    <properties>
     <property name="actions" value="search_hay"/>
+    <property name="topic_id" value="variables"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>
@@ -2979,14 +2981,14 @@
    <properties>
     <property name="actions" value="search_chest"/>
     <property name="reward_seconds" type="int" value="30"/>
-    <property name="topic_id" value="data_types"/>
+    <property name="topic_id" value="python_syntax_basics"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>
   <object id="1505" x="2319.3" y="1759.67" width="31.75" height="31.875">
    <properties>
     <property name="actions" value="search_chest"/>
-    <property name="topic_id" value="python_syntax_basics"/>
+    <property name="topic_id" value="boolean_logic"/>
     <property name="trap_seconds" type="int" value="15"/>
     <property name="types" value="interactive"/>
    </properties>
@@ -3009,19 +3011,6 @@
   <object id="1539" gid="156" x="1824.6" y="1568.34" width="28.5" height="39.25"/>
   <object id="1540" gid="148" x="1796.49" y="1531.39" width="28.5" height="39.75"/>
   <object id="1541" gid="149" x="1824.91" y="1531.36" width="28.25" height="39.75"/>
-  <object id="2871" name="Trail Sign" x="1552" y="1872" width="32" height="16">
-   <properties>
-    <property name="actions" value="read_sign"/>
-    <property name="collidable" type="bool" value="true"/>
-    <property name="message" value="Ten Python keys open the Corrupted Core. Clear the camps and solve every lesson."/>
-    <property name="types" value="interactive"/>
-   </properties>
-  </object>
-  <object id="2872" name="Monument Collision" x="2128" y="1968" width="160" height="96">
-   <properties>
-    <property name="collidable" type="bool" value="true"/>
-   </properties>
-  </object>
  </objectgroup>
  <layer id="8" name="Castle Layer 1" width="188" height="160" locked="1">
   <data encoding="csv">

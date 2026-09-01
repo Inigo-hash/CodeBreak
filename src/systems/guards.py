@@ -29,13 +29,6 @@ def assign_guards(interactables, enemies, radius=GUARD_RADIUS):
 
     limit = radius * radius
     for item in interactables:
-        action = str(item.get("actions") or item.get("action") or "")
-        if action and not action.startswith("search_"):
-            # Readable scenery such as the trail sign is information, not
-            # loot. Nearby enemies must not silently turn it into a locked
-            # container.
-            item["guards"] = []
-            continue
         center = item["rect"].center
         item["guards"] = [
             enemy for enemy in enemies

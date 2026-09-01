@@ -12,8 +12,6 @@ from src.ui.gear_icon import draw_gear, draw_medallion
 from src.systems.audio import (
     apply_music_volume, handle_music_shortcut, music_shortcut_label,
 )
-from src.systems import save_manager
-from src.systems.onboarding import opening_walkthrough_needed
 from src.ui.theme import (
     TIER_PRIMARY, TIER_SECONDARY, TIER_TERTIARY,
     UI_COLORS, draw_button, draw_panel, title_font, ui_font,
@@ -603,13 +601,9 @@ def paint_menu_backdrop(surface, t):
 def main_menu():
     from src.screens.intro import opening_walkthrough
 
-    # Orient a new player once. Returning from another menu or loading an
-    # existing save must not replay the introduction; HELP stays available
-    # for an explicit replay at any time.
-    if opening_walkthrough_needed(
-        save_manager.slot_exists, save_manager.NUM_SLOTS
-    ):
-        opening_walkthrough(screen)
+    # Consultation requirement: orient a first-time player before asking
+    # them to make sense of a menu. HELP can replay the same guide later.
+    opening_walkthrough(screen)
 
     show_settings = False
     settings_panel = SettingsPanel(screen)
@@ -678,12 +672,7 @@ def main_menu():
         dt = clock.tick(60) / 1000.0
         t = pygame.time.get_ticks() / 1000.0
         mouse_pos = pygame.mouse.get_pos()
-        # A modal owns the pointer. Keeping all underlying states cold avoids
-        # a main-menu button glowing through the settings panel.
-        hovers = [
-            (not show_settings) and rect.collidepoint(mouse_pos)
-            for rect in rects
-        ]
+        hovers = [r.collidepoint(mouse_pos) for r in rects]
         _update_icon_anims(dict(zip(icons, hovers)), dt)
 
         for event in pygame.event.get():
@@ -736,14 +725,6 @@ def main_menu():
                 settings_panel.handle_event(event)
                 show_settings = settings_panel.is_open
 
-        if show_settings:
-            # The modal can open after hover state was sampled at the start
-            # of this frame. Clear both the direct hover flags and their
-            # eased icon glow immediately, including on that opening frame.
-            hovers = [False] * len(rects)
-            for icon in icons:
-                _icon_anim[icon] = 0.0
-
         paint_menu_backdrop(screen, t)
 
         for rect, label, icon, h, seed, tier in zip(
@@ -754,13 +735,13 @@ def main_menu():
         _draw_mang_tahimik_tip(screen, t)
         # Persistent top-right help and settings controls are easier to find
         # than a settings row mixed into the primary menu actions.
-        gear_hover = not show_settings and gear_rect.collidepoint(mouse_pos)
+        gear_hover = gear_rect.collidepoint(mouse_pos)
         pygame.draw.circle(screen, UI_COLORS["stone"], gear_rect.center, 27)
         pygame.draw.circle(screen, UI_COLORS["blue_bright"] if gear_hover else UI_COLORS["bronze"],
                            gear_rect.center, 27, 2)
         draw_gear(screen, gear_rect.center, 25, spin_degrees=t * (80 if gear_hover else 18))
         draw_button(screen, help_rect, "HELP  ?", title_font(17),
-                    hovered=(not show_settings and help_rect.collidepoint(mouse_pos)))
+                    hovered=help_rect.collidepoint(mouse_pos))
         ver = _small.render("v1.0", True, WHITE)
         screen.blit(ver, (16, SCREEN_HEIGHT - ver.get_height() - 12))
         mute_hint = _small.render(music_shortcut_label(), True, UI_COLORS["text_dim"])

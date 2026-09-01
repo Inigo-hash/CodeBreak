@@ -16,14 +16,14 @@ PAGES = (
         ("No programming experience is required.", "Mang Tahimik will guide you step by step."),
     ),
     (
-        "FIND YOUR WAY AROUND",
-        "The main menu keeps every destination direct, so you can choose what you need before entering the island.",
-        ("START GAME = choose or create a save", "HOW TO PLAY = see every control  |  QUIT = close the game"),
+        "YOUR FIRST STEPS",
+        "Move, practise one attack, and solve a guided Hello, World! challenge before the real adventure begins.",
+        ("W A S D / Arrow keys = move", "E = attack/interact  |  SPACE = next dialogue line"),
     ),
     (
         "YOU CAN ALWAYS GET HELP",
-        "HELP and the settings gear are in the top-right corner. In Settings, hover over or select any ? to learn what that option changes.",
-        ("HELP ? reopens this walkthrough", "Top-right gear = settings in the menu or game  |  F10 = mute music"),
+        "The menu keeps the two important choices first: Start Game, then How To Play. Question marks explain unfamiliar settings.",
+        ("HELP ? reopens this walkthrough", "Gear = settings  |  F10 = mute background music"),
     ),
 )
 
@@ -62,7 +62,7 @@ def opening_walkthrough(screen, replay=False):
         250, button_font.size("OPEN MAIN MENU")[0] + 48
     )
     next_button = pygame.Rect(0, button_y, next_button_width, 48)
-    next_button.right = panel.right - 34
+    next_button.centerx = panel.centerx
     back_button_width = max(150, button_font.size("BACK")[0] + 48)
     back_button = pygame.Rect(
         panel.left + 34, button_y, back_button_width, 48

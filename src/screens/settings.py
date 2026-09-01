@@ -13,31 +13,11 @@ from src.ui.theme import UI_COLORS, body_font, draw_button, draw_panel, title_fo
 
 
 HELP_COPY = {
-    "font_size": (
-        "Font size controls how large interface text appears. Use - / +, "
-        "Left / Right, or select the number and type 12 to 28. A larger "
-        "value makes menus, lessons, and HUD text easier to read."
-    ),
-    "text_speed": (
-        "Text speed controls how quickly dialogue is revealed. Select Slow, "
-        "Normal, or Instant with the mouse or Left / Right. Instant shows "
-        "each dialogue line immediately."
-    ),
-    "music": (
-        "Music controls the background soundtrack volume. Drag or click the "
-        "slider, use - / +, or press Left / Right. Lower values make the "
-        "music quieter; F10 mutes or unmutes it."
-    ),
-    "sfx": (
-        "Sound Effects controls combat and interface sound volume. Drag or "
-        "click the slider, use - / +, or press Left / Right. Lower values "
-        "make effects quieter without changing the music."
-    ),
-    "theme": (
-        "Color Theme controls the coding editor's palette. Use either arrow "
-        "or Left / Right to choose Blue, Dark, or Light. The selected colors "
-        "apply whenever the editor opens."
-    ),
+    "font_size": "Use - / +, the arrow keys, or select the number and type a size from 12 to 28.",
+    "text_speed": "Select Slow, Normal, or Instant to control how quickly dialogue appears.",
+    "music": "Drag or click the slider, use - / +, or press Left / Right. F10 mutes or unmutes music.",
+    "sfx": "Drag or click the slider, use - / +, or press Left / Right to set sound-effects volume.",
+    "theme": "Use either arrow to change the coding editor's color combination.",
 }
 
 

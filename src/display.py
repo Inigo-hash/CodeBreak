@@ -1,9 +1,11 @@
-"""Fixed-resolution presentation that fills the window and maps the mouse."""
+"""Fixed-resolution presentation with aspect-safe scaling and mouse mapping."""
 
 import pygame
 
 BASE_WIDTH = 1920
 BASE_HEIGHT = 1080
+LETTERBOX_COLOR = (8, 9, 13)
+
 _window = None
 _canvas = None
 _original_flip = pygame.display.flip
@@ -14,13 +16,9 @@ _original_event_get = pygame.event.get
 
 def _viewport(window_size):
     width, height = window_size
-    safe_width = max(1, width)
-    safe_height = max(1, height)
-    # Fill both axes. The former uniform fit left black bands on monitors
-    # whose aspect ratio was not exactly 16:9. Independent presentation
-    # scales preserve the complete interface without bars or cropped edges.
-    scale = (safe_width / BASE_WIDTH, safe_height / BASE_HEIGHT)
-    return scale, (0, 0), (safe_width, safe_height)
+    scale = min(width / BASE_WIDTH, height / BASE_HEIGHT)
+    scaled = (max(1, round(BASE_WIDTH * scale)), max(1, round(BASE_HEIGHT * scale)))
+    return scale, ((width - scaled[0]) // 2, (height - scaled[1]) // 2), scaled
 
 
 def window_to_virtual(position):
@@ -30,12 +28,13 @@ def window_to_virtual(position):
     x, y = position[0] - offset[0], position[1] - offset[1]
     if x < 0 or y < 0 or x >= scaled[0] or y >= scaled[1]:
         return (-1, -1)
-    return (int(x / scale[0]), int(y / scale[1]))
+    return (int(x / scale), int(y / scale))
 
 
 def _present(*_args, **_kwargs):
     if _window is None or _canvas is None:
         return _original_flip()
+    _window.fill(LETTERBOX_COLOR)
     _scale, offset, size = _viewport(_window.get_size())
     image = pygame.transform.smoothscale(_canvas, size)
     _window.blit(image, offset)

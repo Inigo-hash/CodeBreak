@@ -397,29 +397,6 @@ Welcome, Alex!
         },
     },
 
-    # =========================================================
-    # Boolean Logic
-    # =========================================================
-
-    "boolean_logic_001": {
-        "id": "boolean_logic_001",
-        "title": "Boolean Logic",
-        "difficulty": "Beginner",
-        "type": "boolean_logic",
-        "problem": (
-            "Set has_key to True and gate_locked to False. Then create "
-            "can_enter using has_key and not gate_locked."
-        ),
-        "objective": "Combine boolean variables using and and not.",
-        "requirements": [],
-        "expected": {
-            "variables": {"has_key": True, "gate_locked": False},
-            "target": "can_enter",
-            "plain": "has_key",
-            "negated": "gate_locked",
-        },
-    },
-
 }
 
 

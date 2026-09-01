@@ -65,7 +65,7 @@ TEXT_DONE     = (120, 200, 140)
 # ---------------------------------------------------------------------------
 PANEL_WIDTH   = 460  # width of a drawn plaque, and the column's right edge
 EDGE_MARGIN   = 14   # gap from the right edge of the screen
-TOP_MARGIN    = 82   # clears the persistent gameplay settings gear
+TOP_MARGIN    = 40   # clears the "ESC = Pause" hint game.py draws at y=10
 BUTTON_HEIGHT = 42
 BUTTON_GAP    = 9    # wide enough that the plaques read as separate objects
 PLAQUE_BLEED  = 6    # room around the rect for the shadow and hover glow

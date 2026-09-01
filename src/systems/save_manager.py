@@ -137,9 +137,7 @@ def new_game_state() -> dict:
         "map_position": None,
         "inventory": [],
         "weapon_obtained": True,
-        # The starter sword is carried in the bag. Equipping it is a real
-        # player action rather than an invisible default state.
-        "weapon_equipped": False,
+        "weapon_equipped": True,
         # Discovered enemies/items and completed objectives for the stage
         # information panel. Filled in by StageProgress.to_dict() on save;
         # an empty dict here means "nothing discovered yet".

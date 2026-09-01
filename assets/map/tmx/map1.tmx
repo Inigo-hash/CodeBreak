@@ -1849,7 +1849,7 @@
   <object id="2869" gid="1469" x="1658" y="1540.73" width="16" height="16"/>
   <object id="2870" gid="1470" x="1674" y="1540.51" width="16" height="16"/>
  </objectgroup>
- <objectgroup id="7" name="Object Layer 1" locked="1">
+ <objectgroup id="7" name="Object Layer 1">
   <object id="22" x="834" y="1969.67" width="27.3334" height="28.3333">
    <properties>
     <property name="actions" value="search_barrel"/>
@@ -1859,6 +1859,7 @@
   <object id="26" x="498.333" y="1986" width="27" height="28.3333">
    <properties>
     <property name="actions" value="search_barrel"/>
+    <property name="topic_id" value="operators_lesson"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>
@@ -2906,7 +2907,6 @@
   <object id="1492" x="608.25" y="1040.25" width="31.5" height="31.75">
    <properties>
     <property name="actions" value="search_barrel"/>
-    <property name="topic_id" value="operators"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>
@@ -2920,7 +2920,6 @@
   <object id="1494" x="848.36" y="1270.18" width="31.8182" height="25.6364">
    <properties>
     <property name="actions" value="search_burrow"/>
-    <property name="topic_id" value="string_basics"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>
@@ -2934,7 +2933,7 @@
   <object id="1497" x="2336.18" y="998.18" width="31.6364" height="25.6364">
    <properties>
     <property name="actions" value="search_burrow"/>
-    <property name="topic_id" value="conditionals"/>
+    <property name="topic_id" value="control_flow_lesson"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>
@@ -2960,6 +2959,7 @@
   <object id="1501" x="672.25" y="948.5" width="31.75" height="27.25">
    <properties>
     <property name="actions" value="search_hay"/>
+    <property name="topic_id" value="strings_lesson"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>

@@ -286,92 +286,114 @@ Welcome, Alex!
     # Operators
     # =========================================================
 
-    "operators_001": {
-        "id": "operators_001",
-        "title": "Arithmetic Operators",
+    "operators_lesson_001": {
+        "id": "operators_lesson_001",
+        "title": "Operators",
         "difficulty": "Beginner",
         "type": "operator",
-        "problem": "Store the result of 12 + 8 inside a variable named total.",
-        "objective": "Create total using the + operator with 12 and 8.",
+        "problem": (
+            "Create a variable named score with the value 5. "
+            "Use += to add 3 to score. Then create passed by checking "
+            "if score is greater than or equal to 8."
+        ),
+        "objective": (
+            "Use an assignment operator and a comparison operator."
+        ),
         "requirements": [],
         "expected": {
-            "target": "total", "operator": "add",
-            "left": 12, "right": 8, "value": 20,
+            "target": "score",
+            "start_value": 5,
+            "operator": "add_assign",
+            "update_value": 3,
+            "final_value": 8,
+            "comparison_target": "passed",
+            "comparison_operator": "gte",
+            "comparison_value": 8,
+            "comparison_result": True,
         },
     },
 
-
     # =========================================================
-    # String Basics
+    # Strings
     # =========================================================
 
-    "string_basics_001": {
-        "id": "string_basics_001",
-        "title": "String Basics",
+    "strings_lesson_001": {
+        "id": "strings_lesson_001",
+        "title": "Strings",
         "difficulty": "Beginner",
         "type": "string",
         "problem": (
-            'Join "Code" and " Breaker" with + and store the result '
-            "inside a variable named title."
+            'Create a variable named game_name with the value "CodeBreak". '
+            'Create message using "Welcome to\\n" + game_name. '
+            'Then create result by converting message to uppercase '
+            'using .upper().'
         ),
-        "objective": "Create title by joining the two quoted strings.",
+        "objective": (
+            "Use string handling, a newline escape sequence, "
+            "and the .upper() string method."
+        ),
         "requirements": [],
         "expected": {
-            "target": "title",
-            "parts": ["Code", " Breaker"],
-            "value": "Code Breaker",
+            "name_target": "game_name",
+            "name_value": "CodeBreak",
+            "message_target": "message",
+            "prefix": "Welcome to\n",
+            "result_target": "result",
+            "method": "upper",
+            "result": "WELCOME TO\nCODEBREAK",
         },
     },
 
-
     # =========================================================
-    # If / Elif / Else
+    # Control Flow
     # =========================================================
 
-    "conditionals_001": {
-        "id": "conditionals_001",
-        "title": "If, Elif, and Else",
+    "control_flow_lesson_001": {
+        "id": "control_flow_lesson_001",
+        "title": "Control Flow",
         "difficulty": "Beginner",
-        "type": "conditional",
+        "type": "control_flow",
         "problem": (
-            "Set score to 85. Set rank to 'Gold' when score >= 90, "
-            "'Silver' when score >= 75, and 'Bronze' otherwise."
+            "Set score to 85 and has_key to True. "
+            "Create rank using an if/elif/else statement: "
+            "'Gold' when score >= 90, 'Silver' when score >= 75, "
+            "and 'Bronze' otherwise. Then create can_enter using "
+            "has_key and score >= 75."
         ),
-        "objective": "Use a complete if/elif/else chain to assign rank.",
+        "objective": (
+            "Use if/elif/else and boolean logic."
+        ),
         "requirements": [],
         "expected": {
-            "source": "score",
-            "source_value": 85,
-            "target": "rank",
+            "score_target": "score",
+            "score_value": 85,
+
+            "key_target": "has_key",
+            "key_value": True,
+
+            "rank_target": "rank",
+
             "branches": [
-                {"operator": "gte", "value": 90, "result": "Gold"},
-                {"operator": "gte", "value": 75, "result": "Silver"},
+                {
+                    "operator": "gte",
+                    "value": 90,
+                    "result": "Gold",
+                },
+                {
+                    "operator": "gte",
+                    "value": 75,
+                    "result": "Silver",
+                },
             ],
+
             "else_result": "Bronze",
-        },
-    },
 
-
-    # =========================================================
-    # Boolean Logic
-    # =========================================================
-
-    "boolean_logic_001": {
-        "id": "boolean_logic_001",
-        "title": "Boolean Logic",
-        "difficulty": "Beginner",
-        "type": "boolean_logic",
-        "problem": (
-            "Set has_key to True and gate_locked to False. Then create "
-            "can_enter using has_key and not gate_locked."
-        ),
-        "objective": "Combine boolean variables using and and not.",
-        "requirements": [],
-        "expected": {
-            "variables": {"has_key": True, "gate_locked": False},
-            "target": "can_enter",
-            "plain": "has_key",
-            "negated": "gate_locked",
+            "boolean_target": "can_enter",
+            "boolean_variable": "has_key",
+            "boolean_operator": "and",
+            "comparison_operator": "gte",
+            "comparison_value": 75,
+            "boolean_result": True,
         },
     },
 

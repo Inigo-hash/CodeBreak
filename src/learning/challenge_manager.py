@@ -11,7 +11,7 @@ from src.learning.validators.operator_validator import OperatorValidator
 from src.learning.validators.string_validator import StringValidator
 from src.learning.validators.conditional_validator import ConditionalValidator
 from src.learning.validators.boolean_logic_validator import BooleanLogicValidator
-
+from src.learning.validators.control_flow_validator import ControlFlowValidator
 
 class ChallengeManager:
 
@@ -51,8 +51,10 @@ class ChallengeManager:
                 ConditionalValidator(),
 
             "boolean_logic":
-                BooleanLogicValidator()
+                BooleanLogicValidator(),
 
+            "control_flow":
+                ControlFlowValidator()
         }
 
     def validate(self, challenge, code):

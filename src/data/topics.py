@@ -613,71 +613,211 @@ A basic f-string looks like:
 
 
     # =========================================================
-    # Arithmetic Operators
+    # Operators
     # =========================================================
 
-    "operators": {
-        "id": "operators",
-        "title": "Arithmetic Operators",
+    "operators_lesson": {
+        "id": "operators_lesson",
+        "title": "Operators",
         "difficulty": "Beginner",
         "lesson": """
 OPERATORS
 
-Operators tell Python to calculate with values.
+Operators are used to perform operations on values and variables.
+
+ARITHMETIC OPERATORS
+
+Basic math operations:
+
+    5 + 3 = 8
+    9 % 2 = 1
+    9 / 2 = 4.5
+
+Common arithmetic operators:
 
     +   addition
     -   subtraction
     *   multiplication
     /   division
+    %   remainder
 
-An expression can be stored in a variable:
+ASSIGNMENT OPERATORS
 
-    total = 12 + 8
+Assignment operators assign or update variable values.
 
-Python calculates the right side first, then stores the result.
+    x = 5
+    x += 3
+
+After x += 3, x becomes 8.
+
+You can also use:
+
+    -=
+    *=
+    /=
+
+COMPARISON OPERATORS
+
+Comparison operators compare two values and return True or False.
+
+    5 == 5     True
+    3 != 4     True
+    7 >= 10    False
+
+Common comparison operators:
+
+    ==   equal to
+    !=   not equal to
+    >    greater than
+    <    less than
+    >=   greater than or equal to
+    <=   less than or equal to
 """,
-        "challenge_id": "operators_001",
+        "challenge_id": "operators_lesson_001",
+
+        "requirements": [
+            "formatted_output"
+        ]
     },
 
 
     # =========================================================
-    # String Basics
+    # Strings
     # =========================================================
 
-    "string_basics": {
-        "id": "string_basics",
-        "title": "String Basics",
+    "strings_lesson": {
+        "id": "strings_lesson",
+        "title": "Strings",
         "difficulty": "Beginner",
         "lesson": """
-STRING BASICS
+STRINGS
 
-A string is text surrounded by quotation marks.
+Strings are used to store text in Python.
+
+A string is surrounded by quotation marks.
+
+Example:
 
     name = "Alex"
 
-The + operator joins strings. This is called concatenation.
+BASIC STRING HANDLING
 
-    title = "Code" + " Breaker"
+Strings can be stored in variables and joined together.
 
-Spaces inside quotation marks are part of the resulting text.
+Example:
+
+    first = "Code"
+    second = "Break"
+
+    title = first + second
+
+The + operator joins strings together.
+
+
+ESCAPE SEQUENCES
+
+Escape sequences allow special characters to be placed inside strings.
+
+A common escape sequence is:
+
+    \\n
+
+It creates a new line.
+
+Example:
+
+    message = "Hello\\nWorld"
+
+Output:
+
+    Hello
+    World
+
+Another common escape sequence is:
+
+    \\t
+
+It adds a tab space.
+
+
+BASIC STRING METHODS
+
+String methods can change or inspect text.
+
+.upper() converts text to uppercase.
+
+    name = "alex"
+    print(name.upper())
+
+.lower() converts text to lowercase.
+
+    name = "ALEX"
+    print(name.lower())
+
+.strip() removes extra spaces from the beginning and end.
+
+    name = "  Alex  "
+    print(name.strip())
+
+
+REMEMBER
+
+Strings store text.
+
+You can:
+
+    join strings with +
+    use escape sequences like \\n
+    use methods such as .upper(), .lower(), and .strip()
 """,
-        "challenge_id": "string_basics_001",
+        "challenge_id": "strings_lesson_001",
+
+        "requirements": [
+            "operators_lesson"
+        ]
     },
 
 
     # =========================================================
-    # If / Elif / Else
+    # Control Flow
     # =========================================================
 
-    "conditionals": {
-        "id": "conditionals",
-        "title": "If, Elif, and Else",
+    "control_flow_lesson": {
+        "id": "control_flow_lesson",
+        "title": "Control Flow",
         "difficulty": "Beginner",
         "lesson": """
-MAKING DECISIONS
+CONTROL FLOW
 
-An if statement runs a block when its condition is true.
-elif checks another condition. else handles everything remaining.
+Control flow allows a program to make decisions.
+
+Python can run different code depending on whether
+a condition is True or False.
+
+
+IF STATEMENT
+
+An if statement runs code when a condition is True.
+
+Example:
+
+    score = 90
+
+    if score >= 75:
+        print("Passed")
+
+
+IF / ELIF / ELSE
+
+elif checks another condition when the previous
+condition was False.
+
+else runs when none of the previous conditions
+were True.
+
+Example:
+
+    score = 85
 
     if score >= 90:
         rank = "Gold"
@@ -686,36 +826,78 @@ elif checks another condition. else handles everything remaining.
     else:
         rank = "Bronze"
 
-Each heading ends with a colon, and each body is indented.
-""",
-        "challenge_id": "conditionals_001",
-    },
 
-
-    # =========================================================
-    # Boolean Logic
-    # =========================================================
-
-    "boolean_logic": {
-        "id": "boolean_logic",
-        "title": "Boolean Logic",
-        "difficulty": "Beginner",
-        "lesson": """
 BOOLEAN LOGIC
 
-Booleans have only two values: True and False.
+Boolean logic allows multiple conditions to be
+combined together.
 
-Use and when both conditions must be true. Use not to reverse a value.
+The main boolean operators are:
 
-    can_enter = has_key and not gate_locked
+    and
+    or
+    not
 
-This is true only when the player has a key and the gate is not locked.
+
+AND
+
+and requires both conditions to be True.
+
+Example:
+
+    has_key = True
+    gate_locked = False
+
+    if has_key and not gate_locked:
+        print("You may enter")
+
+
+OR
+
+or requires at least one condition to be True.
+
+Example:
+
+    has_key = True
+    has_code = False
+
+    if has_key or has_code:
+        print("Access granted")
+
+
+NOT
+
+not reverses a Boolean value.
+
+Example:
+
+    gate_locked = False
+
+    if not gate_locked:
+        print("Gate is open")
+
+
+REMEMBER
+
+Control flow lets Python make decisions using:
+
+    if
+    elif
+    else
+
+Conditions can also use:
+
+    and
+    or
+    not
 """,
-        "challenge_id": "boolean_logic_001",
+        "challenge_id": "control_flow_lesson_001",
+
+        "requirements": [
+            "strings_lesson"
+        ]
     },
-
 }
-
 
 def get_topic(topic_id):
     """

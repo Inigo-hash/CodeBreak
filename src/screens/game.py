@@ -964,6 +964,7 @@ def game_screen(screen, slot_num=None, save_state=None):
     night_mode = WORLD_IS_NIGHT
 
     debug_boss_access = False
+    debug_enemy_bypass = False
     # F2 restores the optional atmospheric fog preview.
     fog_mode = False
     fog_drift_x = 0.0
@@ -1455,6 +1456,13 @@ def game_screen(screen, slot_num=None, save_state=None):
                         "ON" if debug_boss_access else "OFF"
                     )
 
+                elif DEBUG_MODE and event.key == pygame.K_F4 and not paused:
+                    debug_enemy_bypass = not debug_enemy_bypass
+                    print(
+                        "Enemy debug bypass:",
+                        "ON" if debug_enemy_bypass else "OFF"
+                    )
+
                 elif event.key == pygame.K_m and not paused:
                     # M opens the full paper chart. It is handed the same
                     # baked texture and zone rects the minimap draws from,
@@ -1771,36 +1779,59 @@ def game_screen(screen, slot_num=None, save_state=None):
 
         # --- Independent enemy AI and combat resolution ---
         engaged = False
+
         for enemy in enemies:
-            # Manananggal fly over trees and props. They still respect their
-            # encounter/map bounds and avoid other living enemies, so flight
-            # fixes terrain snags without letting a whole group stack up.
             terrain_blockers = (
                 [] if enemy.flies_over_terrain else collision_rects
             )
+
             enemy_blockers = terrain_blockers + [
                 other.rect for other in enemies
-                if other is not enemy and other.active
+                if other is not enemy
+                and other.active
                 and other.state != "defeated"
             ]
+
             incoming_damage = enemy.update(
-                dt, player_rect, enemy_blockers, map_width, map_height,
+                dt,
+                player_rect,
+                enemy_blockers,
+                map_width,
+                map_height,
                 navigation_rects=terrain_blockers,
             )
+
             if enemy.just_started_attack:
                 combat_audio.play("enemy_attack")
-            engaged = engaged or enemy.engaged
-            if incoming_damage:
+
+            # F4 bypass means enemies do not put the player
+            # into the engaged state.
+            engaged = engaged or (
+                enemy.engaged and not debug_enemy_bypass
+            )
+
+            # F4 bypass means enemies deal no damage.
+            if incoming_damage and not debug_enemy_bypass:
                 if player_combat.take_damage(incoming_damage):
                     combat_audio.play(
-                        "player_death" if player_combat.hp == 0 else "player_hurt"
+                        "player_death"
+                        if player_combat.hp == 0
+                        else "player_hurt"
                     )
 
             enemy_dx = enemy.center_x - player_rect.centerx
             enemy_dy = enemy.center_y - player_rect.centery
-            if enemy_dx * enemy_dx + enemy_dy * enemy_dy <= ENEMY_SIGHT_RANGE ** 2:
+
+            if (
+                enemy_dx * enemy_dx
+                + enemy_dy * enemy_dy
+                <= ENEMY_SIGHT_RANGE ** 2
+            ):
                 if stage_progress.discover_enemy(enemy.enemy_id):
-                    stage_progress.sync_objectives(stage, save_challenges_passed)
+                    stage_progress.sync_objectives(
+                        stage,
+                        save_challenges_passed
+                    )
 
         if player_combat.attack_active:
             hitbox = attack_hitbox(player_rect, main_character.facing)
@@ -1971,7 +2002,8 @@ def game_screen(screen, slot_num=None, save_state=None):
 
         # --- Handle E key hold ---
         blocking_guards = []
-        if near_interactable:
+
+        if near_interactable and not debug_enemy_bypass:
             blocking_guards = remaining_guards(near_interactable)
 
         if near_interactable and blocking_guards:

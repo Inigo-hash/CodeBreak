@@ -308,9 +308,16 @@ def run_user_code(
     finally:
         sys.settrace(None)
 
+    user_variables = {
+        name: value
+        for name, value in sandbox_globals.items()
+        if not name.startswith("__")
+    }
+
     return {
         "success": True,
         "output": output_buffer.getvalue(),
         "error": None,
         "globals": sandbox_globals,
+        "variables": user_variables,
     }

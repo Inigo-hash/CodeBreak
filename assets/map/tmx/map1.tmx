@@ -2940,7 +2940,6 @@
   <object id="1498" x="2464.18" y="1414.36" width="31.6364" height="25.6364">
    <properties>
     <property name="actions" value="search_burrow"/>
-    <property name="topic_id" value="boolean_logic"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>
@@ -2988,8 +2987,6 @@
   <object id="1505" x="2319.3" y="1759.67" width="31.75" height="31.875">
    <properties>
     <property name="actions" value="search_chest"/>
-    <property name="topic_id" value="boolean_logic"/>
-    <property name="trap_seconds" type="int" value="15"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>

@@ -14,6 +14,15 @@ NUM_SLOTS = 3
 PASSWORD_MIN_LENGTH = 4
 PASSWORD_ROUNDS = 180_000
 
+TOPIC_ID_MIGRATIONS = {
+    "operators": "operators_lesson",
+    "string_basics": "strings_lesson",
+}
+
+CHALLENGE_ID_MIGRATIONS = {
+    "operators_001": "operators_lesson_001",
+    "string_basics_001": "strings_lesson_001",
+}
 
 def _ensure_save_dir() -> None:
     os.makedirs(SAVE_DIR, exist_ok=True)
@@ -26,12 +35,102 @@ def _slot_path(slot: int) -> str:
 def slot_exists(slot: int) -> bool:
     return os.path.isfile(_slot_path(slot))
 
+def _unique(values):
+    """Remove duplicates while keeping the original order."""
+    return list(dict.fromkeys(values))
+
+
+def migrate_save_state(state: dict) -> dict:
+    """Update old topic/challenge IDs to the current format."""
+
+    # ---------------------------------------------------------
+    # Topic IDs
+    # ---------------------------------------------------------
+
+    for field in (
+        "topics_discovered",
+        "topics_completed",
+        "stored_topics",
+        "inventory",
+    ):
+        values = state.get(field)
+
+        if not isinstance(values, list):
+            continue
+
+        migrated = [
+            TOPIC_ID_MIGRATIONS.get(value, value)
+            for value in values
+        ]
+
+        # Either old Control Flow topic counts as having discovered/stored
+        # the new combined topic.
+        if field in ("topics_discovered", "stored_topics", "inventory"):
+            if "conditionals" in values or "boolean_logic" in values:
+                migrated.append("control_flow_lesson")
+
+        # Completing BOTH old lessons means the combined lesson was completed.
+        if field == "topics_completed":
+            if (
+                "conditionals" in values
+                and "boolean_logic" in values
+            ):
+                migrated.append("control_flow_lesson")
+
+        migrated = [
+            value
+            for value in migrated
+            if value not in ("conditionals", "boolean_logic")
+        ]
+
+        state[field] = _unique(migrated)
+
+    # ---------------------------------------------------------
+    # Challenge IDs
+    # ---------------------------------------------------------
+
+    passed = state.get("challenges_passed", [])
+
+    if isinstance(passed, list):
+
+        migrated_passed = [
+            CHALLENGE_ID_MIGRATIONS.get(value, value)
+            for value in passed
+        ]
+
+        # The player must have completed both old challenges before
+        # receiving credit for the new combined Control Flow challenge.
+        if (
+            "conditionals_001" in passed
+            and "boolean_logic_001" in passed
+        ):
+            migrated_passed.append(
+                "control_flow_lesson_001"
+            )
+
+        migrated_passed = [
+            value
+            for value in migrated_passed
+            if value not in (
+                "conditionals_001",
+                "boolean_logic_001",
+            )
+        ]
+
+        state["challenges_passed"] = _unique(
+            migrated_passed
+        )
+
+    return state
 
 def load_slot(slot: int):
     if not slot_exists(slot):
         return None
+
     with open(_slot_path(slot), "r") as f:
-        return json.load(f)
+        state = json.load(f)
+
+    return migrate_save_state(state)
 
 
 def save_slot(slot: int, state: dict) -> None:
@@ -130,12 +229,13 @@ def new_game_state() -> dict:
         "stage": "Island",
         "hearts": 5,
         "keys": 0,
+        "topics_discovered": [],
         "topics_completed": [],
         "bonus_time": 0,
         "challenges_passed": [],
         "completed_stages": [],
         "map_position": None,
-        "inventory": [],
+        "stored_topics": [],
         "weapon_obtained": True,
         "weapon_equipped": True,
         # Discovered enemies/items and completed objectives for the stage

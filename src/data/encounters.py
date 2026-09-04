@@ -57,7 +57,7 @@ BEGINNER_STAGE_ENCOUNTERS = (
     {
         "id": "upper_right_center",
         "anchor": (0.724681, 0.450000),
-        "topic_id": "operators",
+        "topic_id": "operators_lesson",
         "zone_size": (400, 340),
         "enemies": ("manananggal", "tikbalang") * 3
     },
@@ -65,7 +65,7 @@ BEGINNER_STAGE_ENCOUNTERS = (
     {
         "id": "top_right",
         "anchor": (0.772340, 0.256250),
-        "topic_id": "string_basics",
+        "topic_id": "strings_lesson",
         "zone_size": (380, 320),
         "enemies": (
             "manananggal",
@@ -77,7 +77,7 @@ BEGINNER_STAGE_ENCOUNTERS = (
     {
         "id": "top_left",
         "anchor": (0.302553, 0.281250),
-        "topic_id": "conditionals",
+        "topic_id": "control_flow_lesson",
         "zone_size": (420, 340),
         "enemies": (
             "tikbalang",
@@ -87,6 +87,6 @@ BEGINNER_STAGE_ENCOUNTERS = (
     },
 )
 
-# Core dirt tiles from Ground Layer 1 in basic.tmx. Grass is intentionally
+# Core dirt tiles from Ground Layer 1 in map1.tmx.
 # walkable for the player, so collision properties cannot identify paths.
 BEGINNER_PATH_GIDS = frozenset((20, 21, 38, 39))

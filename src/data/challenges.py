@@ -237,6 +237,27 @@ as the test input.
             "Alex"
         ],
 
+        "hidden_tests": [
+            {
+                "input_values": ["Maria"],
+                "runtime_expected": {
+                    "name": "Maria",
+                },
+            },
+            {
+                "input_values": ["John"],
+                "runtime_expected": {
+                    "name": "John",
+                },
+            },
+            {
+                "input_values": ["CodeBreaker"],
+                "runtime_expected": {
+                    "name": "CodeBreaker",
+                },
+            },
+        ],
+
         "expected": {
             "target": "name",
             "prompt": "Enter your name: "
@@ -300,6 +321,12 @@ Welcome, Alex!
             "Use an assignment operator and a comparison operator."
         ),
         "requirements": [],
+        "hints": [
+            "Start by creating score and assigning it the value 5.",
+            "Use += to increase the current value of score by 3.",
+            "Create a Boolean variable named passed by comparing score with 8.",
+            "Use this shape: passed = score >= 8.",
+        ],
         "expected": {
             "target": "score",
             "start_value": 5,
@@ -310,6 +337,11 @@ Welcome, Alex!
             "comparison_operator": "gte",
             "comparison_value": 8,
             "comparison_result": True,
+        },
+
+        "runtime_expected": {
+            "score": 8,
+            "passed": True,
         },
     },
 
@@ -333,6 +365,12 @@ Welcome, Alex!
             "and the .upper() string method."
         ),
         "requirements": [],
+        "hints": [
+            'Start by creating game_name with the value "CodeBreak".',
+            r'Use "Welcome to\n" + game_name to create message.',
+            "Call the .upper() method on message.",
+            "Store the uppercase result using: result = message.upper().",
+        ],
         "expected": {
             "name_target": "game_name",
             "name_value": "CodeBreak",
@@ -340,6 +378,12 @@ Welcome, Alex!
             "prefix": "Welcome to\n",
             "result_target": "result",
             "method": "upper",
+            "result": "WELCOME TO\nCODEBREAK",
+        },
+
+        "runtime_expected": {
+            "game_name": "CodeBreak",
+            "message": "Welcome to\nCodeBreak",
             "result": "WELCOME TO\nCODEBREAK",
         },
     },
@@ -364,6 +408,12 @@ Welcome, Alex!
             "Use if/elif/else and boolean logic."
         ),
         "requirements": [],
+        "hints": [
+            "Create score = 85 and has_key = True first.",
+            "Use if, elif, and else to assign Gold, Silver, or Bronze to rank.",
+            "The first condition checks score >= 90 and the elif checks score >= 75.",
+            "After the decision, create can_enter using: has_key and score >= 75.",
+        ],
         "expected": {
             "score_target": "score",
             "score_value": 85,
@@ -394,6 +444,13 @@ Welcome, Alex!
             "comparison_operator": "gte",
             "comparison_value": 75,
             "boolean_result": True,
+        },
+
+        "runtime_expected": {
+            "score": 85,
+            "has_key": True,
+            "rank": "Silver",
+            "can_enter": True,
         },
     },
 

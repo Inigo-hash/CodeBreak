@@ -153,10 +153,9 @@ STAGES = {
                 "type_casting_001",
                 "input_lesson_001",
                 "formatted_output_001",
-                "operators_001",
-                "string_basics_001",
-                "conditionals_001",
-                "boolean_logic_001",
+                "operators_lesson_001",
+                "strings_lesson_001",
+                "control_flow_lesson_001",
             ],
 
             "tips": [
@@ -188,14 +187,14 @@ STAGES = {
 
         # The castle doorway in the Corrupted Core is the stage exit. Its
         # rectangle is fractional, like zone rectangles, so it stays aligned
-        # if the TMX dimensions change. Ten keys alone are not sufficient:
+        # if the TMX dimensions change. Nine keys alone are not sufficient:
         # every lesson listed in manual.topics must also be completed.
         "completion": {
-            "required_keys": 10,
+            "required_keys": 9,
             "required_boss": "corrupted_core_kapre",
             "exit_name": "Corrupted Core Gate",
             "exit_rect": (0.544255, 0.231250, 0.023830, 0.028125),
-            # Ten beginner lessons award one key each. Keeping rewards
+            # Nine beginner lessons award one key each. Keeping rewards
             # authored here makes save migration deterministic.
             "topic_key_rewards": {
                 "python_syntax_basics_001": 1,
@@ -204,10 +203,9 @@ STAGES = {
                 "type_casting_001": 1,
                 "input_lesson_001": 1,
                 "formatted_output_001": 1,
-                "operators_001": 1,
-                "string_basics_001": 1,
-                "conditionals_001": 1,
-                "boolean_logic_001": 1,
+                "operators_lesson_001": 1,
+                "strings_lesson_001": 1,
+                "control_flow_lesson_001": 1,
             },
         },
 
@@ -270,30 +268,23 @@ STAGES = {
             },
             {
                 "id": "island_operators",
-                "text": "Repair the Arithmetic Operators terminal.",
+                "text": "Repair the Operators terminal.",
                 "kind": "challenge",
-                "target": "operators_001",
+                "target": "operators_lesson_001",
                 "optional": False,
             },
             {
                 "id": "island_strings",
-                "text": "Repair the String Basics terminal.",
+                "text": "Repair the Strings terminal.",
                 "kind": "challenge",
-                "target": "string_basics_001",
+                "target": "strings_lesson_001",
                 "optional": False,
             },
             {
-                "id": "island_conditionals",
-                "text": "Repair the If, Elif, and Else terminal.",
+                "id": "island_control_flow",
+                "text": "Repair the Control Flow terminal.",
                 "kind": "challenge",
-                "target": "conditionals_001",
-                "optional": False,
-            },
-            {
-                "id": "island_boolean_logic",
-                "text": "Repair the Boolean Logic terminal.",
-                "kind": "challenge",
-                "target": "boolean_logic_001",
+                "target": "control_flow_lesson_001",
                 "optional": False,
             },
             {

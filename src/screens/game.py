@@ -287,7 +287,11 @@ def game_screen(screen, slot_num=None, save_state=None):
     # this loop drains hearts or grants keys yet; inventory items aren't
     # restored either, since Item icons aren't currently serializable.)
     gameplay_state = {
-        "hearts": 5, "keys": 0, "topics_completed": [], "bonus_time": 0,
+        "hearts": 5,
+        "keys": 0,
+        "topics_discovered": [],
+        "topics_completed": [],
+        "bonus_time": 0,
         "completed_stages": [],
     }
     save_challenges_passed = []
@@ -297,6 +301,7 @@ def game_screen(screen, slot_num=None, save_state=None):
     if save_state:
         gameplay_state["hearts"] = save_state.get("hearts", gameplay_state["hearts"])
         gameplay_state["keys"] = save_state.get("keys", gameplay_state["keys"])
+        gameplay_state["topics_discovered"] = list(save_state.get("topics_discovered", []))
         gameplay_state["topics_completed"] = list(save_state.get("topics_completed", []))
         gameplay_state["bonus_time"] = save_state.get("bonus_time", 0)
         gameplay_state["completed_stages"] = list(
@@ -399,13 +404,14 @@ def game_screen(screen, slot_num=None, save_state=None):
             "stage": save_stage,
             "hearts": gameplay_state["hearts"],
             "keys": gameplay_state["keys"],
+            "topics_discovered": gameplay_state["topics_discovered"],
             "topics_completed": gameplay_state["topics_completed"],
             "bonus_time": gameplay_state["bonus_time"],
             "challenges_passed": save_challenges_passed,
             "completed_stages": gameplay_state["completed_stages"],
             "map_layout_version": MAP_LAYOUT_VERSION,
             "map_position": [player_x, player_y],
-            "inventory": player_inventory.get_stored_topic_ids(),
+            "stored_topics": player_inventory.get_stored_topic_ids(),
             "weapon_obtained": player_inventory.weapon_obtained,
             "weapon_equipped": player_inventory.weapon_equipped,
             "stage_progress": stage_progress.to_dict(),
@@ -450,8 +456,8 @@ def game_screen(screen, slot_num=None, save_state=None):
     if save_state:
 
         saved_inventory = save_state.get(
-            "inventory",
-            []
+            "stored_topics",
+            save_state.get("inventory", [])
         )
 
         if isinstance(saved_inventory, list):
@@ -482,6 +488,10 @@ def game_screen(screen, slot_num=None, save_state=None):
     # ---------------------------------------------------------
 
     handled_topic_ids = set(
+        gameplay_state["topics_discovered"]
+    )
+
+    handled_topic_ids.update(
         saved_topic_ids
     )
 
@@ -2053,7 +2063,10 @@ def game_screen(screen, slot_num=None, save_state=None):
                         topic_id
                         and not near_interactable['topic_handled']
                     ):
-                        
+
+                        if topic_id not in gameplay_state["topics_discovered"]:
+                            gameplay_state["topics_discovered"].append(topic_id)
+
                         background_snapshot = screen.copy()
 
                         while True:

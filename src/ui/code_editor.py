@@ -852,10 +852,18 @@ class CodeEditor:
                 self.output_panel.add(line, TEXT_COLOR)
 
         if result["success"]:
-            self.output_panel.add(
-                "Code ran successfully. Check the result, then select SUBMIT.",
-                SUCCESS_COLOR,
-            )
+            self.output_panel.add("Ran successfully.", SUCCESS_COLOR)
+
+            variables = result.get("variables", {})
+
+            if variables:
+                self.output_panel.add("", TEXT_COLOR)
+
+                for name, value in variables.items():
+                    self.output_panel.add(
+                        f"{name} = {repr(value)}",
+                        TEXT_COLOR,
+                    )
         else:
             self.output_panel.add(result["error"], ERROR_COLOR)
             self.output_panel.add(
@@ -891,12 +899,10 @@ class CodeEditor:
         # finished running - no point checking it against the
         # challenge, since there's nothing valid to check yet.
         if not result["success"]:
-            hint_level = self.renderer.problem_panel.record_failure()
             self.output_panel.add(result["error"], ERROR_COLOR)
-            self.output_panel.add("Submission not completed.", ERROR_COLOR)
             self.output_panel.add(
-                f"Hint {hint_level} of 4 unlocked in the Objective panel.",
-                SUCCESS_COLOR,
+                "Submission not completed. Fix the code and try again.",
+                ERROR_COLOR,
             )
             self._show_submission_feedback(
                 False,
@@ -906,13 +912,63 @@ class CodeEditor:
             )
             return
 
-        # Passes the raw source code (not the sandbox's runtime
-        # globals) since ChallengeManager's validators work by
-        # parsing the code's AST, not by inspecting variable values.
+        # Validate both the source structure and the runtime
+        # values collected safely by the sandbox.
         passed, feedback = self.challenge_manager.validate(
             self.challenge,
-            code
+            code,
+            variables=result.get("variables", {})
         )
+
+        # ---------------------------------------------------------
+        # Hidden runtime tests
+        # ---------------------------------------------------------
+
+        if passed:
+
+            hidden_tests = self.challenge.get(
+                "hidden_tests",
+                []
+            )
+
+            for hidden_test in hidden_tests:
+
+                hidden_result = run_user_code(
+                    code,
+                    input_values=hidden_test.get(
+                        "input_values",
+                        []
+                    )
+                )
+
+                if not hidden_result["success"]:
+                    passed = False
+                    feedback = (
+                        "Your code worked with the example input, "
+                        "but failed another test case."
+                    )
+                    break
+
+                runtime_passed, _ = (
+                    self.challenge_manager.validate_runtime(
+                        hidden_test.get(
+                            "runtime_expected",
+                            {}
+                        ),
+                        hidden_result.get(
+                            "variables",
+                            {}
+                        ),
+                    )
+                )
+
+                if not runtime_passed:
+                    passed = False
+                    feedback = (
+                        "Your code worked with the example input, "
+                        "but did not work correctly with another test value."
+                    )
+                    break
 
         if passed:
             self.solved = True

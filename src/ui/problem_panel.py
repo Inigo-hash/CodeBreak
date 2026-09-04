@@ -100,17 +100,11 @@ DEFAULT_HINTS = {
         "Keep required spaces inside one of the quoted pieces.",
         "Assign the complete joined string to the requested variable.",
     ),
-    "conditional": (
-        "Use if, elif, and else to choose between outcomes.",
-        "Each condition ends with a colon and its body is indented.",
-        "elif is attached to the first if; else has no condition.",
-        "Assign the requested result in all three branches.",
-    ),
-    "boolean_logic": (
-        "Boolean values are True or False.",
-        "Use and when both conditions must be true.",
-        "Use not to reverse a boolean value.",
-        "Build the requested expression with both named variables, and, and not.",
+    "control_flow": (
+        "Use if, elif, and else when the program needs to choose between outcomes.",
+        "Each if or elif condition ends with a colon, and its body must be indented.",
+        "Boolean expressions can combine conditions using and, or, and not.",
+        "Check every condition, branch result, and Boolean expression against the problem.",
     ),
 }
 

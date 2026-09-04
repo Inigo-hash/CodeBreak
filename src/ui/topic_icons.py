@@ -21,10 +21,9 @@ TOPIC_ICON_STYLES = {
     "type_casting": ("int", (235, 129, 72)),
     "input_lesson": (">?", (72, 207, 207)),
     "formatted_output": ("f{}", (170, 117, 229)),
-    "operators": ("+-", (231, 91, 91)),
-    "string_basics": ('"A"', (76, 190, 164)),
-    "conditionals": ("if", (239, 158, 64)),
-    "boolean_logic": ("&&", (133, 137, 238)),
+    "operators_lesson": ("+-", (231, 91, 91)),
+    "strings_lesson": ('"A"', (76, 190, 164)),
+    "control_flow_lesson": ("if", (239, 158, 64)),
 }
 
 DEFAULT_TOPIC_STYLE = ("<>", (120, 205, 255))

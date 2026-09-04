@@ -19,17 +19,28 @@ VALID_SOLUTIONS = {
     "formatted_output_001": (
         'name = "Alex"\nprint(f"Welcome, {name}!")'
     ),
-    "operators_001": "total = 12 + 8",
-    "string_basics_001": 'title = "Code" + " Breaker"',
-    "conditionals_001": (
-        'score = 85\n'
-        'if score >= 90:\n    rank = "Gold"\n'
-        'elif score >= 75:\n    rank = "Silver"\n'
-        'else:\n    rank = "Bronze"'
+    "operators_lesson_001": (
+        "score = 5\n"
+        "score += 3\n"
+        "passed = score >= 8"
     ),
-    "boolean_logic_001": (
-        "has_key = True\ngate_locked = False\n"
-        "can_enter = has_key and not gate_locked"
+
+    "strings_lesson_001": (
+        'game_name = "CodeBreak"\n'
+        'message = "Welcome to\\n" + game_name\n'
+        'result = message.upper()'
+    ),
+
+    "control_flow_lesson_001": (
+        "score = 85\n"
+        "has_key = True\n"
+        "if score >= 90:\n"
+        '    rank = "Gold"\n'
+        "elif score >= 75:\n"
+        '    rank = "Silver"\n'
+        "else:\n"
+        '    rank = "Bronze"\n'
+        "can_enter = has_key and score >= 75"
     ),
 }
 
@@ -47,9 +58,46 @@ class LearningChallengeTests(unittest.TestCase):
                 )
                 self.assertTrue(execution["success"], execution.get("error"))
 
-                passed, feedback = manager.validate(challenge, code)
+                passed, feedback = manager.validate(
+                    challenge,
+                    code,
+                    variables=execution.get("variables", {})
+                )
                 self.assertTrue(passed, feedback)
                 self.assertTrue(feedback.strip())
+
+                for hidden_test in challenge.get("hidden_tests", []):
+
+                    hidden_execution = run_user_code(
+                        code,
+                        input_values=hidden_test.get(
+                            "input_values",
+                            []
+                        ),
+                    )
+
+                    self.assertTrue(
+                        hidden_execution["success"],
+                        hidden_execution.get("error"),
+                    )
+
+                    runtime_passed, runtime_feedback = (
+                        manager.validate_runtime(
+                            hidden_test.get(
+                                "runtime_expected",
+                                {}
+                            ),
+                            hidden_execution.get(
+                                "variables",
+                                {}
+                            ),
+                        )
+                    )
+
+                    self.assertTrue(
+                        runtime_passed,
+                        runtime_feedback,
+                    )
 
     def test_invalid_answers_return_actionable_feedback(self):
         manager = ChallengeManager()
@@ -63,22 +111,52 @@ class LearningChallengeTests(unittest.TestCase):
             "formatted_output_001": (
                 'name = "Alex"\nprint("Welcome, Alex!")'
             ),
-            "operators_001": "total = 12 - 8",
-            "string_basics_001": 'title = "Code Breaker"',
-            "conditionals_001": (
-                'score = 85\nif score >= 75:\n    rank = "Silver"'
+            "operators_lesson_001": (
+                "score = 5\n"
+                "score -= 3\n"
+                "passed = score >= 8"
             ),
-            "boolean_logic_001": (
-                "has_key = True\ngate_locked = False\n"
-                "can_enter = has_key or gate_locked"
+
+            "strings_lesson_001": (
+                'game_name = "CodeBreak"\n'
+                'message = "Welcome to\\n" + game_name\n'
+                'result = message.lower()'
+            ),
+
+            "control_flow_lesson_001": (
+                "score = 85\n"
+                "has_key = True\n"
+                "if score >= 90:\n"
+                '    rank = "Gold"\n'
+                "elif score >= 75:\n"
+                '    rank = "Silver"\n'
+                "else:\n"
+                '    rank = "Bronze"\n'
+                "can_enter = has_key or score >= 75"
             ),
         }
 
         for challenge_id, code in invalid_solutions.items():
             with self.subTest(challenge=challenge_id):
-                passed, feedback = manager.validate(
-                    CHALLENGES[challenge_id], code
+                challenge = CHALLENGES[challenge_id]
+
+                execution = run_user_code(
+                    code,
+                    input_values=challenge.get("test_inputs", [])
                 )
+
+                variables = (
+                    execution.get("variables", {})
+                    if execution["success"]
+                    else {}
+                )
+
+                passed, feedback = manager.validate(
+                    challenge,
+                    code,
+                    variables=variables
+                )
+
                 self.assertFalse(passed)
                 self.assertGreater(len(feedback.strip()), 5)
 

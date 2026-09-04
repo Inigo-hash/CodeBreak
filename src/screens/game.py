@@ -14,6 +14,7 @@ from src.screens.game_over import game_over_screen
 from src.screens.profile import profile_screen
 from src.screens.inventory import PlayerInventory, Toolbar, open_inventory
 from src.screens.stage_info import open_stage_info
+from src.screens.practice_topics import open_practice_topics
 from src.screens.world_map import enemy_is_tracking_player, open_world_map
 from src.systems import save_manager
 from src.systems.stage_progress import StageProgress
@@ -41,6 +42,11 @@ from src.screens.topic_found import open_topic_found
 from src.screens.topic_requirements import open_topic_requirements
 from src.data.topics import get_topic
 from src.data.challenges import get_challenge
+from src.learning.practice_manager import PracticeManager
+from src.data.practice_templates import (
+    get_topic_template_ids,
+    generate_practice_challenge,
+)
 from src.data.enemies import get_enemy
 from src.screens.topic_lesson import open_topic_lesson
 from src.systems.enemy_spawns import resolve_encounter_spawns
@@ -63,8 +69,8 @@ from src.systems.boss_trigger import (
     should_trigger_boss,
 )
 from src.systems.stage_gate import (
-    award_topic_keys, evaluate_boss_access, evaluate_stage_gate,
-    migrate_key_count,
+    evaluate_boss_access,
+    evaluate_stage_gate,
 )
 
 
@@ -155,6 +161,8 @@ def nearest_interactable(player_rect, interactables, reach=32):
 
 def game_screen(screen, slot_num=None, save_state=None):
     clock = pygame.time.Clock()
+
+    TARGET_FPS = 120
 
     # Which stage this run is, and everything needed to load it: map,
     # music, spawn, zones, encounters and walkable ground all come from
@@ -371,9 +379,7 @@ def game_screen(screen, slot_num=None, save_state=None):
     # has found so far, and is what decides whether the panel prints a
     # real entry or a "???" placeholder. `stage` itself is resolved at the
     # top of this function, because loading the map already needed it.
-    gameplay_state["keys"] = migrate_key_count(
-        gameplay_state["keys"], stage, save_challenges_passed
-    )
+    # Keys are earned by clearing enemy encounters, not completing topics.
     stage_progress = StageProgress.from_dict(save_stage_progress)
     # Catches up on anything already satisfied by an older save (e.g. a
     # challenge passed before objectives existed).
@@ -530,6 +536,7 @@ def game_screen(screen, slot_num=None, save_state=None):
     # Objectives are still tracked in `stage_progress`; they are read on
     # the OBJECTIVES tab rather than from a box on the HUD.
     stage_panel = StagePanel(screen)
+    practice_manager = PracticeManager()
     loading.update(54, f"Lighting {stage_name} paths...")
 
     def open_topic_flow(
@@ -643,10 +650,6 @@ def game_screen(screen, slot_num=None, save_state=None):
 
                 save_challenges_passed.append(
                     challenge_id
-                )
-
-                gameplay_state["keys"] = award_topic_keys(
-                    gameplay_state["keys"], stage, challenge_id
                 )
 
             if (
@@ -1332,7 +1335,13 @@ def game_screen(screen, slot_num=None, save_state=None):
     engaged = False
     loading.finish()
     while running:
-        dt = clock.tick(60) / 1000.0
+        dt = clock.tick(TARGET_FPS) / 1000.0
+
+        # Prevent one bad frame from causing a huge movement/update jump.
+        dt = min(dt, 1.0 / 30.0)
+
+        # Keeps old movement speeds identical to how they felt at 60 FPS.
+        frame_scale = dt * 60.0
         boss_phase_effect_timer = max(0.0, boss_phase_effect_timer - dt)
         mouse_pos = pygame.mouse.get_pos()
 
@@ -1356,14 +1365,65 @@ def game_screen(screen, slot_num=None, save_state=None):
             # leaves the decision here, the same way the B inventory is
             # opened from this loop.
             if not paused:
-                requested_tab = stage_panel.handle_event(event)
-                if requested_tab:
+                requested_action = stage_panel.handle_event(event)
+
+                if requested_action:
+
+                    # Code Practice is its own feature, not a Stage
+                    # Information tab.
+                    if requested_action == "practice":
+
+                        practice_background = screen.copy()
+
+                        selected_topic_id = open_practice_topics(
+                            screen,
+                            stage,
+                            gameplay_state["topics_completed"],
+                            background=practice_background,
+                        )
+
+                        if selected_topic_id is not None:
+
+                            template_ids = get_topic_template_ids(
+                                selected_topic_id
+                            )
+
+                            template_id = practice_manager.choose_template(
+                                selected_topic_id,
+                                template_ids,
+                            )
+
+                            if template_id is None:
+                                continue
+
+                            practice_challenge = generate_practice_challenge(
+                                template_id
+                            )
+
+                            if practice_challenge is None:
+                                continue
+
+                            editor = CodeEditor(
+                                screen,
+                                practice_challenge,
+                                screen.copy(),
+                                mode="practice",
+                            )
+
+                            editor.run()
+
+                        continue
+
                     background_snapshot = screen.copy()
+
                     open_stage_info(
-                        screen, stage, stage_progress,
+                        screen,
+                        stage,
+                        stage_progress,
                         background=background_snapshot,
-                        tab=requested_tab
+                        tab=requested_action
                     )
+
                     continue
 
             # The pause settings panel takes every key while it is open,
@@ -1638,11 +1698,25 @@ def game_screen(screen, slot_num=None, save_state=None):
         if player_combat.state in ("attacking", "flinch", "defeated"):
             dx = dy = 0
         elif player_combat.state == "dodging":
-            dodge_dx, dodge_dy = FACING_VECTORS.get(main_character.facing, (1, 0))
-            dx, dy = dodge_dx * PLAYER_DODGE_SPEED, dodge_dy * PLAYER_DODGE_SPEED
+            dodge_dx, dodge_dy = FACING_VECTORS.get(
+                main_character.facing,
+                (1, 0)
+            )
+
+            dx = (
+                dodge_dx
+                * PLAYER_DODGE_SPEED
+                * frame_scale
+            )
+
+            dy = (
+                dodge_dy
+                * PLAYER_DODGE_SPEED
+                * frame_scale
+            )
         else:
-            dx *= player_speed
-            dy *= player_speed
+            dx *= player_speed * frame_scale
+            dy *= player_speed * frame_scale
 
         # --- Collision (horizontal) ---
         player_x += dx
@@ -1875,25 +1949,53 @@ def game_screen(screen, slot_num=None, save_state=None):
         for enemy in enemies:
             if enemy.state == "defeated" and not getattr(enemy, "rewarded", False):
                 enemy.rewarded = True
+
                 gameplay_state["bonus_time"] += enemy.stats.reward_time
+
                 stage_progress.defeat_enemy(enemy.enemy_id)
-                stage_progress.sync_objectives(stage, save_challenges_passed)
+
+                stage_progress.sync_objectives(
+                    stage,
+                    save_challenges_passed
+                )
+
                 if enemy is boss_enemy:
                     boss_defeated = True
 
         newly_cleared = newly_cleared_encounter_ids(
-            enemies, authored_encounter_ids, stage_progress.cleared_encounters
+            enemies,
+            authored_encounter_ids,
+            stage_progress.cleared_encounters
         )
+
         for encounter_id in newly_cleared:
+
             if not stage_progress.clear_encounter(encounter_id):
                 continue
-            topic_id = encounter_topics.get(encounter_id)
+
+            # -----------------------------------------------------
+            # Enemy area cleared
+            # -----------------------------------------------------
+            # One key is awarded for clearing the entire encounter,
+            # not for each individual enemy defeated.
+            gameplay_state["keys"] += 1
+
+            topic_id = encounter_topics.get(
+                encounter_id
+            )
+
             if topic_id:
                 open_topic_flow(
-                    topic_id, screen.copy(), enforce_requirements=False
+                    topic_id,
+                    screen.copy(),
+                    enforce_requirements=False
                 )
+
             if slot_num is not None:
-                save_manager.save_slot(slot_num, build_save_state())
+                save_manager.save_slot(
+                    slot_num,
+                    build_save_state()
+                )
 
         if (boss_enemy is not None and boss_defeated
                 and not boss_victory_handled and not boss_enemy.active):

@@ -81,6 +81,16 @@ RAIL_BUTTONS = [
     ("objectives", "OBJECTIVES",   "O", pygame.K_o),
 ]
 
+# for coding purposes 
+PRACTICE_BUTTON = (
+    "practice",
+    "CODE PRACTICE",
+    "",
+    None,
+)
+
+PRACTICE_GAP = 18
+
 
 # Per-tab materials. Wood for the two tabs about the player's own kit,
 # stone for the two about the world around them - the same split the
@@ -117,6 +127,7 @@ RAIL_SPRITE_DIR = "assets/images/ui"
 # off the top - the mushroom-and-hat cluster on ENEMIES most of all - so
 # matching heights would shrink the busiest plaque and leave the column ragged.
 RAIL_SPRITE_WIDTH = 205
+PRACTICE_WIDTH = RAIL_SPRITE_WIDTH
 HOTKEY_GUTTER = 30          # space to the left of a button for its key badge
 
 
@@ -149,10 +160,13 @@ def _highlight(sprite, accent):
 
 
 RAIL_STYLES = {
-    "manual":     dict(WOOD,  accent=(236, 205, 149)),   # parchment map
-    "enemies":    dict(STONE, accent=(178, 132, 224)),   # cursed purple
-    "items":      dict(WOOD,  accent=(120, 196, 236)),   # potion blue
-    "objectives": dict(STONE, accent=(226, 197, 128)),   # quill-and-ink gold
+    "manual":     dict(WOOD,  accent=(236, 205, 149)),
+    "enemies":    dict(STONE, accent=(178, 132, 224)),
+    "items":      dict(WOOD,  accent=(120, 196, 236)),
+    "objectives": dict(STONE, accent=(226, 197, 128)),
+
+    # Separate feature rather than a Stage Information tab.
+    "practice":   dict(STONE, accent=(72, 207, 207)),
 }
 
 LEAF_DARK  = (44, 96, 40)
@@ -251,13 +265,40 @@ def draw_tab_icon(surface, rect, tab, color):
         pygame.draw.line(surface, color, (x + 1, y + h // 2),
                          (x + w - 1, y + h // 2), 1)
 
-    else:  # objectives
+    elif tab == "objectives":
         # A target with a filled bullseye.
-        pygame.draw.circle(surface, color, (x + w // 2, y + h // 2),
-                           w // 2 - 1, 2)
-        pygame.draw.circle(surface, color, (x + w // 2, y + h // 2),
-                           max(2, w // 4), 1)
-        pygame.draw.circle(surface, color, (x + w // 2, y + h // 2), 2)
+        pygame.draw.circle(
+            surface,
+            color,
+            (x + w // 2, y + h // 2),
+            w // 2 - 1,
+            2,
+        )
+        pygame.draw.circle(
+            surface,
+            color,
+            (x + w // 2, y + h // 2),
+            max(2, w // 4),
+            1,
+        )
+        pygame.draw.circle(
+            surface,
+            color,
+            (x + w // 2, y + h // 2),
+            2,
+        )
+
+    elif tab == "practice":
+        # Simple terminal/code symbol.
+        font = body_font(max(12, h - 2), bold=True)
+        glyph = font.render(">_", True, color)
+
+        surface.blit(
+            glyph,
+            glyph.get_rect(
+                center=(x + w // 2, y + h // 2)
+            )
+        )
 
 
 class StagePanel:
@@ -318,6 +359,48 @@ class StagePanel:
             self.button_rects[tab] = rect
             y = rect.bottom + BUTTON_GAP
 
+        # ---------------------------------------------------------
+        # Code Practice
+        # ---------------------------------------------------------
+        # This is deliberately separated from the four Stage
+        # Information tabs because it opens its own feature.
+
+        practice_tab, practice_label, practice_key_label, _ = (
+            PRACTICE_BUTTON
+        )
+
+        y += PRACTICE_GAP
+
+        # Practice currently uses a drawn plaque even when the four
+        # Stage Information buttons use painted artwork.
+        rect = pygame.Rect(
+            0,
+            y,
+            RAIL_SPRITE_WIDTH,
+            BUTTON_HEIGHT
+        )
+
+        rect.right = panel_left + PANEL_WIDTH
+
+        self._plaques[(practice_tab, False)] = self._build_plaque(
+            practice_tab,
+            practice_label,
+            practice_key_label,
+            False,
+            seed=10,
+            width=PRACTICE_WIDTH,
+        )
+
+        self._plaques[(practice_tab, True)] = self._build_plaque(
+            practice_tab,
+            practice_label,
+            practice_key_label,
+            True,
+            seed=10,
+            width=PRACTICE_WIDTH,
+        )
+
+        self.button_rects[practice_tab] = rect
         # The drawn plaques carry a bleed margin for their shadow; the painted
         # ones are already trimmed to their own edges.
         self._bleed = 0 if self._sprites else PLAQUE_BLEED
@@ -375,7 +458,15 @@ class StagePanel:
         self.screen.blit(badge, chip)
         self.screen.blit(key_surf, key_surf.get_rect(center=chip.center))
 
-    def _build_plaque(self, tab, label, key_label, hovered, seed):
+    def _build_plaque(
+        self,
+        tab,
+        label,
+        key_label,
+        hovered,
+        seed,
+        width=PANEL_WIDTH,
+    ):
         """Render one carved plaque, label and all, into its own surface.
 
         The surface is PLAQUE_BLEED bigger than the button on every side so
@@ -386,10 +477,19 @@ class StagePanel:
         radius = 10
 
         surf = pygame.Surface(
-            (PANEL_WIDTH + PLAQUE_BLEED * 2, BUTTON_HEIGHT + PLAQUE_BLEED * 2),
+            (
+                width + PLAQUE_BLEED * 2,
+                BUTTON_HEIGHT + PLAQUE_BLEED * 2
+            ),
             pygame.SRCALPHA,
         )
-        body = pygame.Rect(PLAQUE_BLEED, PLAQUE_BLEED, PANEL_WIDTH, BUTTON_HEIGHT)
+
+        body = pygame.Rect(
+            PLAQUE_BLEED,
+            PLAQUE_BLEED,
+            width,
+            BUTTON_HEIGHT
+        )
 
         if hovered:
             glow = body.inflate(8, 8)
@@ -460,17 +560,53 @@ class StagePanel:
         surf.blit(text, (icon_rect.right + 11,
                          face.centery - text.get_height() // 2))
 
-        key_surf = self.font_key.render(key_label, True,
-                                        style["accent"] if hovered else TEXT_DIM)
-        surf.blit(key_surf, (face.right - 12 - key_surf.get_width(),
-                             face.centery - key_surf.get_height() // 2))
+        if key_label:
+            key_surf = self.font_key.render(
+                key_label,
+                True,
+                style["accent"] if hovered else TEXT_DIM
+            )
+
+            surf.blit(
+                key_surf,
+                (
+                    face.right - 12 - key_surf.get_width(),
+                    face.centery - key_surf.get_height() // 2
+                )
+            )
         return surf
 
     def _draw_rail(self, mouse_pos):
+        # Stage Information buttons.
         for tab, _, key_label, _ in RAIL_BUTTONS:
             rect = self.button_rects[tab]
             hovered = rect.collidepoint(mouse_pos)
-            self.screen.blit(self._plaques[(tab, hovered)],
-                             (rect.left - self._bleed, rect.top - self._bleed))
+
+            self.screen.blit(
+                self._plaques[(tab, hovered)],
+                (
+                    rect.left - self._bleed,
+                    rect.top - self._bleed
+                )
+            )
+
             if self._sprites:
-                self._draw_hotkey_badge(rect, key_label, tab, hovered)
+                self._draw_hotkey_badge(
+                    rect,
+                    key_label,
+                    tab,
+                    hovered
+                )
+
+        # Separate Code Practice button.
+        tab, _, _, _ = PRACTICE_BUTTON
+        rect = self.button_rects[tab]
+        hovered = rect.collidepoint(mouse_pos)
+
+        self.screen.blit(
+            self._plaques[(tab, hovered)],
+            (
+                rect.left - PLAQUE_BLEED,
+                rect.top - PLAQUE_BLEED
+            )
+        )

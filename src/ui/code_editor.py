@@ -46,7 +46,13 @@ class CodeEditor:
     Main controller of the coding environment.
     """
 
-    def __init__(self, screen, challenge, background=None):
+    def __init__(
+        self,
+        screen,
+        challenge,
+        background=None,
+        mode="campaign",
+    ):
         """
         Parameters
         ----------
@@ -63,6 +69,7 @@ class CodeEditor:
         self.text_buffer = TextBuffer()
         self.screen = screen
         self.challenge = challenge
+        self.mode = mode
 
         # Controls whether the editor is open.
         self.running = False
@@ -135,6 +142,10 @@ class CodeEditor:
         # Kept in here rather than making the player walk back to the
         # main menu, which would throw away their unsaved code.
         self.settings_panel = EditorSettingsPanel(screen)
+
+        @property
+        def is_practice_mode(self):
+            return self.mode == "practice"
 
     # ---------------------------------------------------------
     # Main Loop

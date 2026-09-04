@@ -18,6 +18,12 @@ def _env_flag(name, default=False):
 # turn the keys off for a single launch.
 DEBUG_MODE = _env_flag("CODEBREAK_DEBUG", True)
 
+# Prints a one-line frame-rate summary to the console once a second. Off by
+# default and console-only: it exists to collect numbers from a machine the
+# developer does not have in front of them, so it must never draw anything
+# over the game or change what a player sees.
+FPS_LOG = _env_flag("CODEBREAK_FPS", False)
+
 # Must be set before pygame.init() (SDL reads this hint at video subsystem
 # init). Without it, SDL auto-minimizes the exclusive-fullscreen window the
 # instant it loses OS focus, which is what happens when a screenshot tool

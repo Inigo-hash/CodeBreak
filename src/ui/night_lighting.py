@@ -331,8 +331,15 @@ def draw_night_and_map_torches(surface, torch_positions, elapsed_seconds,
     if radius is None:
         radius = 120
 
-    bright_world = surface.copy()
-    surface.blit(_night_veil(surface.get_size()), (0, 0))
+    surface_rect = surface.get_rect()
+
+    # Each torch only ever reads back the world inside its own light rect,
+    # so lift just those patches instead of the whole screen. The previous
+    # full-screen copy cost a two-million-pixel read every frame no matter
+    # how few torches were actually in view. Every patch is taken before
+    # the veil goes down, so each one still sees the same pristine bright
+    # world the single copy used to hold.
+    patches = []
     for torch_index, flame_position in enumerate(torch_positions):
         # Two low-amplitude frequencies produce smooth flame breathing. Each
         # fixture has a phase offset, avoiding synchronized pulsing without
@@ -352,18 +359,24 @@ def draw_night_and_map_torches(surface, torch_positions, elapsed_seconds,
             live_radius * 2 + 2,
             live_radius * 2 + 2,
         )
-        visible_rect = full_light_rect.clip(surface.get_rect())
+        visible_rect = full_light_rect.clip(surface_rect)
         if not visible_rect.width or not visible_rect.height:
             continue
 
         lit_world = pygame.Surface(visible_rect.size, pygame.SRCALPHA)
-        lit_world.blit(bright_world, (0, 0), visible_rect)
+        lit_world.blit(surface, (0, 0), visible_rect)
         mask_source = pygame.Rect(
             visible_rect.x - full_light_rect.x,
             visible_rect.y - full_light_rect.y,
             visible_rect.width,
             visible_rect.height,
         )
+        patches.append((torch_index, live_radius, visible_rect, mask_source,
+                        lit_world))
+
+    surface.blit(_night_veil(surface.get_size()), (0, 0))
+
+    for torch_index, live_radius, visible_rect, mask_source, lit_world in patches:
         lit_world.blit(
             _light_mask(live_radius, torch_index % 4),
             (0, 0), mask_source, special_flags=pygame.BLEND_RGBA_MULT

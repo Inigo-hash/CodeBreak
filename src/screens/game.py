@@ -755,6 +755,10 @@ def game_screen(screen, slot_num=None, save_state=None):
     # (which is derived from raw_map_surface) doesn't end up with a
     # duplicate, non-depth-sorted copy of every tree.
     minimap_base_surface = raw_map_surface.copy()
+    # map_surface and the copy above are both independent surfaces, so the
+    # unscaled original is dead weight from here on - about 30MB of cache
+    # the rest of the frame loop is better off keeping.
+    del raw_map_surface
 
     for layer in tmx_data.visible_layers:
         # Skip tile layers; we only want object layers here
@@ -954,15 +958,73 @@ def game_screen(screen, slot_num=None, save_state=None):
             if not tile_image:
                 continue
 
+            prop_image = pygame.transform.scale(
+                tile_image,
+                (int(obj.width * ZOOM), int(obj.height * ZOOM))
+            )
             dynamic_props.append({
-                'image': pygame.transform.scale(
-                    tile_image,
-                    (int(obj.width * ZOOM), int(obj.height * ZOOM))
-                ),
+                'image': prop_image,
                 'x': obj.x * ZOOM,
                 'y': (obj.y - obj.height) * ZOOM,
-                'sort_y': obj.y
+                'sort_y': obj.y,
+                'w': prop_image.get_width(),
+                'h': prop_image.get_height(),
             })
+
+    # Props never move, so which cell each one occupies is fixed. Bucketing
+    # them once turns the per-frame draw pass from a scan-and-sort of every
+    # prop on the map into a lookup of the handful of cells the camera can
+    # actually see. Without this the frame cost grows with how much the map
+    # contains rather than with how much of it is on screen - this map
+    # authors ~2,000 props, nearly all of them off screen at any moment,
+    # and each one still cost a list entry, a sort comparison and a blit
+    # call that drew nothing.
+    PROP_CELL = 512
+    prop_grid = {}
+    for order, prop in enumerate(dynamic_props):
+        # The draw pass sorts on sort_y alone and relies on a stable sort to
+        # break ties, so two props sharing a sort_y are layered by their
+        # authored order. Cell iteration does not preserve that order, so
+        # each prop carries it explicitly.
+        prop['order'] = order
+        first_cell_x = int(prop['x']) // PROP_CELL
+        last_cell_x = int(prop['x'] + prop['w']) // PROP_CELL
+        first_cell_y = int(prop['y']) // PROP_CELL
+        last_cell_y = int(prop['y'] + prop['h']) // PROP_CELL
+        for cell_x in range(first_cell_x, last_cell_x + 1):
+            for cell_y in range(first_cell_y, last_cell_y + 1):
+                prop_grid.setdefault((cell_x, cell_y), []).append(prop)
+
+    def visible_props(camera_x, camera_y):
+        """Props whose image overlaps the viewport, in authored order.
+
+        A prop spanning a cell boundary sits in several buckets, so results
+        are de-duplicated by identity before the exact overlap test, then
+        restored to authored order so equal sort_y values layer exactly as
+        they did when the draw pass walked the full list.
+        """
+
+        right = camera_x + SCREEN_W
+        bottom = camera_y + SCREEN_H
+        seen = set()
+        found = []
+        for cell_x in range(int(camera_x) // PROP_CELL,
+                            int(right) // PROP_CELL + 1):
+            for cell_y in range(int(camera_y) // PROP_CELL,
+                                int(bottom) // PROP_CELL + 1):
+                for prop in prop_grid.get((cell_x, cell_y), ()):
+                    marker = id(prop)
+                    if marker in seen:
+                        continue
+                    seen.add(marker)
+                    if (prop['x'] + prop['w'] > camera_x
+                            and prop['x'] < right
+                            and prop['y'] + prop['h'] > camera_y
+                            and prop['y'] < bottom):
+                        found.append(prop)
+        found.sort(key=lambda prop: prop['order'])
+        return found
+
     loading.update(86, "Preparing explorer and creatures...")
 
     # --- Pause menu setup ---
@@ -2308,7 +2370,10 @@ def game_screen(screen, slot_num=None, save_state=None):
         main_character.update_frames(keys)
 
         # --- Depth-sorted draw pass (painter's algorithm) ---
-        draw_list = [('prop', p['sort_y'], p) for p in dynamic_props]
+        draw_list = [
+            ('prop', p['sort_y'], p)
+            for p in visible_props(camera_x, camera_y)
+        ]
         draw_list.extend(
             ('chest', item['entity'].rect.bottom, item['entity'])
             for item in interactables if item.get('entity') is not None

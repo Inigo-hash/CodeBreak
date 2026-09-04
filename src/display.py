@@ -13,12 +13,24 @@ _original_update = pygame.display.update
 _original_get_pos = pygame.mouse.get_pos
 _original_event_get = pygame.event.get
 
+# The scaled frame is the same size every frame; allocating a fresh one per
+# present churned several megabytes per frame through the allocator.
+_scaled_buffer = None
+# _viewport is called once per present and again for every mouse event, and
+# the window size only changes on a resize.
+_viewport_cache = None
+
 
 def _viewport(window_size):
+    global _viewport_cache
+    if _viewport_cache is not None and _viewport_cache[0] == window_size:
+        return _viewport_cache[1]
     width, height = window_size
     scale = min(width / BASE_WIDTH, height / BASE_HEIGHT)
     scaled = (max(1, round(BASE_WIDTH * scale)), max(1, round(BASE_HEIGHT * scale)))
-    return scale, ((width - scaled[0]) // 2, (height - scaled[1]) // 2), scaled
+    result = (scale, ((width - scaled[0]) // 2, (height - scaled[1]) // 2), scaled)
+    _viewport_cache = (window_size, result)
+    return result
 
 
 def window_to_virtual(position):
@@ -32,12 +44,46 @@ def window_to_virtual(position):
 
 
 def _present(*_args, **_kwargs):
+    global _scaled_buffer
     if _window is None or _canvas is None:
         return _original_flip()
-    _window.fill(LETTERBOX_COLOR)
-    _scale, offset, size = _viewport(_window.get_size())
-    image = pygame.transform.smoothscale(_canvas, size)
-    _window.blit(image, offset)
+
+    window_size = _window.get_size()
+    _scale, offset, size = _viewport(window_size)
+
+    if size == (BASE_WIDTH, BASE_HEIGHT):
+        # A window already at the canvas size needs no resample. The
+        # unconditional smoothscale spent a full-frame CPU resample
+        # (~2.5ms at 1080p) producing a pixel-for-pixel copy of its input.
+        _window.blit(_canvas, offset)
+    else:
+        if _scaled_buffer is None or _scaled_buffer.get_size() != size:
+            _scaled_buffer = pygame.Surface(size).convert()
+        pygame.transform.smoothscale(_canvas, size, _scaled_buffer)
+        _window.blit(_scaled_buffer, offset)
+
+    # Only the letterbox bars need painting - the viewport was just fully
+    # overwritten above. Clearing the whole window first wrote two million
+    # pixels that the blit immediately covered.
+    #
+    # Tested against the window size rather than the offset: rounding the
+    # scaled size can leave a one-pixel seam with no offset at all (a
+    # 1366x768 window scales to 1365x768, offset 0), and that seam still
+    # has to be painted or it shows whatever the last frame left there.
+    if size != window_size:
+        right = offset[0] + size[0]
+        bottom = offset[1] + size[1]
+        _window.fill(LETTERBOX_COLOR, (0, 0, window_size[0], offset[1]))
+        _window.fill(
+            LETTERBOX_COLOR,
+            (0, bottom, window_size[0], window_size[1] - bottom),
+        )
+        _window.fill(LETTERBOX_COLOR, (0, offset[1], offset[0], size[1]))
+        _window.fill(
+            LETTERBOX_COLOR,
+            (right, offset[1], window_size[0] - right, size[1]),
+        )
+
     _original_flip()
 
 

@@ -38,6 +38,33 @@ LOW_HP_THRESHOLD = 0.30
 
 _low_health_overlay_cache = {}
 
+# The HUD redraws from scratch every frame, but its text changes only when
+# the underlying number does - so most frames re-rasterised glyphs that were
+# identical to the last frame's. Font.render is deterministic for a given
+# font, string and colour, so the result can simply be kept.
+#
+# The font is part of the key (and holds it alive, so no two fonts can share
+# a slot). Callers only ever blit what they get back; nothing draws into a
+# returned surface, which is what makes handing out the same one safe.
+_TEXT_CACHE = {}
+_TEXT_CACHE_LIMIT = 512
+
+
+def render_text(font, text, color):
+    """Render HUD text, reusing the surface when nothing about it changed."""
+
+    key = (font, text, tuple(color) if isinstance(color, (list, tuple)) else color)
+    surface = _TEXT_CACHE.get(key)
+    if surface is None:
+        # Numbers like the HP readout make the key space open-ended. Dropping
+        # the whole cache on overflow keeps this bounded without pretending
+        # to know which entries the next frame will want.
+        if len(_TEXT_CACHE) >= _TEXT_CACHE_LIMIT:
+            _TEXT_CACHE.clear()
+        surface = font.render(text, True, color)
+        _TEXT_CACHE[key] = surface
+    return surface
+
 
 def build_low_health_corner_overlay(size):
     """Build transparent red corner marks for the low-health warning."""
@@ -302,7 +329,7 @@ def draw_stat_bar(surface, font, x, y, width, label, current, maximum,
         text = f"{label} {current} / {maximum}"
     else:
         text = f"{label} -- / --"
-    surface.blit(font.render(text, True, TEXT if maximum else DIM), (x, y - 1))
+    surface.blit(render_text(font, text, TEXT if maximum else DIM), (x, y - 1))
 
     bar = pygame.Rect(x + label_width, y + 2, max(40, width - label_width), 13)
     pygame.draw.rect(surface, (12, 13, 18), bar, border_radius=3)
@@ -330,6 +357,15 @@ class GameplayHUD:
         self.icons = self._load_icons()
         self.portrait = self._load_portrait()
         self.profile_rect = pygame.Rect(0, 0, 0, 0)
+        self._scaled_progress_icons = None
+
+    def _progress_icons(self):
+        if self._scaled_progress_icons is None:
+            self._scaled_progress_icons = (
+                pygame.transform.scale(self.icons[1], (31, 31)),
+                pygame.transform.scale(self.icons[2], (31, 31)),
+            )
+        return self._scaled_progress_icons
 
     def _load_icons(self):
         return load_hud_icons()
@@ -385,7 +421,7 @@ class GameplayHUD:
         # One gutter sized for the longer of the two labels, so the HP and
         # ENERGY fills start on the same x instead of stepping.
         label_width = self._stat_label_width()
-        self.screen.blit(self.bold.render("BOBILES THE EXPLORER", True, NAME_GOLD),
+        self.screen.blit(render_text(self.bold, "BOBILES THE EXPLORER", NAME_GOLD),
                          (text_left, self.profile_rect.top + 20))
         self.draw_hearts(text_left, self.profile_rect.top + 50)
         self.draw_hp_bar(text_left, self.profile_rect.top + 88, bar_width,
@@ -428,10 +464,11 @@ class GameplayHUD:
         stage_name = self.stage.get("name", "Unknown Stage").upper()
         subtitle = self.stage.get("subtitle", "")
         title = f"{stage_name}  {subtitle}".strip()
-        self.screen.blit(self.bold.render(title, True, GOLD), (rect.left + 12, rect.top + 9))
+        self.screen.blit(render_text(self.bold, title, GOLD), (rect.left + 12, rect.top + 9))
 
-        key_icon = pygame.transform.scale(self.icons[1], (31, 31))
-        topic_icon = pygame.transform.scale(self.icons[2], (31, 31))
+        # Scaled once and kept: these two never change size, and rescaling
+        # them per frame was pure repeat work.
+        key_icon, topic_icon = self._progress_icons()
         stage_topics = set(self.stage.get("manual", {}).get("topics", ()))
         completed_topics = stage_topics.intersection(self.completed_stage_topics)
         total_topics = len(stage_topics)
@@ -445,17 +482,17 @@ class GameplayHUD:
         for index, (icon, label) in enumerate(rows):
             y = rect.top + 38 + index * 25
             self.screen.blit(icon, (rect.left + 10, y - 7))
-            self.screen.blit(self.font.render(label, True, TEXT), (rect.left + 45, y))
+            self.screen.blit(render_text(self.font, label, TEXT), (rect.left + 45, y))
 
     def draw_bonus_time(self, x, y, bonus_time):
         rect = pygame.Rect(x, y, 112, 42)
         self._panel(rect)
         self._draw_clock_placeholder(rect.left + 20, rect.centery)
         value = max(0, round(float(bonus_time or 0)))
-        self.screen.blit(self.bold.render(f"+{value}s", True, BLUE), (rect.left + 42, rect.top + 11))
+        self.screen.blit(render_text(self.bold, f"+{value}s", BLUE), (rect.left + 42, rect.top + 11))
 
     def draw_interaction_prompt(self, prompt, width, height):
-        text = self.bold.render(f"[E] {prompt}", True, TEXT)
+        text = render_text(self.bold, f"[E] {prompt}", TEXT)
         rect = text.get_rect()
         rect.inflate_ip(34, 20)
         rect.midbottom = (width // 2, height - 92)
@@ -465,8 +502,8 @@ class GameplayHUD:
     def draw_combat_controls(self, width, height, dodge_ready=True):
         # Two renders instead of one line so the dodge half can grey out on
         # its own while energy is below the cost of a dodge.
-        attack = self.small.render("[E] ATTACK     ", True, TEXT)
-        dodge = self.small.render("[L-SHIFT] DODGE", True, TEXT if dodge_ready else DIM)
+        attack = render_text(self.small, "[E] ATTACK     ", TEXT)
+        dodge = render_text(self.small, "[L-SHIFT] DODGE", TEXT if dodge_ready else DIM)
         rect = pygame.Rect(0, 0, attack.get_width() + dodge.get_width(),
                            max(attack.get_height(), dodge.get_height()))
         rect.inflate_ip(24, 14)

@@ -21,6 +21,10 @@ PLAYER_TORCH_ENERGY_REGEN = 32.0
 # stretch of path is therefore a genuine refuge rather than a slow drip,
 # and the pressure comes from reaching one rather than from waiting in it.
 PLAYER_TORCH_HP_REGEN = 20.0
+# Torchlight is recovery space, not armour.  Passive healing starts only
+# after the player has avoided damage for a moment, preventing a weak enemy
+# from being out-healed while its attack is still connecting.
+PLAYER_TORCH_HEAL_DELAY = 2.0
 ATTACK_FRAME_COUNT = 9
 ATTACK_FRAME_DURATION = 0.055
 PLAYER_ATTACK_DURATION = ATTACK_FRAME_COUNT * ATTACK_FRAME_DURATION
@@ -39,7 +43,10 @@ DEATH_FRAME_COUNT = 7
 DEATH_FRAME_DURATION = 0.14
 DEATH_FINAL_HOLD = 0.65
 PLAYER_DEFEAT_DURATION = (DEATH_FRAME_COUNT - 1) * DEATH_FRAME_DURATION + DEATH_FINAL_HOLD
-# Player combat is slightly more forgiving against large enemy groups.
+# Combat reach is authored at the same 1x pixel scale as the character art.
+# The campaign map is rendered at 2x, so callers pass ``scale=1 / ZOOM``;
+# the 1x tutorial can use the defaults.  Keeping that conversion explicit
+# prevents a logical range from silently doubling while sprites stay fixed.
 PLAYER_ATTACK_REACH = 48
 PLAYER_ATTACK_WIDTH = 40
 BASE_SWORD_DAMAGE = 25
@@ -65,13 +72,15 @@ class EnemyStats:
 
 
 ENEMY_STATS = {
-    # Ranges are unscaled world pixels (the map uses 16-pixel tiles).
-    "duwende_mandurug": EnemyStats(60, 8, 1.15, 58, 144, 96, 220, 280, 120, 4, 1.15, 0.52, 10),
-    "tiyanak_sinta": EnemyStats(40, 5, 1.00, 72, 145, 88, 220, 280, 110, 4, 1.45, 0.58, 6),
-    "manananggal": EnemyStats(60, 8, 1.10, 96, 175, 100, 255, 320, 130, 4, 1.35, 0.62, 10),
+    # Attack ranges share the fixed, 1x character-art scale. Enemy instances
+    # convert only that value into campaign world units; detection/chase
+    # distances remain authored against the map itself.
+    "duwende_mandurug": EnemyStats(60, 8, 1.15, 80, 144, 96, 220, 280, 120, 4, 1.15, 0.52, 10),
+    "tiyanak_sinta": EnemyStats(40, 5, 1.00, 80, 145, 88, 220, 280, 110, 4, 1.45, 0.58, 6),
+    "manananggal": EnemyStats(60, 8, 1.10, 92, 175, 100, 255, 320, 130, 4, 1.35, 0.62, 10),
     "tikbalang": EnemyStats(80, 10, 0.95, 104, 155, 100, 240, 300, 125, 5, 1.45, 0.68, 16),
     "corrupted_core_kapre": EnemyStats(
-        1000, 18, 1.10, 46, 260, 180, 520, 640, 220, 6, 1.10, 0.66, 45
+        1000, 18, 1.10, 144, 260, 180, 520, 640, 220, 6, 1.10, 0.66, 45
     ),
 }
 
@@ -152,6 +161,7 @@ class PlayerCombat:
         self.attack_cooldown = 0.0
         self.dodge_cooldown = 0.0
         self.invulnerable = 0.0
+        self.heal_delay = 0.0
         self.action_time = 0.0
         self.state = "idle"
         self.attack_id = 0
@@ -169,6 +179,10 @@ class PlayerCombat:
         elapsed = PLAYER_ATTACK_DURATION - self.action_time
         return self.state == "attacking" and PLAYER_ATTACK_ACTIVE_START <= elapsed <= PLAYER_ATTACK_ACTIVE_END
 
+    @property
+    def passive_healing_ready(self):
+        return self.heal_delay == 0 and self.state != "defeated"
+
     def update(self, dt, energy_regen=PLAYER_ENERGY_REGEN, hp_regen=0.0):
         """Advance timers and regen, both rates given per second.
 
@@ -180,6 +194,7 @@ class PlayerCombat:
         self.attack_cooldown = max(0.0, self.attack_cooldown - dt)
         self.dodge_cooldown = max(0.0, self.dodge_cooldown - dt)
         self.invulnerable = max(0.0, self.invulnerable - dt)
+        self.heal_delay = max(0.0, self.heal_delay - dt)
         self.energy = min(float(self.max_energy), self.energy + energy_regen * dt)
         self._regenerate_health(dt, hp_regen)
         if self.action_time > 0:
@@ -195,7 +210,7 @@ class PlayerCombat:
         first point of healing after taking a hit still costs its time.
         """
 
-        if (hp_regen <= 0 or self.state == "defeated"
+        if (hp_regen <= 0 or not self.passive_healing_ready
                 or not 0 < self.hp < self.max_hp):
             self._hp_regen_pool = 0.0
             return
@@ -226,9 +241,12 @@ class PlayerCombat:
         return True
 
     def take_damage(self, amount):
-        if self.invulnerable or self.state == "defeated":
+        amount = max(0, int(amount or 0))
+        if amount == 0 or self.invulnerable or self.state == "defeated":
             return False
-        self.hp = max(0, self.hp - max(0, amount))
+        self.hp = max(0, self.hp - amount)
+        self._hp_regen_pool = 0.0
+        self.heal_delay = PLAYER_TORCH_HEAL_DELAY
         if self.hp == 0:
             self.state = "defeated"
             # Hold the authored defeated/flinch pose long enough to read as a
@@ -240,6 +258,17 @@ class PlayerCombat:
             self.invulnerable = PLAYER_INVULNERABILITY
         return True
 
+    def heal(self, amount):
+        """Apply an immediate consumable heal and return points restored."""
+
+        amount = max(0, int(amount or 0))
+        if amount == 0 or self.state == "defeated" or self.hp >= self.max_hp:
+            return 0
+        before = self.hp
+        self.hp = min(self.max_hp, self.hp + amount)
+        self._hp_regen_pool = 0.0
+        return self.hp - before
+
     def reset(self):
         self.hp = self.max_hp
         self.energy = float(self.max_energy)
@@ -247,24 +276,75 @@ class PlayerCombat:
         self.state = "idle"
         self.action_time = 0
         self.invulnerable = 0
+        self.heal_delay = 0
+        self.attack_cooldown = 0
+        self.dodge_cooldown = 0
 
 
-def attack_hitbox(player_rect, facing):
-    """Continuous sword sweep from the player's body to the blade tip.
+def attack_sweep_points(player_rect, facing, reach=PLAYER_ATTACK_REACH,
+                        width=PLAYER_ATTACK_WIDTH, scale=1.0):
+    """Return the four corners of a narrow, directional attack corridor."""
+
+    dx, dy = FACING_VECTORS.get(facing, (1, 0))
+    reach = max(0.0, float(reach) * scale)
+    half_width = max(0.5, float(width) * scale / 2.0)
+    perpendicular = (-dy, dx)
+    start = (
+        player_rect.centerx - dx * half_width,
+        player_rect.centery - dy * half_width,
+    )
+    end = (
+        player_rect.centerx + dx * (reach + half_width),
+        player_rect.centery + dy * (reach + half_width),
+    )
+    return tuple(
+        (round(point[0] + perpendicular[0] * side * half_width),
+         round(point[1] + perpendicular[1] * side * half_width))
+        for point, side in (
+            (start, -1), (end, -1), (end, 1), (start, 1)
+        )
+    )
+
+
+def attack_connects(attacker_rect, target_rect, facing,
+                    reach=PLAYER_ATTACK_REACH, width=PLAYER_ATTACK_WIDTH,
+                    scale=1.0):
+    """Whether a target intersects the actual directional attack corridor.
+
+    Expanding the target by the corridor width and clipping its centre-line
+    against the attack segment is the rectangle equivalent of a swept blade.
+    Unlike an axis-aligned union, it stays narrow for diagonal attacks.
+    """
+
+    dx, dy = FACING_VECTORS.get(facing, (1, 0))
+    reach = max(0.0, float(reach) * scale)
+    width = max(1, round(float(width) * scale))
+    start = attacker_rect.center
+    end = (
+        round(start[0] + dx * reach),
+        round(start[1] + dy * reach),
+    )
+    expanded_target = target_rect.inflate(width, width)
+    return expanded_target.collidepoint(start) or bool(
+        expanded_target.clipline(start, end)
+    )
+
+
+def attack_hitbox(player_rect, facing, scale=1.0):
+    """Bounding rectangle of the directional sword sweep.
 
     Including the origin prevents a close enemy from becoming unhittable if
     its AI reaches or slightly crosses the player's center during a swing.
+    Damage checks should use :func:`attack_connects`; this rectangle remains
+    useful for debug drawing and broad-phase callers.
     """
-    dx, dy = FACING_VECTORS.get(facing, (1, 0))
-    center = (
-        round(player_rect.centerx + dx * PLAYER_ATTACK_REACH),
-        round(player_rect.centery + dy * PLAYER_ATTACK_REACH),
-    )
-    blade_tip = pygame.Rect(0, 0, PLAYER_ATTACK_WIDTH, PLAYER_ATTACK_WIDTH)
-    blade_tip.center = center
-    blade_origin = pygame.Rect(0, 0, PLAYER_ATTACK_WIDTH, PLAYER_ATTACK_WIDTH)
-    blade_origin.center = player_rect.center
-    return blade_origin.union(blade_tip)
+
+    points = attack_sweep_points(player_rect, facing, scale=scale)
+    left = min(point[0] for point in points)
+    top = min(point[1] for point in points)
+    right = max(point[0] for point in points)
+    bottom = max(point[1] for point in points)
+    return pygame.Rect(left, top, max(1, right - left), max(1, bottom - top))
 
 
 def attack_path_blocked(player_rect, enemy_rect, blockers):

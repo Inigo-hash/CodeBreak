@@ -5,7 +5,8 @@ import math
 import pygame
 
 from src.systems.combat import (
-    ENEMY_BODY_SIZES, ENEMY_STATS, move_rect, normalized_toward,
+    ENEMY_BODY_SIZES, ENEMY_STATS, attack_connects, attack_path_blocked,
+    move_rect, normalized_toward,
 )
 
 
@@ -35,11 +36,13 @@ class Enemy:
                  enemy_id="duwende_mandurug", zone_size=(360, 300),
                  detection_range=None, chase_range=None, zone_rect=None,
                  zone_name="Wilderness", group_id="ungrouped",
-                 disengage_range=None, return_tolerance=None):
+                 disengage_range=None, return_tolerance=None,
+                 combat_scale=1.0):
         self.screen = screen
         self.enemy_id = enemy_id
         self.group_id = group_id
         self.stats = ENEMY_STATS[enemy_id]
+        self.combat_scale = max(0.01, float(combat_scale))
         self.spawn = (
             world_x if world_x is not None else map_width // 2 - 100,
             world_y if world_y is not None else map_height // 2,
@@ -60,6 +63,10 @@ class Enemy:
         self.action_timer = 0.0
         self.attack_cooldown = 0.0
         self.attack_connected = False
+        self.attack_range = self.stats.attack_range * self.combat_scale
+        self.attack_width = max(
+            30, max(ENEMY_BODY_SIZES[enemy_id]) + 12
+        ) * self.combat_scale
         self.hp = self.stats.max_hp
         self.active = True
         self.defeat_timer = 0.0
@@ -223,7 +230,16 @@ class Enemy:
         self.action_timer = max(0.0, self.action_timer - dt)
         self.path_retry = max(0.0, self.path_retry - dt)
         direction, distance = normalized_toward(self.rect.center, player_rect.center)
-        self._face(direction)
+        terrain_blockers = (
+            navigation_rects if navigation_rects is not None else collision_rects
+        )
+        path_blocked = attack_path_blocked(
+            self.rect, player_rect, terrain_blockers
+        )
+        # An attack commits to the direction it telegraphed. Tracking the
+        # player throughout the wind-up made dodging sideways meaningless.
+        if self.state != "attack":
+            self._face(direction)
         home_distance = math.dist(self.rect.center, self.spawn)
         # Chase movement remains clamped to the authored patrol territory,
         # while detection and attacks use visible distance instead of an
@@ -256,7 +272,13 @@ class Enemy:
             elapsed = self.stats.attack_duration - self.action_timer
             if elapsed >= self.stats.attack_duration * 0.52 and not self.attack_connected:
                 self.attack_connected = True
-                if distance <= self.stats.attack_range + 12:
+                if (distance <= self.attack_range
+                        and not path_blocked
+                        and attack_connects(
+                            self.rect, player_rect, self.facing,
+                            reach=self.attack_range,
+                            width=self.attack_width,
+                        )):
                     damage = round(
                         self.stats.attack_damage * self.attack_damage_multiplier
                     )
@@ -306,7 +328,8 @@ class Enemy:
             self.state = "return"
             return 0
 
-        if distance <= self.stats.attack_range and self.attack_cooldown == 0 and self.state == "chase":
+        if (distance <= self.attack_range and not path_blocked
+                and self.attack_cooldown == 0 and self.state == "chase"):
             self.state = "attack"
             self.action_timer = self.stats.attack_duration
             self.attack_cooldown = (
@@ -321,10 +344,7 @@ class Enemy:
             # drives pathfinding; other enemies remain local movement
             # blockers so a crowd does not repeatedly compute identical
             # detours around itself.
-            static_blockers = (
-                navigation_rects
-                if navigation_rects is not None else collision_rects
-            )
+            static_blockers = terrain_blockers
             direct_blocked = any(
                 blocker.clipline(self.rect.center, player_rect.center)
                 for blocker in static_blockers
@@ -389,7 +409,8 @@ class Enemy:
         self._face(direction)
         before = self.rect.center
         before_x, before_y = self.x, self.y
-        dx, dy = direction[0] * speed, direction[1] * speed
+        frame_scale = max(0.0, dt) * 60.0
+        dx, dy = direction[0] * speed * frame_scale, direction[1] * speed * frame_scale
         self.x, self.y = move_rect(self.rect, self.x, self.y, dx, dy, blockers, bounds)
         if not self._body_on_allowed_ground(self.rect):
             self.rect.center = before

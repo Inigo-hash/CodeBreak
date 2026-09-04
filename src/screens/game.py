@@ -30,8 +30,8 @@ from src.ui.chart import (
 from src.systems.combat import (
     COMBAT_DEBUG, DEBUG_ENEMY_AI, FACING_VECTORS, PLAYER_DODGE_SPEED,
     PLAYER_ENERGY_REGEN, PLAYER_TORCH_ENERGY_REGEN, PLAYER_TORCH_HP_REGEN,
-    PlayerCombat, attack_hitbox, attack_path_blocked, boss_phase_table,
-    move_rect, selected_weapon_damage,
+    PlayerCombat, attack_connects, attack_path_blocked, attack_sweep_points,
+    boss_phase_table, move_rect, selected_weapon_damage,
 )
 from src.systems.audio import (
     CombatAudio, apply_music_volume, handle_music_shortcut, play_crumble_sfx,
@@ -1217,7 +1217,8 @@ def game_screen(screen, slot_num=None, save_state=None):
               detection_range=spawn["detection_range"],
               chase_range=spawn["chase_range"],
               disengage_range=spawn["disengage_range"],
-              return_tolerance=spawn["return_tolerance"])
+              return_tolerance=spawn["return_tolerance"],
+              combat_scale=1 / ZOOM)
         for spawn in enemy_spawns
     ]
 
@@ -1301,6 +1302,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             chase_range=boss_spawn["chase_range"],
             disengage_range=boss_spawn["disengage_range"],
             return_tolerance=boss_spawn["return_tolerance"],
+            combat_scale=1 / ZOOM,
         )
         boss.phase_thresholds_triggered = set()
         return boss
@@ -1364,6 +1366,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                 chase_range=spawn["chase_range"],
                 disengage_range=spawn["disengage_range"],
                 return_tolerance=spawn["return_tolerance"],
+                combat_scale=1 / ZOOM,
             ))
 
     def trigger_boss_phase(threshold):
@@ -1980,14 +1983,18 @@ def game_screen(screen, slot_num=None, save_state=None):
                     )
 
         if player_combat.attack_active:
-            hitbox = attack_hitbox(player_rect, main_character.facing)
             damage = selected_weapon_damage(player_inventory)
             for enemy in enemies:
                 already_hit = getattr(enemy, "last_player_attack", -1) == player_combat.attack_id
                 path_blocked = attack_path_blocked(
                     player_rect, enemy.rect, collision_rects
                 )
-                if damage and enemy.active and not already_hit and not path_blocked and hitbox.colliderect(enemy.rect):
+                connected = attack_connects(
+                    player_rect, enemy.rect, main_character.facing,
+                    scale=1 / ZOOM,
+                )
+                if (damage and enemy.active and not already_hit
+                        and not path_blocked and connected):
                     enemy.last_player_attack = player_combat.attack_id
                     applied_damage = (
                         boss_sword_damage(enemy.hp, boss_phases)
@@ -2686,14 +2693,14 @@ def game_screen(screen, slot_num=None, save_state=None):
             screen.blit(hp_label, hp_label.get_rect(center=boss_bar.center))
 
         if DEBUG_MODE and COMBAT_DEBUG:
-            world_hitbox = attack_hitbox(player_rect, main_character.facing)
-            debug_hitbox = pygame.Rect(
-                world_hitbox.x * ZOOM - camera_x,
-                world_hitbox.y * ZOOM - camera_y,
-                world_hitbox.width * ZOOM,
-                world_hitbox.height * ZOOM,
+            world_sweep = attack_sweep_points(
+                player_rect, main_character.facing, scale=1 / ZOOM
             )
-            pygame.draw.rect(screen, (255, 220, 40), debug_hitbox, 2)
+            debug_sweep = [
+                (round(x * ZOOM - camera_x), round(y * ZOOM - camera_y))
+                for x, y in world_sweep
+            ]
+            pygame.draw.polygon(screen, (255, 220, 40), debug_sweep, 2)
             for enemy in enemies:
                 enemy_debug_rect = pygame.Rect(
                     enemy.rect.x * ZOOM - camera_x,
@@ -2724,7 +2731,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                 )
                 pygame.draw.rect(screen, (80, 180, 255), zone, 2)
                 pygame.draw.circle(screen, (255, 80, 80), center,
-                                   round(enemy.stats.attack_range * ZOOM), 1)
+                                   round(enemy.attack_range * ZOOM), 1)
                 pygame.draw.circle(screen, (255, 220, 70), center,
                                    round(enemy.awareness_radius * ZOOM), 1)
                 pygame.draw.circle(screen, (80, 230, 120), center,

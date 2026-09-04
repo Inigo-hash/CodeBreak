@@ -1,10 +1,11 @@
 import math
 import random
+import time
 
 from pytmx.util_pygame import load_pygame
 import pygame
 import sys
-from src.config import DEBUG_MODE
+from src.config import DEBUG_MODE, FPS_LOG
 from src.screens.settings import SettingsPanel
 from src.entities.player import MainCharacter
 from src.entities.enemy import Enemy
@@ -1396,8 +1397,42 @@ def game_screen(screen, slot_num=None, save_state=None):
     near_stage_exit = False
     engaged = False
     loading.finish()
+
+    # Frame-rate sampling. Reports the worst frame alongside the average,
+    # because a stutter every few seconds reads as "laggy" to a player even
+    # when the average looks healthy, and the average alone would hide it.
+    fps_window_start = time.perf_counter()
+    fps_frame_count = 0
+    fps_worst_ms = 0.0
+    if FPS_LOG:
+        window_size = pygame.display.get_surface().get_size()
+        canvas_size = screen.get_size()
+        print(
+            f"[fps] canvas {canvas_size[0]}x{canvas_size[1]} -> window "
+            f"{window_size[0]}x{window_size[1]}"
+            f"{'  (no rescale)' if window_size == canvas_size else '  (RESCALING every frame)'}"
+            f" | night={night_mode} | target={TARGET_FPS}",
+            flush=True,
+        )
+
     while running:
         dt = clock.tick(TARGET_FPS) / 1000.0
+
+        if FPS_LOG:
+            fps_frame_count += 1
+            fps_worst_ms = max(fps_worst_ms, dt * 1000.0)
+            fps_elapsed = time.perf_counter() - fps_window_start
+            if fps_elapsed >= 1.0:
+                print(
+                    f"[fps] {fps_frame_count / fps_elapsed:5.1f} avg | "
+                    f"worst frame {fps_worst_ms:5.1f}ms | "
+                    f"enemies={sum(1 for e in enemies if e.active)} "
+                    f"night={night_mode}",
+                    flush=True,
+                )
+                fps_window_start = time.perf_counter()
+                fps_frame_count = 0
+                fps_worst_ms = 0.0
 
         # Prevent one bad frame from causing a huge movement/update jump.
         dt = min(dt, 1.0 / 30.0)

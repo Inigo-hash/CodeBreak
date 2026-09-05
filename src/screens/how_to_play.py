@@ -40,7 +40,7 @@ BODY_TEXT = UI_COLORS["modal_text_soft"]
 RULES_LINES = [
     "Search objects to find learning topics.",
     "Study a topic now, or store it in your bag.",
-    "First time you pass a challenge: +1 key.",
+    "Defeating an area full of enemies: +1 key.",
     "Defeating an enemy adds bonus time.",
     "Losing all your HP costs 1 of your 5 hearts.",
     "Wrong code costs nothing - submit again.",

@@ -1,3 +1,7 @@
+import json
+import os
+
+
 # "themes" lists the color themes offered by the COLOR THEME setting.
 # The names must match the keys in src/ui/editor_theme.py's THEMES dict;
 # picking one calls editor_theme.apply_theme() to restyle the coding
@@ -89,6 +93,7 @@ def cycle_theme(step):
     # as it loads.
     from src.ui.editor_theme import apply_theme
     apply_theme(name)
+    save_settings()
 
     return name
 
@@ -101,7 +106,9 @@ def set_theme(name):
         normalized = themes[0]
     settings_state["theme_index"] = themes.index(normalized)
     from src.ui.editor_theme import apply_theme
-    return apply_theme(normalized)
+    applied = apply_theme(normalized)
+    save_settings()
+    return applied
 
 
 def swatch_color(name):
@@ -125,6 +132,7 @@ def set_text_speed(name):
 
     if name in TEXT_SPEEDS:
         settings_state["text_speed"] = name
+        save_settings()
 
     return current_text_speed()
 
@@ -134,6 +142,7 @@ def cycle_text_speed(step):
 
     index = TEXT_SPEEDS.index(current_text_speed())
     settings_state["text_speed"] = TEXT_SPEEDS[(index + step) % len(TEXT_SPEEDS)]
+    save_settings()
 
     return current_text_speed()
 
@@ -183,8 +192,106 @@ def set_font_size(value):
     )
     from src.ui.theme import clear_font_cache
     clear_font_cache()
+    save_settings()
     return current_font_size()
 
 
 def cycle_font_size(step):
     return set_font_size(current_font_size() + step)
+
+
+# ---------------------------------------------------------------------
+# Persistence
+# ---------------------------------------------------------------------
+#
+# Settings used to live only in memory: every launch started at 55% music,
+# BLUE, NORMAL text and 20px type no matter what the player had chosen.
+# They are written next to the save slots rather than into them, because
+# they belong to the machine the game is being played on, not to a
+# particular playthrough - and `saves/*.json` is already git-ignored, so
+# one player's volume never lands in someone else's checkout.
+
+SETTINGS_PATH = os.path.join("saves", "settings.json")
+
+# Only these travel to disk. Drag flags and the theme list are runtime
+# scaffolding, and writing them would make the file look like state worth
+# editing by hand.
+_PERSISTED = ("music_vol", "sfx_vol", "music_muted", "text_speed", "font_size")
+
+
+# Set while load_settings() is applying a file, so the setters it calls do
+# not write the half-applied state straight back over the file they came
+# from.
+_loading = False
+
+
+def save_settings():
+    """Write the player's settings. Never raises - a failure to save a
+    volume level must not take the game down with it."""
+
+    if _loading:
+        return False
+
+    payload = {key: settings_state[key] for key in _PERSISTED}
+    payload["theme"] = current_theme_name()
+
+    try:
+        os.makedirs(os.path.dirname(SETTINGS_PATH), exist_ok=True)
+        with open(SETTINGS_PATH, "w", encoding="utf-8") as handle:
+            json.dump(payload, handle, indent=2)
+    except OSError:
+        return False
+    return True
+
+
+def load_settings():
+    """Read and apply saved settings, falling back to the defaults above.
+
+    Every value is validated on the way in: a hand-edited or truncated file
+    should leave the game playable, not crash it on launch or leave the
+    music at some impossible volume.
+    """
+
+    global _loading
+
+    try:
+        with open(SETTINGS_PATH, "r", encoding="utf-8") as handle:
+            saved = json.load(handle)
+    except (OSError, ValueError):
+        return False
+
+    if not isinstance(saved, dict):
+        return False
+
+    _loading = True
+    try:
+        _apply_saved(saved)
+    finally:
+        _loading = False
+
+    return True
+
+
+def _apply_saved(saved):
+    """Copy one validated value at a time out of a settings file."""
+
+    for key in ("music_vol", "sfx_vol"):
+        value = saved.get(key)
+        if isinstance(value, (int, float)):
+            settings_state[key] = max(0.0, min(1.0, float(value)))
+
+    if isinstance(saved.get("music_muted"), bool):
+        settings_state["music_muted"] = saved["music_muted"]
+
+    if saved.get("text_speed") in TEXT_SPEEDS:
+        settings_state["text_speed"] = saved["text_speed"]
+
+    font_size = saved.get("font_size")
+    if isinstance(font_size, int):
+        set_font_size(font_size)
+
+    theme = saved.get("theme")
+    if theme in settings_state["themes"]:
+        # Goes through set_theme so the editor is actually repainted, not
+        # just told a different index.
+        set_theme(theme)

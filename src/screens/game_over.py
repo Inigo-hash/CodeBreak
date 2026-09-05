@@ -42,7 +42,7 @@ from src.config import DEBUG_MODE
 from src.systems.audio import handle_music_shortcut
 
 from src.settings_state import letter_delay_ms, revealed_characters
-from src.ui.theme import body_font, title_font
+from src.ui.theme import UI_COLORS, body_font, title_font
 
 
 # ======================================================================
@@ -52,8 +52,8 @@ from src.ui.theme import body_font, title_font
 BLOOD_RED    = (200, 40, 40)
 BLOOD_BRIGHT = (255, 100, 100)
 TEXT_WHITE   = (225, 225, 230)
-TEXT_GREY    = (185, 188, 196)
-BLUE_GLOW    = (80, 180, 255)   # matches the hover-glow used elsewhere in the UI
+TEXT_GREY    = UI_COLORS["text_dim"]
+BLUE_GLOW    = UI_COLORS["blue_bright"]   # the shared hover glow
 
 STONE_BASE   = (26, 27, 34)
 STONE_DARK   = (14, 14, 18)

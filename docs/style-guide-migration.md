@@ -59,3 +59,44 @@ been migrated.
    the screen correctly.
 4. If a difference *is* intended, say so in this file — like the tutorial
    note above.
+
+---
+
+# Round two — 5 September 2026
+
+**Scope:** `topic_lesson.py`, `inventory.py`, `tutorial.py`, plus the two
+palette decisions.
+
+## What changed
+
+1. Two more tokens, again copied from what the screens already drew:
+   `modal_danger` (220, 110, 110) and `modal_slot` (20, 22, 28).
+2. The three remaining modal screens moved onto the shared palette. The
+   tutorial also stopped importing `STONE_DARK` and `STONE_LIGHT` from
+   `how_to_play.py` and now reads the theme directly, so the two screens
+   are no longer coupled.
+3. The signed-off decisions applied: `blue_bright` is now 80, 180, 255, and
+   secondary text everywhere is one grey at 170, 175, 190.
+
+Left deliberately local: the tutorial's green Begin accent and its
+practice-room floor. Both are scene art, not interface chrome.
+
+## Proof
+
+The Topic Lesson screen is deterministic and was diffed pixel by pixel:
+**85 changed pixels of 518,400 sampled**, every one of them the secondary
+text colour and its antialiasing — the intended change, nothing else.
+
+The inventory could not be diffed this way: two captures of the *same*
+code differ by 485,077 pixels, because that screen animates. It was
+verified by value instead — each of its nine constants was compared against
+what it held before:
+
+| Screen | Constants unchanged | Intentionally changed |
+|---|---|---|
+| `inventory.py` | 8 | 1 (`TEXT_DIM`) |
+| `topic_lesson.py` | 9 | 1 (`TEXT_DIM`) |
+
+**A note for the next round:** pixel-diffing only proves anything on a
+screen that draws the same frame twice. Check that first, and fall back to
+comparing values when it doesn't.

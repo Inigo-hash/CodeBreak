@@ -1,6 +1,6 @@
 # CodeBreak Screen Flow
 
-**Status:** v1, traced from the code on `main`, 31 August 2026.
+**Status:** v2, traced 31 August 2026, findings acted on 5 September 2026.
 **Owner:** software design.
 
 Every screen in the game: how you get into it, how you get out, and what it
@@ -118,10 +118,10 @@ These are real patterns in the code. Keep new screens inside them.
 
 | # | Finding | Verdict |
 |---|---|---|
-| 1 | **The main menu has no keyboard support at all** — not one key handler. Every other screen takes at least ESC. | **Fix.** It is the first screen a player meets and the only one they cannot operate without a mouse. |
-| 2 | **F1 and F2 mean two different things.** In gameplay they are developer toggles for night and fog, behind the debug switch. In the code editor they switch the player's theme to LIGHT and DARK. | **Fix the editor's.** Player-facing shortcuts should not sit on keys reserved for debug elsewhere. |
+| 1 | ~~The main menu has no keyboard support at all~~ | **Fixed 5 Sep.** Up/Down walk its five controls, Enter activates, a blue ring shows the selection, and moving the mouse hands control back to it. |
+| 2 | **F1 and F2 mean two different things** — light and fog out in the world, light and dark editor themes inside the editor. Both are player features now; the debug keys moved to F3–F8. | **Left as they are, and documented.** The screens are modal so the keys never collide at runtime, and F1 meaning "lighter" in both places is consistent enough. The manual now says so out loud. |
 | 3 | **BACKSPACE has four meanings**: closes How To Play, goes back a page in the intro, and deletes a character in both the save-slot password field and the settings font-size field. | Leave, but never promote it to a global "back" — two screens have text fields that need it. |
-| 4 | **Two bindings no manual mentions**: P opens practice mode from gameplay, R resets zoom on the island map. Neither is in the shared control list, so How To Play and the stage manual do not teach them. | **Fix** by adding both to `src/data/controls.py`. |
+| 4 | ~~Two bindings no manual mentions~~ | **Fixed.** P was added by the practice-mode work; the map's wheel-zoom and R reset were added 5 Sep. The manual's columns now tighten their own spacing, because this list has outgrown them twice. |
 | 5 | **Finishing a stage is a dead end.** Passing the gate marks the stage complete, saves, and returns to the main menu. There is no stage-to-stage handoff. | Known. Belongs to the Stage 2 work. |
 | 6 | **Settings exists twice** — the menu/pause panel and the editor's own. They share state, so values never disagree, but they are two widgets to maintain. | Accept. The editor needs its own because it repaints itself in the theme being previewed. |
 | 7 | **Game Over accepts a different key set** to every other modal: ESC, ENTER, M and R. | Accept. It is a decision screen, not a panel, and the keys match its three buttons. |
@@ -131,8 +131,10 @@ These are real patterns in the code. Keep new screens inside them.
 
 ## 5. Suggested fixes, in order
 
-1. Add P and R to the shared control list so the manuals stop being wrong.
-2. Move the editor's theme shortcuts off F1 and F2.
-3. Give the main menu keyboard navigation — up, down, ENTER — matching the
-   settings panel's scheme.
+1. ~~Add the undocumented keys to the shared control list~~ — done 5 Sep.
+2. ~~Move the editor's theme shortcuts off F1 and F2~~ — decided against;
+   documented instead.
+3. ~~Give the main menu keyboard navigation~~ — done 5 Sep.
 4. Revisit the stage-completion dead end when Stage 2 has a map.
+5. Settings now survive closing the game, so a returning player keeps their
+   volume, theme, text speed and text size.

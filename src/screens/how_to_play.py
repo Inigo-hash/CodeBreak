@@ -49,7 +49,7 @@ RULES_LINES = [
 # Manual geometry. Both screens read these so the tutorial's copy and
 # this panel are the same object at the same size.
 MANUAL_WIDTH = 900
-MANUAL_HEIGHT = 660
+MANUAL_HEIGHT = 700
 ROW_HEIGHT = 20
 HEADER_HEIGHT = 27
 SECTION_GAP = 5
@@ -118,18 +118,33 @@ def draw_control_rows(surface, rect, sections, header_font, key_font, line_font)
     Rows rather than wrapped sentences because a player scanning for
     "which key opens the bag" reads down the left edge, and a bulleted
     paragraph makes them read every line to find it.
+
+    The spacing tightens itself when the list outgrows its column. The
+    control scheme has gained keys twice since this panel was written, and
+    each time the last rows quietly slid underneath the footer - so the
+    column now shrinks its own line height rather than overflowing.
     """
+
+    row_h, header_h, gap = ROW_HEIGHT, HEADER_HEIGHT, SECTION_GAP
+    needed = sum(header_h + len(rows) * row_h + gap for _, rows in sections)
+    if needed > rect.height > 0:
+        squeeze = rect.height / needed
+        # A floor, because past this the rows collide with each other and a
+        # tighter table is worse than a shorter one.
+        row_h = max(15, int(row_h * squeeze))
+        header_h = max(20, int(header_h * squeeze))
+        gap = max(2, int(gap * squeeze))
 
     y = rect.top
     for heading, rows in sections:
         surface.blit(header_font.render(heading, True, BLUE_GLOW), (rect.left, y))
-        y += HEADER_HEIGHT
+        y += header_h
         for key, action in rows:
             surface.blit(key_font.render(key, True, YELLOW_GLOW), (rect.left, y))
             surface.blit(line_font.render(action, True, BODY_TEXT),
                          (rect.left + KEY_COLUMN, y))
-            y += ROW_HEIGHT
-        y += SECTION_GAP
+            y += row_h
+        y += gap
     return y
 
 

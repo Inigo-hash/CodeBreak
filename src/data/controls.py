@@ -51,6 +51,7 @@ CONTROL_SECTIONS = [
 
     ("SCREENS", [
         ("M", "Island map"),
+        ("Wheel / R", "Zoom the map, reset the zoom"),
         ("I", "Stage manual"),
         ("J", "Enemies you have met"),
         ("K", "Items you have found"),
@@ -83,6 +84,8 @@ CONTROL_NOTES = [
     "E attacks - but next to a searchable object, hold E to search instead.",
     "Dodging spends 25 energy; energy refills by 5 every second.",
     "Run and Submit inside the editor are buttons you click.",
+    "F1 and F2 change the light and fog outside; inside the editor the "
+    "same keys switch its light and dark theme.",
 ]
 
 

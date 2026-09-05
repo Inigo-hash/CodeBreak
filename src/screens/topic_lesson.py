@@ -11,27 +11,27 @@ import pygame
 from src.systems.audio import handle_music_shortcut
 
 from src.ui.editor_widgets import wrap_text
-from src.ui.theme import body_font, title_font
+from src.ui.theme import UI_COLORS, body_font, title_font
 
 
 # ---------------------------------------------------------
 # Palette
 # ---------------------------------------------------------
 
-PANEL_BG = (36, 38, 48)
-PANEL_INNER = (26, 28, 36)
+PANEL_BG = UI_COLORS["modal_panel"]
+PANEL_INNER = UI_COLORS["modal_inner"]
 
-FRAME = (90, 94, 110)
-ACCENT = (255, 220, 120)
+FRAME = UI_COLORS["modal_frame"]
+ACCENT = UI_COLORS["modal_accent"]
 
-TEXT_MAIN = (255, 255, 255)
-TEXT_DIM = (160, 165, 180)
+TEXT_MAIN = UI_COLORS["modal_text"]
+TEXT_DIM = UI_COLORS["modal_text_dim"]
 
-BUTTON_BG = (42, 46, 58)
-BUTTON_HOVER = (60, 90, 130)
+BUTTON_BG = UI_COLORS["modal_button"]
+BUTTON_HOVER = UI_COLORS["modal_button_hover"]
 
-SUCCESS = (120, 200, 140)
-DANGER = (220, 110, 110)
+SUCCESS = UI_COLORS["modal_success"]
+DANGER = UI_COLORS["modal_danger"]
 
 
 class TopicLessonScreen:

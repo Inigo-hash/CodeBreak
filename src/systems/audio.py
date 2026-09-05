@@ -7,7 +7,7 @@ import random
 import pygame
 import numpy as np
 
-from src.settings_state import settings_state
+from src.settings_state import save_settings, settings_state
 
 
 COMBAT_SFX_PATHS = {
@@ -39,6 +39,7 @@ def apply_music_volume():
 def toggle_music_mute():
     settings_state["music_muted"] = not settings_state.get("music_muted", False)
     apply_music_volume()
+    save_settings()
     return settings_state["music_muted"]
 
 

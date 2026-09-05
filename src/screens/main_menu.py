@@ -83,7 +83,7 @@ _dim_code_wall(background)
 STONE_DARK = (14, 14, 18)
 STONE_MID = (24, 25, 31)
 STONE_LIGHT = (38, 39, 47)
-BLUE_GLOW = (80, 180, 255)
+BLUE_GLOW = UI_COLORS["blue_bright"]
 BLUE_DEEP = (35, 90, 140)
 YELLOW_GLOW = (255, 220, 120)
 GREEN_TIP = (60, 255, 140)
@@ -649,6 +649,18 @@ def main_menu():
 
     icons, labels, seeds, tiers = MM_ICONS, MM_LABELS, MM_SEEDS, MM_TIERS
 
+    # Everything the keyboard can reach, in the order Down walks through it.
+    # Ordered by importance rather than by position on screen: the first
+    # Down press should land on Start Game, not on the help button tucked
+    # into the corner.
+    focus_rects = [*rects, help_rect, gear_rect]
+    FOCUS_HELP = len(rects)
+    FOCUS_SETTINGS = len(rects) + 1
+
+    # -1 means the keyboard has not been touched yet, so the menu opens with
+    # nothing highlighted and the mouse behaves exactly as it always has.
+    focus = -1
+
     # Clean backdrop (background + logo, no buttons) — captured once here,
     # after the logo is loaded/positioned, reused every frame instead of
     # re-copying the screen 60x/sec.
@@ -659,6 +671,46 @@ def main_menu():
     # Built here rather than on the first frame, so the one-off cost of
     # finding the painted specks lands during setup and not as a hitch.
     menu_ambient()
+
+    def activate(index, t):
+        """Run one menu control, whether it was clicked or chosen by key."""
+
+        nonlocal show_settings
+
+        if index == FOCUS_SETTINGS:
+            show_settings = True
+            settings_panel.open()
+
+        elif index == FOCUS_HELP:
+            opening_walkthrough(screen, replay=True)
+
+        elif index == 0:
+            from src.ui.transitions import crumble_transition
+            from src.screens.start_game_menu import (
+                render_start_menu_buttons, start_game_menu,
+                start_menu_layout,
+            )
+
+            old_source = screen.copy()  # current frame, buttons already on it
+
+            # The destination screen owns these, so the debris settles into
+            # the buttons the player actually gets.
+            new_rects = start_menu_layout(SCREEN_WIDTH, SCREEN_HEIGHT)
+            new_source = menu_backdrop.copy()
+            render_start_menu_buttons(new_source, new_rects, t)
+
+            crumble_transition(screen, menu_backdrop, old_source, rects,
+                               new_source, new_rects, seed=99,
+                               burst_duration=0.52, assemble_duration=0.56,
+                               paint_backdrop=paint_menu_backdrop)
+            start_game_menu(screen, clean_backdrop=menu_backdrop)
+
+        elif index == 1:
+            how_to_play_screen(screen)
+
+        elif index == 2:
+            pygame.quit()
+            sys.exit()
 
     clock = pygame.time.Clock()
     clock.tick(60)
@@ -672,7 +724,10 @@ def main_menu():
         dt = clock.tick(60) / 1000.0
         t = pygame.time.get_ticks() / 1000.0
         mouse_pos = pygame.mouse.get_pos()
-        hovers = [r.collidepoint(mouse_pos) for r in rects]
+        # A keyboard-focused control lights up exactly like a hovered one,
+        # so there is only ever one 'this is selected' look to learn.
+        hovers = [r.collidepoint(mouse_pos) or i == focus
+                  for i, r in enumerate(rects)]
         _update_icon_anims(dict(zip(icons, hovers)), dt)
 
         for event in pygame.event.get():
@@ -681,6 +736,29 @@ def main_menu():
                 sys.exit()
             if handle_music_shortcut(event):
                 continue
+
+            # Keyboard navigation. Until this was added the menu was the one
+            # screen in the game that could not be used without a mouse.
+            if event.type == pygame.KEYDOWN and not show_settings:
+                if event.key in (pygame.K_DOWN, pygame.K_UP, pygame.K_TAB):
+                    step = -1 if event.key == pygame.K_UP else 1
+                    # The first press lands on Start Game rather than
+                    # stepping off whatever index happens to be stored.
+                    focus = 0 if focus < 0 else (focus + step) % len(focus_rects)
+                    continue
+                if (event.key in (pygame.K_RETURN, pygame.K_KP_ENTER, pygame.K_SPACE)
+                        and focus >= 0):
+                    activate(focus, t)
+                    continue
+                if event.key == pygame.K_ESCAPE:
+                    focus = -1
+                    continue
+
+            # Moving the mouse hands control back to it, so the pointer and
+            # the keyboard never highlight two different buttons at once.
+            if event.type == pygame.MOUSEMOTION and any(event.rel):
+                focus = -1
+
             # Left button only. pygame reports a right-click, a middle
             # click and each notch of the scroll wheel as MOUSEBUTTONDOWN
             # too (the wheel arrives as buttons 4 and 5), so a handler
@@ -689,38 +767,14 @@ def main_menu():
             # one.
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if not show_settings:
-                    if gear_rect.collidepoint(event.pos):
-                        show_settings = True
-                        settings_panel.open()
-                        continue
-                    if help_rect.collidepoint(event.pos):
-                        opening_walkthrough(screen, replay=True)
-                        continue
-                    if rects[0].collidepoint(event.pos):
-                        from src.ui.transitions import crumble_transition
-                        from src.screens.start_game_menu import (
-                            render_start_menu_buttons, start_game_menu,
-                            start_menu_layout,
-                        )
-
-                        old_source = screen.copy()  # current frame, main menu buttons already on it
-
-                        # The destination screen owns these, so the debris
-                        # settles into the buttons the player actually gets.
-                        new_rects = start_menu_layout(SCREEN_WIDTH, SCREEN_HEIGHT)
-                        new_source = menu_backdrop.copy()
-                        render_start_menu_buttons(new_source, new_rects, t)
-
-                        crumble_transition(screen, menu_backdrop, old_source, rects,
-                                            new_source, new_rects, seed=99,
-                                            burst_duration=0.52, assemble_duration=0.56,
-                                            paint_backdrop=paint_menu_backdrop)
-                        start_game_menu(screen, clean_backdrop=menu_backdrop)
-                    if rects[1].collidepoint(event.pos):                      
-                        how_to_play_screen(screen)
-                    if rects[2].collidepoint(event.pos):
-                        pygame.quit()
-                        sys.exit()
+                    # A click and Enter run the same code: whichever control
+                    # is under the pointer, or whichever one the keyboard has
+                    # focused.
+                    for index, rect in enumerate(focus_rects):
+                        if rect.collidepoint(event.pos):
+                            activate(index, t)
+                            break
+                    continue
             if show_settings:
                 settings_panel.handle_event(event)
                 show_settings = settings_panel.is_open
@@ -735,13 +789,23 @@ def main_menu():
         _draw_mang_tahimik_tip(screen, t)
         # Persistent top-right help and settings controls are easier to find
         # than a settings row mixed into the primary menu actions.
-        gear_hover = gear_rect.collidepoint(mouse_pos)
+        gear_hover = gear_rect.collidepoint(mouse_pos) or focus == FOCUS_SETTINGS
         pygame.draw.circle(screen, UI_COLORS["stone"], gear_rect.center, 27)
         pygame.draw.circle(screen, UI_COLORS["blue_bright"] if gear_hover else UI_COLORS["bronze"],
                            gear_rect.center, 27, 2)
         draw_gear(screen, gear_rect.center, 25, spin_degrees=t * (80 if gear_hover else 18))
         draw_button(screen, help_rect, "HELP  ?", title_font(17),
-                    hovered=help_rect.collidepoint(mouse_pos))
+                    hovered=(help_rect.collidepoint(mouse_pos)
+                             or focus == FOCUS_HELP))
+        # An explicit ring for the keyboard, drawn over whichever control is
+        # focused. Reusing the hover look alone was not enough: Start Game
+        # glows permanently because it is the primary action, so focusing it
+        # changed almost nothing on screen.
+        if focus >= 0:
+            ring = focus_rects[focus].inflate(14, 14)
+            pygame.draw.rect(screen, UI_COLORS["blue_bright"], ring, 3,
+                             border_radius=10)
+
         ver = _small.render("v1.0", True, WHITE)
         screen.blit(ver, (16, SCREEN_HEIGHT - ver.get_height() - 12))
         mute_hint = _small.render(music_shortcut_label(), True, UI_COLORS["text_dim"])

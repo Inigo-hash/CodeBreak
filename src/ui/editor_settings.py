@@ -18,6 +18,7 @@ import pygame
 
 from src.ui.editor_theme import *
 from src.settings_state import (
+    save_settings,
     TEXT_SPEEDS,
     VOLUME_STEP,
     settings_state,
@@ -254,6 +255,9 @@ class EditorSettingsPanel:
 
         if event.type == pygame.MOUSEBUTTONUP:
             self.dragging = None
+            # The slider is written to disk when the drag ends, not on
+            # every frame of it.
+            save_settings()
             return True
 
         if event.type == pygame.MOUSEMOTION and self.dragging:

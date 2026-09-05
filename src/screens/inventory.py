@@ -41,7 +41,7 @@ src/ui/ alongside Toolbar.
 import pygame
 from src.systems.audio import handle_music_shortcut
 
-from src.ui.theme import body_font, title_font
+from src.ui.theme import UI_COLORS, body_font, title_font
 from src.ui.topic_icons import topic_icon
 
 
@@ -49,15 +49,15 @@ from src.ui.topic_icons import topic_icon
 # Palette - kept identical to profile.py / settings.py so the new UI does not
 # look bolted on. Change these in one place to restyle the whole inventory.
 # ---------------------------------------------------------------------------
-PANEL_BG      = (36, 38, 48)    # outer panel fill
-PANEL_INNER   = (26, 28, 36)    # inset area inside the panel
-SLOT_BG       = (20, 22, 28)    # empty slot interior
-SLOT_BORDER   = (90, 94, 110)   # normal slot frame ("metal")
-SLOT_HOVER    = (140, 146, 165) # slot frame when the mouse is over it
-SLOT_SELECTED = (255, 220, 120) # slot frame of the active toolbar slot (gold)
-METAL_FRAME   = (90, 94, 110)   # panel border
-TEXT_MAIN     = (255, 255, 255)
-TEXT_DIM      = (150, 155, 170)
+PANEL_BG      = UI_COLORS["modal_panel"]    # outer panel fill
+PANEL_INNER   = UI_COLORS["modal_inner"]    # inset area inside the panel
+SLOT_BG       = UI_COLORS["modal_slot"]    # empty slot interior
+SLOT_BORDER   = UI_COLORS["modal_frame"]   # normal slot frame ("metal")
+SLOT_HOVER    = UI_COLORS["modal_frame_hover"] # slot frame when the mouse is over it
+SLOT_SELECTED = UI_COLORS["modal_accent"] # slot frame of the active toolbar slot (gold)
+METAL_FRAME   = UI_COLORS["modal_frame"]   # panel border
+TEXT_MAIN     = UI_COLORS["modal_text"]
+TEXT_DIM      = UI_COLORS["modal_text_dim"]
 
 # ---------------------------------------------------------------------------
 # Layout constants

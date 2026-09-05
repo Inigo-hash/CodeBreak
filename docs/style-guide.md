@@ -1,6 +1,6 @@
 # CodeBreak UI Style Guide
 
-**Status:** v1, audited 31 August 2026 against the code on `main`.
+**Status:** v2, audited 31 August 2026, decisions applied 5 September 2026.
 **Owner:** software design.
 
 This is the reference for what CodeBreak's interface is made of: the colors
@@ -110,31 +110,32 @@ And the accents:
 
 | Concept | Shared token | What screens actually draw |
 |---|---|---|
-| Hover blue | `blue_bright` 120, 205, 255 | `BLUE_GLOW` 80, 180, 255 in main_menu, how_to_play, game_over |
+| ~~Hover blue~~ | **settled:** `blue_bright` is now 80, 180, 255 | was 120, 205, 255 against three screens drawing 80, 180, 255 |
 | Gold | `gold` 218, 177, 86 | 255, 220, 120 in five screens |
 | Danger | `crimson` 190, 42, 52 | `DANGER` 220, 110, 110 in topic_lesson; `BLOOD_RED` 200, 40, 40 in game_over |
 | Body text | `text` 240, 237, 224 | pure white 255, 255, 255 in five screens |
-| Dim text | `text_dim` 156, 161, 174 | 160,165,180 · 170,175,190 · 150,155,170 · 185,188,196 · 215,215,220 |
+| ~~Dim text~~ | **settled:** one grey at 170, 175, 190 | was seven values: 156,161,174 · 160,165,180 · 170,175,190 · 150,155,170 · 180,180,190 · 185,188,196 |
 
-**Five different greys for "dimmer text" is the worst of these.** Nobody
-chose five; they accumulated one screen at a time.
+**Seven different greys for "dimmer text" was the worst of these** — an
+eighth appeared in the tutorial between the audit and the fix. Nobody chose
+seven; they accumulated one screen at a time. There is now one.
 
 **Recommendations — need sign-off:**
 
 1. **Stone family:** keep `theme.py`'s values. The menu's are close enough
    to be invisible; How to Play's are a genuinely different, lighter grey
    and should move to the modal group instead.
-2. **Hover blue:** adopt **80, 180, 255** as `blue_bright`, not the current
-   120, 205, 255. Three screens already use it, and it is the one the
-   player sees most.
+2. ~~**Hover blue**~~ — **done.** `blue_bright` is 80, 180, 255, and the
+   menu and Game Over now read it from the token instead of redrawing it.
 3. **Gold:** keep both, named honestly — `gold` 218, 177, 86 for HUD and
    carved chrome, `modal_accent` 255, 220, 120 for headings and highlights
    inside modal windows. They are used in different contexts and the
    brighter one would look wrong on the HUD.
 4. **Danger:** one value, `crimson`. Game Over's blood reds stay, as
    scene-specific art rather than UI tokens.
-5. **Dim text:** one value, `text_dim`. Pick 160, 165, 180 — the middle of
-   the five, and already the most used.
+5. ~~**Dim text**~~ — **done.** One value, 170, 175, 190: the lightest of
+   the cluster, chosen for contrast on small labels over dark panels, and
+   already what the two first-migrated screens used.
 
 ---
 
@@ -208,11 +209,11 @@ shadow. Spacing between stacked HUD panels is 8px; screen margin is
 | `screens/stage_info.py` | 2 | **Minor.** `CARD_BG` and `DIVIDER` belong in the modal group. |
 | `screens/how_to_play.py` | 8 | **Migrate.** Redefines the whole stone family at different values, plus its own white, gold and blue. Every value maps to an existing or proposed token. |
 | `screens/topic_found.py` | 9 | **Migrate.** Pure duplicate of the modal palette. |
-| `screens/topic_lesson.py` | 10 | **Migrate.** Same, plus its own success and danger. |
-| `screens/inventory.py` | 9 | **Migrate.** Same modal palette under slot-specific names. |
+| `screens/topic_lesson.py` | 0 | **Migrated** 5 Sep. Needed one new token, `modal_danger`. |
+| `screens/inventory.py` | 0 | **Migrated** 5 Sep. Needed one new token, `modal_slot`. |
 | `screens/game_over.py` | 10 | **Partly migrate.** Blood reds and rivets are scene art — keep. Its stone family and blue glow are duplicates. |
 | `screens/main_menu.py` | 10 | **Partly migrate.** Greens are menu-specific accents; the stone family, white and blue glow are duplicates. |
-| `screens/tutorial.py` | 6 local + imports 2 from how_to_play | **Migrate.** Currently borrows constants from another *screen*, which is why the tutorial's manual and the How to Play panel are coupled. |
+| `screens/tutorial.py` | 2 | **Migrated** 5 Sep, and no longer imports colours from another screen. The two left are scene art: the green Begin accent and the practice-room floor. |
 
 **Nothing in `src/data/` should ever appear in this table.** Data modules
 do not import pygame and do not know what anything looks like.
@@ -225,9 +226,11 @@ do not import pygame and do not know what anything looks like.
    example for this guide. Both now hold zero color literals and render
    pixel-for-pixel identically to before. See
    `docs/style-guide-migration.md`.
-2. `topic_lesson.py`, `inventory.py` — the rest of the modal family.
-3. `tutorial.py` — so it stops importing colors from another screen.
-4. `game_over.py`, `main_menu.py` — largest, most hand-drawn, least urgent.
+2. ~~`topic_lesson.py`, `inventory.py`~~ — **done** 5 Sep.
+3. ~~`tutorial.py`~~ — **done** 5 Sep; it now reads the palette directly.
+4. `game_over.py`, `main_menu.py` — partly done: both now take the hover
+   blue (and Game Over the dim grey) from tokens. Their stone families and
+   scene art remain.
 
 Do these one file at a time, with a screenshot before and after. There is
 no test that can tell you a panel looks wrong.
@@ -239,9 +242,9 @@ no test that can tell you a panel looks wrong.
 - [x] Add the `modal_*` values to `theme.UI_COLORS` and accept that
       CodeBreak has two panel styles. **Done** — 13 tokens, taken from the
       values screens were already drawing, so nothing changed on screen.
-- [ ] Change `blue_bright` to 80, 180, 255 to match what three screens
-      already draw.
+- [x] Change `blue_bright` to 80, 180, 255 to match what three screens
+      already draw. **Done** 5 Sep.
 - [ ] Keep two golds, named by context.
-- [ ] Collapse five dim greys into one at 160, 165, 180.
+- [x] Collapse the dim greys into one. **Done** 5 Sep, at 170, 175, 190.
 - [ ] Decide whether torch amber and heal green become shared tokens or
       stay local to the HUD.

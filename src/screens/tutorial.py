@@ -13,12 +13,16 @@ from src.data.challenges import CHALLENGES
 from src.screens.how_to_play import (
     draw_manual_columns,
     manual_layout,
-    STONE_DARK,
-    STONE_LIGHT,
 )
-from src.ui.theme import body_font, title_font
+from src.ui.theme import UI_COLORS, body_font, title_font
 from src.ui.gameplay_hud import draw_stat_bar
 from src.screens.loading import StageLoadingScreen
+
+# The manual's own colours, read straight from the shared palette rather
+# than imported from how_to_play.py. Borrowing them from another screen
+# meant this file restyled itself whenever that one changed.
+STONE_DARK = UI_COLORS["modal_inner"]
+STONE_LIGHT = UI_COLORS["modal_button_edge"]
 
 
 def tutorial_screen(screen, play_music=True, show_loading=False,
@@ -37,12 +41,12 @@ def tutorial_screen(screen, play_music=True, show_loading=False,
         loading.update(8, "Preparing your first lesson...")
 
     # --- Palette (stone/gold theme, matches main menu & game UI) ---
-    STONE_MID = (42, 46, 58)
-    METAL_FRAME = (90, 94, 110)
-    YELLOW_GLOW = (255, 220, 120)
+    STONE_MID = UI_COLORS["modal_button"]
+    METAL_FRAME = UI_COLORS["modal_frame"]
+    YELLOW_GLOW = UI_COLORS["modal_accent"]
     GREEN_OK = (80, 220, 120)
-    WHITE = (255, 255, 255)
-    DIM_TEXT = (180, 180, 190)
+    WHITE = UI_COLORS["modal_text"]
+    DIM_TEXT = UI_COLORS["modal_text_dim"]
     BG_FLOOR = (34, 36, 44)
 
     practice_background = None

@@ -3,6 +3,7 @@ import sys
 import pygame
 
 from src.settings_state import (
+    save_settings,
     MAX_FONT_SIZE, MIN_FONT_SIZE, ROWS, TEXT_SPEEDS, VOLUME_STEP,
     current_font_size, current_text_speed, current_theme_name,
     cycle_text_speed, cycle_theme, set_text_speed,
@@ -160,6 +161,9 @@ class SettingsPanel:
             return self.dragging_music or self.dragging_sfx
         if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
             self.dragging_music = self.dragging_sfx = False
+            # The slider is written to disk when the drag ends, not on
+            # every frame of it.
+            save_settings()
             return True
         return False
 

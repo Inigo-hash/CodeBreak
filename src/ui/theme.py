@@ -16,11 +16,17 @@ UI_COLORS = {
     "bronze": (171, 119, 55),
     "gold": (218, 177, 86),
     "blue": (72, 166, 224),
-    "blue_bright": (120, 205, 255),
+    # 80,180,255 rather than the brighter 120,205,255 this used to hold:
+    # the menu, How To Play and Game Over were all already drawing this
+    # value by hand, so hover now looks the same on every screen.
+    "blue_bright": (80, 180, 255),
     "crimson": (190, 42, 52),
     "parchment": (226, 207, 164),
     "text": (240, 237, 224),
-    "text_dim": (156, 161, 174),
+    # One grey for secondary text everywhere. Seven had accumulated across
+    # the screens, none of them chosen; this is the lightest of the
+    # cluster, which holds up best on small labels over dark panels.
+    "text_dim": (170, 175, 190),
     # Buttons pull their fill from these rather than from "stone". The menu
     # art is entirely warm gold and cool blue, so a near-neutral grey button
     # reads as unstyled placeholder UI sitting on top of finished artwork.
@@ -51,6 +57,10 @@ UI_COLORS = {
     "modal_text_soft": (215, 215, 220),
     "modal_text_dim": (170, 175, 190),
     "modal_success": (120, 200, 140),
+    "modal_danger": (220, 110, 110),
+    # The empty inventory slot: darker than the window it sits in, so a slot
+    # reads as a hole in the panel rather than a tile on top of it.
+    "modal_slot": (20, 22, 28),
 }
 
 # Button emphasis tiers. A menu where every row looks identical gives the eye

@@ -32,8 +32,14 @@ test failure). Loop over them instead:
 for f in tests/test_*.py; do n=$(basename $f .py); PYTHONPATH=. python -m unittest "tests.$n"; done
 ```
 
-81 tests currently pass. To check a change boots the real game without a
-display: `SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy timeout 10 python main.py`.
+158 tests, 150 passing. The eight failures predate the stage handoff work
+and are all tuning that drifted from its own tests: the torch heal rate
+(`test_night_lighting`), the manananggal's reach
+(`test_bug_report_regressions`), the trapped chest's authoring
+(`test_stage1_systems`), and the Island's tenth lesson, which the data
+lists nine of (`test_stage_gate`). To check a change boots the real game
+without a display:
+`SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy timeout 10 python main.py`.
 
 ## Where things live
 
@@ -43,11 +49,11 @@ display: `SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy timeout 10 python main.py`
 | Gameplay loop | `src/screens/game.py` (`game_screen`) |
 | Other screens | `src/screens/` - menus, world map, inventory, tutorial, boss modals, stage info |
 | Authored content | `src/data/` - pure data, no pygame |
-| Game rules | `src/systems/` - combat, spawns, save, stage gate, progress, boss trigger, audio |
+| Game rules | `src/systems/` - combat, spawns, save, stage gate, stage handoff, progress, boss trigger, audio |
 | Learning system | `src/learning/` - sandbox (runs code), challenge_manager (routes), validators/ |
 | Editor + HUD | `src/ui/` |
 | Entities | `src/entities/` - player, enemy, chest |
-| Map | `assets/map/tmx/basic.tmx`, authored in Tiled |
+| Map | `assets/map/tmx/` - `map1.tmx` (Island), `map2_castle_lobby.tmx` (Castle), authored in Tiled |
 
 `src/data/` is the first place to look for "how do I change what the game
 contains". Nothing in it imports pygame or draws anything.
@@ -56,12 +62,21 @@ contains". Nothing in it imports pygame or draws anything.
 
 `src/data/stages.py` holds one record per stage. Its `world` block is
 everything `game_screen` needs to load that stage - map, music, boss music,
-spawn, zones, encounters, walkable-ground layer and gids, save-migration
-version. `stage_world(stage)` fills in defaults for anything omitted.
+night, spawn, zones, encounters, walkable-ground layer and gids,
+save-migration version. `stage_world(stage)` fills in defaults for anything
+omitted.
 
 A stage with no `world["map"]` is content-only: menus and saves can name
-it, but entering it returns to the main menu instead of crashing. That is
-what currently keeps stage 2 (the Castle) unenterable.
+it, but entering it returns to the main menu instead of crashing.
+
+**Stage order** is authored too. A record's `next_stage` names where its
+exit gate leads; `src/systems/stage_handoff.py` resolves that, decides
+whether the next stage has a map to walk into, and rewrites the save for
+it - keeping what the player learned, dropping what belonged to the stage
+just left. `game_screen` returns `"next_stage"` after writing that save,
+and `run_stage_chain` in `start_game_menu.py` reloads the slot and
+re-enters gameplay on the new stage. A stage naming no next stage, or one
+with no map, still ends the run at the main menu.
 
 **Adding a stage** means writing a `world` block and authoring a TMX map -
 `game.py` should not need editing. If you find yourself adding a stage
@@ -111,10 +126,16 @@ a prop with enemies camped around it stays shut until they are defeated, and
 standing in torchlight regenerates energy four times as fast and heals
 at the same rate.
 
-**Stage 2 (Castle)** exists only as a data scaffold in `stages.py`. It
-needs: a TMX map, 10 intermediate lessons with validators, enemies, a boss,
-zones, and a stage-to-stage handoff (finishing stage 1 currently returns to
-the main menu).
+**Stage 2 (Castle)** is enterable. Clearing the Island's gate now hands the
+run over to `map2_castle_lobby.tmx` instead of returning to the main menu:
+the player keeps their lessons, stored topics and cleared-stage list, loses
+the Island's keys and map position, and arrives at the foot of the grand
+staircase with a full heart row. The lobby is lit rather than night, has
+two named zones and one placeholder objective, and is otherwise empty. It
+still needs: the rest of the map drawn (its lower half is void), 10
+intermediate lessons with behavioural validators, enemies and encounters, a
+boss, and an exit gate - all of them additions to `stages.py` rather than
+to `game.py`.
 
 **Known gaps**, in rough priority:
 

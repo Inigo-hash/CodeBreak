@@ -42,8 +42,27 @@ BEGINNER_TIPS = (
      "code": "remaining_enemies = 3"},
 )
 
+# Stage 2. Its lessons are still being written, so these preview the kind
+# of Python the castle will ask for and state the two handoff rules a
+# player arriving from the island needs to know.
+CASTLE_TIPS = (
+    {"text": "Lists hold many values under a single name.",
+     "code": 'party = ["scout", "warden"]'},
+    {"text": "A for loop runs once for every item in a sequence.",
+     "code": "for member in party:"},
+    {"text": "A while loop repeats until its condition turns False.",
+     "code": "while torches_lit:"},
+    {"text": "Functions give a block of code a name you can reuse.",
+     "code": "def open_gate(keys):"},
+    {"text": "return hands a value back to whoever called the function.",
+     "code": "    return keys >= required"},
+    {"text": "Every lesson you passed on the island came with you.",
+     "code": "# The keys did not. This gate wants its own."},
+)
+
 STAGE_TIPS = {
     "island": BEGINNER_TIPS,
+    "castle": CASTLE_TIPS,
     "tutorial": (
         {"text": "Use W, A, S, D or the arrow keys to move.",
          "code": "W  A  S  D"},

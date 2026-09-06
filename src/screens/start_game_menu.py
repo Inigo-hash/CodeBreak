@@ -68,6 +68,29 @@ def render_start_menu_buttons(surface, rects, t=0.0):
         _draw_stone_button(surface, rect, label, icon, False, seed, t, tier)
 
 
+def run_stage_chain(screen, slot_num, state):
+    """Run gameplay, following any stage handoff it reports back.
+
+    game_screen() loads exactly one stage, so clearing a stage that leads
+    to another returns "next_stage" having already written the advanced
+    save to the slot. Reloading that slot and re-entering is what carries
+    the player across: the finished stage's map, enemies and spawns are
+    dropped with the screen that owned them, and the new stage loads the
+    same way a continued save would.
+
+    A slot that will not reload ends the chain at the menu rather than
+    replaying the stage the player just finished.
+    """
+
+    while True:
+        result = game_screen(screen, slot_num=slot_num, save_state=state)
+        if result != "next_stage":
+            return result
+        state = save_manager.load_slot(slot_num)
+        if state is None:
+            return "main_menu"
+
+
 def start_game_menu(screen, clean_backdrop=None):
     from src.screens.main_menu import (
         STONE_DARK, STONE_MID, STONE_LIGHT, METAL_FRAME, BLUE_GLOW, WHITE,
@@ -358,13 +381,13 @@ def start_game_menu(screen, clean_backdrop=None):
             _resume_menu_music()
             return "tutorial_cancelled"
         save_manager.save_slot(slot_num, state)
-        result = game_screen(screen, slot_num=slot_num, save_state=state)
+        result = run_stage_chain(screen, slot_num, state)
         _resume_menu_music()
         return result
 
     def _run_loaded(slot_num, state):
         pygame.mixer.music.stop()
-        result = game_screen(screen, slot_num=slot_num, save_state=state)
+        result = run_stage_chain(screen, slot_num, state)
         _resume_menu_music()
         return result
 

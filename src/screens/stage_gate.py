@@ -13,11 +13,18 @@ from src.ui.theme import (
 
 
 def open_stage_gate(screen, status, gate_name="Stage Exit", background=None,
-                    show_boss_requirement=True):
+                    show_boss_requirement=True, stage_name="Island",
+                    next_stage_name=None):
     """Explain the gate requirements and confirm an unlocked stage exit.
 
     Returns ``"exit"`` only after the player deliberately confirms an
     unlocked gate. Every other close path returns ``"stay"``.
+
+    ``stage_name`` is the stage being left and ``next_stage_name`` the one
+    waiting on the other side, or None when clearing this gate ends the
+    run. Both are named by the caller rather than written into the copy
+    here, which is why this panel no longer promises an island and ten
+    keys to a player standing in a castle.
     """
 
     clock = pygame.time.Clock()
@@ -46,12 +53,24 @@ def open_stage_gate(screen, status, gate_name="Stage Exit", background=None,
         44,
     )
 
+    stage_label = str(stage_name or "Stage").upper()
     if status.unlocked:
         title_text = "STAGE COMPLETE"
-        primary_label = "COMPLETE STAGE"
+        primary_label = (
+            f"ENTER THE {str(next_stage_name).upper()}" if next_stage_name
+            else "COMPLETE STAGE"
+        )
     else:
         title_text = "THE GATE IS SEALED"
-        primary_label = "RETURN TO ISLAND"
+        primary_label = f"RETURN TO {stage_label}"
+
+    # Both labels now carry a stage name, so neither can be trusted to fit
+    # the width a fixed 20px title font used to. Step down until it sits
+    # inside the button instead of spilling over its edges.
+    for size in (20, 18, 16, 14):
+        primary_font = title_font(size)
+        if primary_font.size(primary_label)[0] <= primary.width - 24:
+            break
 
     while True:
         mouse = pygame.mouse.get_pos()
@@ -135,11 +154,22 @@ def open_stage_gate(screen, status, gate_name="Stage Exit", background=None,
 
         list_y = panel.top + 285
         if status.unlocked:
-            lines = (
-                "All 10 keys are accounted for.",
+            lines = [
+                f"All {status.required_keys} keys are accounted for."
+                if status.required_keys else "This gate asks for no keys.",
                 "Every required coding topic is complete.",
-                "The Corrupted Core boss has been defeated.",
-                "You may now leave the island. Your completion will be saved.",
+            ]
+            if status.required_boss_id and show_boss_requirement:
+                boss_name = (
+                    get_enemy(status.required_boss_id) or {}
+                ).get("name", "The stage guardian")
+                lines.append(f"{boss_name} has been defeated.")
+            lines.append(
+                f"The {next_stage_name} lies beyond this gate. "
+                "Your progress travels with you."
+                if next_stage_name else
+                f"You may now leave the {stage_name}. "
+                "Your completion will be saved."
             )
             for index, line in enumerate(lines):
                 rendered = text_font.render(line, True, UI_COLORS["text"])
@@ -176,12 +206,12 @@ def open_stage_gate(screen, status, gate_name="Stage Exit", background=None,
                     screen.blit(line, (x, y))
 
         draw_button(
-            screen, primary, primary_label, button_font,
+            screen, primary, primary_label, primary_font,
             hovered=primary.collidepoint(mouse),
             tier=TIER_PRIMARY if status.unlocked else TIER_TERTIARY,
         )
         draw_button(
-            screen, secondary, "STAY ON ISLAND", button_font,
+            screen, secondary, "STAY HERE", button_font,
             hovered=secondary.collidepoint(mouse), tier=TIER_TERTIARY,
         )
         hint = small.render(

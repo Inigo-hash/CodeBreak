@@ -19,6 +19,10 @@ Island's files itself:
     music               background track, or None for silence
     boss_music          track for this stage's boss fight, or None to
                         keep the ordinary stage music playing
+    night               True for the night veil and torch lighting, False
+                        for a stage lit by its own tiles. An interior has
+                        no dirt path to hang torches along, so inheriting
+                        the Island's night would leave it pitch black.
     spawn               where the player starts, as (x, y) fractions of
                         the map like zone rects and encounter anchors
     zones               the stage's list from zones.py
@@ -28,6 +32,14 @@ Island's files itself:
     map_layout_version  bumped when a map is re-cut, so old saves in
                         this stage can have their position migrated
     legacy_shift_tiles  (x, y) tiles an older save must move by
+
+Stage order
+-----------
+`next_stage` names the stage this one leads to when its exit gate opens.
+A stage that names none - or names one with no map - ends the run at the
+main menu instead, which is what the Island did before the Castle had a
+map. src/systems/stage_handoff.py reads it, so game.py still never names
+a stage itself.
 
 Objectives
 ----------
@@ -51,7 +63,7 @@ and named-zone entry as the player moves through the stage.
 from src.data.challenges import CHALLENGES
 from src.data.controls import WORLD_CONTROLS
 from src.data.encounters import BEGINNER_PATH_GIDS, BEGINNER_STAGE_ENCOUNTERS
-from src.data.zones import ISLAND_ZONES
+from src.data.zones import CASTLE_ZONES, ISLAND_ZONES
 
 
 # Filled in for any stage that leaves a world setting out. A stage with no
@@ -60,6 +72,7 @@ WORLD_DEFAULTS = {
     "map": None,
     "music": None,
     "boss_music": None,
+    "night": True,
     "spawn": (0.5, 0.5),
     "zones": (),
     "encounters": (),
@@ -82,6 +95,10 @@ STAGES = {
         "name": "Island",
 
         "subtitle": "Stage 1",
+
+        # Clearing the Corrupted Core gate now walks into stage 2 instead
+        # of ending the run. See systems/stage_handoff.py.
+        "next_stage": "castle",
 
         "world": {
 
@@ -311,47 +328,108 @@ STAGES = {
         ],
     },
 
-    # Stage 2 content buffer. The record is intentionally non-playable until
-    # its own map, encounters, topics, and completion gate are authored; it is
-    # nevertheless valid stage data, so menus and save migrations can refer to
-    # the Castle without falling back to the Island.
+    # Stage 2. The lobby map is authored, so the Island's exit gate can
+    # hand a finished run over to it. Everything else is still being
+    # written: no lessons, no enemies, no boss, and no exit rect, which
+    # means the Castle can be walked but not yet completed. Each of those
+    # is a data addition here rather than a change to game.py.
     "castle": {
+
         "id": "castle",
+
         "name": "Castle",
+
         "subtitle": "Stage 2 - Intermediate",
-        "playable": False,
-        # No map yet, which is exactly what keeps the Castle unenterable:
-        # game.py refuses to load a stage whose world names no TMX file.
+
+        "playable": True,
+
+        # The last authored stage: its gate, once it has one, ends the run
+        # at the main menu the way the Island's used to.
+        "next_stage": None,
+
         "world": {
-            "map": None,
-            "music": None,
+
+            "map": "assets/map/tmx/map2_castle_lobby.tmx",
+
+            # Placeholder until a castle theme is recorded - silence reads
+            # as a broken build rather than as atmosphere.
+            "music": "assets/audios/gameStage1Bgm.mp3",
+
             "boss_music": None,
+
+            # An interior lights itself. The night veil hangs its torches
+            # off the walkable dirt path, and a marble floor has none, so
+            # inheriting the Island's night would black the lobby out.
+            "night": False,
+
+            # The foot of the grand staircase, dead centre, facing up into
+            # the hall: where someone entering the castle would arrive.
+            "spawn": (0.525, 0.425),
+
+            "zones": CASTLE_ZONES,
+
+            # No camps authored yet. Enemies arrive with the lesson route.
+            "encounters": (),
+
+            "path_layer": None,
+
+            "path_gids": frozenset(),
+
+            "map_layout_version": 1,
+
         },
+
         "manual": {
-            "summary": (
-                "Beyond the Corrupted Core stands a castle whose machinery "
-                "depends on intermediate Python. Its lesson route is still "
-                "being charted."
-            ),
+
+            "summary":
+                "Past the Corrupted Core's gate the island's corruption "
+                "gives way to stone. The castle lobby still stands, its "
+                "stairs climbing into the dark, and its machinery runs on "
+                "intermediate Python. Its lesson route is still being "
+                "charted - for now, the way in is the way out.",
+
             "mechanics": [
-                "The Castle is an intermediate-code stage scaffold.",
-                "Its map, encounters, and lesson terminals will be added here.",
+                "The lobby is walkable; its lessons, enemies and boss are "
+                "still being authored.",
+                "Everything you learned on the island travels with you. "
+                "Keys do not - the castle's gate wants its own.",
             ],
+
             "controls": WORLD_CONTROLS,
+
             "topics": [],
+
             "tips": [
-                "Finish every Island lesson and defeat the Core warden first."
+                "Nothing in the lobby can hurt you yet. Use it to get your "
+                "bearings.",
             ],
         },
+
         "enemies": [],
+
         "items": [],
+
+        # No exit_rect: without one game.py builds no gate, which is the
+        # honest state of a stage that cannot yet be finished.
         "completion": {
             "required_keys": 0,
             "required_boss": None,
             "exit_name": "Castle Exit",
             "topic_key_rewards": {},
         },
-        "objectives": [],
+
+        "objectives": [
+            # Provisional, and the only thing the Castle can currently ask
+            # for: somewhere to walk that is not where the player lands.
+            # It goes when the lesson terminals arrive.
+            {
+                "id": "castle_reach_lower_landings",
+                "text": "Follow the stair down to the lower landings.",
+                "kind": "explore",
+                "target": "The Lower Landings",
+                "optional": False,
+            },
+        ],
     },
 
 }
@@ -363,14 +441,20 @@ def get_stage(stage_id):
 
     The lookup is case-insensitive because save files store the stage as
     a display name ("Island") while the keys here are lowercase ids
-    ("island"). Falling back rather than raising means an old save
-    naming a stage that no longer exists still loads.
+    ("island"). Display names are matched too, so a stage whose name is
+    not simply its id capitalised cannot make its own saves reopen on the
+    Island. Falling back rather than raising means an old save naming a
+    stage that no longer exists still loads.
     """
 
     if stage_id:
-        stage = STAGES.get(str(stage_id).strip().lower())
+        wanted = str(stage_id).strip().lower()
+        stage = STAGES.get(wanted)
         if stage:
             return stage
+        for stage in STAGES.values():
+            if str(stage.get("name", "")).strip().lower() == wanted:
+                return stage
 
     return STAGES[DEFAULT_STAGE_ID]
 

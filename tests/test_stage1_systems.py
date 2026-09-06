@@ -64,10 +64,12 @@ class StageProgressCompletionTests(unittest.TestCase):
 
 
 class StageScaffoldAndDebugTests(unittest.TestCase):
-    def test_castle_scaffold_is_distinct_and_has_empty_topic_list(self):
+    def test_castle_is_enterable_but_has_no_lessons_authored_yet(self):
+        # The lobby map exists, so the Island's gate can hand over to it.
+        # Its lesson route does not, and nothing may pretend otherwise.
         castle = get_stage("castle")
         self.assertEqual(castle["id"], "castle")
-        self.assertFalse(castle["playable"])
+        self.assertTrue(castle["playable"])
         self.assertEqual(castle["manual"]["topics"], [])
         self.assertEqual(stage_challenges(castle), [])
 

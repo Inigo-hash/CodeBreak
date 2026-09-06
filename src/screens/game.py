@@ -55,7 +55,7 @@ from src.systems.encounter_progress import newly_cleared_encounter_ids
 from src.systems.guards import assign_guards, remaining_guards
 from src.ui.theme import UI_COLORS, body_font, draw_button, draw_panel, title_font
 from src.ui.night_lighting import (
-    LIGHT_CENTER_LIFT, WORLD_IS_NIGHT, draw_night_and_map_torches,
+    LIGHT_CENTER_LIFT, draw_night_and_map_torches,
     in_torch_light, place_path_torches,
 )
 from src.ui.fog import build_fog_texture, draw_fog
@@ -72,6 +72,11 @@ from src.systems.boss_trigger import (
 from src.systems.stage_gate import (
     evaluate_boss_access,
     evaluate_stage_gate,
+)
+from src.systems.stage_handoff import (
+    advance_save_state,
+    next_stage,
+    stage_is_enterable,
 )
 
 
@@ -1035,9 +1040,10 @@ def game_screen(screen, slot_num=None, save_state=None):
     # scene - see the note in the paused branch of the loop below.
     pause_snapshot = None
     show_pause_settings = False
-    # Night is the authored starting atmosphere. F1 can temporarily preview
-    # the same scene in daylight.
-    night_mode = WORLD_IS_NIGHT
+    # Night is the authored starting atmosphere - per stage, because an
+    # interior lights itself and has no dirt path to hang torches along.
+    # F1 can temporarily preview the same scene in daylight.
+    night_mode = world["night"]
 
     debug_boss_access = False
     debug_enemy_bypass = False
@@ -1545,19 +1551,46 @@ def game_screen(screen, slot_num=None, save_state=None):
                         stage, gameplay_state["keys"], save_challenges_passed,
                         stage_progress.defeated_enemies,
                     )
+                    # Where this stage leads, if anywhere: a stage that
+                    # names no next stage - or one whose map is not
+                    # authored yet - still ends the run at the menu. The
+                    # handoff needs a slot to write to, since the next
+                    # stage is entered by re-running this screen on the
+                    # advanced save.
+                    following_stage = next_stage(stage)
+                    hands_over = (
+                        slot_num is not None
+                        and stage_is_enterable(following_stage)
+                    )
                     gate_decision = open_stage_gate(
                         screen,
                         gate_status,
                         gate_name=stage_exit_name,
                         background=screen.copy(),
+                        stage_name=stage_name,
+                        next_stage_name=(
+                            following_stage.get("name") if hands_over else None
+                        ),
                     )
                     if gate_decision == "exit":
                         stage_id = stage.get("id", save_stage.lower())
                         if stage_id not in gameplay_state["completed_stages"]:
                             gameplay_state["completed_stages"].append(stage_id)
+                        pygame.mixer.music.stop()
+                        if hands_over:
+                            # Saved before returning, so the slot already
+                            # names the new stage: an interrupted handoff
+                            # reloads into the castle, not back onto a
+                            # finished island.
+                            save_manager.save_slot(
+                                slot_num,
+                                advance_save_state(
+                                    build_save_state(), stage, following_stage
+                                ),
+                            )
+                            return "next_stage"
                         if slot_num is not None:
                             save_manager.save_slot(slot_num, build_save_state())
-                        pygame.mixer.music.stop()
                         return "main_menu"
                     # The E press belongs to the gate. It must not fall
                     # through and swing the sword after the modal closes.

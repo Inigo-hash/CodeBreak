@@ -124,6 +124,34 @@ ISLAND_ZONES = [
 ]
 
 
+# Castle (stage 2). Provisional, like the lobby map itself: two regions
+# covering what has actually been drawn, so the HUD names where the player
+# is standing instead of calling a marble hall "Wilderness". Deliberately
+# coarse - the lobby is 40 tiles square, and zones packed any tighter
+# print their labels on top of each other on the minimap.
+CASTLE_ZONES = [
+    {
+        "name": "The Lobby Hall",
+        "rect": (
+            0.250000,
+            0.150000,
+            0.525000,
+            0.300000
+        ),
+    },
+
+    {
+        "name": "The Lower Landings",
+        "rect": (
+            0.150000,
+            0.450000,
+            0.725000,
+            0.300000
+        ),
+    },
+]
+
+
 def get_zone_at(world_x, world_y, map_width, map_height, zones):
     """
     Returns the name of the zone containing the given world-space

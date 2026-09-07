@@ -71,7 +71,7 @@ def has_playable_next_stage(stage):
     return stage_is_enterable(next_stage(stage))
 
 
-def advance_save_state(save_state, from_stage, to_stage):
+def advance_save_state(save_state, from_stage, to_stage, *, mark_complete=True):
     """Return the save a run carries out of `from_stage` and into `to_stage`.
 
     What the player keeps is what they learned and what they finished:
@@ -94,9 +94,10 @@ def advance_save_state(save_state, from_stage, to_stage):
 
     state = dict(save_state or {})
 
+    # Exploring a later map in developer mode is not a campaign victory.
     cleared = [str(stage_id) for stage_id in state.get("completed_stages", ())]
     finished_id = (from_stage or {}).get("id")
-    if finished_id and finished_id not in cleared:
+    if mark_complete and finished_id and finished_id not in cleared:
         cleared.append(finished_id)
 
     state.update({

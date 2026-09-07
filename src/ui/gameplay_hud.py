@@ -74,44 +74,55 @@ def build_low_health_corner_overlay(size):
         return cached
 
     width, height = size
-    band = max(72, min(180, round(min(width, height) * 0.14)))
+    band = max(110, min(280, round(min(width, height) * 0.24)))
     overlay = pygame.Surface(size, pygame.SRCALPHA)
+
+    # A broad edge glow remains visible beyond the HUD and minimap corners.
+    # The centre stays transparent so the player can still read the fight.
+    edge_band = max(24, round(min(width, height) * 0.065))
+    for inset in range(edge_band):
+        alpha = round(155 * (1 - inset / edge_band) ** 1.5)
+        pygame.draw.rect(overlay, (230, 12, 28, alpha),
+                         (inset, inset, width - inset * 2, height - inset * 2), 1)
 
     # Nested corner wedges create a soft inward fade while leaving the
     # centre of the play area completely clear.
+    corners = pygame.Surface(size, pygame.SRCALPHA)
     for radius in range(band, 0, -3):
-        alpha = round(190 * (1.0 - radius / band) ** 1.45)
-        color = (190, 8, 22, alpha)
-        pygame.draw.polygon(overlay, color, ((0, 0), (radius, 0), (0, radius)))
+        alpha = round(235 * (1.0 - radius / band) ** 1.1)
+        color = (240, 12, 28, alpha)
+        pygame.draw.polygon(corners, color, ((0, 0), (radius, 0), (0, radius)))
         pygame.draw.polygon(
-            overlay, color,
+            corners, color,
             ((width, 0), (width - radius, 0), (width, radius)),
         )
         pygame.draw.polygon(
-            overlay, color,
+            corners, color,
             ((0, height), (radius, height), (0, height - radius)),
         )
         pygame.draw.polygon(
-            overlay, color,
+            corners, color,
             ((width, height), (width - radius, height),
              (width, height - radius)),
         )
 
+    overlay.blit(corners, (0, 0))
+
     # Three sharper diagonal marks in each corner make the warning read as
     # damage rather than as a general red color filter.
-    mark_color = (245, 28, 38, 205)
-    for offset in (24, 43, 62):
-        reach = min(band - 8, offset + 44)
-        pygame.draw.line(overlay, mark_color, (offset, 0), (0, reach), 3)
+    mark_color = (255, 46, 56, 245)
+    for offset in (36, 65, 94):
+        reach = min(band - 8, offset + 70)
+        pygame.draw.line(overlay, mark_color, (offset, 0), (0, reach), 6)
         pygame.draw.line(
-            overlay, mark_color, (width - offset, 0), (width, reach), 3
+            overlay, mark_color, (width - offset, 0), (width, reach), 6
         )
         pygame.draw.line(
-            overlay, mark_color, (offset, height), (0, height - reach), 3
+            overlay, mark_color, (offset, height), (0, height - reach), 6
         )
         pygame.draw.line(
             overlay, mark_color,
-            (width - offset, height), (width, height - reach), 3,
+            (width - offset, height), (width, height - reach), 6,
         )
 
     _low_health_overlay_cache[size] = overlay
@@ -129,7 +140,7 @@ def draw_low_health_warning(surface, current_hp, max_hp, time_seconds=0.0):
 
     urgency = 1.0 - hp_ratio / LOW_HP_THRESHOLD
     pulse = 0.82 + 0.18 * (0.5 + 0.5 * math.sin(time_seconds * 5.2))
-    alpha = round(255 * (0.55 + 0.45 * urgency) * pulse)
+    alpha = round(255 * (0.85 + 0.15 * urgency) * pulse)
     overlay = build_low_health_corner_overlay(surface.get_size())
     overlay.set_alpha(alpha)
     surface.blit(overlay, (0, 0))

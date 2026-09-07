@@ -51,6 +51,7 @@ def open_practice_topics(
     stage,
     completed_topics,
     background=None,
+    developer_access=False,
 ):
     """
     Open the Code Practice topic selector.
@@ -121,7 +122,7 @@ def open_practice_topics(
 
     topic_ids = _stage_topic_ids(stage)
 
-    completed = set(completed_topics)
+    completed = set(_stage_topic_ids(stage) if developer_access else completed_topics)
 
     # ---------------------------------------------------------
     # Topic cards

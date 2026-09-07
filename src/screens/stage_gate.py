@@ -14,11 +14,11 @@ from src.ui.theme import (
 
 def open_stage_gate(screen, status, gate_name="Stage Exit", background=None,
                     show_boss_requirement=True, stage_name="Island",
-                    next_stage_name=None):
+                    next_stage_name=None, developer_access=False):
     """Explain the gate requirements and confirm an unlocked stage exit.
 
-    Returns ``"exit"`` only after the player deliberately confirms an
-    unlocked gate. Every other close path returns ``"stay"``.
+    Returns ``"exit"`` after confirmation of an unlocked gate or an explicit
+    developer bypass. Every other close path returns ``"stay"``.
 
     ``stage_name`` is the stage being left and ``next_stage_name`` the one
     waiting on the other side, or None when clearing this gate ends the
@@ -28,6 +28,7 @@ def open_stage_gate(screen, status, gate_name="Stage Exit", background=None,
     """
 
     clock = pygame.time.Clock()
+    can_exit = status.unlocked or developer_access
     width, height = screen.get_size()
     backdrop = (screen if background is None else background).copy()
 
@@ -53,8 +54,8 @@ def open_stage_gate(screen, status, gate_name="Stage Exit", background=None,
         44,
     )
 
-    if status.unlocked:
-        title_text = "STAGE COMPLETE"
+    if can_exit:
+        title_text = "DEVELOPER ACCESS" if developer_access else "STAGE COMPLETE"
         primary_label = (
             f"ENTER THE {str(next_stage_name).upper()}" if next_stage_name
             else "COMPLETE STAGE"
@@ -87,10 +88,10 @@ def open_stage_gate(screen, status, gate_name="Stage Exit", background=None,
                 if event.key in (
                     pygame.K_e, pygame.K_RETURN, pygame.K_KP_ENTER, pygame.K_SPACE
                 ):
-                    return "exit" if status.unlocked else "stay"
+                    return "exit" if can_exit else "stay"
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if primary.collidepoint(event.pos):
-                    return "exit" if status.unlocked else "stay"
+                    return "exit" if can_exit else "stay"
                 if secondary is not None and secondary.collidepoint(event.pos):
                     return "stay"
 
@@ -154,7 +155,18 @@ def open_stage_gate(screen, status, gate_name="Stage Exit", background=None,
                                         rect.top + 10))
 
         list_y = panel.top + 285
-        if status.unlocked:
+        if developer_access:
+            lines = [
+                "Developer exploration is ON (F4).",
+                "Keys, lessons, and boss requirements are bypassed.",
+                "Your actual lesson and boss progress stays unchanged.",
+            ]
+            for index, line in enumerate(lines):
+                rendered = text_font.render(line, True, UI_COLORS["text"])
+                screen.blit(rendered, rendered.get_rect(
+                    center=(panel.centerx, list_y + index * 34)
+                ))
+        elif status.unlocked:
             lines = [
                 f"All {status.required_keys} keys are accounted for."
                 if status.required_keys else "This gate asks for no keys.",
@@ -209,7 +221,7 @@ def open_stage_gate(screen, status, gate_name="Stage Exit", background=None,
         draw_button(
             screen, primary, primary_label, primary_font,
             hovered=primary.collidepoint(mouse),
-            tier=TIER_PRIMARY if status.unlocked else TIER_TERTIARY,
+            tier=TIER_PRIMARY if can_exit else TIER_TERTIARY,
         )
         if secondary is not None:
             draw_button(
@@ -217,7 +229,7 @@ def open_stage_gate(screen, status, gate_name="Stage Exit", background=None,
                 hovered=secondary.collidepoint(mouse), tier=TIER_TERTIARY,
             )
         hint = small.render(
-            "E / ENTER = confirm    ESC = stay" if status.unlocked else
+            "E / ENTER = confirm    ESC = stay" if can_exit else
             "E / ENTER / ESC = close",
             True,
             UI_COLORS["text_dim"],

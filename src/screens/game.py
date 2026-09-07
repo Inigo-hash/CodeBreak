@@ -18,6 +18,7 @@ from src.screens.stage_info import open_stage_info
 from src.screens.practice_topics import open_practice_topics
 from src.screens.world_map import enemy_is_tracking_player, open_world_map
 from src.systems import save_manager
+from src.systems.developer_mode import developer_mode
 from src.systems.stage_progress import StageProgress
 from src.ui.stage_panel import StagePanel
 from src.ui.gameplay_hud import (
@@ -585,7 +586,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             []
         )
 
-        if requirements and enforce_requirements:
+        if requirements and enforce_requirements and not developer_mode.enabled:
 
             requirement_result = open_topic_requirements(
                 screen,
@@ -1054,7 +1055,6 @@ def game_screen(screen, slot_num=None, save_state=None):
     night_mode = world["night"]
 
     debug_boss_access = False
-    debug_enemy_bypass = False
     # F2 restores the optional atmospheric fog preview.
     fog_mode = False
     fog_drift_x = 0.0
@@ -1499,6 +1499,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                             stage,
                             gameplay_state["topics_completed"],
                             background=practice_background,
+                            developer_access=developer_mode.enabled,
                         )
 
                         if selected_topic_id is not None:
@@ -1584,10 +1585,11 @@ def game_screen(screen, slot_num=None, save_state=None):
                         next_stage_name=(
                             following_stage.get("name") if hands_over else None
                         ),
+                        developer_access=developer_mode.enabled,
                     )
                     if gate_decision == "exit":
                         stage_id = stage.get("id", save_stage.lower())
-                        if stage_id not in gameplay_state["completed_stages"]:
+                        if gate_status.unlocked and stage_id not in gameplay_state["completed_stages"]:
                             gameplay_state["completed_stages"].append(stage_id)
                         pygame.mixer.music.stop()
                         if hands_over:
@@ -1598,7 +1600,8 @@ def game_screen(screen, slot_num=None, save_state=None):
                             save_manager.save_slot(
                                 slot_num,
                                 advance_save_state(
-                                    build_save_state(), stage, following_stage
+                                    build_save_state(), stage, following_stage,
+                                    mark_complete=gate_status.unlocked,
                                 ),
                             )
                             return "next_stage"
@@ -1673,10 +1676,11 @@ def game_screen(screen, slot_num=None, save_state=None):
                     )
 
                 elif DEBUG_MODE and event.key == pygame.K_F4 and not paused:
-                    debug_enemy_bypass = not debug_enemy_bypass
+                    developer_mode.toggle()
+                    engaged = False
                     print(
-                        "Enemy debug bypass:",
-                        "ON" if debug_enemy_bypass else "OFF"
+                        "Developer exploration:",
+                        "ON" if developer_mode.enabled else "OFF"
                     )
 
                 elif event.key == pygame.K_m and not paused:
@@ -1867,7 +1871,7 @@ def game_screen(screen, slot_num=None, save_state=None):
         previous_player_position = player_rect.topleft
         movement_blockers = collision_rects + [
             enemy.rect for enemy in enemies
-            if enemy.active and enemy.state != "defeated"
+            if enemy.active and enemy.state != "defeated" and not developer_mode.enabled
         ]
         player_x, player_y = move_rect(
             player_rect, player_x, player_y, dx, dy, movement_blockers,
@@ -1902,6 +1906,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             and boss_main_entrance_at(current_boss_zone, player_rect.center)
             and not boss_access.unlocked
             and not debug_boss_access
+            and not developer_mode.enabled
         ):
             # The Core is progression space, not an early-game shortcut.
             # Put the player back on the last non-boss tile and show the same
@@ -1921,6 +1926,7 @@ def game_screen(screen, slot_num=None, save_state=None):
         )
         leaving_active_boss = (
             boss_is_active
+            and not developer_mode.enabled
             and previous_boss_zone is not None
             and current_boss_zone is None
             and boss_main_entrance_at(
@@ -1954,6 +1960,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                 boss_is_active = False
         if (boss_id and entrance_approached and current_boss_zone is not None
                 and not boss_defeated and not boss_is_active
+                and not developer_mode.enabled
                 and (boss_access.unlocked or debug_boss_access)):
             boss_entry_position = (player_rect.x, player_rect.y)
 
@@ -2014,11 +2021,11 @@ def game_screen(screen, slot_num=None, save_state=None):
             # F4 bypass means enemies do not put the player
             # into the engaged state.
             engaged = engaged or (
-                enemy.engaged and not debug_enemy_bypass
+                enemy.engaged and not developer_mode.enabled
             )
 
             # F4 bypass means enemies deal no damage.
-            if incoming_damage and not debug_enemy_bypass:
+            if incoming_damage and not developer_mode.enabled:
                 if player_combat.take_damage(incoming_damage):
                     combat_audio.play(
                         "player_death"
@@ -2243,7 +2250,7 @@ def game_screen(screen, slot_num=None, save_state=None):
         # --- Handle E key hold ---
         blocking_guards = []
 
-        if near_interactable and not debug_enemy_bypass:
+        if near_interactable and not developer_mode.enabled:
             blocking_guards = remaining_guards(near_interactable)
 
         if near_interactable and blocking_guards:
@@ -2507,7 +2514,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                     stage_progress.defeated_enemies,
                 )
                 gate_color = (
-                    (90, 225, 145) if gate_status.unlocked
+                    (90, 225, 145) if gate_status.unlocked or developer_mode.enabled
                     else UI_COLORS["gold"]
                 )
                 pulse = 5 + round(
@@ -2518,7 +2525,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                 )
                 if near_stage_exit:
                     label = inspect_font.render(
-                        "EXIT OPEN" if gate_status.unlocked else "SEALED EXIT",
+                        "EXIT OPEN" if gate_status.unlocked or developer_mode.enabled else "SEALED EXIT",
                         True,
                         gate_color,
                     )
@@ -2654,6 +2661,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                 stage_progress.defeated_enemies,
             )
             interaction_prompt = (
+                "Enter Next Stage" if developer_mode.enabled else
                 "Complete Stage" if gate_status.unlocked else "Inspect Sealed Exit"
             )
         elif near_interactable and blocking_guards:
@@ -2827,6 +2835,16 @@ def game_screen(screen, slot_num=None, save_state=None):
             player_combat.max_hp,
             pygame.time.get_ticks() / 1000.0,
         )
+
+        if DEBUG_MODE:
+            developer_label = font.render(
+                "F4: DEVELOPER EXPLORATION ON" if developer_mode.enabled else
+                "F4: Developer exploration OFF",
+                True, (255, 215, 100) if developer_mode.enabled else (180, 185, 195),
+            )
+            developer_rect = developer_label.get_rect(midtop=(SCREEN_W // 2, 12))
+            pygame.draw.rect(screen, (15, 18, 26), developer_rect.inflate(18, 10), border_radius=5)
+            screen.blit(developer_label, developer_rect)
 
         pygame.display.flip()
         if player_combat.state == "defeated" and player_combat.action_time == 0:

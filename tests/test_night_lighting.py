@@ -146,6 +146,7 @@ class TorchWarmthTests(unittest.TestCase):
         combat.take_damage(40)
         self.assertEqual(combat.hp, 60)
 
+        combat.update(2.0)  # Recovery begins after the damage grace period.
         combat.update(1.0, PLAYER_ENERGY_REGEN, PLAYER_TORCH_HP_REGEN)
         self.assertEqual(combat.hp, 60 + int(PLAYER_TORCH_HP_REGEN))
 
@@ -154,6 +155,7 @@ class TorchWarmthTests(unittest.TestCase):
 
         combat = PlayerCombat()
         combat.take_damage(80)                   # low enough to heal freely
+        combat.update(2.0)
         for _ in range(120):                     # two seconds at 60fps
             combat.update(1 / 60, PLAYER_ENERGY_REGEN, PLAYER_TORCH_HP_REGEN)
 

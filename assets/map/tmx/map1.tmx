@@ -1856,7 +1856,7 @@
     <property name="types" value="interactive"/>
    </properties>
   </object>
-  <object id="26" x="498.333" y="1986" width="27" height="28.3333">
+  <object id="26" x="488.435" y="1986" width="50.09" height="28.3333">
    <properties>
     <property name="actions" value="search_barrel"/>
     <property name="topic_id" value="operators_lesson"/>
@@ -2987,6 +2987,7 @@
   <object id="1505" x="2319.3" y="1759.67" width="31.75" height="31.875">
    <properties>
     <property name="actions" value="search_chest"/>
+    <property name="trap_seconds" type="int" value="15"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>

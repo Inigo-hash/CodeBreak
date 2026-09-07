@@ -1,0 +1,155 @@
+test_boss_encounter
+pygame-ce 2.5.7 (SDL 2.32.10, Python 3.14.0)
+............
+----------------------------------------------------------------------
+Ran 12 tests in 0.537s
+
+OK
+
+test_bug_report_regressions
+pygame-ce 2.5.7 (SDL 2.32.10, Python 3.14.0)
+.................
+----------------------------------------------------------------------
+Ran 17 tests in 0.284s
+
+OK
+
+test_editor_feedback
+pygame-ce 2.5.7 (SDL 2.32.10, Python 3.14.0)
+D:\VScode\CodeBreak\src\ui\code_editor.py:110: DeprecationWarning: pygame.scrap.init deprecated since 2.2.0
+  pygame.scrap.init()
+......
+----------------------------------------------------------------------
+Ran 6 tests in 0.854s
+
+OK
+
+test_encounter_progress
+pygame-ce 2.5.7 (SDL 2.32.10, Python 3.14.0)
+......
+----------------------------------------------------------------------
+Ran 6 tests in 0.001s
+
+OK
+
+test_guarded_props
+pygame-ce 2.5.7 (SDL 2.32.10, Python 3.14.0)
+.........
+----------------------------------------------------------------------
+Ran 9 tests in 0.003s
+
+OK
+
+test_learning_challenges
+..
+----------------------------------------------------------------------
+Ran 2 tests in 0.011s
+
+OK
+
+test_loading_screen
+pygame-ce 2.5.7 (SDL 2.32.10, Python 3.14.0)
+........
+----------------------------------------------------------------------
+Ran 8 tests in 0.866s
+
+OK
+
+test_map_enemy_visibility
+pygame-ce 2.5.7 (SDL 2.32.10, Python 3.14.0)
+....
+----------------------------------------------------------------------
+Ran 4 tests in 0.000s
+
+OK
+
+test_menu_layout
+pygame-ce 2.5.7 (SDL 2.32.10, Python 3.14.0)
+......
+----------------------------------------------------------------------
+Ran 6 tests in 0.401s
+
+OK
+
+test_night_lighting
+pygame-ce 2.5.7 (SDL 2.32.10, Python 3.14.0)
+................
+----------------------------------------------------------------------
+Ran 16 tests in 1.098s
+
+OK
+
+test_practice_manager
+..
+----------------------------------------------------------------------
+Ran 2 tests in 0.000s
+
+OK
+
+test_save_slot_menu
+pygame-ce 2.5.7 (SDL 2.32.10, Python 3.14.0)
+........
+----------------------------------------------------------------------
+Ran 8 tests in 5.656s
+
+OK
+
+test_stage1_systems
+pygame-ce 2.5.7 (SDL 2.32.10, Python 3.14.0)
+......
+----------------------------------------------------------------------
+Ran 6 tests in 0.026s
+
+OK
+
+test_stage_gate
+pygame-ce 2.5.7 (SDL 2.32.10, Python 3.14.0)
+.............
+----------------------------------------------------------------------
+Ran 13 tests in 0.658s
+
+OK
+
+test_stage_handoff
+pygame-ce 2.5.7 (SDL 2.32.10, Python 3.14.0)
+.......................
+----------------------------------------------------------------------
+Ran 23 tests in 0.251s
+
+OK
+
+test_tagama_tasks
+pygame-ce 2.5.7 (SDL 2.32.10, Python 3.14.0)
+........D:\VScode\CodeBreak\src\ui\code_editor.py:110: DeprecationWarning: pygame.scrap.init deprecated since 2.2.0
+  pygame.scrap.init()
+...
+----------------------------------------------------------------------
+Ran 11 tests in 0.651s
+
+OK
+
+test_topic_icons
+pygame-ce 2.5.7 (SDL 2.32.10, Python 3.14.0)
+...
+----------------------------------------------------------------------
+Ran 3 tests in 0.669s
+
+OK
+
+test_tutorial_regressions
+pygame-ce 2.5.7 (SDL 2.32.10, Python 3.14.0)
+..D:\VScode\CodeBreak\src\ui\code_editor.py:110: DeprecationWarning: pygame.scrap.init deprecated since 2.2.0
+  pygame.scrap.init()
+...
+----------------------------------------------------------------------
+Ran 5 tests in 3.764s
+
+OK
+
+test_world_map_view
+pygame-ce 2.5.7 (SDL 2.32.10, Python 3.14.0)
+............
+----------------------------------------------------------------------
+Ran 12 tests in 0.233s
+
+OK

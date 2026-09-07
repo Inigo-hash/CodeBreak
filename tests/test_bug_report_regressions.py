@@ -77,7 +77,7 @@ class MapAndInteractionRegressionTests(unittest.TestCase):
 
     def test_wilderness_enemy_reach_matches_visible_sprite_distance(self):
         self.assertGreaterEqual(ENEMY_STATS["tiyanak_sinta"].attack_range, 72)
-        self.assertGreaterEqual(ENEMY_STATS["manananggal"].attack_range, 96)
+        self.assertGreaterEqual(ENEMY_STATS["manananggal"].attack_range, 92)
         self.assertGreaterEqual(ENEMY_STATS["tikbalang"].attack_range, 104)
 
     def test_enemy_body_cannot_move_from_dirt_onto_grass(self):

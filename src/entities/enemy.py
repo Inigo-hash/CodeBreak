@@ -315,11 +315,8 @@ class Enemy:
                     self.return_path.pop(0)
                     target = self.return_path[0] if self.return_path else self.spawn
                     target_direction, _ = normalized_toward(self.rect.center, target)
-                return_blockers = (
-                    navigation_rects if navigation_rects is not None else collision_rects
-                )
                 self._move(target_direction, self.stats.movement_speed * 0.7, dt,
-                           return_blockers, map_width, map_height,
+                           collision_rects, map_width, map_height,
                            allow_detour=False)
             return 0
 
@@ -385,7 +382,7 @@ class Enemy:
                 )
                 self.chase_goal = player_rect.center
                 self.path_retry = 0.75
-        elif distance <= self.detection_range:
+        elif distance <= self.detection_range and not path_blocked:
             # A short reaction makes detection readable and prevents an enemy
             # outside melee range from attacking on the acquisition frame.
             self.state = "alert"

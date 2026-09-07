@@ -65,7 +65,7 @@ class ChallengeManager:
 
             actual_value = variables[name]
 
-            if actual_value != expected_value:
+            if type(actual_value) is not type(expected_value) or actual_value != expected_value:
                 return False, (
                     f"{name} has the wrong final value."
                 )
@@ -76,7 +76,8 @@ class ChallengeManager:
         self,
         challenge,
         code,
-        variables=None
+        variables=None,
+        output=None,
     ):
 
         try:
@@ -131,5 +132,9 @@ class ChallengeManager:
 
             if not runtime_passed:
                 return False, runtime_feedback
+
+        if "expected_output" in challenge:
+            if output is None or output.rstrip("\n") != challenge["expected_output"]:
+                return False, "Your printed output does not match the objective."
 
         return True, feedback

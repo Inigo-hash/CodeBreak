@@ -928,7 +928,8 @@ class CodeEditor:
         passed, feedback = self.challenge_manager.validate(
             self.challenge,
             code,
-            variables=result.get("variables", {})
+            variables=result.get("variables", {}),
+            output=result.get("output", ""),
         )
 
         # ---------------------------------------------------------

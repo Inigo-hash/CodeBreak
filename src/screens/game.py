@@ -148,12 +148,18 @@ def load_interactables(tmx_data):
     return interactables
 
 
-def nearest_interactable(player_rect, interactables, reach=32):
+def nearest_interactable(player_rect, interactables, reach=32, blockers=()):
     """Choose the closest reachable prop instead of map-file order."""
 
     candidates = [
         item for item in interactables
         if player_rect.colliderect(item["rect"].inflate(reach * 2, reach * 2))
+        and not any(
+            wall.clipline(player_rect.center, item["rect"].center)
+            for wall in blockers
+            # A prop's own solid artwork must not prevent searching it.
+            if not wall.colliderect(item["rect"])
+        )
     ]
     return min(
         candidates,
@@ -673,6 +679,9 @@ def game_screen(screen, slot_num=None, save_state=None):
                 stage,
                 save_challenges_passed
             )
+
+            if slot_num is not None:
+                save_manager.save_slot(slot_num, build_save_state())
 
         return "solved" if editor.solved else "editor_closed"
 
@@ -1424,8 +1433,13 @@ def game_screen(screen, slot_num=None, save_state=None):
             flush=True,
         )
 
+    autosave_elapsed = 0.0
     while running:
         dt = clock.tick(TARGET_FPS) / 1000.0
+        autosave_elapsed += dt
+        if autosave_elapsed >= 30.0 and slot_num is not None and player_combat.hp > 0:
+            save_manager.save_slot(slot_num, build_save_state())
+            autosave_elapsed = 0.0
 
         if FPS_LOG:
             fps_frame_count += 1
@@ -1851,36 +1865,14 @@ def game_screen(screen, slot_num=None, save_state=None):
             dx *= player_speed * frame_scale
             dy *= player_speed * frame_scale
 
-        # --- Collision (horizontal) ---
-        player_x += dx
-        player_rect.x = round(player_x)
-        for rect in collision_rects:
-            if player_rect.colliderect(rect):
-                if dx > 0:
-                    player_rect.right = rect.left
-                elif dx < 0:
-                    player_rect.left = rect.right
-                # Only resync the float when a collision actually adjusted the rect.
-                # Resyncing unconditionally every frame discards the leftover
-                # sub-pixel fraction (e.g. the .5 in speed 2.5), which is what
-                # was causing the inconsistent / direction-dependent speed.
-                player_x = float(player_rect.x)
-
-        # --- Collision (vertical) ---
-        player_y += dy
-        player_rect.y = round(player_y)
-        for rect in collision_rects:
-            if player_rect.colliderect(rect):
-                if dy > 0:
-                    player_rect.bottom = rect.top
-                elif dy < 0:
-                    player_rect.top = rect.bottom
-                player_y = float(player_rect.y)
-
-        # --- Keep player inside map bounds ---
-        player_rect.clamp_ip(pygame.Rect(0, 0, map_width, map_height))
-        player_x = float(player_rect.x)
-        player_y = float(player_rect.y)
+        movement_blockers = collision_rects + [
+            enemy.rect for enemy in enemies
+            if enemy.active and enemy.state != "defeated"
+        ]
+        player_x, player_y = move_rect(
+            player_rect, player_x, player_y, dx, dy, movement_blockers,
+            pygame.Rect(0, 0, map_width, map_height),
+        )
 
         # --- Camera ---
         camera_x, camera_y = update_camera()
@@ -2002,7 +1994,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                 [] if enemy.flies_over_terrain else collision_rects
             )
 
-            enemy_blockers = terrain_blockers + [
+            enemy_blockers = terrain_blockers + [player_rect] + [
                 other.rect for other in enemies
                 if other is not enemy
                 and other.active
@@ -2232,7 +2224,8 @@ def game_screen(screen, slot_num=None, save_state=None):
         # reach lets the player use a prop while its solid artwork keeps the
         # character body a short distance away.
         near_interactable = nearest_interactable(
-            player_rect, interactables, reach=TILE_SIZE * 2
+            player_rect, interactables, reach=TILE_SIZE * 2,
+            blockers=collision_rects,
         )
 
         # Combat takes input priority over environmental hold interactions.

@@ -61,7 +61,8 @@ class LearningChallengeTests(unittest.TestCase):
                 passed, feedback = manager.validate(
                     challenge,
                     code,
-                    variables=execution.get("variables", {})
+                    variables=execution.get("variables", {}),
+                    output=execution.get("output", ""),
                 )
                 self.assertTrue(passed, feedback)
                 self.assertTrue(feedback.strip())

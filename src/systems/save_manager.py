@@ -4,6 +4,7 @@ import base64
 import hashlib
 import hmac
 import secrets
+import tempfile
 
 from src.data.stages import get_stage
 from src.systems.boss_trigger import required_boss_id
@@ -135,8 +136,22 @@ def load_slot(slot: int):
 
 def save_slot(slot: int, state: dict) -> None:
     _ensure_save_dir()
-    with open(_slot_path(slot), "w") as f:
-        json.dump(state, f, indent=2)
+    # Replace only after serialization and flushing succeed. An interrupted
+    # autosave must leave the last playable save intact.
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", dir=SAVE_DIR,
+            prefix=f".slot_{slot}_", suffix=".tmp", delete=False,
+        ) as f:
+            temporary = f.name
+            json.dump(state, f, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(temporary, _slot_path(slot))
+    finally:
+        if temporary is not None and os.path.exists(temporary):
+            os.unlink(temporary)
 
 
 def is_protected(state: dict | None) -> bool:

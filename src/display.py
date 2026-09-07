@@ -94,6 +94,9 @@ def _events(*args, **kwargs):
         if hasattr(event, "pos"):
             values = dict(event.dict)
             values["pos"] = window_to_virtual(event.pos)
+            if hasattr(event, "rel") and _window is not None:
+                scale, _, _ = _viewport(_window.get_size())
+                values["rel"] = tuple(value / scale for value in event.rel)
             event = pygame.event.Event(event.type, values)
         converted.append(event)
     return converted

@@ -15,6 +15,7 @@ CHALLENGES = {
     # =========================================================
 
     "variables_001": {
+        "runtime_expected": {"age": 18},
 
         "id": "variables_001",
 
@@ -46,6 +47,7 @@ and assign the value 18.
     # =========================================================
 
     "print_001": {
+        "expected_output": "Hello, World!",
 
         "id": "print_001",
 
@@ -77,6 +79,7 @@ Hello, World!
     # =========================================================
 
     "python_syntax_basics_001": {
+        "expected_output": "Hello, Explorer!",
 
         "id": "python_syntax_basics_001",
 
@@ -109,6 +112,7 @@ Hello, Explorer!
     # =========================================================
 
     "data_types_001": {
+        "runtime_expected": {"age": 18, "height": 1.75, "name": "Alex", "is_ready": True},
 
         "id": "data_types_001",
 
@@ -165,6 +169,7 @@ is_ready = True
     # =========================================================
 
     "type_casting_001": {
+        "runtime_expected": {"age_text": "18", "age": 18},
 
         "id": "type_casting_001",
 
@@ -270,6 +275,8 @@ as the test input.
     # =========================================================
 
     "formatted_output_001": {
+        "runtime_expected": {"name": "Alex"},
+        "expected_output": "Welcome, Alex!",
 
         "id": "formatted_output_001",
 

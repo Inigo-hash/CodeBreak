@@ -1,4 +1,4 @@
-"""Regression tests for the 10-key, all-topics stage exit gate."""
+"""Regression tests for the nine-topic stage exit and legacy key helpers."""
 
 import os
 from collections import deque
@@ -17,6 +17,7 @@ from src.data.challenges import CHALLENGES
 from src.data.stages import get_stage, stage_world
 from src.data.topics import TOPICS
 from src.screens.stage_gate import open_stage_gate
+from src.screens.game import nearest_interactable
 from src.systems.stage_gate import (
     award_topic_keys, earned_topic_keys, evaluate_boss_access,
     evaluate_stage_gate,
@@ -36,10 +37,10 @@ class StageGateTests(unittest.TestCase):
         self.required_topics = required_topic_ids(self.stage)
         self.defeated_boss = (self.stage["completion"]["required_boss"],)
 
-    def test_island_has_ten_real_required_topics_and_ten_keys(self):
-        self.assertEqual(len(self.required_topics), 10)
+    def test_island_has_nine_real_required_topics_and_nine_keys(self):
+        self.assertEqual(len(self.required_topics), 9)
         self.assertTrue(all(topic in CHALLENGES for topic in self.required_topics))
-        self.assertEqual(earned_topic_keys(self.stage, self.required_topics), 10)
+        self.assertEqual(earned_topic_keys(self.stage, self.required_topics), 9)
 
     def test_every_required_topic_is_reachable_from_an_authored_map_object(self):
         map_path = Path(__file__).parents[1] / self.world["map"]
@@ -86,6 +87,8 @@ class StageGateTests(unittest.TestCase):
                     frontier.append(neighbor)
 
         reachable_challenges = set()
+        blockers = [pygame.Rect(x * tile_size, y * tile_size, tile_size, tile_size)
+                    for x, y in blocked]
         for obj in root.findall(".//object"):
             properties = {
                 prop.get("name"): prop.get("value")
@@ -107,12 +110,15 @@ class StageGateTests(unittest.TestCase):
                 for y in range(max(0, rect.top // tile_size - 2),
                                min(tmx.height - 1, rect.bottom // tile_size + 2) + 1)
             }
-            if nearby & reachable_cells:
+            if any(nearest_interactable(
+                pygame.Rect(x * tile_size, y * tile_size, tile_size, tile_size),
+                [{"rect": rect}], reach=tile_size * 2, blockers=blockers,
+            ) for x, y in nearby & reachable_cells):
                 reachable_challenges.add(topic["challenge_id"])
 
         self.assertTrue(
             set(self.required_topics).issubset(reachable_challenges),
-            "At least one required Stage 1 lesson cannot be reached from spawn",
+            f"Unreachable Stage 1 lessons: {set(self.required_topics) - reachable_challenges}",
         )
 
     def _spawn_cell(self, map_width, map_height, tile_size):
@@ -184,10 +190,10 @@ class StageGateTests(unittest.TestCase):
 
     def test_all_topics_cannot_bypass_missing_keys(self):
         status = evaluate_stage_gate(
-            self.stage, 9, self.required_topics, self.defeated_boss
+            self.stage, 8, self.required_topics, self.defeated_boss
         )
         self.assertFalse(status.unlocked)
-        self.assertEqual(status.keys, 9)
+        self.assertEqual(status.keys, 8)
         self.assertFalse(status.missing_topic_ids)
 
     def test_ten_keys_and_every_topic_unlock_the_exit(self):
@@ -217,13 +223,13 @@ class StageGateTests(unittest.TestCase):
         self.assertTrue(ready.unlocked)
         self.assertFalse(ready.boss_defeated)
 
-    def test_first_completion_rewards_cap_at_ten(self):
+    def test_legacy_topic_reward_helper_caps_at_nine(self):
         keys = 0
         for challenge_id in self.required_topics:
             keys = award_topic_keys(keys, self.stage, challenge_id)
-        self.assertEqual(keys, 10)
+        self.assertEqual(keys, 9)
         self.assertEqual(
-            award_topic_keys(keys, self.stage, self.required_topics[0]), 10
+            award_topic_keys(keys, self.stage, self.required_topics[0]), 9
         )
 
     def test_old_save_recovers_keys_for_completed_required_topics(self):
@@ -236,7 +242,7 @@ class StageGateTests(unittest.TestCase):
         # A legitimate larger saved total is preserved, while bad overflow
         # can never exceed the authored stage maximum.
         self.assertEqual(migrate_key_count(8, self.stage, completed), 8)
-        self.assertEqual(migrate_key_count(999, self.stage, completed), 10)
+        self.assertEqual(migrate_key_count(999, self.stage, completed), 9)
 
 
 class StageGateModalTests(unittest.TestCase):

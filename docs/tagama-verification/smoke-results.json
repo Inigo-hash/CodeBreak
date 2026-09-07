@@ -1,0 +1,15 @@
+{
+  "fresh_game": {
+    "frames": 1325,
+    "seconds": 32.0,
+    "average_fps": 41.4,
+    "worst_frame_ms": 231.4
+  },
+  "reload": {
+    "frames": 89,
+    "seconds": 2.0,
+    "average_fps": 44.5,
+    "worst_frame_ms": 36.9
+  },
+  "autosave_restored": true
+}

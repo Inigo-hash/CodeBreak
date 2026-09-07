@@ -495,7 +495,8 @@ class GameplayHUD:
         text = render_text(self.bold, f"[E] {prompt}", TEXT)
         rect = text.get_rect()
         rect.inflate_ip(34, 20)
-        rect.midbottom = (width // 2, height - 92)
+        # Leave room for the equipped-item label above the hotbar.
+        rect.midbottom = (width // 2, height - 126)
         self._panel(rect, emphasized=True)
         self.screen.blit(text, text.get_rect(center=rect.center))
 

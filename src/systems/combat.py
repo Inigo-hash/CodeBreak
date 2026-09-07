@@ -194,9 +194,10 @@ class PlayerCombat:
         self.attack_cooldown = max(0.0, self.attack_cooldown - dt)
         self.dodge_cooldown = max(0.0, self.dodge_cooldown - dt)
         self.invulnerable = max(0.0, self.invulnerable - dt)
+        healing_dt = max(0.0, dt - self.heal_delay)
         self.heal_delay = max(0.0, self.heal_delay - dt)
         self.energy = min(float(self.max_energy), self.energy + energy_regen * dt)
-        self._regenerate_health(dt, hp_regen)
+        self._regenerate_health(healing_dt, hp_regen)
         if self.action_time > 0:
             self.action_time = max(0.0, self.action_time - dt)
             if self.action_time == 0 and self.state != "defeated":
@@ -362,6 +363,12 @@ def selected_weapon_damage(inventory):
 
 def move_rect(rect, x, y, dx, dy, blockers, bounds):
     """Collision-safe axis-separated movement used by dodge and enemy AI."""
+    # Subdivide long steps so a hitch or dodge cannot skip a thin wall.
+    steps = max(1, math.ceil(max(abs(dx), abs(dy)) / max(1, min(rect.size) / 2)))
+    if steps > 1:
+        for _ in range(steps):
+            x, y = move_rect(rect, x, y, dx / steps, dy / steps, blockers, bounds)
+        return x, y
     x += dx
     rect.x = round(x)
     for wall in blockers:
@@ -376,8 +383,13 @@ def move_rect(rect, x, y, dx, dy, blockers, bounds):
             rect.bottom = wall.top if dy > 0 else rect.bottom
             rect.top = wall.bottom if dy < 0 else rect.top
             y = float(rect.y)
+    before_clamp = rect.topleft
     rect.clamp_ip(bounds)
-    return float(rect.x), float(rect.y)
+    if rect.x != before_clamp[0]:
+        x = float(rect.x)
+    if rect.y != before_clamp[1]:
+        y = float(rect.y)
+    return x, y
 
 
 def normalized_toward(source, target):

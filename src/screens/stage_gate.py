@@ -53,7 +53,6 @@ def open_stage_gate(screen, status, gate_name="Stage Exit", background=None,
         44,
     )
 
-    stage_label = str(stage_name or "Stage").upper()
     if status.unlocked:
         title_text = "STAGE COMPLETE"
         primary_label = (
@@ -62,7 +61,9 @@ def open_stage_gate(screen, status, gate_name="Stage Exit", background=None,
         )
     else:
         title_text = "THE GATE IS SEALED"
-        primary_label = f"RETURN TO {stage_label}"
+        primary_label = "CONTINUE EXPLORING"
+        primary.centerx = panel.centerx
+        secondary = None
 
     # Both labels now carry a stage name, so neither can be trusted to fit
     # the width a fixed 20px title font used to. Step down until it sits
@@ -90,7 +91,7 @@ def open_stage_gate(screen, status, gate_name="Stage Exit", background=None,
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if primary.collidepoint(event.pos):
                     return "exit" if status.unlocked else "stay"
-                if secondary.collidepoint(event.pos):
+                if secondary is not None and secondary.collidepoint(event.pos):
                     return "stay"
 
         screen.blit(backdrop, (0, 0))
@@ -210,12 +211,14 @@ def open_stage_gate(screen, status, gate_name="Stage Exit", background=None,
             hovered=primary.collidepoint(mouse),
             tier=TIER_PRIMARY if status.unlocked else TIER_TERTIARY,
         )
-        draw_button(
-            screen, secondary, "STAY HERE", button_font,
-            hovered=secondary.collidepoint(mouse), tier=TIER_TERTIARY,
-        )
+        if secondary is not None:
+            draw_button(
+                screen, secondary, "STAY HERE", button_font,
+                hovered=secondary.collidepoint(mouse), tier=TIER_TERTIARY,
+            )
         hint = small.render(
-            "E / ENTER = confirm    ESC = stay",
+            "E / ENTER = confirm    ESC = stay" if status.unlocked else
+            "E / ENTER / ESC = close",
             True,
             UI_COLORS["text_dim"],
         )

@@ -19,7 +19,7 @@ from src.screens.boss_encounter import (
 )
 from src.screens.game import boss_sword_damage
 from src.systems.boss_trigger import (
-    boss_main_entrance_at, boss_zone_at, required_boss_id,
+    BossEntranceTrigger, boss_main_entrance_at, boss_zone_at, required_boss_id,
     should_trigger_boss,
 )
 from src.systems.combat import (
@@ -77,6 +77,35 @@ class BossTriggerTests(unittest.TestCase):
         main_entry = (self.zone["rect"].centerx, self.zone["rect"].bottom + 8)
         self.assertFalse(boss_main_entrance_at(self.zone, side_entry))
         self.assertTrue(boss_main_entrance_at(self.zone, main_entry))
+
+    def test_side_edges_never_trigger_an_entrance_warning(self):
+        trigger = BossEntranceTrigger()
+        rect = self.zone["rect"]
+        for _ in range(100):
+            for point in ((rect.left - 1, rect.centery),
+                          (rect.left + 1, rect.centery),
+                          (rect.right - 1, rect.centery),
+                          (rect.right + 1, rect.centery)):
+                self.assertFalse(trigger.update(self.zone, point))
+        self.assertTrue(trigger.update(self.zone, (rect.centerx, rect.bottom - 1)))
+
+    def test_dismissed_warning_does_not_repeat_until_player_leaves_doorway(self):
+        trigger = BossEntranceTrigger()
+        rect = self.zone["rect"]
+        inside = (rect.centerx, rect.bottom - 1)
+        pushed_back = (rect.centerx, rect.bottom + 1)
+        self.assertTrue(trigger.update(self.zone, inside))
+        for _ in range(100):
+            self.assertFalse(trigger.update(self.zone, pushed_back))
+            self.assertFalse(trigger.update(self.zone, inside))
+        self.assertFalse(trigger.update(self.zone, (rect.centerx, rect.bottom + 100)))
+        self.assertTrue(trigger.update(self.zone, inside))
+
+    def test_walking_from_side_label_zone_to_doorway_still_triggers(self):
+        trigger = BossEntranceTrigger()
+        rect = self.zone["rect"]
+        self.assertFalse(trigger.update(self.zone, (rect.left + 1, rect.centery)))
+        self.assertTrue(trigger.update(self.zone, (rect.centerx, rect.bottom - 1)))
 
     def test_boss_has_distinct_record_stats_body_and_assets(self):
         self.assertEqual(self.boss_id, "corrupted_core_kapre")

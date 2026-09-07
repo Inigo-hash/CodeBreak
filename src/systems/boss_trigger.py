@@ -10,15 +10,10 @@ def boss_zone_at(zone_records, point):
     return None
 
 
-def boss_main_entrance_at(zone, point):
-    """Return whether a point is in the Core's centered south doorway.
-
-    The named zone is rectangular for map labeling, but its visible walls
-    are irregular. Restricting retreat confirmation to this narrow corridor
-    prevents invisible side edges from behaving like exits.
-    """
+def boss_main_entrance_rect(zone):
+    """The centered south doorway, rather than the whole label zone."""
     if not zone or not zone.get("is_boss_zone"):
-        return False
+        return None
     rect = zone["rect"]
     corridor_width = max(96, round(rect.width * 0.28))
     corridor_depth = max(64, round(rect.height * 0.18))
@@ -27,7 +22,36 @@ def boss_main_entrance_at(zone, point):
     entrance.height = corridor_depth * 2
     entrance.centerx = rect.centerx
     entrance.centery = rect.bottom
-    return entrance.collidepoint(point)
+    return entrance
+
+
+def boss_main_entrance_at(zone, point):
+    entrance = boss_main_entrance_rect(zone)
+    return entrance is not None and entrance.collidepoint(point)
+
+
+class BossEntranceTrigger:
+    """Show one warning per doorway approach, even after pushing back.
+
+    Walk clear of the doorway before rearming. Crossing the rectangular
+    zone's side edges or holding movement against a sealed gate cannot
+    repeatedly reopen a dismissed modal.
+    """
+
+    def __init__(self):
+        self.armed = True
+
+    def update(self, zone, point):
+        entrance = boss_main_entrance_rect(zone)
+        if entrance is None:
+            return False
+        if not entrance.inflate(32, 32).collidepoint(point):
+            self.armed = True
+        if (self.armed and entrance.collidepoint(point)
+                and zone["rect"].collidepoint(point)):
+            self.armed = False
+            return True
+        return False
 
 
 def should_trigger_boss(previous_zone, current_zone, defeated=False,

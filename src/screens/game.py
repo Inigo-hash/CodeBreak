@@ -66,8 +66,7 @@ from src.screens.boss_encounter import (
 )
 from src.screens.tutorial import tutorial_screen
 from src.systems.boss_trigger import (
-    boss_main_entrance_at, boss_zone_at, required_boss_id,
-    should_trigger_boss,
+    BossEntranceTrigger, boss_main_entrance_at, boss_zone_at, required_boss_id,
 )
 from src.systems.stage_gate import (
     evaluate_boss_access,
@@ -1297,7 +1296,7 @@ def game_screen(screen, slot_num=None, save_state=None):
     # walking through its door. Arm the encounter only after the player has
     # occupied ordinary ground outside the zone at least once.
     previous_boss_zone = boss_zone_at(zone_pixel_rects, player_rect.center)
-    boss_trigger_armed = previous_boss_zone is None
+    boss_entrance_trigger = BossEntranceTrigger()
     last_safe_position = stage_spawn
     boss_entry_position = stage_spawn
 
@@ -1865,6 +1864,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             dx *= player_speed * frame_scale
             dy *= player_speed * frame_scale
 
+        previous_player_position = player_rect.topleft
         movement_blockers = collision_rects + [
             enemy.rect for enemy in enemies
             if enemy.active and enemy.state != "defeated"
@@ -1884,18 +1884,22 @@ def game_screen(screen, slot_num=None, save_state=None):
         if stage_progress.visit_zone(current_zone_name):
             stage_progress.sync_objectives(stage, save_challenges_passed)
 
-        # Entering an authored boss zone is the only campaign boss trigger.
-        # No zone-name comparison is involved, so another stage can opt in by
-        # setting is_boss_zone on its own zone record.
+        # The zone labels a broad rectangle, including ground outside the
+        # irregular walls. Only the south doorway may open a boss modal.
         current_boss_zone = boss_zone_at(
             zone_pixel_rects, player_rect.center
         )
+        entrance_approached = boss_entrance_trigger.update(
+            boss_zone, player_rect.center
+        )
+        if entrance_approached:
+            last_safe_position = previous_player_position
         boss_access = evaluate_boss_access(
             stage, gameplay_state["keys"], save_challenges_passed
         )
         if (
             current_boss_zone is not None
-            and previous_boss_zone is None
+            and boss_main_entrance_at(current_boss_zone, player_rect.center)
             and not boss_access.unlocked
             and not debug_boss_access
         ):
@@ -1905,10 +1909,11 @@ def game_screen(screen, slot_num=None, save_state=None):
             player_rect.topleft = last_safe_position
             player_x, player_y = map(float, last_safe_position)
             current_boss_zone = None
-            open_stage_gate(
-                screen, boss_access, background=screen.copy(),
-                gate_name="Corrupted Core", show_boss_requirement=False,
-            )
+            if entrance_approached:
+                open_stage_gate(
+                    screen, boss_access, background=screen.copy(),
+                    gate_name="Corrupted Core", show_boss_requirement=False,
+                )
         boss_is_active = (
             boss_enemy is not None
             and boss_enemy.active
@@ -1947,15 +1952,9 @@ def game_screen(screen, slot_num=None, save_state=None):
                 boss_phase_effect_timer = 0.0
                 previous_boss_zone = None
                 boss_is_active = False
-        if boss_id and should_trigger_boss(
-            previous_boss_zone,
-            current_boss_zone,
-            defeated=boss_defeated,
-            boss_active=boss_is_active,
-        ) and boss_trigger_armed and boss_main_entrance_at(
-            current_boss_zone, player_rect.center
-        ):
-            boss_trigger_armed = False
+        if (boss_id and entrance_approached and current_boss_zone is not None
+                and not boss_defeated and not boss_is_active
+                and (boss_access.unlocked or debug_boss_access)):
             boss_entry_position = (player_rect.x, player_rect.y)
 
             # Swap to boss battle music the moment the encounter popup
@@ -1982,7 +1981,6 @@ def game_screen(screen, slot_num=None, save_state=None):
                         stage, save_challenges_passed
                     )
         if current_boss_zone is None:
-            boss_trigger_armed = True
             last_safe_position = (player_rect.x, player_rect.y)
         previous_boss_zone = current_boss_zone
 

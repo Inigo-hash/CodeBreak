@@ -30,6 +30,8 @@ ISLAND_ZONES = [
             0.200000
         ),
         "is_boss_zone": True,
+        # Movement covers the full terrace, independently of its entry label.
+        "movement_rect": (0.367021, 0.187500, 0.388298, 0.256250),
     },
 
     {

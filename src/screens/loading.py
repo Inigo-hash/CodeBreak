@@ -28,7 +28,7 @@ BEGINNER_TIPS = (
      "code": "player_hp = 100"},
     {"text": "Strings are text surrounded by quotation marks.",
      "code": 'island_name = "Mactan"'},
-    {"text": "The final gate needs 10 keys, every lesson, and the Core boss.",
+    {"text": "The final gate needs 9 keys, every required lesson, and the Core boss.",
      "code": "gate_open = keys_ok and topics_ok and boss_defeated"},
     {"text": "if statements allow programs to make decisions.",
      "code": "if gate_open:"},

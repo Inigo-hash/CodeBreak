@@ -27,4 +27,28 @@
    <property name="collidable" type="bool" value="true"/>
   </properties>
  </tile>
+ <tile id="42">
+  <properties>
+   <property name="actions" value="read_sign"/>
+   <property name="message" value="Explore the paths. Clear guards, solve lessons, and collect nine keys to enter the Core."/>
+  </properties>
+ </tile>
+ <tile id="43">
+  <properties>
+   <property name="actions" value="read_sign"/>
+   <property name="message" value="Explore the paths. Clear guards, solve lessons, and collect nine keys to enter the Core."/>
+  </properties>
+ </tile>
+ <tile id="44">
+  <properties>
+   <property name="actions" value="read_sign"/>
+   <property name="message" value="Explore the paths. Clear guards, solve lessons, and collect nine keys to enter the Core."/>
+  </properties>
+ </tile>
+ <tile id="45">
+  <properties>
+   <property name="actions" value="read_sign"/>
+   <property name="message" value="Explore the paths. Clear guards, solve lessons, and collect nine keys to enter the Core."/>
+  </properties>
+ </tile>
 </tileset>

@@ -68,6 +68,12 @@ class StageGateTests(unittest.TestCase):
                 if properties and properties.get("collidable"):
                     blocked.add((x, y))
 
+        from src.screens.game import object_collision_rects
+        for rect in object_collision_rects(tmx):
+            for x in range(rect.left // tile_size, (rect.right - 1) // tile_size + 1):
+                for y in range(rect.top // tile_size, (rect.bottom - 1) // tile_size + 1):
+                    blocked.add((x, y))
+
         map_width = tmx.width * tile_size
         map_height = tmx.height * tile_size
         spawn = self._spawn_cell(map_width, map_height, tile_size)

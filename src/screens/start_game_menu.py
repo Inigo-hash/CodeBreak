@@ -107,6 +107,12 @@ def start_game_menu(screen, clean_backdrop=None):
     icons, labels, seeds, tiers = SG_ICONS, SG_LABELS, SG_SEEDS, SG_TIERS
 
     show_slot_panel = None
+    from src.screens.settings import SettingsPanel
+    from src.ui.gear_icon import draw_gear
+    from src.ui.theme import UI_COLORS
+    settings_panel = SettingsPanel(screen)
+    settings_panel.close()
+    gear_rect = pygame.Rect(width - 74, 18, 54, 54)
     confirm_slot = None
     confirm_mode = "replace"
     password_action = None
@@ -502,7 +508,7 @@ def start_game_menu(screen, clean_backdrop=None):
         # A modal owns the screen: the buttons behind it must not light up
         # under the pointer, which reads as though they can still be used.
         modal_open = (
-            show_slot_panel is not None
+            settings_panel.is_open or show_slot_panel is not None
             or confirm_slot is not None
             or password_action is not None
         )
@@ -515,6 +521,13 @@ def start_game_menu(screen, clean_backdrop=None):
                 pygame.quit()
                 sys.exit()
             if handle_music_shortcut(event):
+                continue
+            if settings_panel.is_open:
+                settings_panel.handle_event(event)
+                continue
+            if (not modal_open and event.type == pygame.MOUSEBUTTONDOWN
+                    and event.button == 1 and gear_rect.collidepoint(event.pos)):
+                settings_panel.open()
                 continue
             if password_action is not None:
                 if event.type == pygame.KEYDOWN:
@@ -617,4 +630,9 @@ def start_game_menu(screen, clean_backdrop=None):
             _draw_confirm(screen, confirm_slot, confirm_mode)
         if password_action is not None:
             _draw_password(screen)
+        if not modal_open or settings_panel.is_open:
+            pygame.draw.circle(screen, UI_COLORS["stone"], gear_rect.center, 27)
+            draw_gear(screen, gear_rect.center, 25)
+        if settings_panel.is_open:
+            settings_panel.draw()
         pygame.display.flip()

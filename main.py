@@ -1,8 +1,7 @@
-import pygame
+import pygame  # pyright: ignore[reportMissingImports]
 import sys
 from src.screens.main_menu import main_menu
 from src.settings_state import load_settings
-from pytmx.util_pygame import load_pygame
 
 # Initialize Pygame
 pygame.init()

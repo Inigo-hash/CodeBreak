@@ -2,7 +2,7 @@ import math
 import random
 import sys
 from pathlib import Path
-import pygame
+import pygame  # type: ignore[import-not-found]
 from src.screens.game import game_screen
 from src.screens.settings import SettingsPanel
 from src.screens.how_to_play import how_to_play_screen
@@ -603,7 +603,11 @@ def main_menu():
 
     # Consultation requirement: orient a first-time player before asking
     # them to make sense of a menu. HELP can replay the same guide later.
-    opening_walkthrough(screen)
+    from src.settings_state import settings_state, save_settings
+    if not settings_state.get("walkthrough_seen", False):
+        opening_walkthrough(screen)
+        settings_state["walkthrough_seen"] = True
+        save_settings()
 
     show_settings = False
     settings_panel = SettingsPanel(screen)
@@ -726,7 +730,7 @@ def main_menu():
         mouse_pos = pygame.mouse.get_pos()
         # A keyboard-focused control lights up exactly like a hovered one,
         # so there is only ever one 'this is selected' look to learn.
-        hovers = [r.collidepoint(mouse_pos) or i == focus
+        hovers = [not show_settings and (r.collidepoint(mouse_pos) or i == focus)
                   for i, r in enumerate(rects)]
         _update_icon_anims(dict(zip(icons, hovers)), dt)
 
@@ -784,24 +788,24 @@ def main_menu():
         for rect, label, icon, h, seed, tier in zip(
             rects, labels, icons, hovers, seeds, tiers
         ):
-            _draw_stone_button(screen, rect, label, icon, h, seed, t, tier)
+            _draw_stone_button(screen, rect, label, icon, h and not show_settings, seed, t, tier)
 
         _draw_mang_tahimik_tip(screen, t)
         # Persistent top-right help and settings controls are easier to find
         # than a settings row mixed into the primary menu actions.
-        gear_hover = gear_rect.collidepoint(mouse_pos) or focus == FOCUS_SETTINGS
+        gear_hover = not show_settings and (gear_rect.collidepoint(mouse_pos) or focus == FOCUS_SETTINGS)
         pygame.draw.circle(screen, UI_COLORS["stone"], gear_rect.center, 27)
         pygame.draw.circle(screen, UI_COLORS["blue_bright"] if gear_hover else UI_COLORS["bronze"],
                            gear_rect.center, 27, 2)
         draw_gear(screen, gear_rect.center, 25, spin_degrees=t * (80 if gear_hover else 18))
         draw_button(screen, help_rect, "HELP  ?", title_font(17),
-                    hovered=(help_rect.collidepoint(mouse_pos)
-                             or focus == FOCUS_HELP))
+                    hovered=(not show_settings and (help_rect.collidepoint(mouse_pos)
+                             or focus == FOCUS_HELP)))
         # An explicit ring for the keyboard, drawn over whichever control is
         # focused. Reusing the hover look alone was not enough: Start Game
         # glows permanently because it is the primary action, so focusing it
         # changed almost nothing on screen.
-        if focus >= 0:
+        if focus >= 0 and not show_settings:
             ring = focus_rects[focus].inflate(14, 14)
             pygame.draw.rect(screen, UI_COLORS["blue_bright"], ring, 3,
                              border_radius=10)

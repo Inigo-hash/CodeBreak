@@ -252,7 +252,7 @@ def new_game_state() -> dict:
         "map_position": None,
         "stored_topics": [],
         "weapon_obtained": True,
-        "weapon_equipped": True,
+        "weapon_equipped": False,
         # Discovered enemies/items and completed objectives for the stage
         # information panel. Filled in by StageProgress.to_dict() on save;
         # an empty dict here means "nothing discovered yet".

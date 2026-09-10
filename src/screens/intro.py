@@ -16,14 +16,14 @@ PAGES = (
         ("No programming experience is required.", "Mang Tahimik will guide you step by step."),
     ),
     (
-        "YOUR FIRST STEPS",
-        "Move, practise one attack, and solve a guided Hello, World! challenge before the real adventure begins.",
-        ("W A S D / Arrow keys = move", "E = attack/interact  |  SPACE = next dialogue line"),
+        "YOUR MAIN MENU",
+        "Select Start Game to open your save slots: Start New Game begins an adventure, Continue Game resumes a save, and Return to Main Menu goes back.",
+        ("How To Play opens the controls and game guide.", "Quit closes CodeBreak. Your saved progress stays available."),
     ),
     (
         "YOU CAN ALWAYS GET HELP",
         "The menu keeps the two important choices first: Start Game, then How To Play. Question marks explain unfamiliar settings.",
-        ("HELP ? reopens this walkthrough", "Gear = settings  |  F10 = mute background music"),
+        ("Top right: HELP ? replays this guide; gear opens settings.", "Hover or click a settings ? to see what it does and how to use it."),
     ),
 )
 
@@ -49,11 +49,11 @@ def opening_walkthrough(screen, replay=False):
         except pygame.error:
             pass
 
-    title = title_font(max(28, round(height * 0.045)))
+    title = title_font(max(28, min(34, round(height * 0.035))))
     body = body_font(max(18, round(height * 0.025)))
     small = body_font(max(15, round(height * 0.019)), bold=True)
     button_font = title_font(max(18, round(height * 0.025)))
-    panel = pygame.Rect(0, 0, min(920, width - 80), min(550, height - 90))
+    panel = pygame.Rect(0, 0, min(1100, width - 80), min(650, height - 90))
     panel.center = (width // 2, height // 2)
     # Keep the buttons above a dedicated footer row so their borders and
     # labels cannot overlap the keyboard shortcuts at the panel's bottom.
@@ -62,7 +62,7 @@ def opening_walkthrough(screen, replay=False):
         250, button_font.size("OPEN MAIN MENU")[0] + 48
     )
     next_button = pygame.Rect(0, button_y, next_button_width, 48)
-    next_button.centerx = panel.centerx
+    next_button.right = panel.right - 34
     back_button_width = max(150, button_font.size("BACK")[0] + 48)
     back_button = pygame.Rect(
         panel.left + 34, button_y, back_button_width, 48
@@ -131,9 +131,11 @@ def opening_walkthrough(screen, replay=False):
             icon = small.render("?", True, UI_COLORS["stone_deep"])
             pygame.draw.circle(screen, UI_COLORS["blue_bright"], (panel.left + 78, y + 10), 14)
             screen.blit(icon, icon.get_rect(center=(panel.left + 78, y + 10)))
-            screen.blit(small.render(tip, True, UI_COLORS["parchment"]),
-                        (panel.left + 108, y))
-            y += small.get_height() + 20
+            for line in wrap(tip, small, panel.width - 145):
+                screen.blit(small.render(line, True, UI_COLORS["parchment"]),
+                            (panel.left + 108, y))
+                y += small.get_height() + 4
+            y += 16
 
         draw_button(screen, next_button,
                     "OPEN MAIN MENU" if page == len(PAGES) - 1 else "NEXT",
@@ -182,7 +184,7 @@ def opening_walkthrough(screen, replay=False):
         footer_parts = [f"Page {page + 1}/{len(PAGES)}", "SPACE = Next"]
         if page > 0:
             footer_parts.append("BACKSPACE = Back")
-        footer_parts.extend(("ESC = Close", music_shortcut_label()))
+        footer_parts.append("ESC = Close")
         footer = small.render(
             "  |  ".join(footer_parts),
             True, UI_COLORS["text_dim"],

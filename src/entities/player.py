@@ -73,7 +73,17 @@ class MainCharacter():
         self.flinch_frames = {}
         self.dodge_frames = {}
         self.death_frames = {}
+        self.sword_walk_frames = {}
+        self.weapon_equipped = False
         for facing, asset_direction in combat_directions.items():
+            direction = compass_directions[facing]
+            sword_walks = [pygame.image.load(
+                f"assets/images/frames/main_character/walking_with_sword/{direction}/frame_{i}.png"
+            ).convert_alpha() for i in range(8)]
+            factor = target_content_height / max(self._robust_content_height(f) for f in sword_walks)
+            self.sword_walk_frames[facing] = [pygame.transform.scale(
+                f, (max(1, round(f.get_width() * factor)), max(1, round(f.get_height() * factor)))
+            ) for f in sword_walks]
             attack_path = f"assets/images/frames/main_character/attacking/attacking_{asset_direction}"
             attacks = [pygame.image.load(f"{attack_path}/frame_{i}.png").convert_alpha() for i in range(9)]
             factor = target_content_height / max(self._robust_content_height(frame) for frame in attacks)
@@ -240,6 +250,11 @@ class MainCharacter():
             }
             self.current_frames = idle_map[self.facing]
 
+        if self.weapon_equipped:
+            frames = self.sword_walk_frames[self.facing]
+            self.current_frames = frames[:1] if self.is_idle else frames
+        self.current %= len(self.current_frames)
+
     def update_position(self, dx, dy, player_rect, player_x, player_y, collision_rects, map_width, map_height):
         player_x += dx
         player_rect.x = round(player_x)
@@ -297,7 +312,9 @@ class MainCharacter():
 
         frame = self.current_frames[self.current]
         draw_x = self.center_x * ZOOM - camera_x - frame.get_width() // 2
-        draw_y = self.center_y * ZOOM - camera_y - frame.get_height() // 2
+        # Ground the visible feet on the collision body's bottom. Centering
+        # the sprite let its feet hang over shorelines and stand atop props.
+        draw_y = self.center_y * ZOOM - camera_y + 8 * ZOOM - frame.get_bounding_rect().bottom
 
         if self.is_idle and self.facing in ('forward', 'backward'):
             self.idle_bob_timer += 0.06

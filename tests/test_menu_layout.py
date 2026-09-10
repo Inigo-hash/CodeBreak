@@ -62,10 +62,12 @@ class MenuButtonFitTests(unittest.TestCase):
         rects, *_ = compute_menu_layout(1920, 1080, 3)
         self.assertEqual(rects[0].width, int(1920 * 0.20))
 
-    def test_short_menus_are_not_widened_at_all(self):
-        self.assertEqual(
-            menu_button_width(1920, MM_LABELS), menu_button_width(1920)
-        )
+    def test_short_menus_fit_larger_fonts_without_shrinking_the_base_width(self):
+        width = menu_button_width(1920, MM_LABELS)
+        self.assertGreaterEqual(width, menu_button_width(1920))
+        for label in MM_LABELS:
+            self.assertGreaterEqual(width, main_menu._button_font.size(label)[0]
+                                    + MEDALLION_CLEARANCE + LABEL_RIM_MARGIN)
 
 
 class TransitionTargetTests(unittest.TestCase):

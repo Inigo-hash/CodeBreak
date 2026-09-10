@@ -21,10 +21,11 @@ settings_state = {
     # read it, and nothing in the game revealed text a character at a
     # time for it to control either.
     "text_speed": "NORMAL",
-    # Launch one step above the former 18px baseline for easier first-run
-    # reading. Players who prefer a denser interface can still reduce it.
+    # Start at the report's requested readable size. Existing saved choices
+    # are preserved, and players can reduce this in Settings.
     # The shared font loaders carry this choice into menus, dialogue and HUDs.
-    "font_size": 20,
+    "font_size": 25,
+    "walkthrough_seen": False,
 }
 
 
@@ -216,7 +217,7 @@ SETTINGS_PATH = os.path.join("saves", "settings.json")
 # Only these travel to disk. Drag flags and the theme list are runtime
 # scaffolding, and writing them would make the file look like state worth
 # editing by hand.
-_PERSISTED = ("music_vol", "sfx_vol", "music_muted", "text_speed", "font_size")
+_PERSISTED = ("music_vol", "sfx_vol", "music_muted", "text_speed", "font_size", "walkthrough_seen")
 
 
 # Set while load_settings() is applying a file, so the setters it calls do
@@ -274,6 +275,9 @@ def load_settings():
 
 def _apply_saved(saved):
     """Copy one validated value at a time out of a settings file."""
+
+    if isinstance(saved.get("walkthrough_seen"), bool):
+        settings_state["walkthrough_seen"] = saved["walkthrough_seen"]
 
     for key in ("music_vol", "sfx_vol"):
         value = saved.get(key)

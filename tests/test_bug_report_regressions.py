@@ -168,12 +168,11 @@ class OnboardingAndSettingsRegressionTests(unittest.TestCase):
             self.assertIn("- / +", copy)
             self.assertTrue("drag" in copy or "click" in copy)
 
-    def test_editor_action_row_is_unnumbered_and_keeps_line_numbers(self):
-        # The step numbers were dropped from the button labels; the header
-        # still spells the workflow out, and the gutter still numbers lines.
+    def test_editor_action_row_numbers_workflow_and_keeps_line_numbers(self):
+        # The September report requests numbered action buttons.
         source = Path("src/ui/editor_renderer.py").read_text(encoding="utf-8")
-        self.assertIn('"RUN"', source)
-        self.assertIn('"SUBMIT"', source)
+        self.assertIn('"1. RUN"', source)
+        self.assertIn('"2. SUBMIT"', source)
         self.assertNotIn('"2  RUN"', source)
         self.assertNotIn('"3  SUBMIT"', source)
         self.assertIn("TYPE CODE", source)

@@ -1,6 +1,7 @@
 """Resolve authored encounter anchors onto collision-free map positions."""
 
 import math
+from collections import deque
 
 import pygame
 
@@ -108,9 +109,39 @@ def _nearest_walkable(desired, body_size, bounds, collision_rects, occupied,
                     and rect.collidelist(collision_rects) == -1
                     and rect.collidelist(occupied) == -1
                     and (not require_path
-                         or body_is_on_path(rect, path_cells, tile_size))):
+                         or body_is_on_path(rect, path_cells, tile_size))
+                    and _has_escape_route(rect, bounds, collision_rects,
+                                          path_cells, tile_size, spawn_area,
+                                          require_path)):
                 return rect.center
     return None
+
+
+def _has_escape_route(body, bounds, blockers, path_cells, tile_size,
+                      spawn_area, require_path):
+    """Reject empty-looking pockets a large enemy cannot walk out of."""
+    origin = body.center
+    frontier = deque([origin])
+    seen = {origin}
+    step = 8
+    escape_distance = max(32, body.width, body.height)
+    while frontier:
+        point = frontier.popleft()
+        if math.dist(origin, point) >= escape_distance:
+            return True
+        for dx, dy in ((step, 0), (-step, 0), (0, step), (0, -step)):
+            next_point = (point[0] + dx, point[1] + dy)
+            if next_point in seen:
+                continue
+            seen.add(next_point)
+            probe = body.copy()
+            probe.center = next_point
+            if (bounds.contains(probe)
+                    and (spawn_area is None or spawn_area.contains(probe))
+                    and probe.collidelist(blockers) == -1
+                    and (not require_path or body_is_on_path(probe, path_cells, tile_size))):
+                frontier.append(next_point)
+    return False
 
 
 def body_is_on_path(rect, path_cells, tile_size):

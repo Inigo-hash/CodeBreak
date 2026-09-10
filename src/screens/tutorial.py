@@ -393,6 +393,8 @@ def tutorial_screen(screen, play_music=True, show_loading=False,
     if loading:
         loading.update(88, "Summoning the training creature...")
     player_combat = PlayerCombat()
+    from src.ui.damage_numbers import DamageNumbers
+    damage_numbers = DamageNumbers()
     combat_audio = CombatAudio()
     attack_has_hit = False
 
@@ -427,7 +429,7 @@ def tutorial_screen(screen, play_music=True, show_loading=False,
         "Ah, a new soul in CodeBreak... I am Mang Tahimik, and I will guide you through these halls.",
         "Use W, A, S, D to move. Try walking in every direction so your legs remember the way.",
         "The red HP bar is your health. If it empties, you fall, but this training ground will revive you so you can try again.",
-        "The gold Energy bar powers your Left Shift dash. Each dash costs 25 energy, and energy slowly refills on its own.",
+        "The gold Energy bar powers your Q dash. Each dash costs 25 energy, and energy slowly refills on its own.",
         "Dash out of danger and press E while facing the Tiyanak to strike back.",
     ]
     death_lesson_lines = [
@@ -668,6 +670,7 @@ def tutorial_screen(screen, play_music=True, show_loading=False,
 
     while running:
         dt = clock.tick(60) / 1000.0
+        damage_numbers.update(dt)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -711,7 +714,7 @@ def tutorial_screen(screen, play_music=True, show_loading=False,
                     combat_audio.play("sword_swing")
 
             if (state == "practice" and event.type == pygame.KEYDOWN
-                    and event.key in (pygame.K_LSHIFT, pygame.K_RSHIFT)):
+                    and event.key == pygame.K_q):
                 if player_combat.start_dodge():
                     has_dodged = True
                     combat_audio.play("dodge")
@@ -804,7 +807,10 @@ def tutorial_screen(screen, play_music=True, show_loading=False,
                     if (training_enemy.active
                             and sword_box.colliderect(training_enemy.rect)):
                         attack_has_hit = True
-                        training_enemy.receive_damage(20)
+                        hp_before = training_enemy.hp
+                        if training_enemy.receive_damage(20):
+                            damage_numbers.add(training_enemy.rect.center,
+                                               hp_before - training_enemy.hp)
                         combat_audio.play("sword_hit")
                         combat_audio.play(
                             "enemy_death" if training_enemy.hp == 0
@@ -841,6 +847,7 @@ def tutorial_screen(screen, play_music=True, show_loading=False,
                     state = "movement_complete_dialogue"
 
             main_character.set_combat_state(player_combat.state)
+            main_character.weapon_equipped = True
             main_character.update_frames(keys)
 
         if state == "done":
@@ -869,6 +876,7 @@ def tutorial_screen(screen, play_music=True, show_loading=False,
             training_enemy.draw_frames(ZOOM, camera_x, camera_y)
 
         main_character.draw_frames(ZOOM, camera_x, camera_y)
+        damage_numbers.draw(screen, ZOOM, camera_x, camera_y)
 
         if state == "practice":
             if practice_only:
@@ -904,7 +912,7 @@ def tutorial_screen(screen, play_music=True, show_loading=False,
                     ("Move DOWN (S)", has_moved["down"]),
                     ("Move LEFT (A)", has_moved["left"]),
                     ("Move RIGHT (D)", has_moved["right"]),
-                    ("Dash (Left Shift)", has_dodged),
+                    ("Dash (Q)", has_dodged),
                     ("Defeat all 3 Tiyanak (E)", has_attacked),
                 ]
                 line_width = max(

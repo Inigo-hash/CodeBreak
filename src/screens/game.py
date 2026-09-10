@@ -96,6 +96,21 @@ def boss_sword_damage(current_hp, phase_table):
     return damage
 
 
+def object_collision_rects(tmx_data):
+    """Tiled tile objects use a bottom-left origin; rectangles use top-left."""
+    result = []
+    for layer in tmx_data.visible_layers:
+        if hasattr(layer, "data"):
+            continue
+        for obj in layer:
+            if not (getattr(obj, "properties", {}) or {}).get("collidable"):
+                continue
+            y = obj.y - obj.height if getattr(obj, "gid", 0) else obj.y
+            result.append(pygame.Rect(round(obj.x), round(y),
+                                      round(obj.width), round(obj.height)))
+    return result
+
+
 def load_interactables(tmx_data):
     """Return every visible map object that advertises an interaction.
 
@@ -108,6 +123,18 @@ def load_interactables(tmx_data):
     interactables = []
     for layer in tmx_data.visible_layers:
         if hasattr(layer, "data"):
+            for x, y, gid in layer:
+                props = tmx_data.get_tile_properties_by_gid(gid) if gid else None
+                if props and props.get("actions") == "read_sign":
+                    interactables.append({
+                        "rect": pygame.Rect(x * tmx_data.tilewidth, y * tmx_data.tileheight,
+                                            tmx_data.tilewidth, tmx_data.tileheight),
+                        "actions": "read_sign", "topic_id": None,
+                        "interaction_id": f"sign:{layer.name}:{x}:{y}",
+                        "interaction_message": props.get("message", "Explore the island to find lessons."),
+                        "entity": None, "guards": [], "inspecting": False,
+                        "inspect_progress": 0.0, "topic_handled": False,
+                    })
             continue
         for obj in layer:
             properties = getattr(obj, "properties", {}) or {}
@@ -133,11 +160,11 @@ def load_interactables(tmx_data):
                 )
             interactables.append({
                 "rect": rect,
-                "actions": action,
+                "actions": action or "",
                 "topic_id": properties.get("topic_id"),
                 "interaction_id": str(getattr(obj, "id", "")),
                 "entity": entity,
-                "interaction_message": "",
+                "interaction_message": properties.get("message", ""),
                 # Filled in by systems.guards once the stage's enemies are
                 # spawned; an unguarded prop simply keeps the empty list.
                 "guards": [],
@@ -145,6 +172,13 @@ def load_interactables(tmx_data):
                 "inspect_progress": 0.0,
                 "topic_handled": False,
             })
+    # Empty caches use the nearest authored lesson. They can introduce that
+    # lesson, but rewards remain locked until its challenge is passed.
+    lessons = [item for item in interactables if item.get("topic_id")]
+    for item in interactables:
+        if item.get("actions") in ("search_chest", "search_barrel") and not item.get("topic_id") and lessons:
+            nearest = min(lessons, key=lambda lesson: math.dist(item["rect"].center, lesson["rect"].center))
+            item["topic_id"] = nearest["topic_id"]
     return interactables
 
 
@@ -272,6 +306,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                             TILE_SIZE
                         )
                     )
+    collision_rects.extend(object_collision_rects(tmx_data))
     loading.update(30, "Preparing interactables...")
 
     # --- Load interactive objects from all visible object layers ---
@@ -842,6 +877,7 @@ def game_screen(screen, slot_num=None, save_state=None):
         zone_pixel_rects.append({
             "name": zone["name"],
             "is_boss_zone": zone.get("is_boss_zone", False),
+            "movement_rect": zone.get("movement_rect"),
             "rect": pygame.Rect(
                 frac_x * map_width,
                 frac_y * map_height,
@@ -1320,10 +1356,16 @@ def game_screen(screen, slot_num=None, save_state=None):
             combat_scale=1 / ZOOM,
         )
         boss.phase_thresholds_triggered = set()
+        if boss_zone.get("movement_rect"):
+            x, y, w, h = boss_zone["movement_rect"]
+            boss.zone = pygame.Rect(round(x * map_width), round(y * map_height),
+                                    round(w * map_width), round(h * map_height))
         return boss
     loading.update(97, "Finalizing expedition...")
     player_combat = PlayerCombat()
     combat_audio = CombatAudio()
+    from src.ui.damage_numbers import DamageNumbers
+    damage_numbers = DamageNumbers()
     boss_phase_effect_timer = 0.0
     boss_phase_effect_text = ""
     boss_phase_effect_world = (0, 0)
@@ -1462,6 +1504,7 @@ def game_screen(screen, slot_num=None, save_state=None):
         # Keeps old movement speeds identical to how they felt at 60 FPS.
         frame_scale = dt * 60.0
         boss_phase_effect_timer = max(0.0, boss_phase_effect_timer - dt)
+        damage_numbers.update(dt)
         mouse_pos = pygame.mouse.get_pos()
 
         # --- Events ---
@@ -1618,7 +1661,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                     if (player_inventory.weapon_equipped
                             and player_combat.start_attack()):
                         combat_audio.play("sword_swing")
-                elif event.key in (pygame.K_LSHIFT, pygame.K_RSHIFT) and not paused:
+                elif event.key == pygame.K_q and not paused:
                     if player_combat.start_dodge():
                         combat_audio.play("dodge")
                 elif event.key == pygame.K_p and not paused and not engaged:
@@ -1670,6 +1713,7 @@ def game_screen(screen, slot_num=None, save_state=None):
 
                 elif DEBUG_MODE and event.key == pygame.K_F3 and not paused:
                     debug_boss_access = not debug_boss_access
+                    boss_entrance_trigger.armed = True
                     print(
                         "Boss area debug access:",
                         "ON" if debug_boss_access else "OFF"
@@ -2068,6 +2112,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                     )
                     hp_before = enemy.hp
                     if enemy.receive_damage(applied_damage):
+                        damage_numbers.add(enemy.rect.center, hp_before - enemy.hp)
                         combat_audio.play("sword_hit")
                         combat_audio.play(
                             "enemy_death" if enemy.hp == 0 else "enemy_hurt"
@@ -2440,6 +2485,7 @@ def game_screen(screen, slot_num=None, save_state=None):
         main_character.pos_x = player_x
         main_character.pos_y = player_y
         main_character.center_x, main_character.center_y = player_rect.center
+        main_character.weapon_equipped = player_inventory.weapon_equipped
         main_character.update_frames(keys)
 
         # --- Depth-sorted draw pass (painter's algorithm) ---
@@ -2575,7 +2621,11 @@ def game_screen(screen, slot_num=None, save_state=None):
                 action = near_interactable.get('actions', '')
                 topic_id = near_interactable.get('topic_id')
 
-                if topic_id:
+                if action == "read_sign":
+                    message = near_interactable["interaction_message"]
+                elif action == "search_chest" and near_interactable.get("interaction_message"):
+                    message = near_interactable["interaction_message"]
+                elif topic_id:
                     message = (
                         "You already collected this lesson."
                         if near_interactable["topic_handled"] else ""
@@ -2672,13 +2722,18 @@ def game_screen(screen, slot_num=None, save_state=None):
             )
         elif near_interactable and not near_interactable["inspecting"]:
             action = near_interactable.get("actions", "")
-            if near_interactable.get("topic_id"):
+            if action == "read_sign":
+                interaction_prompt = "Read Sign"
+            elif near_interactable.get("topic_id"):
                 interaction_prompt = "Read Topic"
             elif action.startswith("search_"):
                 target = action.removeprefix("search_").replace("_", " ").title()
                 interaction_prompt = f"Search {target}" if target else "Interact"
             else:
                 interaction_prompt = "Interact"
+
+        if not interaction_prompt and not player_inventory.weapon_equipped:
+            interaction_prompt = "[B] Move sword from bag to hotbar, then select its slot"
 
         # HUD consumes existing state and nearby-interactable detection.
         gameplay_hud.draw(
@@ -2693,6 +2748,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             bonus_time=gameplay_state["bonus_time"],
         )
 
+        damage_numbers.draw(screen, ZOOM, camera_x, camera_y)
         if boss_phase_effect_timer > 0:
             effect_progress = 1.0 - boss_phase_effect_timer / 1.25
             pulse_alpha = round(115 * (1.0 - effect_progress))
@@ -2831,7 +2887,7 @@ def game_screen(screen, slot_num=None, save_state=None):
 
         draw_low_health_warning(
             screen,
-            player_combat.hp,
+            player_combat.hp if engaged else None,
             player_combat.max_hp,
             pygame.time.get_ticks() / 1000.0,
         )

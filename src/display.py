@@ -1,4 +1,4 @@
-"""Fixed-resolution presentation with aspect-safe scaling and mouse mapping."""
+"""Monitor-aspect presentation with uniform scaling and mouse mapping."""
 
 import pygame
 
@@ -23,13 +23,16 @@ _viewport_cache = None
 
 def _viewport(window_size):
     global _viewport_cache
-    if _viewport_cache is not None and _viewport_cache[0] == window_size:
+    canvas_size = _canvas.get_size() if _canvas is not None else (BASE_WIDTH, BASE_HEIGHT)
+    cache_key = (window_size, canvas_size)
+    if _viewport_cache is not None and _viewport_cache[0] == cache_key:
         return _viewport_cache[1]
     width, height = window_size
-    scale = min(width / BASE_WIDTH, height / BASE_HEIGHT)
-    scaled = (max(1, round(BASE_WIDTH * scale)), max(1, round(BASE_HEIGHT * scale)))
+    canvas_width, canvas_height = canvas_size
+    scale = min(width / canvas_width, height / canvas_height)
+    scaled = (max(1, round(canvas_width * scale)), max(1, round(canvas_height * scale)))
     result = (scale, ((width - scaled[0]) // 2, (height - scaled[1]) // 2), scaled)
-    _viewport_cache = (window_size, result)
+    _viewport_cache = (cache_key, result)
     return result
 
 
@@ -51,7 +54,7 @@ def _present(*_args, **_kwargs):
     window_size = _window.get_size()
     _scale, offset, size = _viewport(window_size)
 
-    if size == (BASE_WIDTH, BASE_HEIGHT):
+    if size == _canvas.get_size():
         # A window already at the canvas size needs no resample. The
         # unconditional smoothscale spent a full-frame CPU resample
         # (~2.5ms at 1080p) producing a pixel-for-pixel copy of its input.
@@ -102,13 +105,20 @@ def _events(*args, **kwargs):
     return converted
 
 
+def canvas_size_for_window(size):
+    """Expand the virtual view to the monitor's aspect without cropping UI."""
+    width, height = size
+    scale = min(width / BASE_WIDTH, height / BASE_HEIGHT)
+    return round(width / scale), round(height / scale)
+
+
 def create_display(fullscreen=True):
-    """Create the real desktop window and return the 1920x1080 game canvas."""
+    """Create a canvas matching the initial monitor/window aspect ratio."""
     global _window, _canvas
     flags = pygame.FULLSCREEN if fullscreen else pygame.RESIZABLE
     size = (0, 0) if fullscreen else (1280, 720)
     _window = pygame.display.set_mode(size, flags)
-    _canvas = pygame.Surface((BASE_WIDTH, BASE_HEIGHT)).convert()
+    _canvas = pygame.Surface(canvas_size_for_window(_window.get_size())).convert()
     pygame.display.flip = _present
     pygame.display.update = _present
     pygame.mouse.get_pos = lambda: window_to_virtual(_original_get_pos())

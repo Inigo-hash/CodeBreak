@@ -503,7 +503,7 @@ class GameplayHUD:
         self.screen.blit(render_text(self.bold, f"+{value}s", BLUE), (rect.left + 42, rect.top + 11))
 
     def draw_interaction_prompt(self, prompt, width, height):
-        text = render_text(self.bold, f"[E] {prompt}", TEXT)
+        text = render_text(self.bold, prompt if prompt.startswith("[B]") else f"[E] {prompt}", TEXT)
         rect = text.get_rect()
         rect.inflate_ip(34, 20)
         # Leave room for the equipped-item label above the hotbar.
@@ -515,7 +515,7 @@ class GameplayHUD:
         # Two renders instead of one line so the dodge half can grey out on
         # its own while energy is below the cost of a dodge.
         attack = render_text(self.small, "[E] ATTACK     ", TEXT)
-        dodge = render_text(self.small, "[L-SHIFT] DODGE", TEXT if dodge_ready else DIM)
+        dodge = render_text(self.small, "[Q] DODGE", TEXT if dodge_ready else DIM)
         rect = pygame.Rect(0, 0, attack.get_width() + dodge.get_width(),
                            max(attack.get_height(), dodge.get_height()))
         rect.inflate_ip(24, 14)

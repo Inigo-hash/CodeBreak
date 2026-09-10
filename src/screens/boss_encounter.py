@@ -22,7 +22,7 @@ def open_boss_intro(screen, boss_id, background=None):
         subtitle="THE CORRUPTED CORE",
         lines=(
             f"{boss['name']} blocks the path to the castle exit.",
-            "E attacks. Left Shift dodges. Watch the boss health bar.",
+            "E attacks. Q dodges. Watch the boss health bar.",
             "You may retreat now and return after more practice.",
         ),
         primary=("BEGIN FIGHT", "fight"),

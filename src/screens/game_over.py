@@ -418,7 +418,7 @@ def game_over_screen(screen, background=None, failed_snippet=None):
 
             guide_lines = (
                 "Mang Tahimik: Try again. Watch your health and retreat when it runs low.",
-                "Dash with Left Shift to avoid attacks, face enemies before pressing E,",
+                "Dash with Q to avoid attacks, face enemies before pressing E,",
                 "and use healing items from your hotbar before your health reaches zero.",
             )
             for line_index, line_text in enumerate(guide_lines):

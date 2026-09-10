@@ -97,10 +97,10 @@ class EditorRenderer:
         # CodeEditor can safely hold on to these exact objects.
 
         self.run_button = Button(
-            0, 0, BUTTON_WIDTH, BUTTON_HEIGHT - 10, "RUN", "secondary"
+            0, 0, BUTTON_WIDTH, BUTTON_HEIGHT - 10, "1. RUN", "secondary"
         )
         self.submit_button = Button(
-            0, 0, BUTTON_WIDTH, BUTTON_HEIGHT - 10, "SUBMIT", "primary"
+            0, 0, BUTTON_WIDTH, BUTTON_HEIGHT - 10, "2. SUBMIT", "primary"
         )
 
         # Leaving lives in the title bar, next to the settings wheel -
@@ -365,7 +365,10 @@ class EditorRenderer:
 
         spacing = 25
 
-        total_width = (BUTTON_WIDTH * 2) + spacing
+        action_width = max(BUTTON_WIDTH, BUTTON_FONT.size("2. SUBMIT")[0] + 32)
+        self.run_button.rect.width = action_width
+        self.submit_button.rect.width = action_width
+        total_width = (action_width * 2) + spacing
 
         start_x = self.panel_rect.x + (
             self.panel_rect.width - total_width
@@ -376,7 +379,7 @@ class EditorRenderer:
         self.run_button.rect.topleft = (start_x, button_y)
 
         self.submit_button.rect.topleft = (
-            start_x + BUTTON_WIDTH + spacing,
+            start_x + action_width + spacing,
             button_y
         )
 

@@ -1771,6 +1771,22 @@ def game_screen(screen, slot_num=None, save_state=None):
                     editor = CodeEditor(screen, sample_challenge, screen.copy())
                     editor.run()
 
+                elif event.key == pygame.K_F6 and not paused and not engaged:
+
+                    final_challenge = get_challenge(
+                        "stage1_final_001"
+                    )
+
+                    if final_challenge is not None:
+
+                        editor = CodeEditor(
+                            screen,
+                            final_challenge,
+                            screen.copy(),
+                        )
+
+                        editor.run()
+
                 elif DEBUG_MODE and event.key == pygame.K_F6 and not paused:
                     frac_x = player_rect.centerx / map_width
                     frac_y = player_rect.centery / map_height
@@ -2178,17 +2194,67 @@ def game_screen(screen, slot_num=None, save_state=None):
                 )
 
         if (boss_enemy is not None and boss_defeated
-                and not boss_victory_handled and not boss_enemy.active):
-            boss_victory_handled = True
-            if slot_num is not None:
-                save_manager.save_slot(slot_num, build_save_state())
+        and not boss_victory_handled and not boss_enemy.active):
 
-            # Fight won - drop the boss theme and return to stage music.
+            boss_victory_handled = True
+
+            if slot_num is not None:
+                save_manager.save_slot(
+                    slot_num,
+                    build_save_state()
+                )
+
+            # Fight won - return to the normal stage music.
             start_stage_music()
 
-            boss_result = open_boss_result(
-                screen, victory=True, background=screen.copy()
+            open_boss_result(
+                screen,
+                victory=True,
+                background=screen.copy(),
             )
+
+            # ---------------------------------------------------------
+            # Stage 1 Final Coding Challenge
+            # ---------------------------------------------------------
+
+            final_challenge_id = "stage1_final_001"
+
+            # Do not reopen the challenge if it was already completed
+            # in an earlier session.
+            if final_challenge_id not in save_challenges_passed:
+
+                final_challenge = get_challenge(
+                    final_challenge_id
+                )
+
+                if final_challenge is not None:
+
+                    editor = CodeEditor(
+                        screen,
+                        final_challenge,
+                        screen.copy(),
+                    )
+
+                    editor.run()
+
+                    # Only record completion when the player actually
+                    # solved the final coding challenge.
+                    if editor.solved:
+
+                        save_challenges_passed.append(
+                            final_challenge_id
+                        )
+
+                        stage_progress.sync_objectives(
+                            stage,
+                            save_challenges_passed,
+                        )
+
+                        if slot_num is not None:
+                            save_manager.save_slot(
+                                slot_num,
+                                build_save_state(),
+                            )
 
         if player_combat.hp == 0 and death_animation_complete:
             gameplay_state["hearts"] = max(0, gameplay_state["hearts"] - 1)

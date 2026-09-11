@@ -1,4 +1,3 @@
-#challenges.py
 """
 All coding challenges for the game.
 
@@ -15,6 +14,7 @@ CHALLENGES = {
     # =========================================================
 
     "variables_001": {
+
         "runtime_expected": {"age": 18},
 
         "id": "variables_001",
@@ -37,16 +37,16 @@ and assign the value 18.
 
         "expected": {
             "name": "age",
-            "value": 18
-        }
+            "value": 18,
+        },
     },
-
 
     # =========================================================
     # Print
     # =========================================================
 
     "print_001": {
+
         "expected_output": "Hello, World!",
 
         "id": "print_001",
@@ -69,16 +69,16 @@ Hello, World!
         "requirements": [],
 
         "expected": {
-            "value": "Hello, World!"
-        }
+            "value": "Hello, World!",
+        },
     },
-
 
     # =========================================================
     # Python Syntax Basics
     # =========================================================
 
     "python_syntax_basics_001": {
+
         "expected_output": "Hello, Explorer!",
 
         "id": "python_syntax_basics_001",
@@ -87,7 +87,7 @@ Hello, World!
 
         "difficulty": "Beginner",
 
-        # We can reuse your existing PrintValidator.
+        # Reuses the existing PrintValidator.
         "type": "print",
 
         "problem": """
@@ -102,17 +102,22 @@ Hello, Explorer!
         "requirements": [],
 
         "expected": {
-            "value": "Hello, Explorer!"
-        }
+            "value": "Hello, Explorer!",
+        },
     },
-
 
     # =========================================================
     # Data Types
     # =========================================================
 
     "data_types_001": {
-        "runtime_expected": {"age": 18, "height": 1.75, "name": "Alex", "is_ready": True},
+
+        "runtime_expected": {
+            "age": 18,
+            "height": 1.75,
+            "name": "Alex",
+            "is_ready": True,
+        },
 
         "id": "data_types_001",
 
@@ -126,11 +131,8 @@ Hello, Explorer!
 Create these four variables:
 
 age = 18
-
 height = 1.75
-
 name = "Alex"
-
 is_ready = True
         """,
 
@@ -143,33 +145,36 @@ is_ready = True
 
             "age": {
                 "type": "int",
-                "value": 18
+                "value": 18,
             },
 
             "height": {
                 "type": "float",
-                "value": 1.75
+                "value": 1.75,
             },
 
             "name": {
                 "type": "str",
-                "value": "Alex"
+                "value": "Alex",
             },
 
             "is_ready": {
                 "type": "bool",
-                "value": True
-            }
-        }
+                "value": True,
+            },
+        },
     },
-
 
     # =========================================================
     # Type Casting
     # =========================================================
 
     "type_casting_001": {
-        "runtime_expected": {"age_text": "18", "age": 18},
+
+        "runtime_expected": {
+            "age_text": "18",
+            "age": 18,
+        },
 
         "id": "type_casting_001",
 
@@ -199,9 +204,10 @@ age
             "source": "age_text",
             "source_value": "18",
             "target": "age",
-            "function": "int"
-        }
+            "function": "int",
+        },
     },
+
     # =========================================================
     # Input
     # =========================================================
@@ -239,7 +245,7 @@ as the test input.
         "requirements": [],
 
         "test_inputs": [
-            "Alex"
+            "Alex",
         ],
 
         "hidden_tests": [
@@ -265,17 +271,20 @@ as the test input.
 
         "expected": {
             "target": "name",
-            "prompt": "Enter your name: "
-        }
+            "prompt": "Enter your name: ",
+        },
     },
-
 
     # =========================================================
     # Formatted Output
     # =========================================================
 
     "formatted_output_001": {
-        "runtime_expected": {"name": "Alex"},
+
+        "runtime_expected": {
+            "name": "Alex",
+        },
+
         "expected_output": "Welcome, Alex!",
 
         "id": "formatted_output_001",
@@ -305,35 +314,43 @@ Welcome, Alex!
             "variable": "name",
             "value": "Alex",
             "prefix": "Welcome, ",
-            "suffix": "!"
-        }
+            "suffix": "!",
+        },
     },
-
 
     # =========================================================
     # Operators
     # =========================================================
 
     "operators_lesson_001": {
+
         "id": "operators_lesson_001",
+
         "title": "Operators",
+
         "difficulty": "Beginner",
+
         "type": "operator",
+
         "problem": (
             "Create a variable named score with the value 5. "
             "Use += to add 3 to score. Then create passed by checking "
             "if score is greater than or equal to 8."
         ),
+
         "objective": (
             "Use an assignment operator and a comparison operator."
         ),
+
         "requirements": [],
+
         "hints": [
             "Start by creating score and assigning it the value 5.",
             "Use += to increase the current value of score by 3.",
             "Create a Boolean variable named passed by comparing score with 8.",
             "Use this shape: passed = score >= 8.",
         ],
+
         "expected": {
             "target": "score",
             "start_value": 5,
@@ -357,27 +374,36 @@ Welcome, Alex!
     # =========================================================
 
     "strings_lesson_001": {
+
         "id": "strings_lesson_001",
+
         "title": "Strings",
+
         "difficulty": "Beginner",
+
         "type": "string",
+
         "problem": (
             'Create a variable named game_name with the value "CodeBreak". '
             'Create message using "Welcome to\\n" + game_name. '
             'Then create result by converting message to uppercase '
             'using .upper().'
         ),
+
         "objective": (
             "Use string handling, a newline escape sequence, "
             "and the .upper() string method."
         ),
+
         "requirements": [],
+
         "hints": [
             'Start by creating game_name with the value "CodeBreak".',
             r'Use "Welcome to\n" + game_name to create message.',
             "Call the .upper() method on message.",
             "Store the uppercase result using: result = message.upper().",
         ],
+
         "expected": {
             "name_target": "game_name",
             "name_value": "CodeBreak",
@@ -400,10 +426,15 @@ Welcome, Alex!
     # =========================================================
 
     "control_flow_lesson_001": {
+
         "id": "control_flow_lesson_001",
+
         "title": "Control Flow",
+
         "difficulty": "Beginner",
+
         "type": "control_flow",
+
         "problem": (
             "Set score to 85 and has_key to True. "
             "Create rank using an if/elif/else statement: "
@@ -411,23 +442,25 @@ Welcome, Alex!
             "and 'Bronze' otherwise. Then create can_enter using "
             "has_key and score >= 75."
         ),
+
         "objective": (
             "Use if/elif/else and boolean logic."
         ),
+
         "requirements": [],
+
         "hints": [
             "Create score = 85 and has_key = True first.",
             "Use if, elif, and else to assign Gold, Silver, or Bronze to rank.",
             "The first condition checks score >= 90 and the elif checks score >= 75.",
             "After the decision, create can_enter using: has_key and score >= 75.",
         ],
+
         "expected": {
             "score_target": "score",
             "score_value": 85,
-
             "key_target": "has_key",
             "key_value": True,
-
             "rank_target": "rank",
 
             "branches": [
@@ -461,6 +494,109 @@ Welcome, Alex!
         },
     },
 
+    # =========================================================
+    # Stage 1 Final Challenge
+    # =========================================================
+
+    "stage1_final_001": {
+
+        "id": "stage1_final_001",
+
+        "title": "Corrupted Core Final Challenge",
+
+        "difficulty": "Beginner Final",
+
+        "type": "stage1_final",
+
+        "problem": """
+The Corrupted Core has been defeated,
+but the castle gate still needs one final program.
+
+1. Ask the player:
+
+Enter explorer name:
+
+Store the answer in:
+
+name
+
+2. Ask:
+
+Enter score:
+
+Store the text in:
+
+score_text
+
+3. Convert score_text to an integer
+and store it in:
+
+score
+
+4. Add 10 to score using +=
+
+5. Create rank using:
+
+Gold if score >= 90
+Silver if score >= 75
+Bronze otherwise
+
+6. Create this formatted message:
+
+{name} - {rank}
+
+Store it in:
+
+message
+
+7. Convert message to uppercase
+and store it in:
+
+final_message
+
+8. Print final_message.
+        """,
+
+        "objective":
+            "Use all Stage 1 concepts to unlock the castle gate.",
+
+        "requirements": [],
+
+        "test_inputs": [
+            "Alex",
+            "70",
+        ],
+
+        "hidden_tests": [
+            {
+                "input_values": ["Mika", "85"],
+                "runtime_expected": {
+                    "score": 95,
+                    "rank": "Gold",
+                    "message": "Mika - Gold",
+                    "final_message": "MIKA - GOLD",
+                },
+            },
+            {
+                "input_values": ["Luna", "65"],
+                "runtime_expected": {
+                    "score": 75,
+                    "rank": "Silver",
+                    "message": "Luna - Silver",
+                    "final_message": "LUNA - SILVER",
+                },
+            },
+            {
+                "input_values": ["Kai", "40"],
+                "runtime_expected": {
+                    "score": 50,
+                    "rank": "Bronze",
+                    "message": "Kai - Bronze",
+                    "final_message": "KAI - BRONZE",
+                },
+            },
+        ],
+    },
 }
 
 

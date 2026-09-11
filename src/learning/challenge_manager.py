@@ -10,6 +10,9 @@ from src.learning.validators.input_validator import InputValidator
 from src.learning.validators.operator_validator import OperatorValidator
 from src.learning.validators.string_validator import StringValidator
 from src.learning.validators.control_flow_validator import ControlFlowValidator
+from src.learning.validators.stage1_final_validator import (
+    Stage1FinalValidator,
+)
 
 class ChallengeManager:
 
@@ -47,6 +50,9 @@ class ChallengeManager:
 
             "control_flow":
                 ControlFlowValidator(),
+
+            "stage1_final":
+                Stage1FinalValidator(),
         }
 
     def validate_runtime(

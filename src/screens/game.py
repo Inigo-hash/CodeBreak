@@ -1249,11 +1249,10 @@ def game_screen(screen, slot_num=None, save_state=None):
         (stage_spawn[0] + player_size // 2, stage_spawn[1] + player_size),
         zones=world["zones"],
     )
-    encounter_topics = {
-        encounter["id"]: encounter.get("topic_id")
+    authored_encounter_ids = tuple(
+        encounter["id"]
         for encounter in world["encounters"]
-    }
-    authored_encounter_ids = tuple(encounter_topics)
+    )
     enemy_spawns = [
         spawn for spawn in enemy_spawns
         if not stage_progress.has_cleared_encounter(spawn["encounter_id"])
@@ -2158,18 +2157,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             # One key is awarded for clearing the entire encounter,
             # not for each individual enemy defeated.
             gameplay_state["keys"] += 1
-
-            topic_id = encounter_topics.get(
-                encounter_id
-            )
-
-            if topic_id:
-                open_topic_flow(
-                    topic_id,
-                    screen.copy(),
-                    enforce_requirements=False
-                )
-
+            
             if slot_num is not None:
                 save_manager.save_slot(
                     slot_num,

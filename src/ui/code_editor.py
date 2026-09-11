@@ -82,6 +82,11 @@ class CodeEditor:
         self.submission_feedback = None
         self.submission_attempts = 0
 
+        # Used only by Code Practice.
+        # Tells game.py what the player wants to do
+        # after completing a practice problem.
+        self.practice_action = None
+
         # Cursor blinking
         self.last_input_time = pygame.time.get_ticks()
 
@@ -143,9 +148,9 @@ class CodeEditor:
         # main menu, which would throw away their unsaved code.
         self.settings_panel = EditorSettingsPanel(screen)
 
-        @property
-        def is_practice_mode(self):
-            return self.mode == "practice"
+    @property
+    def is_practice_mode(self):
+        return self.mode == "practice"
 
     # ---------------------------------------------------------
     # Main Loop
@@ -198,6 +203,8 @@ class CodeEditor:
         # Hand the game back a normal arrow cursor, whatever shape
         # the editor happened to leave it in.
         self.set_mouse_cursor(pygame.SYSTEM_CURSOR_ARROW)
+
+        return self.practice_action
 
     # ---------------------------------------------------------
     # Mouse Cursor Shape
@@ -274,27 +281,122 @@ class CodeEditor:
             # owns focus until acknowledged. Repeated clicks cannot resubmit
             # the challenge underneath it.
             if self.submission_feedback:
-                primary, secondary, _panel = self._feedback_layout()
+
                 passed = self.submission_feedback["passed"]
+
+                # ----------------------------------------
+                # Practice Mode success screen
+                # ----------------------------------------
+
+                if self.is_practice_mode and passed:
+
+                    (
+                        next_rect,
+                        review_rect,
+                        exit_rect,
+                        _panel,
+                    ) = self._practice_feedback_layout()
+
+                    if event.type == pygame.KEYDOWN:
+
+                        if event.key in (
+                            pygame.K_n,
+                            pygame.K_e,
+                            pygame.K_RETURN,
+                            pygame.K_KP_ENTER,
+                            pygame.K_SPACE,
+                        ):
+
+                            self.practice_action = "next"
+                            self.running = False
+                            self.submission_feedback = None
+
+                        elif event.key == pygame.K_r:
+
+                            self.submission_feedback = None
+
+                        elif event.key == pygame.K_ESCAPE:
+
+                            self.practice_action = "exit"
+                            self.running = False
+                            self.submission_feedback = None
+
+                        continue
+
+                    if (
+                        event.type == pygame.MOUSEBUTTONDOWN
+                        and event.button == 1
+                    ):
+
+                        if next_rect.collidepoint(event.pos):
+
+                            self.practice_action = "next"
+                            self.running = False
+                            self.submission_feedback = None
+
+                        elif review_rect.collidepoint(event.pos):
+
+                            self.submission_feedback = None
+
+                        elif exit_rect.collidepoint(event.pos):
+
+                            self.practice_action = "exit"
+                            self.running = False
+                            self.submission_feedback = None
+
+                        continue
+
+                    continue
+
+                # ----------------------------------------
+                # Normal campaign feedback
+                # ----------------------------------------
+
+                primary, secondary, _panel = (
+                    self._feedback_layout()
+                )
+
                 if event.type == pygame.KEYDOWN:
+
                     if event.key == pygame.K_ESCAPE:
+
                         self.submission_feedback = None
+
                     elif event.key in (
-                        pygame.K_e, pygame.K_RETURN, pygame.K_KP_ENTER,
+                        pygame.K_e,
+                        pygame.K_RETURN,
+                        pygame.K_KP_ENTER,
                         pygame.K_SPACE,
                     ):
+
                         if passed:
                             self.running = False
+
                         self.submission_feedback = None
+
                     continue
-                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+
+                if (
+                    event.type == pygame.MOUSEBUTTONDOWN
+                    and event.button == 1
+                ):
+
                     if primary.collidepoint(event.pos):
+
                         if passed:
                             self.running = False
+
                         self.submission_feedback = None
-                    elif secondary and secondary.collidepoint(event.pos):
+
+                    elif (
+                        secondary
+                        and secondary.collidepoint(event.pos)
+                    ):
+
                         self.submission_feedback = None
+
                     continue
+
                 continue
 
             # -------------------------------
@@ -988,10 +1090,22 @@ class CodeEditor:
         color = SUCCESS_COLOR if passed else ERROR_COLOR
         self.output_panel.add(feedback, color)
         if passed:
+
+            if self.is_practice_mode:
+                completion_message = (
+                    "Practice complete. Choose NEXT PROBLEM, "
+                    "REVIEW CODE, or EXIT PRACTICE."
+                )
+            else:
+                completion_message = (
+                    "Challenge complete. Select CONTINUE in the message."
+                )
+
             self.output_panel.add(
-                "Challenge complete. Select CONTINUE in the message.",
+                completion_message,
                 SUCCESS_COLOR,
             )
+
             self._show_submission_feedback(
                 True,
                 "CHALLENGE COMPLETE!",
@@ -1039,6 +1153,54 @@ class CodeEditor:
             primary = pygame.Rect(panel.centerx - 100, panel.bottom - 82, 200, 46)
             secondary = None
         return primary, secondary, panel
+
+    def _practice_feedback_layout(self):
+        """
+        Button positions used after completing
+        a Code Practice problem.
+        """
+
+        _primary, _secondary, panel = self._feedback_layout()
+
+        button_width = 190
+        button_height = 46
+        gap = 12
+
+        total_width = (
+            button_width * 3
+            + gap * 2
+        )
+
+        left = panel.centerx - total_width // 2
+        top = panel.bottom - 82
+
+        next_rect = pygame.Rect(
+            left,
+            top,
+            button_width,
+            button_height,
+        )
+
+        review_rect = pygame.Rect(
+            next_rect.right + gap,
+            top,
+            button_width,
+            button_height,
+        )
+
+        exit_rect = pygame.Rect(
+            review_rect.right + gap,
+            top,
+            button_width,
+            button_height,
+        )
+
+        return (
+            next_rect,
+            review_rect,
+            exit_rect,
+            panel,
+        )
 
     def draw_submission_feedback(self):
         feedback = self.submission_feedback
@@ -1100,25 +1262,190 @@ class CodeEditor:
             detail_y += SMALL_FONT.get_height() + 3
 
         mouse = pygame.mouse.get_pos()
-        primary_color = accent if not primary.collidepoint(mouse) else tuple(
-            min(255, channel + 28) for channel in accent[:3]
+
+        if self.is_practice_mode and passed:
+
+            (
+                next_rect,
+                review_rect,
+                exit_rect,
+                _panel,
+            ) = self._practice_feedback_layout()
+
+            practice_buttons = (
+                (
+                    next_rect,
+                    "NEXT PROBLEM",
+                    True,
+                ),
+                (
+                    review_rect,
+                    "REVIEW CODE",
+                    False,
+                ),
+                (
+                    exit_rect,
+                    "EXIT PRACTICE",
+                    False,
+                ),
+            )
+
+            for rect, label_text, primary_style in practice_buttons:
+
+                if primary_style:
+
+                    fill = (
+                        accent
+                        if not rect.collidepoint(mouse)
+                        else tuple(
+                            min(255, channel + 28)
+                            for channel in accent[:3]
+                        )
+                    )
+
+                    pygame.draw.rect(
+                        self.screen,
+                        fill,
+                        rect,
+                        border_radius=6,
+                    )
+
+                else:
+
+                    fill = (
+                        BUTTON_HOVER_COLOR
+                        if rect.collidepoint(mouse)
+                        else BUTTON_COLOR
+                    )
+
+                    pygame.draw.rect(
+                        self.screen,
+                        fill,
+                        rect,
+                        border_radius=6,
+                    )
+
+                    pygame.draw.rect(
+                        self.screen,
+                        BORDER_COLOR,
+                        rect,
+                        2,
+                        border_radius=6,
+                    )
+
+                rendered = SMALL_FONT.render(
+                    label_text,
+                    True,
+                    BUTTON_TEXT_COLOR,
+                )
+
+                self.screen.blit(
+                    rendered,
+                    rendered.get_rect(
+                        center=rect.center
+                    ),
+                )
+
+            hint_text = (
+                "ENTER = Next   "
+                "R = Review   "
+                "ESC = Exit Practice"
+            )
+
+        else:
+
+            primary_color = (
+                accent
+                if not primary.collidepoint(mouse)
+                else tuple(
+                    min(255, channel + 28)
+                    for channel in accent[:3]
+                )
+            )
+
+            pygame.draw.rect(
+                self.screen,
+                primary_color,
+                primary,
+                border_radius=6,
+            )
+
+            primary_label = (
+                "CONTINUE"
+                if passed
+                else "BACK TO CODE"
+            )
+
+            rendered = BUTTON_FONT.render(
+                primary_label,
+                True,
+                BUTTON_TEXT_COLOR,
+            )
+
+            self.screen.blit(
+                rendered,
+                rendered.get_rect(
+                    center=primary.center
+                ),
+            )
+
+            if secondary:
+
+                fill = (
+                    BUTTON_HOVER_COLOR
+                    if secondary.collidepoint(mouse)
+                    else BUTTON_COLOR
+                )
+
+                pygame.draw.rect(
+                    self.screen,
+                    fill,
+                    secondary,
+                    border_radius=6,
+                )
+
+                pygame.draw.rect(
+                    self.screen,
+                    BORDER_COLOR,
+                    secondary,
+                    2,
+                    border_radius=6,
+                )
+
+                rendered = BUTTON_FONT.render(
+                    "REVIEW CODE",
+                    True,
+                    BUTTON_TEXT_COLOR,
+                )
+
+                self.screen.blit(
+                    rendered,
+                    rendered.get_rect(
+                        center=secondary.center
+                    ),
+                )
+
+            hint_text = (
+                "E / ENTER = Continue"
+                if passed
+                else "E / ENTER / ESC = Back to code"
+            )
+
+        hint = SMALL_FONT.render(
+            hint_text,
+            True,
+            SECONDARY_TEXT,
         )
-        pygame.draw.rect(self.screen, primary_color, primary, border_radius=6)
-        primary_label = "CONTINUE" if passed else "BACK TO CODE"
-        rendered = BUTTON_FONT.render(primary_label, True, BUTTON_TEXT_COLOR)
-        self.screen.blit(rendered, rendered.get_rect(center=primary.center))
 
-        if secondary:
-            fill = BUTTON_HOVER_COLOR if secondary.collidepoint(mouse) else BUTTON_COLOR
-            pygame.draw.rect(self.screen, fill, secondary, border_radius=6)
-            pygame.draw.rect(self.screen, BORDER_COLOR, secondary, 2, border_radius=6)
-            rendered = BUTTON_FONT.render("REVIEW CODE", True, BUTTON_TEXT_COLOR)
-            self.screen.blit(rendered, rendered.get_rect(center=secondary.center))
-
-        hint_text = ("E / ENTER = Continue" if passed
-                     else "E / ENTER / ESC = Back to code")
-        hint = SMALL_FONT.render(hint_text, True, SECONDARY_TEXT)
-        self.screen.blit(hint, hint.get_rect(center=(panel.centerx, panel.bottom - 12)))
+        self.screen.blit(
+            hint,
+            hint.get_rect(
+                center=(
+                    panel.centerx,
+                    panel.bottom - 12,
+                )
+            ),
+        )
 
     # ---------------------------------------------------------
     # Clipboard

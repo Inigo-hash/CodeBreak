@@ -1550,29 +1550,42 @@ def game_screen(screen, slot_num=None, save_state=None):
                                 selected_topic_id
                             )
 
-                            template_id = practice_manager.choose_template(
-                                selected_topic_id,
-                                template_ids,
-                            )
+                            # Keep the same background for the entire
+                            # practice session.
+                            editor_background = screen.copy()
 
-                            if template_id is None:
-                                continue
+                            while True:
 
-                            practice_challenge = generate_practice_challenge(
-                                template_id
-                            )
+                                template_id = (
+                                    practice_manager.choose_template(
+                                        selected_topic_id,
+                                        template_ids,
+                                    )
+                                )
 
-                            if practice_challenge is None:
-                                continue
+                                if template_id is None:
+                                    break
 
-                            editor = CodeEditor(
-                                screen,
-                                practice_challenge,
-                                screen.copy(),
-                                mode="practice",
-                            )
+                                practice_challenge = (
+                                    generate_practice_challenge(
+                                        template_id
+                                    )
+                                )
 
-                            editor.run()
+                                if practice_challenge is None:
+                                    break
+
+                                editor = CodeEditor(
+                                    screen,
+                                    practice_challenge,
+                                    editor_background,
+                                    mode="practice",
+                                )
+
+                                practice_action = editor.run()
+
+                                if practice_action != "next":
+                                    break
 
                         continue
 

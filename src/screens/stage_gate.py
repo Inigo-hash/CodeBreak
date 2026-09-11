@@ -129,6 +129,7 @@ def open_stage_gate(screen, status, gate_name="Stage Exit", background=None,
                 not status.missing_topic_ids,
             ),
         )
+
         if status.required_boss_id and show_boss_requirement:
             boss = get_enemy(status.required_boss_id) or {}
             rows += ((
@@ -154,7 +155,12 @@ def open_stage_gate(screen, status, gate_name="Stage Exit", background=None,
             screen.blit(value_surface, (rect.right - value_surface.get_width() - 14,
                                         rect.top + 10))
 
-        list_y = panel.top + 285
+        list_y = (
+            panel.top
+            + 120
+            + len(rows) * 54
+        )
+
         if developer_access:
             lines = [
                 "Developer exploration is ON (F4).",
@@ -172,6 +178,7 @@ def open_stage_gate(screen, status, gate_name="Stage Exit", background=None,
                 if status.required_keys else "This gate asks for no keys.",
                 "Every required coding topic is complete.",
             ]
+
             if status.required_boss_id and show_boss_requirement:
                 boss_name = (
                     get_enemy(status.required_boss_id) or {}

@@ -209,6 +209,7 @@ STAGES = {
         "completion": {
             "required_keys": 9,
             "required_boss": "corrupted_core_kapre",
+            "required_final_challenge": "stage1_final_001",
             "exit_name": "Corrupted Core Gate",
             "exit_rect": (0.544255, 0.231250, 0.023830, 0.028125),
             # Nine beginner lessons award one key each. Keeping rewards

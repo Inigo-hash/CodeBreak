@@ -14,6 +14,8 @@ Validation is handled by the ChallengeManager.
 """
 
 import pygame
+import subprocess
+import shutil
 from src.systems.audio import handle_music_shortcut
 from src.settings_state import set_theme
 
@@ -452,7 +454,9 @@ class CodeEditor:
 
                 if self.renderer.output_rect.collidepoint(mouse_position):
 
-                    self.output_panel.scroll(-event.y * WHEEL_LINES)
+                    self.output_panel.scroll(
+                        -event.y * WHEEL_LINES
+                    )
 
                 # ----------------------------------
                 # Objective Pane
@@ -460,13 +464,15 @@ class CodeEditor:
 
                 elif self.renderer.problem_rect.collidepoint(mouse_position):
 
-                    self.problem_panel.scroll(-event.y * WHEEL_LINES)
+                    self.problem_panel.scroll(
+                        -event.y * WHEEL_LINES
+                    )
 
                 # ----------------------------------
                 # Code Editor
                 # ----------------------------------
 
-                else:
+                elif self.renderer.editor_rect.collidepoint(mouse_position):
 
                     # Move the editor in the opposite direction
                     # of the mouse wheel movement.
@@ -1453,24 +1459,55 @@ class CodeEditor:
 
     def copy_selection(self):
         """
-        Copies the currently selected text to the system clipboard
-        (not just an internal variable), so the player can paste
-        it into other applications too, and vice versa.
+        Copy the currently selected text to the system clipboard.
+
+        pygame.scrap is tried first. On Wayland systems such as
+        Hyprland, wl-copy is used as a fallback.
         """
 
-        if not self.clipboard_available or not self.text_buffer.has_selection():
+        if not self.text_buffer.has_selection():
             return
 
         selected_text = self.text_buffer.get_selected_text()
 
-        # SCRAP_TEXT expects raw bytes, not a Python string.
-        try:
-            pygame.scrap.put(
-                pygame.SCRAP_TEXT,
-                selected_text.encode("utf-8")
-            )
-        except pygame.error:
-            self.clipboard_available = False
+        # ---------------------------------------------------------
+        # Pygame clipboard
+        # ---------------------------------------------------------
+
+        if self.clipboard_available:
+
+            try:
+                pygame.scrap.put(
+                    pygame.SCRAP_TEXT,
+                    selected_text.encode("utf-8")
+                )
+
+                return
+
+            except pygame.error:
+                pass
+
+        # ---------------------------------------------------------
+        # Wayland fallback
+        # ---------------------------------------------------------
+
+        if shutil.which("wl-copy"):
+
+            try:
+                subprocess.run(
+                    ["wl-copy"],
+                    input=selected_text,
+                    text=True,
+                    check=True,
+                )
+
+                return
+
+            except (
+                subprocess.SubprocessError,
+                OSError,
+            ):
+                pass
 
     # ---------------------------------------------------------
     # Cut / Paste
@@ -1501,27 +1538,79 @@ class CodeEditor:
 
     def paste_clipboard(self):
         """
-        Reads whatever text is currently on the system clipboard
-        and inserts it at the cursor position as a single undoable
-        operation, replacing any active selection first.
+        Paste text from the system clipboard.
+
+        pygame.scrap is tried first. On Wayland systems such as
+        Hyprland, wl-paste is used as a fallback.
         """
 
-        if not self.clipboard_available:
-            return
-        try:
-            clipboard_bytes = pygame.scrap.get(pygame.SCRAP_TEXT)
-        except pygame.error:
-            self.clipboard_available = False
+        text = None
+
+        # ---------------------------------------------------------
+        # Pygame clipboard
+        # ---------------------------------------------------------
+
+        if self.clipboard_available:
+
+            try:
+                clipboard_bytes = pygame.scrap.get(
+                    pygame.SCRAP_TEXT
+                )
+
+                if clipboard_bytes:
+
+                    text = clipboard_bytes.decode(
+                        "utf-8",
+                        errors="ignore",
+                    )
+
+                    text = text.replace(
+                        "\x00",
+                        "",
+                    )
+
+            except pygame.error:
+                pass
+
+        # ---------------------------------------------------------
+        # Wayland fallback
+        # ---------------------------------------------------------
+
+        if not text and shutil.which("wl-paste"):
+
+            try:
+
+                result = subprocess.run(
+                    [
+                        "wl-paste",
+                        "--no-newline",
+                    ],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+
+                text = result.stdout
+
+            except (
+                subprocess.SubprocessError,
+                OSError,
+            ):
+                pass
+
+        if not text:
             return
 
-        if not clipboard_bytes:
-            return
+        text = (
+            text
+            .replace("\r\n", "\n")
+            .replace("\r", "\n")
+        )
 
-        text = clipboard_bytes.decode("utf-8", errors="ignore")
-        text = text.replace("\x00", "")
-        text = text.replace("\r\n", "\n").replace("\r", "\n")
-
-        self.text_buffer.insert_text(text)
+        self.text_buffer.insert_text(
+            text
+        )
 
         self.renderer.ensure_cursor_visible()
+
         self.last_input_time = pygame.time.get_ticks()

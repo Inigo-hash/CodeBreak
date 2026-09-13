@@ -115,7 +115,9 @@ Python syntax means following the rules for writing valid
 Python code.
 """,
 
-        "challenge_id": "python_syntax_basics_001"
+        "challenge_id": "python_syntax_basics_001",
+
+        "requirements": []
     },
 
 
@@ -208,7 +210,11 @@ Creating a variable usually follows:
     name = value
 """,
 
-        "challenge_id": "variables_001"
+        "challenge_id": "variables_001",
+
+        "requirements": [
+            "python_syntax_basics"
+        ]
     },
 
 
@@ -306,7 +312,6 @@ Common Python data types include:
         "challenge_id": "data_types_001",
 
         "requirements": [
-            "python_syntax_basics",
             "variables"
         ]
     },
@@ -409,7 +414,11 @@ Common type casting functions are:
     bool()
 """,
 
-        "challenge_id": "type_casting_001"
+        "challenge_id": "type_casting_001",
+
+        "requirements": [
+            "data_types"
+        ]
     },
     # =========================================================
     # Input
@@ -503,7 +512,11 @@ The basic pattern is:
     variable = input("Prompt: ")
 """,
 
-        "challenge_id": "input_lesson_001"
+        "challenge_id": "input_lesson_001",
+
+        "requirements": [
+            "type_casting"
+        ]
     },
 
 
@@ -608,7 +621,11 @@ A basic f-string looks like:
     print(f"Text {variable}")
 """,
 
-        "challenge_id": "formatted_output_001"
+        "challenge_id": "formatted_output_001",
+
+        "requirements": [
+            "input_lesson"
+        ]
     },
 
 

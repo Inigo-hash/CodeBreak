@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.12.1" orientation="orthogonal" renderorder="right-down" width="188" height="160" tilewidth="16" tileheight="16" infinite="0" nextlayerid="13" nextobjectid="2873">
+<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="188" height="160" tilewidth="16" tileheight="16" infinite="0" nextlayerid="13" nextobjectid="2873">
  <tileset firstgid="1" source="../tsx/Enviroment-Forest.tsx"/>
  <tileset firstgid="145" source="../tsx/Props-Forest.tsx"/>
  <tileset firstgid="201" source="../tsx/Birch Forest-Tileset.tsx"/>
@@ -2979,8 +2979,6 @@
   <object id="1504" x="1712" y="1984" width="31.3333" height="31.6667">
    <properties>
     <property name="actions" value="search_chest"/>
-    <property name="reward_seconds" type="int" value="30"/>
-    <property name="topic_id" value="python_syntax_basics"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>
@@ -3340,10 +3338,14 @@
  </layer>
  <objectgroup id="12" name="Solid landmark bases">
   <object id="2871" x="2160" y="2000" width="96" height="48">
-   <properties><property name="collidable" type="bool" value="true"/></properties>
+   <properties>
+    <property name="collidable" type="bool" value="true"/>
+   </properties>
   </object>
   <object id="2872" x="2192" y="1984" width="32" height="16">
-   <properties><property name="collidable" type="bool" value="true"/></properties>
+   <properties>
+    <property name="collidable" type="bool" value="true"/>
+   </properties>
   </object>
  </objectgroup>
 </map>

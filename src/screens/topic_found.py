@@ -1,4 +1,5 @@
 import pygame
+from src.ui.text_layout import fit_text, draw_text_block
 from src.systems.audio import handle_music_shortcut
 
 from src.ui.theme import UI_COLORS, body_font, title_font
@@ -84,7 +85,7 @@ class TopicFoundScreen:
             panel_height
         )
 
-        button_width = 180
+        button_width = min(220, (panel_width - 60) // 2)
         button_height = 48
         button_gap = 20
 
@@ -231,58 +232,18 @@ class TopicFoundScreen:
         # Title
         # ----------------------------------
 
-        title = self.title_font.render(
-            "TOPIC DISCOVERED!",
-            True,
-            ACCENT
-        )
-
-        self.screen.blit(
-            title,
-            (
-                self.panel_rect.centerx
-                - title.get_width() // 2,
-
-                self.panel_rect.top + 22
-            )
-        )
-
-        # ----------------------------------
-        # Message
-        # ----------------------------------
-
-        message = self.text_font.render(
-            "Congratulations! You found a new learning topic.",
-            True,
-            TEXT_DIM
-        )
-
-        self.screen.blit(
-            message,
-            (
-                self.panel_rect.centerx
-                - message.get_width() // 2,
-
-                inner_rect.top + 25
-            )
-        )
-
-        # Topic name.
-        topic = self.topic_font.render(
-            self.topic_name,
-            True,
-            TEXT_MAIN
-        )
-
-        self.screen.blit(
-            topic,
-            (
-                self.panel_rect.centerx
-                - topic.get_width() // 2,
-
-                inner_rect.centery + 10
-            )
-        )
+        title = fit_text(self.title_font, "TOPIC DISCOVERED!", ACCENT,
+                         (self.panel_rect.width - 40, 42))
+        self.screen.blit(title, title.get_rect(midtop=(self.panel_rect.centerx,
+                                                       self.panel_rect.top + 18)))
+        draw_text_block(self.screen,
+                        "Congratulations! You found a new learning topic.",
+                        self.text_font, TEXT_DIM,
+                        pygame.Rect(inner_rect.x + 18, inner_rect.y + 15,
+                                    inner_rect.width - 36, 54), center=True)
+        draw_text_block(self.screen, self.topic_name, self.topic_font, TEXT_MAIN,
+                        pygame.Rect(inner_rect.x + 18, inner_rect.y + 80,
+                                    inner_rect.width - 36, 60), center=True)
 
         # ----------------------------------
         # Buttons
@@ -331,19 +292,10 @@ class TopicFoundScreen:
             border_radius=6
         )
 
-        text = self.button_font.render(
-            label,
-            True,
-            TEXT_MAIN
-        )
+        text = fit_text(self.button_font, label, TEXT_MAIN,
+                        (rect.width - 24, rect.height - 12))
+        self.screen.blit(text, text.get_rect(center=rect.center))
 
-        self.screen.blit(
-            text,
-            (
-                rect.centerx - text.get_width() // 2,
-                rect.centery - text.get_height() // 2
-            )
-        )
 
 
 def open_topic_found(

@@ -3,6 +3,7 @@
 import sys
 
 import pygame
+from src.ui.text_layout import fit_text, draw_text_block
 
 from src.data.enemies import get_enemy
 from src.systems.audio import handle_music_shortcut
@@ -135,7 +136,7 @@ def _boss_modal(screen, title, subtitle, lines, primary, secondary,
         draw_panel(screen, panel, emphasized=not danger, radius=12)
 
         accent = UI_COLORS["crimson"] if danger else UI_COLORS["blue_bright"]
-        rendered_title = title_font_obj.render(title, True, accent)
+        rendered_title = fit_text(title_font_obj, title, accent, (panel.width - 48, 48))
         screen.blit(rendered_title, rendered_title.get_rect(
             center=(panel.centerx, panel.top + 62)
         ))
@@ -146,11 +147,10 @@ def _boss_modal(screen, title, subtitle, lines, primary, secondary,
             center=(panel.centerx, panel.top + 99)
         ))
 
-        for index, line in enumerate(lines):
-            rendered = line_font.render(line, True, UI_COLORS["text"])
-            screen.blit(rendered, rendered.get_rect(
-                center=(panel.centerx, panel.top + 155 + index * 38)
-            ))
+        draw_text_block(screen, "\n\n".join(lines), line_font, UI_COLORS["text"],
+                        pygame.Rect(panel.left + 28, panel.top + 135,
+                                    panel.width - 56, primary_rect.top - panel.top - 155),
+                        center=True)
 
         draw_button(
             screen, primary_rect, primary[0], button_font,

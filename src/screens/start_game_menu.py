@@ -4,6 +4,7 @@ import math
 import time
 
 import pygame
+from src.ui.text_layout import fit_text, draw_text_block
 
 from src.screens.game import game_screen
 from src.screens.tutorial import tutorial_screen
@@ -148,7 +149,7 @@ def start_game_menu(screen, clean_backdrop=None):
             border_radius=7,
         )
         heading = "CHOOSE A SLOT FOR A NEW GAME" if mode == "new" else "CHOOSE YOUR ADVENTURE"
-        title = _button_font.render(heading, True, WHITE)
+        title = fit_text(_button_font, heading, WHITE, (panel_rect.width - 80, 48))
         surf.blit(title, title.get_rect(
             center=(panel_rect.centerx, panel_rect.top + 45)
         ))
@@ -188,25 +189,26 @@ def start_game_menu(screen, clean_backdrop=None):
                     surf, (193, 151, 77),
                     (rect.left + 7, rivet_y), 2,
                 )
-            name = _button_font.render(f"SLOT {slot_num}", True, WHITE if clickable else (110, 110, 115))
+            name = fit_text(_button_font, f"SLOT {slot_num}",
+                            WHITE if clickable else (110, 110, 115), (rect.width // 2 - 24, 34))
             content_left = rect.left + 24
             name_y = rect.top + 8
             surf.blit(name, (content_left, name_y))
-            summary = _small.render(save_manager.slot_summary(slot_num), True,
-                                    (205, 205, 215) if filled else (125, 125, 132))
-            summary_y = name_y + name.get_height() + 3
+            summary = fit_text(_small, save_manager.slot_summary(slot_num),
+                               (205, 205, 215) if filled else (125, 125, 132),
+                               (rect.width - 48, 25))
+            summary_y = rect.top + 46
             surf.blit(summary, (content_left, summary_y))
             if filled:
                 protected = save_manager.is_protected(
                     save_manager.load_slot(slot_num)
                 )
                 badge_text = "PROTECTED" if protected else "SET PASSWORD"
-                lock = _small.render(
-                    badge_text, True,
-                    (140, 220, 255) if protected else (215, 180, 105),
-                )
+                lock = fit_text(_small, badge_text,
+                                (140, 220, 255) if protected else (215, 180, 105),
+                                (rect.width // 2 - 70, 22))
                 badge = lock.get_rect()
-                badge.inflate_ip(18, 10)
+                badge.inflate_ip(18, 8)
                 # The delete button owns the corner, so the badge sits to
                 # its left rather than underneath it.
                 badge.topright = (delete_rects[i].left - 10, rect.top + 12)
@@ -220,13 +222,12 @@ def start_game_menu(screen, clean_backdrop=None):
                 )
                 surf.blit(lock, lock.get_rect(center=badge.center))
                 progress = save_manager.slot_progress(slot_num)
-                progress_label = _small.render(
-                    f"PROGRESS {progress}%", True, (150, 215, 255)
-                )
-                progress_label_y = summary_y + summary.get_height() + 5
+                progress_label = fit_text(_small, f"PROGRESS {progress}%",
+                                          (150, 215, 255), (rect.width - 48, 22))
+                progress_label_y = rect.bottom - 46
                 progress_bar = pygame.Rect(
                     content_left,
-                    progress_label_y + progress_label.get_height() + 1,
+                    rect.bottom - 18,
                     rect.right - content_left - 18, 10,
                 )
                 pygame.draw.rect(
@@ -266,7 +267,7 @@ def start_game_menu(screen, clean_backdrop=None):
                                  cross.topright, 3)
         pygame.draw.rect(surf, STONE_MID, back_rect, border_radius=4)
         pygame.draw.rect(surf, STONE_LIGHT, back_rect, 2, border_radius=4)
-        label = _button_font.render("BACK", True, WHITE)
+        label = fit_text(_button_font, "BACK", WHITE, (back_rect.width - 20, back_rect.height - 10))
         surf.blit(label, label.get_rect(center=back_rect.center))
 
     def _draw_confirm(surf, slot_num, mode):
@@ -279,16 +280,16 @@ def start_game_menu(screen, clean_backdrop=None):
             surf, (224, 96, 96) if deleting else (200, 90, 90),
             confirm_rect, 3, border_radius=8,
         )
-        line = _button_font.render(
+        line = fit_text(_button_font,
             "DELETE THIS ADVENTURE?" if deleting else "REPLACE THIS ADVENTURE?",
-            True, WHITE,
+            WHITE, (confirm_rect.width - 40, 42),
         )
         surf.blit(line, line.get_rect(center=(confirm_rect.centerx, confirm_rect.top + 42)))
-        note = _small.render(
+        note = fit_text(_small,
             f"Slot {slot_num} will be erased. This cannot be undone."
             if deleting else
             f"Slot {slot_num} progress will be overwritten.",
-            True, (210, 210, 220),
+            (210, 210, 220), (confirm_rect.width - 40, 36),
         )
         surf.blit(note, note.get_rect(center=(confirm_rect.centerx, confirm_rect.top + 82)))
         # The destructive choice has to look unlike the safe one, or the
@@ -300,7 +301,7 @@ def start_game_menu(screen, clean_backdrop=None):
         for rect, label, color in ((confirm_yes, labels[0], colors[0]),
                                    (confirm_no, labels[1], colors[1])):
             pygame.draw.rect(surf, color, rect, border_radius=4)
-            text = _button_font.render(label, True, WHITE)
+            text = fit_text(_button_font, label, WHITE, (rect.width - 20, rect.height - 10))
             surf.blit(text, text.get_rect(center=rect.center))
 
     def _password_heading():
@@ -322,7 +323,8 @@ def start_game_menu(screen, clean_backdrop=None):
         surf.blit(overlay, (0, 0))
         pygame.draw.rect(surf, (30, 34, 46), password_rect, border_radius=10)
         pygame.draw.rect(surf, BLUE_GLOW, password_rect, 3, border_radius=10)
-        heading = _button_font.render(_password_heading(), True, WHITE)
+        heading = fit_text(_button_font, _password_heading(), WHITE,
+                           (password_rect.width - 48, 44))
         surf.blit(heading, heading.get_rect(center=(password_rect.centerx, password_rect.top + 44)))
         if password_action == "delete_unlock":
             instruction = "This save is protected. Type its password to erase it."
@@ -332,13 +334,15 @@ def start_game_menu(screen, clean_backdrop=None):
             instruction = "Type the same password again."
         else:
             instruction = f"Use at least {save_manager.PASSWORD_MIN_LENGTH} characters."
-        info = _small.render(instruction, True, (195, 200, 215))
-        surf.blit(info, info.get_rect(center=(password_rect.centerx, password_rect.top + 92)))
+        draw_text_block(surf, instruction, _small, (195, 200, 215),
+                        pygame.Rect(password_rect.x + 28, password_rect.y + 78,
+                                    password_rect.width - 56, 56), center=True)
         pygame.draw.rect(surf, STONE_DARK, password_input, border_radius=5)
         pygame.draw.rect(surf, BLUE_GLOW, password_input, 2, border_radius=5)
         masked = "*" * len(password_text)
-        field = _button_font.render(masked or "TYPE PASSWORD", True,
-                                    WHITE if masked else (105, 110, 125))
+        field = fit_text(_button_font, masked or "TYPE PASSWORD",
+                         WHITE if masked else (105, 110, 125),
+                         (password_input.width - 36, password_input.height - 14))
         field_pos = (password_input.left + 16,
                      password_input.centery - field.get_height() // 2)
         surf.blit(field, field_pos)
@@ -346,11 +350,11 @@ def start_game_menu(screen, clean_backdrop=None):
         # makes that focus visible even before the first character is typed.
         if (pygame.time.get_ticks() // 500) % 2 == 0:
             caret_x = field_pos[0] + (field.get_width() if masked else 0)
-            caret_top = password_input.centery - _button_font.get_height() // 2
+            caret_top = password_input.centery - field.get_height() // 2
             pygame.draw.line(
                 surf, WHITE,
                 (caret_x, caret_top),
-                (caret_x, caret_top + _button_font.get_height()),
+                (caret_x, caret_top + field.get_height()),
                 3,
             )
         remaining = _lockout_remaining(password_slot)
@@ -364,12 +368,13 @@ def start_game_menu(screen, clean_backdrop=None):
             (255, 125, 125)
             if password_error or remaining else (180, 180, 190)
         )
-        warn = _small.render(warning, True, warn_color)
-        surf.blit(warn, warn.get_rect(center=(password_rect.centerx, password_rect.top + 230)))
+        draw_text_block(surf, warning, _small, warn_color,
+                        pygame.Rect(password_rect.x + 28, password_rect.y + 215,
+                                    password_rect.width - 56, 62), center=True)
         for rect, label in ((password_ok, "CONTINUE"), (password_cancel, "CANCEL")):
             pygame.draw.rect(surf, STONE_MID, rect, border_radius=4)
             pygame.draw.rect(surf, STONE_LIGHT, rect, 2, border_radius=4)
-            text = _button_font.render(label, True, WHITE)
+            text = fit_text(_button_font, label, WHITE, (rect.width - 20, rect.height - 10))
             surf.blit(text, text.get_rect(center=rect.center))
 
     def _resume_menu_music():

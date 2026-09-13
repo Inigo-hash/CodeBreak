@@ -7,6 +7,7 @@ import random
 import sys
 
 import pygame
+from src.ui.text_layout import fit_text, draw_text_block
 
 from src.ui.theme import UI_COLORS, body_font, title_font
 from src.systems.audio import handle_music_shortcut
@@ -15,6 +16,7 @@ from src.systems.audio import handle_music_shortcut
 REFERENCE_SIZE = (1920, 1080)
 
 STAGE_BACKGROUNDS = {
+    "castle": "assets/images/backgrounds/loading_castle_stage2.png",
     "island": "assets/images/backgrounds/loading_island_stage1.png",
     "tutorial": "assets/images/backgrounds/loading_island_stage1.png",
 }
@@ -382,9 +384,8 @@ class StageLoadingScreen:
                          border_radius=5)
         pygame.draw.rect(self.screen, UI_COLORS["bronze"], header, 2,
                          border_radius=5)
-        label = self.note_title_font.render(
-            "EXPLORER'S NOTE", True, UI_COLORS["gold"]
-        )
+        label = fit_text(self.note_title_font, "EXPLORER'S NOTE", UI_COLORS["gold"],
+                         (header.width - 16, header.height - 8))
         self.screen.blit(label, label.get_rect(center=header.center))
 
         counter = self.navigation_font.render(
@@ -399,20 +400,17 @@ class StageLoadingScreen:
 
         pad = max(44, round(58 * scale))
         text_top = header.bottom + max(12, round(18 * scale))
-        lines = self._wrap(self.note_font, self.tip["text"], rect.width - pad * 2)
-        line_height = self.note_font.get_height() + max(3, round(5 * scale))
-        for index, line in enumerate(lines[:2]):
-            rendered = self.note_font.render(line, True, (42, 29, 18))
-            self.screen.blit(rendered, (rect.left + pad,
-                                        text_top + index * line_height))
-
         code_height = max(42, round(66 * scale))
         code_rect = pygame.Rect(rect.left + pad, rect.bottom - code_height - pad // 2,
                                 rect.width - pad * 2, code_height)
         pygame.draw.rect(self.screen, (12, 15, 20), code_rect, border_radius=4)
         pygame.draw.rect(self.screen, UI_COLORS["bronze_dark"], code_rect, 2,
                          border_radius=4)
-        code = self.code_font.render(self.tip["code"], True, (130, 202, 95))
+        draw_text_block(self.screen, self.tip["text"], self.note_font, (42, 29, 18),
+                        pygame.Rect(rect.left + pad, text_top, rect.width - pad * 2,
+                                    code_rect.top - text_top - 8))
+        code = fit_text(self.code_font, self.tip["code"], (130, 202, 95),
+                        (code_rect.width - 16, code_rect.height - 12))
         self.screen.blit(code, code.get_rect(center=code_rect.center))
 
     def _draw_progress(self):

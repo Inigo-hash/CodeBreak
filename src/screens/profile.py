@@ -21,6 +21,7 @@ full-looking empty bar.
 """
 
 import pygame
+from src.ui.text_layout import fit_text
 import sys
 from src.systems.audio import handle_music_shortcut
 
@@ -81,6 +82,8 @@ def profile_screen(screen, background=None, name="Bobiles the explorer the great
     while name_surface.get_width() > col_width and name_size > 12:
         name_size -= 1
         name_surface = title_font(name_size).render(name.upper(), True, NAME_GOLD)
+    name_surface = fit_text(title_font(name_size), name.upper(), NAME_GOLD,
+                            (col_width, name_surface.get_height()))
 
     bar_height = font_bar.get_height()
     column_height = (name_surface.get_height() + ROW_GAP + HEART_SIZE

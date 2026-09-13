@@ -15,6 +15,7 @@ Future widgets:
 """
 
 import pygame
+from src.ui.text_layout import fit_text, wrap_text
 
 from src.ui.editor_theme import *
 
@@ -97,11 +98,11 @@ class Button:
             (self.rect.right - 8, self.rect.top + 3), 1
         )
 
-        label = BUTTON_FONT.render(
+        label = fit_text(BUTTON_FONT,
             self.text,
-            True,
             BUTTON_TEXT_COLOR if self.variant != "tertiary" or self.hovered
-            else TEXT_COLOR
+            else TEXT_COLOR,
+            (self.rect.width - 16, self.rect.height - 8)
         )
 
         screen.blit(
@@ -304,73 +305,3 @@ class VerticalScrollbar:
         ratio = max(0.0, min(1.0, ratio))
 
         return int(max_scroll_offset * ratio)
-
-
-# =====================================================
-# Text Helpers
-# =====================================================
-
-def wrap_text(text, font, max_width):
-    """
-    Break `text` into a list of lines that each fit within
-    `max_width` pixels when rendered with `font`.
-
-    Wrapping happens at spaces where possible. A single "word" too
-    long to fit on its own line (a long error message with no
-    spaces, say) is split mid-word rather than allowed to overflow
-    the pane.
-
-    Existing newlines in the text are preserved as line breaks.
-    """
-
-    # A pane too narrow to fit anything - return the text as-is
-    # rather than looping forever trying to break it up.
-    if max_width <= 0:
-        return [text]
-
-    lines = []
-
-    for paragraph in text.split("\n"):
-
-        # Preserve deliberate blank lines.
-        if not paragraph:
-            lines.append("")
-            continue
-
-        current = ""
-
-        for word in paragraph.split(" "):
-
-            candidate = word if not current else current + " " + word
-
-            # The word still fits on the current line.
-            if font.size(candidate)[0] <= max_width:
-                current = candidate
-                continue
-
-            # It does not fit, so the line ends here.
-            if current:
-                lines.append(current)
-                current = ""
-
-            # The word alone is wider than the pane - chop it into
-            # pieces that do fit, one line at a time.
-            while font.size(word)[0] > max_width:
-
-                cut = 1
-
-                while (
-                    cut < len(word)
-                    and font.size(word[:cut + 1])[0] <= max_width
-                ):
-                    cut += 1
-
-                lines.append(word[:cut])
-
-                word = word[cut:]
-
-            current = word
-
-        lines.append(current)
-
-    return lines

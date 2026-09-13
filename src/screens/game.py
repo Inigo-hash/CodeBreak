@@ -2246,10 +2246,6 @@ def game_screen(screen, slot_num=None, save_state=None):
                 if slot_num is not None:
                     save_manager.save_slot(slot_num, build_save_state())
             else:
-                result = game_over_screen(screen, background=screen.copy())
-                if result == "main_menu":
-                    pygame.mixer.music.stop()
-                    return "main_menu"
                 if gameplay_state["hearts"] == 0:
                     gameplay_state["hearts"] = 5
                 player_combat.reset()
@@ -2268,6 +2264,15 @@ def game_screen(screen, slot_num=None, save_state=None):
                         continue
                     enemy.reset()
                     enemy.rewarded = False
+
+                # Persist the penalty and safe respawn before the modal can
+                # return to the menu or quit, just as boss recovery saves.
+                if slot_num is not None:
+                    save_manager.save_slot(slot_num, build_save_state())
+                result = game_over_screen(screen, background=screen.copy())
+                if result == "main_menu":
+                    pygame.mixer.music.stop()
+                    return "main_menu"
 
         # --- Check if player is near an interactable ---
         # Coordinates remain unscaled here (ZOOM is draw-only). A two-tile

@@ -28,6 +28,7 @@ It does not handle typing, validation, or game logic.
 """
 
 import pygame
+from src.ui.text_layout import fit_text
 
 from src.ui.editor_widgets import Button, VerticalScrollbar
 from src.ui.output_panel import OutputPanel
@@ -512,11 +513,9 @@ class EditorRenderer:
             border_radius=PANEL_RADIUS
         )
 
-        title = TITLE_FONT.render(
-            f'CodeBreak - {self.challenge["title"]}',
-            True,
-            TEXT_COLOR
-        )
+        title = fit_text(TITLE_FONT, f'CodeBreak - {self.challenge["title"]}',
+                         TEXT_COLOR, (self.exit_button.rect.left - self.header_rect.x - 40,
+                                      self.header_rect.height - 12))
 
         self.screen.blit(
             title,
@@ -779,7 +778,7 @@ class EditorRenderer:
                 line_states[line_index]
             )
 
-            segment_x = text_x
+            segment_col = 0
 
             for segment_text, segment_color in segments:
 
@@ -794,10 +793,10 @@ class EditorRenderer:
 
                 self.screen.blit(
                     rendered,
-                    (segment_x, text_y)
+                    (text_x + TEXT_FONT.size(line[:segment_col])[0], text_y)
                 )
 
-                segment_x += rendered.get_width()
+                segment_col += len(segment_text)
 
             text_y += line_spacing
 
@@ -837,6 +836,11 @@ class EditorRenderer:
             + 15
             + visible_cursor_row * line_spacing
         )
+        # Glyphs sit below the surface's top bearing. Follow the font's
+        # cap height and descent instead of a fixed 18-pixel stroke.
+        cap_top = TEXT_FONT.get_ascent() - TEXT_FONT.metrics("M")[0][3]
+        cursor_top = cursor_y + cap_top
+        cursor_bottom = cursor_y + TEXT_FONT.get_ascent() - TEXT_FONT.get_descent()
 
         # ----------------------------------
         # Blinking Cursor
@@ -856,8 +860,8 @@ class EditorRenderer:
             pygame.draw.line(
                 self.screen,
                 TEXT_COLOR,
-                (cursor_x, cursor_y),
-                (cursor_x, cursor_y + 18),
+                (cursor_x, cursor_top),
+                (cursor_x, cursor_bottom),
                 2
             )
 
@@ -1184,13 +1188,11 @@ class EditorRenderer:
 
         # Compare the mouse position with the
         # width of each section of the text.
-        for i in range(len(line) + 1):
-
-            width = TEXT_FONT.size(line[:i])[0]
-
-            if width > relative_x:
-
-                col = i - 1
+        for i in range(len(line)):
+            left = TEXT_FONT.size(line[:i])[0]
+            right = TEXT_FONT.size(line[:i + 1])[0]
+            if relative_x < (left + right) / 2:
+                col = i
                 break
 
         # Keep the column within the valid range.

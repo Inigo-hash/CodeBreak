@@ -4,6 +4,7 @@ import math
 from functools import lru_cache
 
 import pygame
+from src.ui.text_layout import fit_text
 
 from src.settings_state import font_scale
 
@@ -243,7 +244,8 @@ def draw_button(surface, rect, label, font, hovered=False, text_offset=0,
                      (inner.left + 5, inner.top + 2),
                      (inner.right - 5, inner.top + 2), 1)
 
-    text = font.render(label, True, text_color)
+    text = fit_text(font, label, text_color,
+                    (draw_rect.width - 24 - abs(text_offset) * 2, draw_rect.height - 12))
     text_rect = text.get_rect(center=(draw_rect.centerx + text_offset, draw_rect.centery))
     surface.blit(text, text_rect)
     return draw_rect

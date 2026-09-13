@@ -19,6 +19,7 @@ between the panes.
 """
 
 import pygame
+from src.ui.text_layout import fit_text
 
 from src.ui.editor_theme import *
 from src.ui.editor_widgets import VerticalScrollbar, wrap_text
@@ -487,11 +488,8 @@ class ProblemPanel:
         # Fixed Title Strip
         # --------------------------------------
 
-        label = HEADER_FONT.render(
-            "OBJECTIVE",
-            True,
-            TEXT_COLOR
-        )
+        label = fit_text(HEADER_FONT, "OBJECTIVE", TEXT_COLOR,
+                         (rect.width - INNER_PADDING * 2, TITLE_STRIP_HEIGHT - 8))
 
         # Centered in the strip rather than nailed to a fixed offset, so
         # the heading keeps its breathing room at any font size.

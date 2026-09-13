@@ -2,6 +2,7 @@
 
 import math
 import pygame
+from src.ui.text_layout import fit_text
 
 from src.systems.stage_gate import required_key_count
 
@@ -340,7 +341,9 @@ def draw_stat_bar(surface, font, x, y, width, label, current, maximum,
         text = f"{label} {current} / {maximum}"
     else:
         text = f"{label} -- / --"
-    surface.blit(render_text(font, text, TEXT if maximum else DIM), (x, y - 1))
+    label_width = min(label_width, max(1, width - 48))
+    surface.blit(fit_text(font, text, TEXT if maximum else DIM,
+                          (label_width - 8, font.get_height())), (x, y - 1))
 
     bar = pygame.Rect(x + label_width, y + 2, max(40, width - label_width), 13)
     pygame.draw.rect(surface, (12, 13, 18), bar, border_radius=3)
@@ -395,7 +398,10 @@ class GameplayHUD:
         # Everything stacks in one left-hand column under the profile card so
         # the panels read as a single group instead of floating apart.
         progress_rect = pygame.Rect(margin, self.profile_rect.bottom + 8,
-                                    min(275, width // 3), 92)
+                                    min(275, width // 3),
+                                    max(92, 24 + self.bold.get_height()
+                                        + max(25, self.font.get_linesize())
+                                        + self.font.get_height() + 12))
         bonus_rect = pygame.Rect(margin, progress_rect.bottom + 8, 112, 42)
 
         self.draw_character_profile(current_hp, max_hp, in_combat,
@@ -432,7 +438,7 @@ class GameplayHUD:
         # One gutter sized for the longer of the two labels, so the HP and
         # ENERGY fills start on the same x instead of stepping.
         label_width = self._stat_label_width()
-        self.screen.blit(render_text(self.bold, "BOBILES THE EXPLORER", NAME_GOLD),
+        self.screen.blit(fit_text(self.bold, "BOBILES THE EXPLORER", NAME_GOLD, (bar_width, 28)),
                          (text_left, self.profile_rect.top + 20))
         self.draw_hearts(text_left, self.profile_rect.top + 50)
         self.draw_hp_bar(text_left, self.profile_rect.top + 88, bar_width,
@@ -471,10 +477,17 @@ class GameplayHUD:
                       label_width=label_width)
 
     def draw_stage_progress(self, rect):
-        self._panel(rect)
         stage_name = self.stage.get("name", "Unknown Stage").upper()
         subtitle = self.stage.get("subtitle", "")
         title = f"{stage_name}  {subtitle}".strip()
+        rect = rect.copy()
+        rect.width = min(max(rect.width, self.bold.size(title)[0] + 24),
+                         self.screen.get_width() - rect.left * 2)
+        if self.bold.size(title)[0] > rect.width - 24:
+            while title and self.bold.size(title + "...")[0] > rect.width - 24:
+                title = title[:-1]
+            title += "..."
+        self._panel(rect)
         self.screen.blit(render_text(self.bold, title, GOLD), (rect.left + 12, rect.top + 9))
 
         # Scaled once and kept: these two never change size, and rescaling
@@ -491,25 +504,32 @@ class GameplayHUD:
             (topic_icon, f"TOPICS  {len(completed_topics)}/{total_topics}"),
         )
         for index, (icon, label) in enumerate(rows):
-            y = rect.top + 38 + index * 25
+            y = (rect.top + 24 + self.bold.get_height()
+                 + index * max(25, self.font.get_linesize()))
             self.screen.blit(icon, (rect.left + 10, y - 7))
             self.screen.blit(render_text(self.font, label, TEXT), (rect.left + 45, y))
 
     def draw_bonus_time(self, x, y, bonus_time):
-        rect = pygame.Rect(x, y, 112, 42)
+        value = max(0, round(float(bonus_time or 0)))
+        label = f"+{value}s"
+        rect = pygame.Rect(x, y, min(max(112, self.bold.size(label)[0] + 54),
+                                    self.screen.get_width() - x * 2), 42)
         self._panel(rect)
         self._draw_clock_placeholder(rect.left + 20, rect.centery)
-        value = max(0, round(float(bonus_time or 0)))
-        self.screen.blit(render_text(self.bold, f"+{value}s", BLUE), (rect.left + 42, rect.top + 11))
+        self.screen.blit(fit_text(self.bold, label, BLUE, (rect.width - 54, 28)),
+                         (rect.left + 42, rect.top + 7))
 
     def draw_interaction_prompt(self, prompt, width, height):
         text = render_text(self.bold, prompt if prompt.startswith("[B]") else f"[E] {prompt}", TEXT)
         rect = text.get_rect()
         rect.inflate_ip(34, 20)
+        rect.width = min(rect.width, width - 40)
         # Leave room for the equipped-item label above the hotbar.
         rect.midbottom = (width // 2, height - 126)
         self._panel(rect, emphasized=True)
-        self.screen.blit(text, text.get_rect(center=rect.center))
+        label = prompt if prompt.startswith("[B]") else f"[E] {prompt}"
+        fitted = fit_text(self.bold, label, TEXT, (rect.width - 34, rect.height - 20))
+        self.screen.blit(fitted, fitted.get_rect(center=rect.center))
 
     def draw_combat_controls(self, width, height, dodge_ready=True):
         # Two renders instead of one line so the dodge half can grey out on

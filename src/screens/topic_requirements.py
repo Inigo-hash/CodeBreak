@@ -6,6 +6,7 @@ before a learning topic can be challenged.
 """
 
 import pygame
+from src.ui.text_layout import fit_text, draw_text_block
 
 from src.data.topics import get_topic
 from src.systems.audio import handle_music_shortcut
@@ -98,9 +99,9 @@ def open_topic_requirements(
 
     requirements_rect = pygame.Rect(
         panel_rect.left + 35,
-        panel_rect.top + 145,
+        panel_rect.top + 165,
         panel_rect.width - 70,
-        170
+        150
     )
 
     button_rect = pygame.Rect(
@@ -200,11 +201,9 @@ def open_topic_requirements(
         # Heading
         # -----------------------------------------------------
 
-        heading_surface = title.render(
-            "TOPIC REQUIREMENTS",
-            True,
-            TEXT_DONE if unlocked else ACCENT
-        )
+        heading_surface = fit_text(title, "TOPIC REQUIREMENTS",
+                                   TEXT_DONE if unlocked else ACCENT,
+                                   (panel_rect.width - 40, 38))
 
         screen.blit(
             heading_surface,
@@ -220,11 +219,8 @@ def open_topic_requirements(
         # Topic name
         # -----------------------------------------------------
 
-        topic_surface = topic_font.render(
-            topic["title"],
-            True,
-            TEXT_MAIN
-        )
+        topic_surface = fit_text(topic_font, topic["title"], TEXT_MAIN,
+                                 (panel_rect.width - 40, 34))
 
         screen.blit(
             topic_surface,
@@ -254,21 +250,9 @@ def open_topic_requirements(
                 "to challenge this topic."
             )
 
-        message_surface = text_font.render(
-            message_text,
-            True,
-            TEXT_DIM
-        )
-
-        screen.blit(
-            message_surface,
-            (
-                panel_rect.centerx
-                - message_surface.get_width() // 2,
-
-                panel_rect.top + 105
-            )
-        )
+        draw_text_block(screen, message_text, text_font, TEXT_DIM,
+                        pygame.Rect(panel_rect.x + 30, panel_rect.y + 105,
+                                    panel_rect.width - 60, 52), center=True)
 
         # -----------------------------------------------------
         # Requirements area
@@ -289,10 +273,8 @@ def open_topic_requirements(
             border_radius=7
         )
 
-        requirement_y = (
-            requirements_rect.top + 25
-        )
-
+        row_height = (requirements_rect.height - 24) // max(1, len(requirements))
+        requirement_y = requirements_rect.top + 12
         for requirement_id in requirements:
 
             requirement_topic = get_topic(
@@ -337,25 +319,11 @@ def open_topic_requirements(
                 )
             )
 
-            requirement_surface = (
-                requirement_font.render(
-                    f"Complete {requirement_name}",
-                    True,
-                    TEXT_DIM
-                    if requirement_done
-                    else TEXT_MAIN
-                )
-            )
-
-            screen.blit(
-                requirement_surface,
-                (
-                    requirements_rect.left + 82,
-                    requirement_y
-                )
-            )
-
-            requirement_y += 58
+            draw_text_block(screen, f"Complete {requirement_name}", requirement_font,
+                            TEXT_DIM if requirement_done else TEXT_MAIN,
+                            pygame.Rect(requirements_rect.left + 82, requirement_y,
+                                        requirements_rect.width - 98, row_height - 8))
+            requirement_y += row_height
 
         # -----------------------------------------------------
         # Button

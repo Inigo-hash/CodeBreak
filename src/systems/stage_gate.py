@@ -26,6 +26,9 @@ class StageGateStatus:
     missing_topic_titles: tuple[str, ...]
     required_boss_id: str | None
     boss_defeated: bool
+    required_final_challenge_id: str | None
+    required_final_challenge_title: str | None
+    final_challenge_completed: bool
 
 
 def required_topic_ids(stage):
@@ -90,23 +93,71 @@ def migrate_key_count(current_keys, stage, challenges_passed):
 
 
 def evaluate_stage_gate(stage, keys, challenges_passed, defeated_enemies=()):
-    """Require the key total, every lesson, and the authored stage boss."""
+    """
+    Require the key total, every lesson, the authored stage boss,
+    and the stage's final coding challenge when one is configured.
+    """
 
     required_ids = required_topic_ids(stage)
     completed = set(challenges_passed or ())
+
     missing_ids = tuple(
-        challenge_id for challenge_id in required_ids
+        challenge_id
+        for challenge_id in required_ids
         if challenge_id not in completed
     )
+
     missing_titles = tuple(
-        CHALLENGES.get(challenge_id, {}).get("title", challenge_id)
+        CHALLENGES.get(
+            challenge_id,
+            {}
+        ).get(
+            "title",
+            challenge_id,
+        )
         for challenge_id in missing_ids
     )
+
     required_keys = required_key_count(stage)
+
     boss_id = required_boss_id(stage)
-    boss_defeated = not boss_id or boss_id in set(defeated_enemies or ())
+
+    boss_defeated = (
+        not boss_id
+        or boss_id in set(defeated_enemies or ())
+    )
+
+    completion = stage.get(
+        "completion",
+        {},
+    )
+
+    final_challenge_id = completion.get(
+        "required_final_challenge"
+    )
+
+    final_challenge_completed = (
+        not final_challenge_id
+        or final_challenge_id in completed
+    )
+
+    final_challenge_title = None
+
+    if final_challenge_id:
+        final_challenge_title = CHALLENGES.get(
+            final_challenge_id,
+            {},
+        ).get(
+            "title",
+            final_challenge_id,
+        )
+
     try:
-        current_keys = max(0, int(keys or 0))
+        current_keys = max(
+            0,
+            int(keys or 0),
+        )
+
     except (TypeError, ValueError):
         current_keys = 0
 
@@ -115,15 +166,44 @@ def evaluate_stage_gate(stage, keys, challenges_passed, defeated_enemies=()):
             current_keys >= required_keys
             and not missing_ids
             and boss_defeated
+            and final_challenge_completed
         ),
-        keys=min(current_keys, required_keys),
+
+        keys=min(
+            current_keys,
+            required_keys,
+        ),
+
         required_keys=required_keys,
-        completed_topics=len(required_ids) - len(missing_ids),
-        required_topics=len(required_ids),
+
+        completed_topics=(
+            len(required_ids)
+            - len(missing_ids)
+        ),
+
+        required_topics=len(
+            required_ids
+        ),
+
         missing_topic_ids=missing_ids,
+
         missing_topic_titles=missing_titles,
+
         required_boss_id=boss_id,
+
         boss_defeated=boss_defeated,
+
+        required_final_challenge_id=(
+            final_challenge_id
+        ),
+
+        required_final_challenge_title=(
+            final_challenge_title
+        ),
+
+        final_challenge_completed=(
+            final_challenge_completed
+        ),
     )
 
 

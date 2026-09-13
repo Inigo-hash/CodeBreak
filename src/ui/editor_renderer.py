@@ -842,6 +842,10 @@ class EditorRenderer:
         cursor_top = cursor_y + cap_top
         cursor_bottom = cursor_y + TEXT_FONT.get_ascent() - TEXT_FONT.get_descent()
 
+        # Align the cursor with the visible font glyphs.
+        cursor_top = cursor_y + 5
+        cursor_bottom = cursor_y + TEXT_FONT.get_height() - 2
+
         # ----------------------------------
         # Blinking Cursor
         # ----------------------------------
@@ -996,9 +1000,9 @@ class EditorRenderer:
 
             highlight_rect = pygame.Rect(
                 x_start,
-                text_y + (row_in_view * line_spacing),
+                text_y + 5 + (row_in_view * line_spacing),
                 width,
-                18
+                max(1, TEXT_FONT.get_height() - 7)
             )
 
             # Use a separate surface with per-pixel alpha so the

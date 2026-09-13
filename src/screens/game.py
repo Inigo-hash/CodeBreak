@@ -78,7 +78,9 @@ from src.systems.stage_handoff import (
     next_stage,
     stage_is_enterable,
 )
-
+from src.screens.final_challenge_warning import (
+    open_final_challenge_warning,
+)
 
 def boss_sword_damage(current_hp, phase_table):
     """Damage per connected hit against a boss at ``current_hp``.
@@ -1249,11 +1251,10 @@ def game_screen(screen, slot_num=None, save_state=None):
         (stage_spawn[0] + player_size // 2, stage_spawn[1] + player_size),
         zones=world["zones"],
     )
-    encounter_topics = {
-        encounter["id"]: encounter.get("topic_id")
+    authored_encounter_ids = tuple(
+        encounter["id"]
         for encounter in world["encounters"]
-    }
-    authored_encounter_ids = tuple(encounter_topics)
+    )
     enemy_spawns = [
         spawn for spawn in enemy_spawns
         if not stage_progress.has_cleared_encounter(spawn["encounter_id"])
@@ -1328,6 +1329,11 @@ def game_screen(screen, slot_num=None, save_state=None):
         boss_id and boss_id in stage_progress.defeated_enemies
     )
     boss_victory_handled = boss_defeated
+
+    final_challenge_revealed = (
+        boss_defeated
+        and "stage1_final_001" not in save_challenges_passed
+    )
     # Loading/spawning inside the broad authored Core label must not count as
     # walking through its door. Arm the encounter only after the player has
     # occupied ordinary ground outside the zone at least once.
@@ -1475,6 +1481,10 @@ def game_screen(screen, slot_num=None, save_state=None):
         )
 
     autosave_elapsed = 0.0
+
+    # Clickable area for the unfinished final challenge reminder.
+    final_challenge_reminder_rect = None
+
     while running:
         dt = clock.tick(TARGET_FPS) / 1000.0
         autosave_elapsed += dt
@@ -1515,6 +1525,53 @@ def game_screen(screen, slot_num=None, save_state=None):
             if handle_music_shortcut(event):
                 continue
 
+            # ---------------------------------------------------------
+            # Reopen unfinished Stage 1 final challenge
+            # ---------------------------------------------------------
+
+            if (
+                not paused
+                and event.type == pygame.MOUSEBUTTONDOWN
+                and event.button == 1
+                and final_challenge_reminder_rect is not None
+                and final_challenge_reminder_rect.collidepoint(event.pos)
+                and final_challenge_revealed
+                and "stage1_final_001" not in save_challenges_passed
+            ):
+
+                final_challenge = get_challenge(
+                    "stage1_final_001"
+                )
+
+                if final_challenge is not None:
+
+                    editor = CodeEditor(
+                        screen,
+                        final_challenge,
+                        screen.copy(),
+                    )
+
+                    editor.run()
+
+                    if editor.solved:
+
+                        save_challenges_passed.append(
+                            "stage1_final_001"
+                        )
+
+                        stage_progress.sync_objectives(
+                            stage,
+                            save_challenges_passed,
+                        )
+
+                        if slot_num is not None:
+                            save_manager.save_slot(
+                                slot_num,
+                                build_save_state(),
+                            )
+
+                continue
+
             # Let the hotbar claim its own input first (number keys 1-5, mouse
             # wheel and clicks on a slot). Only while actually playing - the
             # pause menu should not have its clicks stolen. handle_event()
@@ -1551,29 +1608,42 @@ def game_screen(screen, slot_num=None, save_state=None):
                                 selected_topic_id
                             )
 
-                            template_id = practice_manager.choose_template(
-                                selected_topic_id,
-                                template_ids,
-                            )
+                            # Keep the same background for the entire
+                            # practice session.
+                            editor_background = screen.copy()
 
-                            if template_id is None:
-                                continue
+                            while True:
 
-                            practice_challenge = generate_practice_challenge(
-                                template_id
-                            )
+                                template_id = (
+                                    practice_manager.choose_template(
+                                        selected_topic_id,
+                                        template_ids,
+                                    )
+                                )
 
-                            if practice_challenge is None:
-                                continue
+                                if template_id is None:
+                                    break
 
-                            editor = CodeEditor(
-                                screen,
-                                practice_challenge,
-                                screen.copy(),
-                                mode="practice",
-                            )
+                                practice_challenge = (
+                                    generate_practice_challenge(
+                                        template_id
+                                    )
+                                )
 
-                            editor.run()
+                                if practice_challenge is None:
+                                    break
+
+                                editor = CodeEditor(
+                                    screen,
+                                    practice_challenge,
+                                    editor_background,
+                                    mode="practice",
+                                )
+
+                                practice_action = editor.run()
+
+                                if practice_action != "next":
+                                    break
 
                         continue
 
@@ -1604,10 +1674,57 @@ def game_screen(screen, slot_num=None, save_state=None):
                 )
                 if (event.key == pygame.K_e and not paused and not engaged
                         and at_stage_exit):
+
+                    final_challenge_id = "stage1_final_001"
+
+                    final_challenge_pending = (
+                        stage.get("id") == "island"
+                        and final_challenge_revealed
+                        and final_challenge_id not in save_challenges_passed
+                    )
+
+                    if final_challenge_pending:
+
+                        final_challenge = get_challenge(
+                            final_challenge_id
+                        )
+
+                        if final_challenge is not None:
+
+                            editor = CodeEditor(
+                                screen,
+                                final_challenge,
+                                screen.copy(),
+                            )
+
+                            editor.run()
+
+                            if editor.solved:
+
+                                save_challenges_passed.append(
+                                    final_challenge_id
+                                )
+
+                                stage_progress.sync_objectives(
+                                    stage,
+                                    save_challenges_passed,
+                                )
+
+                                if slot_num is not None:
+                                    save_manager.save_slot(
+                                        slot_num,
+                                        build_save_state(),
+                                    )
+
+                        continue
+
                     gate_status = evaluate_stage_gate(
-                        stage, gameplay_state["keys"], save_challenges_passed,
+                        stage,
+                        gameplay_state["keys"],
+                        save_challenges_passed,
                         stage_progress.defeated_enemies,
                     )
+
                     # Where this stage leads, if anywhere: a stage that
                     # names no next stage - or one whose map is not
                     # authored yet - still ends the run at the menu. The
@@ -1758,6 +1875,22 @@ def game_screen(screen, slot_num=None, save_state=None):
                     }
                     editor = CodeEditor(screen, sample_challenge, screen.copy())
                     editor.run()
+
+                elif event.key == pygame.K_F6 and not paused and not engaged:
+
+                    final_challenge = get_challenge(
+                        "stage1_final_001"
+                    )
+
+                    if final_challenge is not None:
+
+                        editor = CodeEditor(
+                            screen,
+                            final_challenge,
+                            screen.copy(),
+                        )
+
+                        editor.run()
 
                 elif DEBUG_MODE and event.key == pygame.K_F6 and not paused:
                     frac_x = player_rect.centerx / map_width
@@ -2158,18 +2291,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             # One key is awarded for clearing the entire encounter,
             # not for each individual enemy defeated.
             gameplay_state["keys"] += 1
-
-            topic_id = encounter_topics.get(
-                encounter_id
-            )
-
-            if topic_id:
-                open_topic_flow(
-                    topic_id,
-                    screen.copy(),
-                    enforce_requirements=False
-                )
-
+            
             if slot_num is not None:
                 save_manager.save_slot(
                     slot_num,
@@ -2177,17 +2299,76 @@ def game_screen(screen, slot_num=None, save_state=None):
                 )
 
         if (boss_enemy is not None and boss_defeated
-                and not boss_victory_handled and not boss_enemy.active):
-            boss_victory_handled = True
-            if slot_num is not None:
-                save_manager.save_slot(slot_num, build_save_state())
+        and not boss_victory_handled and not boss_enemy.active):
 
-            # Fight won - drop the boss theme and return to stage music.
+            boss_victory_handled = True
+
+            if slot_num is not None:
+                save_manager.save_slot(
+                    slot_num,
+                    build_save_state()
+                )
+
+            # Fight won - return to the normal stage music.
             start_stage_music()
 
-            boss_result = open_boss_result(
-                screen, victory=True, background=screen.copy()
+            open_boss_result(
+                screen,
+                victory=True,
+                background=screen.copy(),
             )
+
+            # ---------------------------------------------------------
+            # Stage 1 Final Coding Challenge
+            # ---------------------------------------------------------
+
+            final_challenge_id = "stage1_final_001"
+
+            # Do not reopen the challenge if it was already completed
+            # in an earlier session.
+            if final_challenge_id not in save_challenges_passed:
+
+                warning_result = open_final_challenge_warning(
+                    screen,
+                    background=screen.copy(),
+                )
+
+                final_challenge_revealed = True
+
+                if warning_result == "continue":
+
+                    final_challenge = get_challenge(
+                        final_challenge_id
+                    )
+
+                    if final_challenge is not None:
+
+                        editor = CodeEditor(
+                            screen,
+                            final_challenge,
+                            screen.copy(),
+                        )
+
+                        editor.run()
+
+                        # Only record completion when the player actually
+                        # solved the final coding challenge.
+                        if editor.solved:
+
+                            save_challenges_passed.append(
+                                final_challenge_id
+                            )
+
+                            stage_progress.sync_objectives(
+                                stage,
+                                save_challenges_passed,
+                            )
+
+                            if slot_num is not None:
+                                save_manager.save_slot(
+                                    slot_num,
+                                    build_save_state(),
+                                )
 
         if player_combat.hp == 0 and death_animation_complete:
             gameplay_state["hearts"] = max(0, gameplay_state["hearts"] - 1)
@@ -2874,6 +3055,76 @@ def game_screen(screen, slot_num=None, save_state=None):
                 screen.blit(label, (center[0] + 10, center[1] - 24))
         # Minimap (bottom-left)
         draw_minimap(screen, player_rect, minimap_heading, night_mode)
+
+        # ---------------------------------------------------------
+        # Final Stage 1 challenge reminder
+        # ---------------------------------------------------------
+
+        final_challenge_id = "stage1_final_001"
+
+        show_final_challenge_reminder = (
+            stage.get("id") == "island"
+            and final_challenge_revealed
+            and final_challenge_id not in save_challenges_passed
+        )
+
+        # Reset every frame so the reminder cannot stay
+        # clickable after it disappears.
+        final_challenge_reminder_rect = None
+
+        if show_final_challenge_reminder:
+
+            reminder_font = title_font(16)
+
+            reminder_surface = reminder_font.render(
+                "FINAL CHALLENGE NOT COMPLETED",
+                True,
+                (255, 120, 120),
+            )
+
+            reminder_rect = reminder_surface.get_rect(
+                centerx=SCREEN_W // 2,
+                bottom=SCREEN_H - 100,
+            )
+
+            reminder_box = reminder_rect.inflate(
+                24,
+                12,
+            )
+
+            # Make the reminder clickable.
+            final_challenge_reminder_rect = reminder_box.copy()
+
+            # Give visual feedback when the mouse is over it.
+            reminder_hovered = (
+                final_challenge_reminder_rect.collidepoint(
+                    mouse_pos
+                )
+            )
+
+            pygame.draw.rect(
+                screen,
+                (20, 20, 26),
+                reminder_box,
+                border_radius=6,
+            )
+
+            pygame.draw.rect(
+                screen,
+                (
+                    UI_COLORS["gold"]
+                    if reminder_hovered
+                    else UI_COLORS["crimson"]
+                ),
+                reminder_box,
+                2,
+                border_radius=6,
+            )
+
+            screen.blit(
+                reminder_surface,
+                reminder_rect,
+            )
 
         # Hotbar (bottom-centre). Drawn after the world and the HUD so it
         # always sits on top of everything else in the scene.

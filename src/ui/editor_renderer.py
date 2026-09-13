@@ -838,6 +838,10 @@ class EditorRenderer:
             + visible_cursor_row * line_spacing
         )
 
+        # Align the cursor with the visible font glyphs.
+        cursor_top = cursor_y + 5
+        cursor_bottom = cursor_y + TEXT_FONT.get_height() - 2
+
         # ----------------------------------
         # Blinking Cursor
         # ----------------------------------
@@ -856,8 +860,8 @@ class EditorRenderer:
             pygame.draw.line(
                 self.screen,
                 TEXT_COLOR,
-                (cursor_x, cursor_y),
-                (cursor_x, cursor_y + 18),
+                (cursor_x, cursor_top),
+                (cursor_x, cursor_bottom),
                 2
             )
 

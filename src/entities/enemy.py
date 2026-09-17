@@ -328,6 +328,8 @@ class Enemy:
         if (distance <= self.attack_range and not path_blocked
                 and self.attack_cooldown == 0 and self.state == "chase"):
             self.state = "attack"
+            self.current = 0
+            self.animation_timer = 0.0
             self.action_timer = self.stats.attack_duration
             self.attack_cooldown = (
                 self.stats.attack_cooldown * self.attack_cooldown_multiplier
@@ -575,7 +577,12 @@ class Enemy:
             return
         group = "attack" if self.state == "attack" else "flinch" if self.state in ("flinch", "defeated") else "walking"
         frames = self.frames[group][self.facing]
-        if self.state in ("idle", "alert"):
+        if self.state == "attack":
+            # Play the full authored sequence once over the attack duration.
+            # Rendering may run at any FPS and must not advance combat time.
+            progress = 1.0 - self.action_timer / self.stats.attack_duration
+            self.current = min(len(frames) - 1, max(0, int(progress * len(frames))))
+        elif self.state in ("idle", "alert"):
             self.current = 0
             self.animation_timer = 0
         else:

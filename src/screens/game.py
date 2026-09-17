@@ -1394,6 +1394,13 @@ def game_screen(screen, slot_num=None, save_state=None):
         selected = tuple(
             random.choice(phase.reinforcements) for _ in range(summon_count)
         )
+        # A wave must not materialize inside the boss/player/other enemies.
+        # Resolving such overlaps on the next movement tick shoved the boss
+        # sideways when its armour phase changed.
+        spawn_blockers = collision_rects + [player_rect] + [
+            enemy.rect for enemy in enemies
+            if enemy.active and enemy.state != "defeated"
+        ]
         try:
             wave_spawns = resolve_encounter_spawns(
                 ({
@@ -1410,7 +1417,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                     "chase_range": 520,
                     "disengage_range": 460,
                 },),
-                map_width, map_height, collision_rects, path_cells, TILE_SIZE,
+                map_width, map_height, spawn_blockers, path_cells, TILE_SIZE,
                 player_rect.center,
                 zones=world["zones"],
             )

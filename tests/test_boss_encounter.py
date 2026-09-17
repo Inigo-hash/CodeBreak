@@ -152,6 +152,27 @@ class BossTriggerTests(unittest.TestCase):
         self.assertEqual(len(damage_seen), 30)
         self.assertEqual(sorted(set(damage_seen)), [25, 35, 40, 45])
 
+    def test_kapre_attack_plays_all_nine_frames_using_combat_time(self):
+        enemy = Enemy(self.screen, 1000, 800, 500, 400, enemy_id=self.boss_id)
+        player = pygame.Rect(0, 0, 20, 20)
+        player.center = (530, 400)
+        enemy.state = "chase"
+        enemy.current = 7
+        enemy.animation_timer = 5
+        enemy.update(0.001, player, [], 1000, 800)
+        self.assertEqual(enemy.state, "attack")
+        self.assertEqual(enemy.current, 0)
+        self.assertEqual(enemy.animation_timer, 0)
+        for direction in ("north", "south", "east", "west"):
+            self.assertEqual(len(enemy.frames["attack"][direction]), 9)
+            enemy.facing = direction
+            for index in range(9):
+                enemy.action_timer = enemy.stats.attack_duration * (1 - (index + 0.1) / 9)
+                # Extra renders cannot speed up or wrap the attack.
+                for _ in range(10):
+                    enemy.draw_frames(1, 0, 0)
+                    self.assertEqual(enemy.current, index)
+
     def test_boss_defeat_persists_and_completes_its_objective(self):
         progress = StageProgress()
         self.assertTrue(progress.defeat_enemy(self.boss_id))

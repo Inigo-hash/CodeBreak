@@ -147,6 +147,28 @@ class Stage1EndingRegressions(unittest.TestCase):
             self.run_frames(save_manager.new_game_state(), debug=False, events=events, doorway=False)
         editor.assert_not_called()
 
+    def test_boss_phase_waves_do_not_overlap_or_relocate_existing_bodies(self):
+        def check(frame, live):
+            if frame != 1:
+                return
+            boss = live["boss_enemy"]
+            for phase in live["boss_phases"]["phases"]:
+                existing = [enemy for enemy in live["enemies"] if enemy.active]
+                positions = [enemy.rect.copy() for enemy in existing]
+                with patch.object(game.random, "choice", return_value="tikbalang"):
+                    live["trigger_boss_phase"](phase.threshold)
+                for enemy, position in zip(existing, positions):
+                    self.assertEqual(enemy.rect, position)
+                summons = [enemy for enemy in live["enemies"] if enemy not in existing]
+                self.assertTrue(summons)
+                for summon in summons:
+                    self.assertEqual(summon.rect.collidelist(positions + [live["player_rect"]]), -1)
+                # Free the bounded wave slots to exercise the next phase.
+                for enemy in summons:
+                    enemy.active = False
+            self.assertEqual(boss.phase_thresholds_triggered, {750, 500, 250})
+        self.run_frames(save_manager.new_game_state(), developer=True, check=check)
+
     def test_final_submit_at_exit_saves_and_hands_off_to_castle(self):
         stage = get_stage("island")
         state = save_manager.new_game_state()

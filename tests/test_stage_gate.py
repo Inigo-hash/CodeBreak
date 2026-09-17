@@ -42,6 +42,16 @@ class StageGateTests(unittest.TestCase):
         self.assertTrue(all(topic in CHALLENGES for topic in self.required_topics))
         self.assertEqual(earned_topic_keys(self.stage, self.required_topics), 9)
 
+    def test_all_nine_topics_can_be_completed_in_manual_order(self):
+        completed = set()
+        by_challenge = {topic["challenge_id"]: (topic_id, topic)
+                        for topic_id, topic in TOPICS.items()}
+        for challenge_id in self.required_topics:
+            topic_id, topic = by_challenge[challenge_id]
+            self.assertTrue(set(topic.get("requirements", ())).issubset(completed), topic_id)
+            completed.add(topic_id)
+        self.assertEqual(len(completed), 9)
+
     def test_every_required_topic_is_reachable_from_an_authored_map_object(self):
         map_path = Path(__file__).parents[1] / self.world["map"]
         root = ET.parse(map_path).getroot()
@@ -202,9 +212,15 @@ class StageGateTests(unittest.TestCase):
         self.assertEqual(status.keys, 8)
         self.assertFalse(status.missing_topic_ids)
 
-    def test_ten_keys_and_every_topic_unlock_the_exit(self):
+    def test_keys_topics_boss_and_final_challenge_unlock_the_exit(self):
         status = evaluate_stage_gate(
             self.stage, 10, self.required_topics, self.defeated_boss
+        )
+        self.assertFalse(status.unlocked)
+        status = evaluate_stage_gate(
+            self.stage, 10,
+            (*self.required_topics, self.stage["completion"]["required_final_challenge"]),
+            self.defeated_boss,
         )
         self.assertTrue(status.unlocked)
         self.assertEqual(status.completed_topics, status.required_topics)
@@ -294,9 +310,11 @@ class StageGateModalTests(unittest.TestCase):
         with patch("pygame.event.get", side_effect=[[], [click]]):
             self.assertEqual(open_stage_gate(self.screen, locked), "stay")
 
-    def test_confirm_key_exits_only_after_both_requirements_pass(self):
+    def test_confirm_key_exits_only_after_all_requirements_pass(self):
         unlocked = evaluate_stage_gate(
-            self.stage, 10, self.topics, self.defeated_boss
+            self.stage, 10,
+            (*self.topics, self.stage["completion"]["required_final_challenge"]),
+            self.defeated_boss,
         )
         pygame.event.post(pygame.event.Event(
             pygame.KEYDOWN, {"key": pygame.K_RETURN, "unicode": "\r"}
@@ -305,7 +323,9 @@ class StageGateModalTests(unittest.TestCase):
 
     def test_escape_keeps_player_in_stage_even_when_gate_is_open(self):
         unlocked = evaluate_stage_gate(
-            self.stage, 10, self.topics, self.defeated_boss
+            self.stage, 10,
+            (*self.topics, self.stage["completion"]["required_final_challenge"]),
+            self.defeated_boss,
         )
         pygame.event.post(pygame.event.Event(
             pygame.KEYDOWN, {"key": pygame.K_ESCAPE, "unicode": ""}

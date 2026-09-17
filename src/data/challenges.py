@@ -567,6 +567,16 @@ final_message
             "70",
         ],
 
+        "runtime_expected": {
+            "name": "Alex",
+            "score_text": "70",
+            "score": 80,
+            "rank": "Silver",
+            "message": "Alex - Silver",
+            "final_message": "ALEX - SILVER",
+        },
+        "expected_output_last_line": "ALEX - SILVER",
+
         "hidden_tests": [
             {
                 "input_values": ["Mika", "85"],

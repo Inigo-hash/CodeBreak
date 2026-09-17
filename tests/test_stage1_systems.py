@@ -38,7 +38,10 @@ class ChestTests(unittest.TestCase):
             if properties.get("actions") == "search_chest":
                 chest_objects.append(properties)
         self.assertEqual(len(chest_objects), 2)
-        self.assertTrue(any("reward_seconds" in item for item in chest_objects))
+        rewards = [item for item in chest_objects if not int(item.get("trap_seconds", 0))]
+        self.assertEqual(len(rewards), 1)
+        reward = Chest((0, 0, 32, 32), reward_seconds=rewards[0].get("reward_seconds", 0))
+        self.assertEqual(reward.open(0)[0], 30)
         self.assertTrue(any("trap_seconds" in item for item in chest_objects))
         self.assertEqual(item_id_for_action("search_chest"), "chest")
 

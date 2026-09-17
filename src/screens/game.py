@@ -1838,6 +1838,7 @@ def game_screen(screen, slot_num=None, save_state=None):
 
                 elif DEBUG_MODE and event.key == pygame.K_F4 and not paused:
                     developer_mode.toggle()
+                    boss_entrance_trigger.armed = True
                     engaged = False
                     print(
                         "Developer exploration:",
@@ -1876,7 +1877,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                     editor = CodeEditor(screen, sample_challenge, screen.copy())
                     editor.run()
 
-                elif event.key == pygame.K_F6 and not paused and not engaged:
+                elif DEBUG_MODE and event.key == pygame.K_F6 and developer_mode.enabled and not paused and not engaged:
 
                     final_challenge = get_challenge(
                         "stage1_final_001"
@@ -2137,8 +2138,8 @@ def game_screen(screen, slot_num=None, save_state=None):
                 boss_is_active = False
         if (boss_id and entrance_approached and current_boss_zone is not None
                 and not boss_defeated and not boss_is_active
-                and not developer_mode.enabled
-                and (boss_access.unlocked or debug_boss_access)):
+                and (boss_access.unlocked or debug_boss_access
+                     or developer_mode.enabled)):
             boss_entry_position = (player_rect.x, player_rect.y)
 
             # Swap to boss battle music the moment the encounter popup

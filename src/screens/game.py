@@ -470,6 +470,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             "weapon_obtained": player_inventory.weapon_obtained,
             "weapon_equipped": player_inventory.weapon_equipped,
             "stage_progress": stage_progress.to_dict(),
+            "stage_checkpoints": (save_state or {}).get("stage_checkpoints", {}),
         }
         if save_security:
             state["_security"] = save_security

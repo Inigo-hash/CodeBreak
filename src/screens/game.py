@@ -17,6 +17,8 @@ from src.screens.inventory import PlayerInventory, Toolbar, open_inventory
 from src.screens.stage_info import open_stage_info
 from src.screens.practice_topics import open_practice_topics
 from src.screens.world_map import enemy_is_tracking_player, open_world_map
+from src.screens.stage_select import open_stage_select
+from src.systems.stage_selection import select_stage
 from src.systems import save_manager
 from src.systems.developer_mode import developer_mode
 from src.systems.stage_progress import StageProgress
@@ -1676,6 +1678,18 @@ def game_screen(screen, slot_num=None, save_state=None):
                 continue
 
             if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_g and player_combat.hp > 0 and slot_num is not None:
+                    # A modal pauses this live encounter. Cancelling or picking
+                    # the current stage resumes the same instance, not a reload.
+                    snapshot = build_save_state()
+                    target = open_stage_select(screen, snapshot, developer_mode.enabled)
+                    clock.tick()
+                    if target is not None and target != stage["id"]:
+                        save_manager.save_slot(
+                            slot_num, select_stage(snapshot, target, developer_mode.enabled)
+                        )
+                        return "next_stage"
+                    continue
                 at_stage_exit = (
                     stage_exit_detection_rect is not None
                     and player_rect.colliderect(stage_exit_detection_rect)
@@ -3144,7 +3158,7 @@ def game_screen(screen, slot_num=None, save_state=None):
 
         # Key hints (top-right, out of the way of the profile HUD)
         hint = font.render(
-            "P = Practice    F1 = Light    F2 = Fog    F10 = Mute",
+            "G = World Atlas    P = Practice    F1 = Light    F2 = Fog    F10 = Mute",
             True,
             (255, 255, 255)
         )

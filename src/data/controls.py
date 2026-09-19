@@ -50,6 +50,7 @@ CONTROL_SECTIONS = [
     ]),
 
     ("SCREENS", [
+        ("G", "World atlas / choose a stage"),
         ("M", "Island map"),
         ("Wheel / R", "Zoom the map, reset the zoom"),
         ("I", "Stage manual"),

@@ -16,6 +16,7 @@ from src.screens.profile import profile_screen
 from src.screens.inventory import PlayerInventory, Toolbar, open_inventory
 from src.screens.stage_info import open_stage_info
 from src.screens.practice_topics import open_practice_topics
+from src.screens.code_practice_menu import open_code_practice_menu
 from src.screens.world_map import enemy_is_tracking_player, open_world_map
 from src.screens.stage_select import open_stage_select
 from src.systems.stage_selection import select_stage
@@ -1604,15 +1605,52 @@ def game_screen(screen, slot_num=None, save_state=None):
 
                         practice_background = screen.copy()
 
-                        selected_topic_id = open_practice_topics(
-                            screen,
-                            stage,
-                            gameplay_state["topics_completed"],
-                            background=practice_background,
-                            developer_access=developer_mode.enabled,
-                        )
+                        # A loop, not a single pass: backing out of a
+                        # sub-screen (topic grid, or closing Free
+                        # Coding) should land back on this chooser,
+                        # not exit straight to gameplay. Only ESC on
+                        # the chooser itself breaks out to the game.
+                        while True:
 
-                        if selected_topic_id is not None:
+                            practice_menu_choice = open_code_practice_menu(
+                                screen,
+                                background=practice_background,
+                            )
+
+                            if practice_menu_choice == "free":
+
+                                free_editor = CodeEditor(
+                                    screen,
+                                    get_challenge("free_coding"),
+                                    screen.copy(),
+                                    mode="free",
+                                )
+
+                                # Free Coding never touches
+                                # save_manager, gameplay_state, keys,
+                                # or topics - the editor just closes
+                                # and we're back at the chooser.
+                                free_editor.run()
+
+                                continue
+
+                            if practice_menu_choice != "topics":
+                                # ESC on the chooser itself - back
+                                # to gameplay.
+                                break
+
+                            selected_topic_id = open_practice_topics(
+                                screen,
+                                stage,
+                                gameplay_state["topics_completed"],
+                                background=practice_background,
+                                developer_access=developer_mode.enabled,
+                            )
+
+                            if selected_topic_id is None:
+                                # ESC on the topic grid - back to
+                                # the chooser, not out to gameplay.
+                                continue
 
                             template_ids = get_topic_template_ids(
                                 selected_topic_id
@@ -1654,6 +1692,11 @@ def game_screen(screen, slot_num=None, save_state=None):
 
                                 if practice_action != "next":
                                     break
+
+                            # Finished, or exited, a practice
+                            # session - back to the chooser rather
+                            # than dropped straight into gameplay.
+                            continue
 
                         continue
 

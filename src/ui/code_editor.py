@@ -154,6 +154,10 @@ class CodeEditor:
     def is_practice_mode(self):
         return self.mode == "practice"
 
+    @property
+    def is_free_mode(self):
+        return self.mode == "free"
+
     # ---------------------------------------------------------
     # Main Loop
     # ---------------------------------------------------------
@@ -994,6 +998,24 @@ class CodeEditor:
         Runs the code and, if it executed without error, checks
         it against the challenge's expected solution.
         """
+
+        # Free Coding has no challenge to grade - the "free_coding"
+        # entry in challenges.py deliberately carries no "type", so
+        # routing this to challenge_manager.validate() would just
+        # KeyError. RUN still works normally; Submit just explains
+        # there's nothing to submit.
+        if self.is_free_mode:
+
+            self.output_panel.clear()
+
+            self.output_panel.add(
+                "Free Coding has nothing to grade.", TEXT_COLOR
+            )
+            self.output_panel.add(
+                "Use RUN to test your code.", TEXT_COLOR
+            )
+
+            return
 
         self.submission_attempts += 1
         code = "\n".join(self.text_buffer.lines)

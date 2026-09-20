@@ -10,6 +10,7 @@ from src.screens.settings import SettingsPanel
 from src.entities.player import MainCharacter
 from src.entities.enemy import Enemy
 from src.entities.chest import Chest
+from src.entities.trap import load_traps, build_trap_challenge
 from src.ui.code_editor import CodeEditor
 from src.screens.game_over import game_over_screen
 from src.screens.profile import profile_screen
@@ -84,6 +85,7 @@ from src.systems.stage_handoff import (
 from src.screens.final_challenge_warning import (
     open_final_challenge_warning,
 )
+from src.screens.trap_alert import open_trap_alert
 
 def boss_sword_damage(current_hp, phase_table):
     """Damage per connected hit against a boss at ``current_hp``.
@@ -317,6 +319,9 @@ def game_screen(screen, slot_num=None, save_state=None):
     # --- Load interactive objects from all visible object layers ---
     interactables = load_interactables(tmx_data)
     loading.update(38, "Restoring expedition records...")
+
+    # --- Load map-authored traps (optional - most maps don't have any yet) ---
+    traps = load_traps(tmx_data)
 
     # --- Player Setup ---
     SCREEN_W, SCREEN_H = screen.get_size()
@@ -2339,6 +2344,59 @@ def game_screen(screen, slot_num=None, save_state=None):
 
                 if enemy is boss_enemy:
                     boss_defeated = True
+
+        # --- Trap encounters ---
+        # F4 bypass means traps, like enemies, deal no damage - same
+        # rule already applied to combat above.
+        if not developer_mode.enabled:
+            for trap in traps:
+
+                if stage_progress.has_opened_interactable(trap.trap_id):
+                    continue
+
+                if not player_rect.colliderect(trap.rect):
+                    continue
+
+                # Marked used the instant it fires, win or lose - a
+                # trap the player has already faced never fires again.
+                stage_progress.open_interactable(trap.trap_id)
+
+                trap_challenge = build_trap_challenge(
+                    gameplay_state["topics_completed"],
+                    practice_manager,
+                )
+
+                if trap_challenge is not None:
+
+                    open_trap_alert(screen, background=screen.copy())
+
+                    trap_editor = CodeEditor(
+                        screen,
+                        trap_challenge,
+                        screen.copy(),
+                        mode="trap",
+                        time_limit=trap.time_limit,
+                    )
+                    trap_editor.run()
+                    trap_solved = trap_editor.solved
+                else:
+                    # No completed topics yet - nothing fair to ask,
+                    # so this trap just deals its damage outright.
+                    trap_solved = False
+
+                if (
+                    not trap_solved
+                    and player_combat.take_damage(trap.damage)
+                ):
+                    combat_audio.play(
+                        "player_death"
+                        if player_combat.hp == 0
+                        else "player_hurt"
+                    )
+
+                # At most one trap resolves per frame - re-check the
+                # rest next frame instead of stacking editors.
+                break
 
         newly_cleared = newly_cleared_encounter_ids(
             enemies,

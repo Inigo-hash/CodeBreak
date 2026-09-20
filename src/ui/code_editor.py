@@ -54,6 +54,7 @@ class CodeEditor:
         challenge,
         background=None,
         mode="campaign",
+        time_limit=None,
     ):
         """
         Parameters
@@ -66,12 +67,27 @@ class CodeEditor:
 
         background : pygame.Surface, optional
             Snapshot of the game screen to show dimmed behind the popup.
+
+        time_limit : int, optional
+            Seconds before the editor auto-closes unsolved. Used only
+            by trap encounters (mode="trap") - every other mode leaves
+            this None and runs with no clock.
         """
 
         self.text_buffer = TextBuffer()
         self.screen = screen
         self.challenge = challenge
         self.mode = mode
+
+        # Trap-only countdown. None means "no timer" for every other
+        # mode. Frozen once self.solved is True so it doesn't keep
+        # ticking down while the success popup is on screen.
+        self.time_limit = time_limit
+        self.time_remaining = time_limit
+
+        # Timestamp (pygame.time.get_ticks()) until which the "can't
+        # leave a trap" banner stays on screen. 0 means not showing.
+        self.trap_exit_notice_until = 0
 
         # Controls whether the editor is open.
         self.running = False
@@ -158,6 +174,20 @@ class CodeEditor:
     def is_free_mode(self):
         return self.mode == "free"
 
+    @property
+    def is_trap_mode(self):
+        return self.mode == "trap"
+
+    def block_trap_exit(self):
+        """
+        Called wherever the editor would normally close (ESC, the X
+        button). A trap that hasn't been resolved yet refuses to let
+        go - this just shows the "can't leave" banner instead of
+        setting self.running = False.
+        """
+
+        self.trap_exit_notice_until = pygame.time.get_ticks() + 2200
+
     # ---------------------------------------------------------
     # Main Loop
     # ---------------------------------------------------------
@@ -190,6 +220,27 @@ class CodeEditor:
             self.renderer.last_input_time = self.last_input_time
 
             self.renderer.draw()
+
+            # Trap timer: only ticks while unsolved, so the countdown
+            # freezes the instant a correct submission comes in rather
+            # than racing to 0 behind the success popup.
+            if self.is_trap_mode and self.time_remaining is not None:
+
+                if not self.solved:
+                    self.time_remaining = max(
+                        0.0, self.time_remaining - clock.get_time() / 1000
+                    )
+
+                    if self.time_remaining <= 0:
+                        self.running = False
+
+                self.draw_trap_timer()
+
+            if (
+                self.is_trap_mode
+                and pygame.time.get_ticks() < self.trap_exit_notice_until
+            ):
+                self.draw_trap_exit_notice()
 
             if self.submission_feedback:
                 self.draw_submission_feedback()
@@ -432,7 +483,10 @@ class CodeEditor:
 
             if self.exit_button.is_clicked(event):
 
-                self.running = False
+                if self.is_trap_mode and not self.solved:
+                    self.block_trap_exit()
+                else:
+                    self.running = False
 
             if self.run_button.is_clicked(event):
 
@@ -695,8 +749,11 @@ class CodeEditor:
 
                 if event.key == pygame.K_ESCAPE:
 
-                    # Close the coding environment.
-                    self.running = False
+                    if self.is_trap_mode and not self.solved:
+                        self.block_trap_exit()
+                    else:
+                        # Close the coding environment.
+                        self.running = False
 
                 # ----------------------------------
                 # Undo (Ctrl+Z)
@@ -1229,6 +1286,63 @@ class CodeEditor:
             exit_rect,
             panel,
         )
+
+    def draw_trap_timer(self):
+        """Countdown shown bottom-right of the OUTPUT panel while a
+        trap is live - clear of the EXIT button and the RUN/SUBMIT
+        toolbar, and there's plenty of empty space there anyway."""
+
+        output_rect = self.renderer.output_rect
+
+        seconds = max(0, int(self.time_remaining))
+        minutes, seconds = divmod(seconds, 60)
+        label = f"{minutes}:{seconds:02d}"
+
+        # Warn the player once they're down to their last 30 seconds
+        # instead of only reacting after the timer already hit 0.
+        color = ERROR_COLOR if self.time_remaining <= 30 else TEXT_COLOR
+
+        text = HEADER_FONT.render(label, True, color)
+        badge = text.get_rect()
+        badge.bottomright = (
+            output_rect.right - 16,
+            output_rect.bottom - 16,
+        )
+
+        background_rect = badge.inflate(20, 12)
+        pygame.draw.rect(
+            self.screen, PANEL_COLOR, background_rect, border_radius=6
+        )
+        pygame.draw.rect(
+            self.screen, BORDER_COLOR, background_rect, 2, border_radius=6
+        )
+
+        self.screen.blit(text, badge)
+
+    def draw_trap_exit_notice(self):
+        """
+        Brief red banner shown when the player tries to ESC/Exit out
+        of a trap before solving it or running out of time - the
+        trap doesn't let go that easily.
+        """
+
+        panel_rect = self.renderer.panel_rect
+
+        message = "You can't leave until you solve this trap - or run out of time!"
+        text = SMALL_FONT.render(message, True, TEXT_COLOR)
+
+        badge = text.get_rect()
+        badge.midtop = (panel_rect.centerx, panel_rect.top + 64)
+
+        background_rect = badge.inflate(28, 16)
+        pygame.draw.rect(
+            self.screen, ERROR_COLOR, background_rect, border_radius=8
+        )
+        pygame.draw.rect(
+            self.screen, (0, 0, 0), background_rect, 2, border_radius=8
+        )
+
+        self.screen.blit(text, badge)
 
     def draw_submission_feedback(self):
         feedback = self.submission_feedback

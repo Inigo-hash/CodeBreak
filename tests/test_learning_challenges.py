@@ -3,6 +3,7 @@
 import unittest
 
 from src.data.challenges import CHALLENGES
+from src.data.practice_templates import generate_practice_challenge
 from src.learning.challenge_manager import ChallengeManager
 from src.learning.sandbox import run_user_code
 
@@ -46,6 +47,27 @@ VALID_SOLUTIONS = {
 
 
 class LearningChallengeTests(unittest.TestCase):
+    def test_formatted_output_accepts_empty_suffix(self):
+        challenge = generate_practice_challenge("formatted_output_d")
+        expected = challenge["expected"]
+        code = (
+            expected["variable"]
+            + " = "
+            + repr(expected["value"])
+            + "\nprint(f\""
+            + expected["prefix"]
+            + "{"
+            + expected["variable"]
+            + "}"
+            + expected["suffix"]
+            + '\")'
+        )
+        manager = ChallengeManager()
+
+        passed, feedback = manager.validate(challenge, code)
+
+        self.assertTrue(passed, feedback)
+
     def test_every_challenge_has_a_runnable_valid_solution(self):
         self.assertEqual(set(CHALLENGES), set(VALID_SOLUTIONS))
         manager = ChallengeManager()

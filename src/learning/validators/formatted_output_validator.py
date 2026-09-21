@@ -98,12 +98,13 @@ class FormattedOutputValidator:
 
             values = argument.values
 
-            if len(values) != 3:
+            expected_value_count = 2 if suffix == "" else 3
+
+            if len(values) != expected_value_count:
                 continue
 
             first = values[0]
             middle = values[1]
-            last = values[2]
 
             # Check:
             #
@@ -131,6 +132,12 @@ class FormattedOutputValidator:
 
             if middle.value.id != variable_name:
                 continue
+
+            if suffix == "":
+                formatted_print_found = True
+                continue
+
+            last = values[2]
 
             # Check:
             #

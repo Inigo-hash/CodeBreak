@@ -9,6 +9,16 @@ from src.learning.sandbox import run_user_code
 
 
 VALID_SOLUTIONS = {
+    "stage1_final_001": (
+        'name = input("Enter explorer name: ")\n'
+        'score_text = input("Enter score: ")\n'
+        'score = int(score_text)\nscore += 10\n'
+        'if score >= 90:\n    rank = "Gold"\n'
+        'elif score >= 75:\n    rank = "Silver"\n'
+        'else:\n    rank = "Bronze"\n'
+        'message = f"{name} - {rank}"\n'
+        'final_message = message.upper()\nprint(final_message)'
+    ),
     "variables_001": "age = 18",
     "print_001": 'print("Hello, World!")',
     "python_syntax_basics_001": 'print("Hello, Explorer!")',

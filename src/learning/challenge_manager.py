@@ -143,4 +143,11 @@ class ChallengeManager:
             if output is None or output.rstrip("\n") != challenge["expected_output"]:
                 return False, "Your printed output does not match the objective."
 
+        # Input prompts are echoed by the sandbox; check the final result
+        # independently of how the learner spaces those prompts.
+        if "expected_output_last_line" in challenge:
+            lines = (output or "").splitlines()
+            if not lines or lines[-1] != challenge["expected_output_last_line"]:
+                return False, "Print the required final message after reading the inputs."
+
         return True, feedback

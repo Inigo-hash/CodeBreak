@@ -10,6 +10,26 @@ No validation logic belongs here.
 CHALLENGES = {
 
     # =========================================================
+    # Free Coding
+    # =========================================================
+    # Used only by CodeEditor(mode="free"). No "type" or "expected"
+    # fields - Submit is disabled in free mode (see code_editor.py),
+    # so this challenge is never passed to a validator.
+
+    "free_coding": {
+
+        "id": "free_coding",
+
+        "title": "Free Coding Environment",
+
+        "objective": (
+            "Write any Python code and press RUN to see the output. "
+            "Nothing here is graded, and nothing you do affects your "
+            "topics, keys, or save progress."
+        ),
+    },
+
+    # =========================================================
     # Variables
     # =========================================================
 
@@ -566,6 +586,16 @@ final_message
             "Alex",
             "70",
         ],
+
+        "runtime_expected": {
+            "name": "Alex",
+            "score_text": "70",
+            "score": 80,
+            "rank": "Silver",
+            "message": "Alex - Silver",
+            "final_message": "ALEX - SILVER",
+        },
+        "expected_output_last_line": "ALEX - SILVER",
 
         "hidden_tests": [
             {

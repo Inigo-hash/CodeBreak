@@ -14,10 +14,11 @@ class EncounterProgressTests(unittest.TestCase):
     def enemy(group_id, state):
         return SimpleNamespace(group_id=group_id, state=state)
 
-    def test_every_island_encounter_authors_a_coding_topic(self):
+    def test_island_encounters_have_unique_persistent_clear_ids(self):
         self.assertTrue(BEGINNER_STAGE_ENCOUNTERS)
-        self.assertTrue(all(item.get("topic_id")
-                            for item in BEGINNER_STAGE_ENCOUNTERS))
+        ids = [item["id"] for item in BEGINNER_STAGE_ENCOUNTERS]
+        self.assertTrue(all(ids))
+        self.assertEqual(len(ids), len(set(ids)))
 
     def test_beginner_camps_allow_up_to_nine_balanced_enemies(self):
         sizes = [len(item["enemies"]) for item in BEGINNER_STAGE_ENCOUNTERS]

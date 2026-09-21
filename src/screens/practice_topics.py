@@ -118,7 +118,16 @@ def open_practice_topics(
         screen_h // 2,
     )
 
-    content = panel.inflate(-54, -130)
+    # The header text (stage label + info line) is drawn at panel.top
+    # + 62 / + 88, so content has to start below that or the topic
+    # cards paint over it - only a sliver survives in the 18px gaps
+    # between columns, which is what shows up as stray text there.
+    content = pygame.Rect(
+        panel.left + 27,
+        panel.top + 118,
+        panel.width - 54,
+        panel.height - 118 - 65,
+    )
 
     topic_ids = _stage_topic_ids(stage)
 

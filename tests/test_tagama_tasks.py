@@ -46,6 +46,9 @@ class TagamaTasks(unittest.TestCase):
 
     def test_unexecuted_or_overwritten_answers_do_not_complete(self):
         cases = (
+            ("stage1_final_001", VALID_SOLUTIONS["stage1_final_001"].replace(
+                "print(final_message)", "if False:\n    print(final_message)")),
+            ("stage1_final_001", VALID_SOLUTIONS["stage1_final_001"] + '\nfinal_message = "wrong"'),
             ("print_001", 'if False:\n    print("Hello, World!")'),
             ("variables_001", "age = 18\nage = 19"),
             ("data_types_001", VALID_SOLUTIONS["data_types_001"] + "\nis_ready = 1"),
@@ -79,7 +82,7 @@ class TagamaTasks(unittest.TestCase):
                 self.assertEqual(enemy.state, "idle")
 
     def test_each_enemy_attack_connects_once_and_respects_cooldown(self):
-        for species in ("manananggal", "tikbalang", "tiyanak_sinta"):
+        for species in ("manananggal", "tikbalang", "tiyanak_sinta", "corrupted_core_kapre"):
             with self.subTest(species=species):
                 enemy = Enemy(self.screen, 1000, 1000, 200, 200, enemy_id=species)
                 player = pygame.Rect(230, 190, 20, 20)
@@ -164,6 +167,15 @@ class TagamaTasks(unittest.TestCase):
             state["challenges_passed"] = list(required_topic_ids(stage))
             self.assertFalse(evaluate_stage_gate(stage, state["keys"], state["challenges_passed"]).unlocked)
             boss = stage["completion"]["required_boss"]
+            self.assertFalse(evaluate_stage_gate(stage, state["keys"], state["challenges_passed"], [boss]).unlocked)
+            progress.defeat_enemy(boss)
+            state["stage_progress"] = progress.to_dict()
+            save_manager.save_slot(1, state)
+            state = save_manager.load_slot(1)
+            self.assertIn(boss, state["stage_progress"]["defeated_enemies"])
+            state["challenges_passed"].append(stage["completion"]["required_final_challenge"])
+            save_manager.save_slot(1, state)
+            state = save_manager.load_slot(1)
             self.assertTrue(evaluate_stage_gate(stage, state["keys"], state["challenges_passed"], [boss]).unlocked)
             transitioned = advance_save_state(state, stage, get_stage("castle"))
             save_manager.save_slot(1, transitioned)

@@ -8,6 +8,9 @@ from src.ui.text_layout import fit_text, draw_text_block
 
 from src.screens.game import game_screen
 from src.screens.tutorial import tutorial_screen
+from src.screens.stage_select import open_stage_select
+from src.systems.stage_selection import select_stage
+from src.systems.developer_mode import developer_mode
 from src.systems import save_manager
 from src.systems.audio import apply_music_volume, handle_music_shortcut, music_shortcut_label
 from src.ui.theme import TIER_PRIMARY, TIER_SECONDARY, TIER_TERTIARY
@@ -90,6 +93,17 @@ def run_stage_chain(screen, slot_num, state):
         state = save_manager.load_slot(slot_num)
         if state is None:
             return "main_menu"
+
+
+def launch_selected_stage(screen, slot_num, state):
+    """Choose after slot authentication; cancelling never writes the slot."""
+    target = open_stage_select(screen, state, developer_mode.enabled)
+    if target is None:
+        return "stage_selection_cancelled"
+    selected_state = select_stage(state, target, developer_mode.enabled)
+    save_manager.save_slot(slot_num, selected_state)
+    pygame.mixer.music.stop()
+    return run_stage_chain(screen, slot_num, selected_state)
 
 
 def start_game_menu(screen, clean_backdrop=None):
@@ -391,14 +405,13 @@ def start_game_menu(screen, clean_backdrop=None):
             # Escape from falling through into gameplay.
             _resume_menu_music()
             return "tutorial_cancelled"
-        save_manager.save_slot(slot_num, state)
-        result = run_stage_chain(screen, slot_num, state)
+        _resume_menu_music()
+        result = launch_selected_stage(screen, slot_num, state)
         _resume_menu_music()
         return result
 
     def _run_loaded(slot_num, state):
-        pygame.mixer.music.stop()
-        result = run_stage_chain(screen, slot_num, state)
+        result = launch_selected_stage(screen, slot_num, state)
         _resume_menu_music()
         return result
 

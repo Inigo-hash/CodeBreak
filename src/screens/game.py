@@ -10,13 +10,17 @@ from src.screens.settings import SettingsPanel
 from src.entities.player import MainCharacter
 from src.entities.enemy import Enemy
 from src.entities.chest import Chest
+from src.entities.trap import load_traps, build_trap_challenge
 from src.ui.code_editor import CodeEditor
 from src.screens.game_over import game_over_screen
 from src.screens.profile import profile_screen
 from src.screens.inventory import PlayerInventory, Toolbar, open_inventory
 from src.screens.stage_info import open_stage_info
 from src.screens.practice_topics import open_practice_topics
+from src.screens.code_practice_menu import open_code_practice_menu
 from src.screens.world_map import enemy_is_tracking_player, open_world_map
+from src.screens.stage_select import open_stage_select
+from src.systems.stage_selection import select_stage
 from src.systems import save_manager
 from src.systems.developer_mode import developer_mode
 from src.systems.stage_progress import StageProgress
@@ -81,6 +85,7 @@ from src.systems.stage_handoff import (
 from src.screens.final_challenge_warning import (
     open_final_challenge_warning,
 )
+from src.screens.trap_alert import open_trap_alert
 
 def boss_sword_damage(current_hp, phase_table):
     """Damage per connected hit against a boss at ``current_hp``.
@@ -315,6 +320,9 @@ def game_screen(screen, slot_num=None, save_state=None):
     interactables = load_interactables(tmx_data)
     loading.update(38, "Restoring expedition records...")
 
+    # --- Load map-authored traps (optional - most maps don't have any yet) ---
+    traps = load_traps(tmx_data)
+
     # --- Player Setup ---
     SCREEN_W, SCREEN_H = screen.get_size()
     player_size = TILE_SIZE
@@ -470,6 +478,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             "weapon_obtained": player_inventory.weapon_obtained,
             "weapon_equipped": player_inventory.weapon_equipped,
             "stage_progress": stage_progress.to_dict(),
+            "stage_checkpoints": (save_state or {}).get("stage_checkpoints", {}),
         }
         if save_security:
             state["_security"] = save_security
@@ -1394,6 +1403,13 @@ def game_screen(screen, slot_num=None, save_state=None):
         selected = tuple(
             random.choice(phase.reinforcements) for _ in range(summon_count)
         )
+        # A wave must not materialize inside the boss/player/other enemies.
+        # Resolving such overlaps on the next movement tick shoved the boss
+        # sideways when its armour phase changed.
+        spawn_blockers = collision_rects + [player_rect] + [
+            enemy.rect for enemy in enemies
+            if enemy.active and enemy.state != "defeated"
+        ]
         try:
             wave_spawns = resolve_encounter_spawns(
                 ({
@@ -1410,7 +1426,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                     "chase_range": 520,
                     "disengage_range": 460,
                 },),
-                map_width, map_height, collision_rects, path_cells, TILE_SIZE,
+                map_width, map_height, spawn_blockers, path_cells, TILE_SIZE,
                 player_rect.center,
                 zones=world["zones"],
             )
@@ -1594,15 +1610,52 @@ def game_screen(screen, slot_num=None, save_state=None):
 
                         practice_background = screen.copy()
 
-                        selected_topic_id = open_practice_topics(
-                            screen,
-                            stage,
-                            gameplay_state["topics_completed"],
-                            background=practice_background,
-                            developer_access=developer_mode.enabled,
-                        )
+                        # A loop, not a single pass: backing out of a
+                        # sub-screen (topic grid, or closing Free
+                        # Coding) should land back on this chooser,
+                        # not exit straight to gameplay. Only ESC on
+                        # the chooser itself breaks out to the game.
+                        while True:
 
-                        if selected_topic_id is not None:
+                            practice_menu_choice = open_code_practice_menu(
+                                screen,
+                                background=practice_background,
+                            )
+
+                            if practice_menu_choice == "free":
+
+                                free_editor = CodeEditor(
+                                    screen,
+                                    get_challenge("free_coding"),
+                                    screen.copy(),
+                                    mode="free",
+                                )
+
+                                # Free Coding never touches
+                                # save_manager, gameplay_state, keys,
+                                # or topics - the editor just closes
+                                # and we're back at the chooser.
+                                free_editor.run()
+
+                                continue
+
+                            if practice_menu_choice != "topics":
+                                # ESC on the chooser itself - back
+                                # to gameplay.
+                                break
+
+                            selected_topic_id = open_practice_topics(
+                                screen,
+                                stage,
+                                gameplay_state["topics_completed"],
+                                background=practice_background,
+                                developer_access=developer_mode.enabled,
+                            )
+
+                            if selected_topic_id is None:
+                                # ESC on the topic grid - back to
+                                # the chooser, not out to gameplay.
+                                continue
 
                             template_ids = get_topic_template_ids(
                                 selected_topic_id
@@ -1645,6 +1698,11 @@ def game_screen(screen, slot_num=None, save_state=None):
                                 if practice_action != "next":
                                     break
 
+                            # Finished, or exited, a practice
+                            # session - back to the chooser rather
+                            # than dropped straight into gameplay.
+                            continue
+
                         continue
 
                     background_snapshot = screen.copy()
@@ -1668,6 +1726,18 @@ def game_screen(screen, slot_num=None, save_state=None):
                 continue
 
             if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_g and player_combat.hp > 0 and slot_num is not None:
+                    # A modal pauses this live encounter. Cancelling or picking
+                    # the current stage resumes the same instance, not a reload.
+                    snapshot = build_save_state()
+                    target = open_stage_select(screen, snapshot, developer_mode.enabled)
+                    clock.tick()
+                    if target is not None and target != stage["id"]:
+                        save_manager.save_slot(
+                            slot_num, select_stage(snapshot, target, developer_mode.enabled)
+                        )
+                        return "next_stage"
+                    continue
                 at_stage_exit = (
                     stage_exit_detection_rect is not None
                     and player_rect.colliderect(stage_exit_detection_rect)
@@ -1838,6 +1908,7 @@ def game_screen(screen, slot_num=None, save_state=None):
 
                 elif DEBUG_MODE and event.key == pygame.K_F4 and not paused:
                     developer_mode.toggle()
+                    boss_entrance_trigger.armed = True
                     engaged = False
                     print(
                         "Developer exploration:",
@@ -1876,7 +1947,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                     editor = CodeEditor(screen, sample_challenge, screen.copy())
                     editor.run()
 
-                elif event.key == pygame.K_F6 and not paused and not engaged:
+                elif DEBUG_MODE and event.key == pygame.K_F6 and developer_mode.enabled and not paused and not engaged:
 
                     final_challenge = get_challenge(
                         "stage1_final_001"
@@ -2137,8 +2208,8 @@ def game_screen(screen, slot_num=None, save_state=None):
                 boss_is_active = False
         if (boss_id and entrance_approached and current_boss_zone is not None
                 and not boss_defeated and not boss_is_active
-                and not developer_mode.enabled
-                and (boss_access.unlocked or debug_boss_access)):
+                and (boss_access.unlocked or debug_boss_access
+                     or developer_mode.enabled)):
             boss_entry_position = (player_rect.x, player_rect.y)
 
             # Swap to boss battle music the moment the encounter popup
@@ -2273,6 +2344,59 @@ def game_screen(screen, slot_num=None, save_state=None):
 
                 if enemy is boss_enemy:
                     boss_defeated = True
+
+        # --- Trap encounters ---
+        # F4 bypass means traps, like enemies, deal no damage - same
+        # rule already applied to combat above.
+        if not developer_mode.enabled:
+            for trap in traps:
+
+                if stage_progress.has_opened_interactable(trap.trap_id):
+                    continue
+
+                if not player_rect.colliderect(trap.rect):
+                    continue
+
+                # Marked used the instant it fires, win or lose - a
+                # trap the player has already faced never fires again.
+                stage_progress.open_interactable(trap.trap_id)
+
+                trap_challenge = build_trap_challenge(
+                    gameplay_state["topics_completed"],
+                    practice_manager,
+                )
+
+                if trap_challenge is not None:
+
+                    open_trap_alert(screen, background=screen.copy())
+
+                    trap_editor = CodeEditor(
+                        screen,
+                        trap_challenge,
+                        screen.copy(),
+                        mode="trap",
+                        time_limit=trap.time_limit,
+                    )
+                    trap_editor.run()
+                    trap_solved = trap_editor.solved
+                else:
+                    # No completed topics yet - nothing fair to ask,
+                    # so this trap just deals its damage outright.
+                    trap_solved = False
+
+                if (
+                    not trap_solved
+                    and player_combat.take_damage(trap.damage)
+                ):
+                    combat_audio.play(
+                        "player_death"
+                        if player_combat.hp == 0
+                        else "player_hurt"
+                    )
+
+                # At most one trap resolves per frame - re-check the
+                # rest next frame instead of stacking editors.
+                break
 
         newly_cleared = newly_cleared_encounter_ids(
             enemies,
@@ -3135,7 +3259,7 @@ def game_screen(screen, slot_num=None, save_state=None):
 
         # Key hints (top-right, out of the way of the profile HUD)
         hint = font.render(
-            "P = Practice    F1 = Light    F2 = Fog    F10 = Mute",
+            "G = World Atlas    P = Practice    F1 = Light    F2 = Fog    F10 = Mute",
             True,
             (255, 255, 255)
         )

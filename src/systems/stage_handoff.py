@@ -14,6 +14,7 @@ and then rewrites the save for the stage being entered. Pure logic, like
 stage_gate.py - no pygame, so the tests exercise the real rules.
 """
 
+from copy import deepcopy
 from src.data.stages import get_stage, stage_world
 
 
@@ -93,6 +94,12 @@ def advance_save_state(save_state, from_stage, to_stage, *, mark_complete=True):
     """
 
     state = dict(save_state or {})
+    checkpoints = deepcopy(state.get("stage_checkpoints", {}))
+    if from_stage:
+        checkpoints[from_stage["id"]] = {
+            key: deepcopy(state.get(key)) for key in STAGE_SCOPED_KEYS
+        }
+    state["stage_checkpoints"] = checkpoints
 
     # Exploring a later map in developer mode is not a campaign victory.
     cleared = [str(stage_id) for stage_id in state.get("completed_stages", ())]
@@ -111,5 +118,8 @@ def advance_save_state(save_state, from_stage, to_stage, *, mark_complete=True):
         "stage_progress": {},
         "completed_stages": cleared,
     })
+
+    # Re-entering a previously visited destination resumes its map progress.
+    state.update(deepcopy(checkpoints.get(to_stage["id"], {})))
 
     return state

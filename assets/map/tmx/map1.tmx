@@ -11,6 +11,15 @@
  <tileset firstgid="4486" source="../tsx/decorative.tsx"/>
  <tileset firstgid="5510" source="../tsx/houses.tsx"/>
  <tileset firstgid="9606" source="../tsx/mainlevbuild.tsx"/>
+ <tileset firstgid="11308" source="../tsx/crypt_staircase_01.tsx"/>
+ <tileset firstgid="11529" source="../tsx/Dungeon_A1.tsx"/>
+ <tileset firstgid="12297" source="../tsx/Dungeon_A5.tsx"/>
+ <tileset firstgid="12809" source="../tsx/Dungeon_B.tsx"/>
+ <tileset firstgid="13833" source="../tsx/Inside_B.tsx"/>
+ <tileset firstgid="14857" source="../tsx/Inside_C.tsx"/>
+ <tileset firstgid="15881" source="../tsx/Knowledge temple.tsx"/>
+ <tileset firstgid="17281" source="../tsx/TX Plant.tsx"/>
+ <tileset firstgid="18305" source="../tsx/World_B.tsx"/>
  <layer id="1" name="Ground Layer 1" width="188" height="160" locked="1">
   <data encoding="csv">
 110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,

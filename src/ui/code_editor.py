@@ -14,6 +14,7 @@ Validation is handled by the ChallengeManager.
 """
 
 import pygame
+import time
 import subprocess
 import shutil
 from src.systems.audio import handle_music_shortcut
@@ -55,6 +56,8 @@ class CodeEditor:
         background=None,
         mode="campaign",
         time_limit=None,
+        assessment_deadline=None,
+        on_assessment_pass=None,
     ):
         """
         Parameters
@@ -69,9 +72,8 @@ class CodeEditor:
             Snapshot of the game screen to show dimmed behind the popup.
 
         time_limit : int, optional
-            Seconds before the editor auto-closes unsolved. Used only
-            by trap encounters (mode="trap") - every other mode leaves
-            this None and runs with no clock.
+            Seconds before the editor auto-closes unsolved. Used by
+            trap and assessment modes; other modes have no countdown.
         """
 
         self.text_buffer = TextBuffer()
@@ -79,11 +81,15 @@ class CodeEditor:
         self.challenge = challenge
         self.mode = mode
 
-        # Trap-only countdown. None means "no timer" for every other
-        # mode. Frozen once self.solved is True so it doesn't keep
-        # ticking down while the success popup is on screen.
+        # Timed modes freeze on success. Assessments use an absolute
+        # deadline as well as monotonic elapsed time, so modal feedback
+        # and code execution cannot pause their countdown.
         self.time_limit = time_limit
         self.time_remaining = time_limit
+        self.assessment_deadline = assessment_deadline
+        self.on_assessment_pass = on_assessment_pass
+        self.assessment_started = time.monotonic()
+        self.timed_out = False
 
         # Timestamp (pygame.time.get_ticks()) until which the "can't
         # leave a trap" banner stays on screen. 0 means not showing.
@@ -178,6 +184,22 @@ class CodeEditor:
     def is_trap_mode(self):
         return self.mode == "trap"
 
+    @property
+    def is_assessment_mode(self):
+        return self.mode == "assessment"
+
+    def update_assessment_timer(self):
+        if not self.is_assessment_mode or self.solved or self.time_limit is None:
+            return False
+        remaining = self.time_limit - (time.monotonic() - self.assessment_started)
+        if self.assessment_deadline is not None:
+            remaining = min(remaining, self.assessment_deadline - time.time())
+        self.time_remaining = max(0.0, remaining)
+        if self.time_remaining <= 0:
+            self.timed_out = True
+            self.running = False
+        return self.timed_out
+
     def block_trap_exit(self):
         """
         Called wherever the editor would normally close (ESC, the X
@@ -213,6 +235,8 @@ class CodeEditor:
 
         while self.running:
 
+            if self.update_assessment_timer():
+                break
             self.handle_events()
 
             self.update_mouse_cursor()
@@ -241,6 +265,10 @@ class CodeEditor:
                 and pygame.time.get_ticks() < self.trap_exit_notice_until
             ):
                 self.draw_trap_exit_notice()
+
+            if self.is_assessment_mode and self.time_remaining is not None:
+                self.update_assessment_timer()
+                self.draw_trap_timer()
 
             if self.submission_feedback:
                 self.draw_submission_feedback()
@@ -487,6 +515,8 @@ class CodeEditor:
                     self.block_trap_exit()
                 else:
                     self.running = False
+                    if self.is_assessment_mode:
+                        return
 
             if self.run_button.is_clicked(event):
 
@@ -754,6 +784,8 @@ class CodeEditor:
                     else:
                         # Close the coding environment.
                         self.running = False
+                        if self.is_assessment_mode:
+                            return
 
                 # ----------------------------------
                 # Undo (Ctrl+Z)
@@ -1074,6 +1106,9 @@ class CodeEditor:
 
             return
 
+        if self.update_assessment_timer():
+            return
+
         self.submission_attempts += 1
         code = "\n".join(self.text_buffer.lines)
 
@@ -1161,7 +1196,11 @@ class CodeEditor:
                     )
                 )
 
-                if not runtime_passed:
+                expected_line = hidden_test.get("expected_output_last_line")
+                printed_lines = hidden_result.get("output", "").splitlines()
+                output_passed = (expected_line is None or
+                                 bool(printed_lines) and printed_lines[-1] == expected_line)
+                if not runtime_passed or not output_passed:
                     passed = False
                     feedback = (
                         "Your code worked with the example input, "
@@ -1169,8 +1208,13 @@ class CodeEditor:
                     )
                     break
 
+        # Executing tests takes time too; a late answer cannot beat the clock.
+        if self.update_assessment_timer():
+            return
         if passed:
             self.solved = True
+            if self.is_assessment_mode and self.on_assessment_pass:
+                self.on_assessment_pass()
 
         color = SUCCESS_COLOR if passed else ERROR_COLOR
         self.output_panel.add(feedback, color)

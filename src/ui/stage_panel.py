@@ -41,7 +41,7 @@ import random
 
 import pygame
 
-from src.ui.theme import UI_COLORS, body_font, title_font
+from src.ui.theme import UI_COLORS, body_font, title_font, draw_button
 
 
 # ---------------------------------------------------------------------------
@@ -318,8 +318,9 @@ class StagePanel:
     screen that opens.
     """
 
-    def __init__(self, screen):
+    def __init__(self, screen, learning_progress=False):
         self.screen = screen
+        self.learning_progress = learning_progress
 
         screen_w, _ = screen.get_size()
 
@@ -401,6 +402,12 @@ class StagePanel:
         )
 
         self.button_rects[practice_tab] = rect
+        if learning_progress:
+            extra_height = max(24, min(36, (screen.get_height() - rect.bottom - 22) // 2))
+            for index, tab in enumerate(("progress", "topic_guidance")):
+                extra = pygame.Rect(rect.left, rect.bottom + 6 + index * (extra_height + 6),
+                                    rect.width, extra_height)
+                self.button_rects[tab] = extra
         # The drawn plaques carry a bleed margin for their shadow; the painted
         # ones are already trimmed to their own edges.
         self._bleed = 0 if self._sprites else PLAQUE_BLEED
@@ -416,6 +423,8 @@ class StagePanel:
         """
 
         if event.type == pygame.KEYDOWN:
+            if self.learning_progress and event.key in (pygame.K_r, pygame.K_t):
+                return "progress" if event.key == pygame.K_r else "topic_guidance"
             for tab, _, _, key in RAIL_BUTTONS:
                 if event.key == key:
                     return tab
@@ -432,6 +441,11 @@ class StagePanel:
         """Draw the rail. Call after the world and HUD."""
 
         self._draw_rail(mouse_pos)
+        if self.learning_progress:
+            for tab, label in (("progress", "PROGRESS [R]"), ("topic_guidance", "TOPIC GUIDANCE [T]")):
+                rect = self.button_rects[tab]
+                draw_button(self.screen, rect, label, self.font_button,
+                            hovered=rect.collidepoint(mouse_pos))
 
     def _draw_hotkey_badge(self, rect, key_label, tab, hovered):
         """Small carved chip showing the hotkey, in the gutter beside a button.

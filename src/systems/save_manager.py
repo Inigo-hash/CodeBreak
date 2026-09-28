@@ -218,6 +218,9 @@ def slot_progress(slot: int) -> int:
     if data is None:
         return 0
     stage = get_stage(data.get("stage", "Island"))
+    if stage.get("id") == "island":
+        from src.systems.learning_progress import progress_snapshot
+        return progress_snapshot(stage, data)["percent"]
     stage_id = stage.get("id", "").lower()
     completed_stages = {
         str(value).lower() for value in data.get("completed_stages", ())

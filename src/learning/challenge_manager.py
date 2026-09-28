@@ -1,5 +1,6 @@
 #challenge_manager.py
 import ast
+from src.learning.validators.integrated_final_validator import IntegratedFinalValidator
 
 from src.learning.validators.variable_validator import VariableValidator
 from src.learning.validators.print_validator import PrintValidator
@@ -23,6 +24,7 @@ class ChallengeManager:
     def __init__(self):
 
         self.validators = {
+            "stage1_integrated": IntegratedFinalValidator(),
 
             "variable":
                 VariableValidator(),

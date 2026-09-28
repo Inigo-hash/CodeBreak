@@ -1,4 +1,5 @@
 import math
+from copy import deepcopy
 import random
 import time
 
@@ -12,6 +13,8 @@ from src.entities.enemy import Enemy
 from src.entities.chest import Chest
 from src.entities.trap import load_traps, build_trap_challenge
 from src.ui.code_editor import CodeEditor
+from src.screens.learning_progress import open_learning_progress
+from src.screens.final_assessment import open_final_assessment
 from src.screens.game_over import game_over_screen
 from src.screens.profile import profile_screen
 from src.screens.inventory import PlayerInventory, Toolbar, open_inventory
@@ -359,6 +362,7 @@ def game_screen(screen, slot_num=None, save_state=None):
         "bonus_time": 0,
         "completed_stages": [],
     }
+    assessment_sessions = deepcopy((save_state or {}).get("final_assessments", {}))
     save_challenges_passed = []
     save_stage_progress = None
     save_security = None
@@ -471,6 +475,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             "topics_completed": gameplay_state["topics_completed"],
             "bonus_time": gameplay_state["bonus_time"],
             "challenges_passed": save_challenges_passed,
+            "final_assessments": assessment_sessions,
             "completed_stages": gameplay_state["completed_stages"],
             "map_layout_version": MAP_LAYOUT_VERSION,
             "map_position": [player_x, player_y],
@@ -593,8 +598,23 @@ def game_screen(screen, slot_num=None, save_state=None):
     # The rail of buttons that opens the full Stage Information screen.
     # Objectives are still tracked in `stage_progress`; they are read on
     # the OBJECTIVES tab rather than from a box on the HUD.
-    stage_panel = StagePanel(screen)
+    stage_panel = StagePanel(screen, learning_progress=stage.get("id") == "island")
     practice_manager = PracticeManager()
+
+    def run_final_assessment():
+        def persist_assessment():
+            if slot_num is not None:
+                save_manager.save_slot(slot_num, build_save_state())
+
+        def mark_assessment_passed():
+            if "stage1_final_001" not in save_challenges_passed:
+                save_challenges_passed.append("stage1_final_001")
+            stage_progress.sync_objectives(stage, save_challenges_passed)
+
+        return open_final_assessment(
+            screen, stage, build_save_state(), assessment_sessions,
+            persist_assessment, mark_assessment_passed,
+        )
     loading.update(54, f"Lighting {stage_name} paths...")
 
     def open_topic_flow(
@@ -1555,36 +1575,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                 and "stage1_final_001" not in save_challenges_passed
             ):
 
-                final_challenge = get_challenge(
-                    "stage1_final_001"
-                )
-
-                if final_challenge is not None:
-
-                    editor = CodeEditor(
-                        screen,
-                        final_challenge,
-                        screen.copy(),
-                    )
-
-                    editor.run()
-
-                    if editor.solved:
-
-                        save_challenges_passed.append(
-                            "stage1_final_001"
-                        )
-
-                        stage_progress.sync_objectives(
-                            stage,
-                            save_challenges_passed,
-                        )
-
-                        if slot_num is not None:
-                            save_manager.save_slot(
-                                slot_num,
-                                build_save_state(),
-                            )
+                run_final_assessment()
 
                 continue
 
@@ -1603,6 +1594,14 @@ def game_screen(screen, slot_num=None, save_state=None):
                 requested_action = stage_panel.handle_event(event)
 
                 if requested_action:
+
+                    if requested_action in ("progress", "topic_guidance"):
+                        open_learning_progress(
+                            screen, stage, build_save_state(),
+                            topics_only=requested_action == "topic_guidance",
+                            background=screen.copy(),
+                        )
+                        continue
 
                     # Code Practice is its own feature, not a Stage
                     # Information tab.
@@ -1755,36 +1754,7 @@ def game_screen(screen, slot_num=None, save_state=None):
 
                     if final_challenge_pending:
 
-                        final_challenge = get_challenge(
-                            final_challenge_id
-                        )
-
-                        if final_challenge is not None:
-
-                            editor = CodeEditor(
-                                screen,
-                                final_challenge,
-                                screen.copy(),
-                            )
-
-                            editor.run()
-
-                            if editor.solved:
-
-                                save_challenges_passed.append(
-                                    final_challenge_id
-                                )
-
-                                stage_progress.sync_objectives(
-                                    stage,
-                                    save_challenges_passed,
-                                )
-
-                                if slot_num is not None:
-                                    save_manager.save_slot(
-                                        slot_num,
-                                        build_save_state(),
-                                    )
+                        run_final_assessment()
 
                         continue
 
@@ -2452,47 +2422,9 @@ def game_screen(screen, slot_num=None, save_state=None):
             # in an earlier session.
             if final_challenge_id not in save_challenges_passed:
 
-                warning_result = open_final_challenge_warning(
-                    screen,
-                    background=screen.copy(),
-                )
-
                 final_challenge_revealed = True
-
-                if warning_result == "continue":
-
-                    final_challenge = get_challenge(
-                        final_challenge_id
-                    )
-
-                    if final_challenge is not None:
-
-                        editor = CodeEditor(
-                            screen,
-                            final_challenge,
-                            screen.copy(),
-                        )
-
-                        editor.run()
-
-                        # Only record completion when the player actually
-                        # solved the final coding challenge.
-                        if editor.solved:
-
-                            save_challenges_passed.append(
-                                final_challenge_id
-                            )
-
-                            stage_progress.sync_objectives(
-                                stage,
-                                save_challenges_passed,
-                            )
-
-                            if slot_num is not None:
-                                save_manager.save_slot(
-                                    slot_num,
-                                    build_save_state(),
-                                )
+                if stage.get("id") == "island":
+                    run_final_assessment()
 
         if player_combat.hp == 0 and death_animation_complete:
             gameplay_state["hearts"] = max(0, gameplay_state["hearts"] - 1)

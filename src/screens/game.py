@@ -88,6 +88,9 @@ from src.systems.stage_handoff import (
 from src.screens.final_challenge_warning import (
     open_final_challenge_warning,
 )
+from src.data.rooms import ROOM_STAGES
+from src.systems.rooms import room_for, world_for_room, transition_room, PassageHold
+from src.systems.camera import camera_offset
 from src.screens.trap_alert import open_trap_alert
 
 def boss_sword_damage(current_hp, phase_table):
@@ -225,7 +228,8 @@ def game_screen(screen, slot_num=None, save_state=None):
     # the stage record (see stages.py) rather than being named here.
     save_stage = (save_state or {}).get("stage", "Island")
     stage = get_stage(save_stage)
-    world = stage_world(stage)
+    room_id, room = room_for(stage["id"], save_state or {})
+    world = world_for_room(stage["id"], stage_world(stage), save_state or {})
     stage_name = stage.get("name", "Island")
 
     # A stage with no authored map is content-only: menus and saves may
@@ -239,7 +243,7 @@ def game_screen(screen, slot_num=None, save_state=None):
     loading = StageLoadingScreen(
         screen,
         stage_id=stage.get("id", "island"),
-        stage_name=stage_name,
+        stage_name=room["name"] if room else stage_name,
         stage_label=stage.get("subtitle", "Stage 1"),
         previous_frame=screen,
     )
@@ -340,6 +344,9 @@ def game_screen(screen, slot_num=None, save_state=None):
         player_size,
         player_size
     )
+
+    if room:
+        player_rect.topleft = [round(v * TILE_SIZE) for v in world["room_spawn"]]
 
     # Float position to avoid integer truncation causing uneven movement
     # Float position to avoid integer truncation causing uneven movement
@@ -485,6 +492,10 @@ def game_screen(screen, slot_num=None, save_state=None):
             "stage_progress": stage_progress.to_dict(),
             "stage_checkpoints": (save_state or {}).get("stage_checkpoints", {}),
         }
+        if room:
+            state.update(room_id=room_id,
+                         room_checkpoints=deepcopy((save_state or {}).get("room_checkpoints", {})),
+                         room_vitals={"hp": player_combat.hp, "energy": player_combat.energy})
         if save_security:
             state["_security"] = save_security
         return state
@@ -755,7 +766,7 @@ def game_screen(screen, slot_num=None, save_state=None):
     camera_x = 0
     camera_y = 0
 
-    ZOOM = 2 # increase this to zoom in more (ex. 2, 3, or 4)
+    ZOOM = world.get("zoom", 2)
 
     # Fixed torches replace the player-carried torch.  Their spacing is
     # derived from the actual light radius, and the placement helper keeps
@@ -776,11 +787,9 @@ def game_screen(screen, slot_num=None, save_state=None):
     loading.update(60, f"Rendering {stage_name} terrain...")
 
     def update_camera():
-        cx = player_rect.centerx * ZOOM - SCREEN_W // 2
-        cy = player_rect.centery * ZOOM - SCREEN_H // 2
-        cx = max(0, min(cx, map_width * ZOOM - SCREEN_W))
-        cy = max(0, min(cy, map_height * ZOOM - SCREEN_H))
-        return cx, cy
+        return camera_offset(player_rect.center, (SCREEN_W, SCREEN_H),
+                             (map_width, map_height), ZOOM,
+                             world.get("follow_edges", False))
 
     # --- Pre-render map ---
     def render_map_surface():
@@ -798,7 +807,7 @@ def game_screen(screen, slot_num=None, save_state=None):
     raw_map_surface = render_map_surface()
     # Scale the pre-rendered map once at startup based on ZOOM level (e.g. ZOOM=2 doubles the size)
     # This avoids rescaling every frame which would slow down the game
-    map_surface = pygame.transform.scale(raw_map_surface, (map_width * ZOOM, map_height * ZOOM))
+    map_surface = pygame.transform.scale(raw_map_surface, (round(map_width * ZOOM), round(map_height * ZOOM)))
     loading.update(70, "Drawing expedition charts...")
 
     # --- Minimap ---
@@ -1398,6 +1407,10 @@ def game_screen(screen, slot_num=None, save_state=None):
         return boss
     loading.update(97, "Finalizing expedition...")
     player_combat = PlayerCombat()
+    if room and (save_state or {}).get("room_vitals"):
+        vitals = save_state["room_vitals"]
+        player_combat.hp = max(1, min(player_combat.max_hp, int(vitals.get("hp", player_combat.hp))))
+        player_combat.energy = max(0, min(player_combat.max_energy, float(vitals.get("energy", player_combat.energy))))
     combat_audio = CombatAudio()
     from src.ui.damage_numbers import DamageNumbers
     damage_numbers = DamageNumbers()
@@ -1496,6 +1509,16 @@ def game_screen(screen, slot_num=None, save_state=None):
     death_animation_complete = False
     near_interactable = None
     near_stage_exit = False
+    room_passages = [
+        (route, pygame.Rect(*(round(v * TILE_SIZE) for v in route["rect"])))
+        for route in (room["routes"] if room else ())
+    ]
+    passage_hold = PassageHold(ROOM_STAGES.get(stage["id"], {}).get("hold_seconds", 1.0))
+    near_passage = None
+
+    def passage_at_player():
+        return next((route for route, rect in room_passages
+                     if rect.colliderect(player_rect)), None)
     engaged = False
     loading.finish()
 
@@ -1736,6 +1759,9 @@ def game_screen(screen, slot_num=None, save_state=None):
                             slot_num, select_stage(snapshot, target, developer_mode.enabled)
                         )
                         return "next_stage"
+                    continue
+                if event.key == pygame.K_e and not paused and not engaged and passage_at_player():
+                    attack_key_ready = False
                     continue
                 at_stage_exit = (
                     stage_exit_detection_rect is not None
@@ -1989,6 +2015,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                 settings_panel.handle_event(event)
 
         if paused:
+            passage_hold.update(None, True, 0, blocked=True)
             # Show the frame the player paused on, and nothing else.
             #
             # This used to re-render the scene from scratch here - the
@@ -2098,6 +2125,19 @@ def game_screen(screen, slot_num=None, save_state=None):
 
         # --- Camera ---
         camera_x, camera_y = update_camera()
+
+        near_passage = passage_at_player()
+        if passage_hold.update(
+            near_passage["id"] if near_passage else None,
+            bool(keys[pygame.K_e]), dt,
+            blocked=engaged or player_combat.hp <= 0 or player_combat.state in ("attacking", "dodging"),
+        ):
+            next_state = transition_room(build_save_state(), stage["id"], near_passage["id"], TILE_SIZE)
+            if slot_num is not None:
+                save_manager.save_slot(slot_num, next_state)
+            # The outer screen runner loads the next room, without recursive
+            # game_screen calls or carrying the old map's actors into it.
+            return ("next_room", next_state)
 
         current_zone_name = get_zone_at(
             player_rect.centerx, player_rect.centery, map_width, map_height,
@@ -2529,6 +2569,8 @@ def game_screen(screen, slot_num=None, save_state=None):
             and stage_exit_detection_rect is not None
             and player_rect.colliderect(stage_exit_detection_rect)
         )
+        if near_passage:
+            near_interactable = None
         if near_stage_exit:
             # A doorway and a nearby prop must never compete for the same E
             # press. The exit is the more specific action in this location.
@@ -2714,6 +2756,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                 item['inspecting'] = False
 
         # --- Draw ---
+        screen.fill((0, 0, 0))  # Empty space beyond map edges follows the camera.
         screen.blit(
             map_surface,
             (
@@ -2947,7 +2990,16 @@ def game_screen(screen, slot_num=None, save_state=None):
                     near_interactable['inspect_progress'] = 0.0
 
         interaction_prompt = None
-        if near_stage_exit:
+        if near_passage and not engaged:
+            interaction_prompt = "Hold E to " + near_passage["label"][0].lower() + near_passage["label"][1:]
+            # Keep the hold meter close to the player, above the bottom HUD.
+            bar = pygame.Rect(SCREEN_W // 2 - 90, SCREEN_H // 2 + 65, 180, 9)
+            pygame.draw.rect(screen, (30, 30, 35), bar, border_radius=4)
+            fill = bar.copy()
+            fill.width = round(bar.width * passage_hold.progress)
+            if fill.width:
+                pygame.draw.rect(screen, (218, 181, 98), fill, border_radius=4)
+        elif near_stage_exit:
             gate_status = evaluate_stage_gate(
                 stage, gameplay_state["keys"], save_challenges_passed,
                 stage_progress.defeated_enemies,

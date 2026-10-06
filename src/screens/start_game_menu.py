@@ -88,6 +88,9 @@ def run_stage_chain(screen, slot_num, state):
 
     while True:
         result = game_screen(screen, slot_num=slot_num, save_state=state)
+        if isinstance(result, tuple) and result[0] == "next_room":
+            state = result[1]
+            continue
         if result != "next_stage":
             return result
         state = save_manager.load_slot(slot_num)

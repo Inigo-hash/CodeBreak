@@ -42,10 +42,11 @@ def select_stage(state, stage_id, developer_access=False):
     if current_id == stage_id:
         return result
     checkpoints = result.setdefault("stage_checkpoints", {})
-    checkpoints[current_id] = {key: deepcopy(state[key]) for key in STAGE_SCOPED_KEYS if key in state}
+    checkpoints[current_id] = {key: deepcopy(state.get(key)) for key in STAGE_SCOPED_KEYS}
     target = STAGES[stage_id]
     checkpoint = {
         "keys": 0, "map_position": None, "stage_progress": {},
+        "room_id": None, "room_checkpoints": {}, "room_vitals": None,
         "map_layout_version": stage_world(target)["map_layout_version"],
     }
     checkpoint.update(checkpoints.get(stage_id, {}))

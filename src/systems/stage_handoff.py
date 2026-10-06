@@ -28,7 +28,7 @@ FULL_HEARTS = 5
 # new stage's lessons, the map position belongs to a map that is no longer
 # loaded, and stage_progress is reset by advance_save_state below.
 STAGE_SCOPED_KEYS = ("keys", "map_position", "map_layout_version",
-                     "stage_progress")
+                     "stage_progress", "room_id", "room_checkpoints", "room_vitals")
 
 
 def next_stage_id(stage):
@@ -116,6 +116,9 @@ def advance_save_state(save_state, from_stage, to_stage, *, mark_complete=True):
         "map_position": None,
         "map_layout_version": stage_world(to_stage)["map_layout_version"],
         "stage_progress": {},
+        "room_id": None,
+        "room_checkpoints": {},
+        "room_vitals": None,
         "completed_stages": cleared,
     })
 

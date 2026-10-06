@@ -11,6 +11,7 @@ from src.systems.combat import (
 class MainCharacter():
     def __init__(self, screen, map_width, map_height):
         self.screen = screen
+        self._zoom_frames = {}
         self.is_idle = True
         self.idle_bob_timer = 0.0
 
@@ -311,6 +312,14 @@ class MainCharacter():
                 self.current = (self.current + 1) % len(self.current_frames)
 
         frame = self.current_frames[self.current]
+        if ZOOM != 2:
+            key = (id(frame), ZOOM)
+            if key not in self._zoom_frames:
+                factor = ZOOM / 2
+                self._zoom_frames[key] = pygame.transform.scale(
+                    frame, (max(1, round(frame.get_width() * factor)),
+                            max(1, round(frame.get_height() * factor))))
+            frame = self._zoom_frames[key]
         draw_x = self.center_x * ZOOM - camera_x - frame.get_width() // 2
         # Ground the visible feet on the collision body's bottom. Centering
         # the sprite let its feet hang over shorelines and stand atop props.

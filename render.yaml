@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: codebreak-mang-tahimik
+    runtime: python
+    plan: free
+    buildCommand: pip install -r server/requirements.txt
+    startCommand: uvicorn server.app:app --host 0.0.0.0 --port $PORT --workers 1 --no-proxy-headers
+    healthCheckPath: /health
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash-lite
+      - key: TUTOR_IP_PER_MINUTE
+        value: "3"
+      - key: TUTOR_GLOBAL_PER_MINUTE
+        value: "8"
+      - key: TUTOR_GLOBAL_PER_DAY
+        value: "100"

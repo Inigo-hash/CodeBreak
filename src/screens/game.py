@@ -8,6 +8,7 @@ import pygame
 import sys
 from src.config import DEBUG_MODE, FPS_LOG
 from src.screens.settings import SettingsPanel
+from src.screens.mang_tahimik import open_mang_tahimik
 from src.entities.player import MainCharacter
 from src.entities.enemy import Enemy
 from src.entities.chest import Chest
@@ -1748,6 +1749,10 @@ def game_screen(screen, slot_num=None, save_state=None):
                 continue
 
             if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_h and not paused and not engaged and player_combat.hp > 0:
+                    open_mang_tahimik(screen, {"stage": stage["id"], "room": room_id})
+                    clock.tick()
+                    continue
                 if event.key == pygame.K_g and player_combat.hp > 0 and slot_num is not None:
                     # A modal pauses this live encounter. Cancelling or picking
                     # the current stage resumes the same instance, not a reload.
@@ -3025,6 +3030,9 @@ def game_screen(screen, slot_num=None, save_state=None):
                 interaction_prompt = f"Search {target}" if target else "Interact"
             else:
                 interaction_prompt = "Interact"
+
+        if not interaction_prompt and player_inventory.weapon_equipped and not engaged:
+            interaction_prompt = "[H] Ask Mang Tahimik about Python"
 
         if not interaction_prompt and not player_inventory.weapon_equipped:
             interaction_prompt = "[B] Move sword from bag to hotbar, then select its slot"

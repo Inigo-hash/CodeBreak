@@ -12,3 +12,7 @@ env/
 
 # Local game save files
 saves/*.json
+# Local AI credentials
+.env
+.env.*
+!.env.example

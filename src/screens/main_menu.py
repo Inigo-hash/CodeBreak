@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 import pygame  # type: ignore[import-not-found]
 from src.screens.game import game_screen
+from src.screens.mang_tahimik import open_mang_tahimik
 from src.screens.settings import SettingsPanel
 from src.screens.how_to_play import how_to_play_screen
 from src.screens.start_game_menu import start_game_menu
@@ -466,7 +467,7 @@ def _draw_mang_tahimik_tip(surf: pygame.Surface, t: float) -> None:
     # Preserve the existing tip-box footprint, anchored just left of Mang.
     character_left_edge = character_rect.left
     tip_gap = 20
-    tip_lines = ["Think before you type...", "The dungeon punishes mistakes."]
+    tip_lines = ["Ask me about Python...", "Click me or press H to talk."]
     minimum_tip_width = max(_tip_font.size(line)[0] for line in tip_lines) + 24
     # The fixed menu column ends at 60% of the screen width. On smaller
     # windows, narrow the tip rather than allowing it beneath a button.
@@ -744,6 +745,10 @@ def main_menu():
             # Keyboard navigation. Until this was added the menu was the one
             # screen in the game that could not be used without a mouse.
             if event.type == pygame.KEYDOWN and not show_settings:
+                if event.key == pygame.K_h:
+                    open_mang_tahimik(screen)
+                    clock.tick()
+                    continue
                 if event.key in (pygame.K_DOWN, pygame.K_UP, pygame.K_TAB):
                     step = -1 if event.key == pygame.K_UP else 1
                     # The first press lands on Start Game rather than
@@ -771,6 +776,14 @@ def main_menu():
             # one.
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if not show_settings:
+                    frames = _load_mang_tahimik_idle()
+                    frame = frames[int(t / 0.14) % len(frames)]
+                    npc_rect = frame.get_rect(midbottom=(SCREEN_WIDTH - 92,
+                        SCREEN_HEIGHT - 98 + round(math.sin(t * 2.4) * 2)))
+                    if npc_rect.collidepoint(event.pos):
+                        open_mang_tahimik(screen)
+                        clock.tick()
+                        continue
                     # A click and Enter run the same code: whichever control
                     # is under the pointer, or whichever one the keyboard has
                     # focused.

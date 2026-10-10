@@ -131,7 +131,8 @@ def create_app():
                     return JSONResponse({'error': 'Gemini quota reached.'}, status_code=429,
                                         headers={'Retry-After': '60'})
                 if response.status_code != 200:
-                    return JSONResponse({'error': 'The tutor is temporarily unavailable.'}, status_code=503)
+                    return JSONResponse({'error': 'The tutor is temporarily unavailable.',
+                                         'code': 'gemini_http_' + str(response.status_code)}, status_code=503)
                 result = response.json()
                 answer = '\n'.join(p['text'] for p in result['candidates'][0]['content']['parts']
                                    if isinstance(p.get('text'), str) and not p.get('thought'))

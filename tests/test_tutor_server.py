@@ -5,6 +5,8 @@ from unittest.mock import patch
 import httpx
 from fastapi.testclient import TestClient
 from server.app import create_app, Limits
+from server.tutor_prompt import game_knowledge
+from src.data.challenges import CHALLENGES
 
 
 class ServerTests(unittest.TestCase):
@@ -25,6 +27,10 @@ class ServerTests(unittest.TestCase):
             self.assertEqual(req.headers['x-goog-api-key'], 'test-secret')
             self.assertNotIn('test-secret', str(req.url))
             self.assertIn('never a complete solution', body['systemInstruction']['parts'][0]['text'])
+            prompt = body['systemInstruction']['parts'][0]['text']
+            facts = json.loads(prompt.split('GAME FACTS (current authored build, not a promise about future content):\n', 1)[1])
+            self.assertEqual([s['name'] for s in facts['stages']], ['Island', 'Castle'])
+            self.assertIn('Answer the actual question first', prompt)
             self.assertEqual(body['generationConfig']['maxOutputTokens'], 600)
             self.assertEqual(body['contents'][0]['role'], 'user')
             return httpx.Response(200, json={'candidates': [{'content': {'parts': [
@@ -76,6 +82,18 @@ class ServerTests(unittest.TestCase):
             result = client.post('/ask', json={'question':'help'})
             self.assertIn(result.status_code, (429, 503))
             self.assertNotIn('test-secret', result.text)
+
+    def test_game_knowledge_excludes_challenge_answers_and_map_internals(self):
+        challenge = dict(CHALLENGES['variables_001'], expected='secret-test-answer',
+                         runtime_expected={'answer': 'secret-test-answer'})
+        with patch.dict(CHALLENGES, {'variables_001': challenge}):
+            facts = game_knowledge()
+        serialized = json.dumps(facts)
+        self.assertNotIn('secret-test-answer', serialized)
+        self.assertNotIn('assets/map/', serialized)
+        self.assertEqual(facts['stage_count'], 2)
+        self.assertIn('Castle Lobby', facts['stages'][1]['rooms'])
+        self.assertTrue(facts['controls'])
 
     def test_atomic_limits_and_expiry(self):
         async def check():

@@ -29,6 +29,7 @@ import io
 import sys
 import time
 import contextlib
+from copy import deepcopy
 
 
 class SandboxError(Exception):
@@ -172,10 +173,34 @@ def _make_timeout_tracer(deadline):
     return tracer
 
 
+def _check_function_return(value, ancestors=None, depth=0):
+    """Keep player-defined equality/repr callbacks inside the timed execution.
+
+    The checker consumes plain values, never live user objects or generators.
+    Cyclic/deep containers cannot be a meaningful expected challenge answer.
+    """
+    if type(value) in (str, int, float, bool, type(None)):
+        return
+    if type(value) not in (list, tuple, dict, set, frozenset):
+        raise ValueError('Return plain values or containers, not functions, generators or custom objects.')
+    ancestors = set() if ancestors is None else ancestors
+    if depth > 30 or id(value) in ancestors:
+        raise ValueError('Return a finite, non-cyclic answer.')
+    ancestors.add(id(value))
+    try:
+        for item in value:
+            _check_function_return(item, ancestors, depth + 1)
+            if type(value) is dict:
+                _check_function_return(value[item], ancestors, depth + 1)
+    finally:
+        ancestors.remove(id(value))
+
+
 def run_user_code(
     code,
     timeout=3.0,
-    input_values=None
+    input_values=None,
+    function_call=None,
 ):
     """
     Runs `code` in a restricted environment and returns a result
@@ -287,6 +312,17 @@ def run_user_code(
 
         with contextlib.redirect_stdout(output_buffer):
             exec(compile(code, "<user_code>", "exec"), sandbox_globals)
+            if function_call is not None:
+                name = function_call['name']
+                function = sandbox_globals.get(name)
+                if not callable(function):
+                    raise ValueError(f'Define the required function {name}.')
+                arguments = deepcopy(function_call.get('args', []))
+                original_arguments = deepcopy(arguments)
+                return_value = function(*arguments)
+                _check_function_return(return_value)
+                if function_call.get('preserve_args') and arguments != original_arguments:
+                    raise ValueError('Keep the original input list unchanged; work on a copy.')
 
     except SandboxTimeout as error:
         return {
@@ -314,10 +350,35 @@ def run_user_code(
         if not name.startswith("__")
     }
 
-    return {
+    result = {
         "success": True,
         "output": output_buffer.getvalue(),
         "error": None,
         "globals": sandbox_globals,
         "variables": user_variables,
     }
+    if function_call is not None:
+        result['return_value'] = return_value
+    return result
+
+
+def run_function_tests(code, name, cases, timeout=3.0, preserve_args=False):
+    """Each case has fresh globals and inputs; calls remain inside the tracer."""
+    if not cases:
+        return False, 'No function test cases were authored.'
+    started = time.monotonic()
+    for case in cases:
+        remaining = timeout - (time.monotonic() - started)
+        args = case.get('args', [])
+        expected = case['expected']
+        prefix = f'{name}({", ".join(repr(arg) for arg in args)})'
+        if remaining <= 0:
+            return False, f'Input: {prefix}\nActual: timed out\nExpected: {expected!r}'
+        result = run_user_code(code, timeout=remaining, function_call={
+            'name': name, 'args': args, 'preserve_args': preserve_args})
+        if not result['success']:
+            return False, f'Input: {prefix}\nActual: {result["error"]}\nExpected: {expected!r}'
+        actual = result['return_value']
+        if type(actual) is not type(expected) or actual != expected:
+            return False, f'Input: {prefix}\nActual: {actual!r}\nExpected: {expected!r}'
+    return True, f'All {len(cases)} function cases passed.'

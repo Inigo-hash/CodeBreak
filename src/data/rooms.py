@@ -3,7 +3,11 @@
 Rectangles are walkable approach zones, not the painted door arches.
 Spawns use the player's top-left collision corner. Add a room and its
 routes here without adding room-specific branches to the gameplay loop.
+A room's optional world block supplies map-specific encounters/zones and
+other stage-world overrides; non-lobby rooms otherwise default to no camps.
 """
+from src.data.encounters import castle_room_encounters, castle_room_zones
+
 ROOM_STAGES = {
     'castle': {
         'default': 'lobby',
@@ -46,3 +50,17 @@ ROOM_STAGES = {
         },
     },
 }
+
+# Every Castle map owns its camps and patrol zones; no cross-room inheritance.
+for _room_id, _room in ROOM_STAGES['castle']['rooms'].items():
+    _width, _height = (46, 48) if _room_id == 'lobby' else (40, 40)
+    _room['world'] = {
+        'encounters': castle_room_encounters(_room_id, _width, _height),
+        'zones': castle_room_zones(_room_id, _room['name'], _width, _height),
+    }
+
+# Aktan has a dedicated upper Throne arena; ordinary guards patrol below it.
+ROOM_STAGES['castle']['rooms']['throne']['world']['zones'].insert(0, {
+    'name': 'Aktan Throne', 'rect': (3/40, 10/40, 34/40, 6/40), 'is_boss_zone': True,
+})
+ROOM_STAGES['castle']['rooms']['throne']['world']['boss_spawn_margin'] = 8

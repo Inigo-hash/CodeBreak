@@ -64,6 +64,7 @@ from src.data.challenges import CHALLENGES
 from src.data.controls import WORLD_CONTROLS
 from src.data.encounters import BEGINNER_PATH_GIDS, BEGINNER_STAGE_ENCOUNTERS
 from src.data.zones import CASTLE_ZONES, ISLAND_ZONES
+from src.data.castle_lists import LIST_CHALLENGE_IDS
 
 
 # Filled in for any stage that leaves a world setting out. A stage with no
@@ -211,7 +212,9 @@ STAGES = {
             "required_boss": "corrupted_core_kapre",
             "required_final_challenge": "stage1_final_001",
             "exit_name": "Corrupted Core Gate",
-            "exit_rect": (0.544255, 0.231250, 0.023830, 0.028125),
+            # Trigger from the walkable foot of the south arch. The old
+            # rectangle was inside a sealed decorative building.
+            "exit_rect": (0.544255, 0.287500, 0.023830, 0.018750),
             # Nine beginner lessons award one key each. Keeping rewards
             # authored here makes save migration deterministic.
             "topic_key_rewards": {
@@ -384,52 +387,62 @@ STAGES = {
 
             "summary":
                 "Past the Corrupted Core's gate the island's corruption "
-                "gives way to stone. The castle lobby still stands, its "
-                "stairs climbing into the dark, and its machinery runs on "
-                "intermediate Python. Its lesson route is still being "
-                "charted - for now, the way in is the way out.",
+                "gives way to stone. The castle has five connected rooms. "
+                "The Dining Area now teaches Lists "
+                "through two coding challenges. Master both for the first "
+                "of five Castle keys. Other rooms are exploration previews; "
+                "stage completion is not yet available.",
 
             "mechanics": [
-                "The lobby is walkable; its lessons, enemies and boss are "
-                "still being authored.",
+                "Visit the Lists terminal in the southwest Dining Area. Pass "
+                "both challenges to earn Key 1 once; practice grants no keys.",
+                "Mandurug Duwende, Kapre and White Lady patrol Castle rooms. Zombie Aktan is the final Throne Room boss. "
+                "Clearing camps grants no Castle keys. Other rooms have combat, but their lessons remain unfinished.",
                 "Everything you learned on the island travels with you. "
                 "Keys do not - the castle's gate wants its own.",
             ],
 
             "controls": WORLD_CONTROLS,
 
-            "topics": [],
+            "topics": list(LIST_CHALLENGE_IDS),
 
             "tips": [
-                "Nothing in the lobby can hurt you yet. Use it to get your "
-                "bearings.",
+                "Door arrivals and the Lists terminal are safe. "
+                "Read the lesson before approaching the guards.",
             ],
         },
 
-        "enemies": [],
+        "enemies": ['duwende_mandurug', 'kapre_usikan', 'white_lady', 'zombie_aktan'],
 
-        "items": [],
+        "items": ['table', 'crate', 'mang_tahimik'],
 
         # No exit_rect: without one game.py builds no gate, which is the
         # honest state of a stage that cannot yet be finished.
         "completion": {
-            "required_keys": 0,
-            "required_boss": None,
+            "required_keys": 5,
+            "required_boss": "zombie_aktan",
             "exit_name": "Castle Exit",
-            "topic_key_rewards": {},
+            "topic_key_rewards": {challenge_id: 0 for challenge_id in LIST_CHALLENGE_IDS},
+            "encounter_key_reward": 0,
+            "content_ready": False,
+            "mastery_bundles": {
+                'castle_lists_key_1': {'topics': ['castle_lists'],
+                                     'challenges': LIST_CHALLENGE_IDS, 'keys': 1},
+            },
         },
 
         "objectives": [
-            # Provisional, and the only thing the Castle can currently ask
-            # for: somewhere to walk that is not where the player lands.
-            # It goes when the lesson terminals arrive.
+            # Only playable milestone objectives are listed; future bundles
+            # must not look like tasks the player can already finish.
             {
-                "id": "castle_reach_lower_landings",
-                "text": "Follow the stair down to the lower landings.",
-                "kind": "explore",
-                "target": "The Lower Landings",
+                "id": "castle_lists_mastery",
+                "text": "Master both Dining Lists challenges to earn Castle Key 1.",
+                "kind": "topic",
+                "target": "castle_lists",
                 "optional": False,
             },
+            {'id': 'castle_dining_guards', 'text': 'Clear the Dining Duwende camp.',
+             'kind': 'encounter', 'target': 'castle_dining_duwende_01', 'optional': False},
         ],
     },
 

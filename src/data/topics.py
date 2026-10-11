@@ -916,6 +916,14 @@ Conditions can also use:
     },
 }
 
+from src.data.castle_lists import LISTS_TOPIC
+TOPICS['castle_lists'] = LISTS_TOPIC
+
+
+def topic_challenge_ids(topic):
+    return tuple(topic.get('challenge_ids') or (topic['challenge_id'],))
+
+
 def get_topic(topic_id):
     """
     Return a topic by id.

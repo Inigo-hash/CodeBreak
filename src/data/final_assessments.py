@@ -1,4 +1,4 @@
-"""Stage 1 final assessment pool. Limits are starting values for playtesting."""
+"""Authored final assessments. Limits are starting values for playtesting."""
 from copy import deepcopy
 
 FINAL_COMPLETION_ID = 'stage1_final_001'
@@ -91,7 +91,7 @@ NEW_ASSESSMENTS = {
 def get_final_assessment(challenge_id):
     # Import only when requested: the original authored challenge stays intact.
     from src.data.challenges import CHALLENGES
-    source = CHALLENGES.get(challenge_id) if challenge_id == FINAL_COMPLETION_ID else NEW_ASSESSMENTS.get(challenge_id)
+    source = NEW_ASSESSMENTS.get(challenge_id) or CHALLENGES.get(challenge_id)
     if source is None:
         return None
     challenge = deepcopy(source)
@@ -108,3 +108,15 @@ def get_final_assessment(challenge_id):
     for case in challenge.get('hidden_tests', []):
         case.setdefault('expected_output_last_line', case.get('runtime_expected', {}).get('final_message'))
     return challenge
+
+
+def assessment_ids_for_stage(stage):
+    """An unconfigured stage has no assessment; Stage 1 keeps its rotation."""
+    completion = stage.get('completion', {})
+    required = completion.get('required_final_challenge')
+    if not required:
+        return ()
+    configured = completion.get('final_assessment_ids')
+    if configured is not None:
+        return tuple(dict.fromkeys(configured))
+    return ASSESSMENT_IDS if stage.get('id') == 'island' else (required,)

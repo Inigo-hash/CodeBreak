@@ -39,7 +39,7 @@ class Stage1EndingRegressions(unittest.TestCase):
         cls.screen = pygame.display.set_mode((1280, 720))
 
     def run_frames(self, state, *, developer=False, debug=True, events=None,
-                   check=None, doorway=True, expect_next=False):
+                   check=None, doorway=True, expect_next=False, assessment_decision=False):
         frames = 0
         saved = None
         state = copy.deepcopy(state)
@@ -83,7 +83,9 @@ class Stage1EndingRegressions(unittest.TestCase):
         ) as intro, patch.object(game, "open_stage_gate", side_effect=lambda screen, status, **kwargs:
             "exit" if expect_next and status.unlocked else "stay"), patch.object(
             game, "open_boss_result", return_value="continue"
-        ) as result, patch.object(game, "open_final_challenge_warning", return_value="later") as warning:
+        ) as result, patch.object(game, "open_final_challenge_warning", return_value="later") as warning, patch(
+            "src.screens.final_assessment.assessment_dialog", return_value=assessment_decision
+        ):
             if expect_next:
                 self.assertEqual(game.game_screen(self.screen, slot_num=1, save_state=state), "next_stage")
                 saved = save_manager.load_slot(1)
@@ -131,7 +133,7 @@ class Stage1EndingRegressions(unittest.TestCase):
                 self.assertIn(live["boss_id"], checkpoint["stage_progress"]["defeated_enemies"])
         saved, intros, results, warnings = self.run_frames(
             save_manager.new_game_state(), developer=True, check=defeat)
-        self.assertEqual((intros, results, warnings), (1, 1, 1))
+        self.assertEqual((intros, results, warnings), (1, 1, 0))
         boss = get_stage("island")["completion"]["required_boss"]
         self.assertIn(boss, saved["stage_progress"]["defeated_enemies"])
         def restored(frame, live):
@@ -190,10 +192,12 @@ class Stage1EndingRegressions(unittest.TestCase):
 
         # The validator is exercised with real code in test_tagama_tasks.
         # Here the editor supplies the solved outcome to exercise the game save path.
-        with patch.object(game, "CodeEditor") as editor:
+        with patch("src.screens.final_assessment.CodeEditor") as editor:
             editor.return_value.solved = True
+            editor.return_value.timed_out = False
+            editor.return_value.run.side_effect = lambda: editor.call_args.kwargs['on_assessment_pass']()
             # Dismiss the gate so we can reload the final-completion checkpoint.
-            saved, _, _, _ = self.run_frames(state, events=events, doorway=False)
+            saved, _, _, _ = self.run_frames(state, events=events, doorway=False, assessment_decision=True)
         self.assertEqual(saved["challenges_passed"].count("stage1_final_001"), 1)
         self.assertEqual(editor.call_count, 1)
         self.assertEqual(saved["completed_stages"], [])

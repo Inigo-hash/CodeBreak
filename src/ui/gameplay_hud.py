@@ -501,7 +501,7 @@ class GameplayHUD:
                 f"KEYS  {max(0, int(self.state.get('keys', 0)))}"
                 f"/{required_key_count(self.stage)}"
             )),
-            (topic_icon, f"TOPICS  {len(completed_topics)}/{total_topics}"),
+            (topic_icon, f"{'CHALLENGES' if self.stage.get('completion', {}).get('mastery_bundles') else 'TOPICS'}  {len(completed_topics)}/{total_topics}"),
         )
         for index, (icon, label) in enumerate(rows):
             y = (rect.top + 24 + self.bold.get_height()

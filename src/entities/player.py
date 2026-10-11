@@ -284,7 +284,7 @@ class MainCharacter():
         self.center_x = player_rect.centerx
         self.center_y = player_rect.centery
 
-    def draw_frames(self, ZOOM, camera_x, camera_y, dt=1 / 60):
+    def draw_frames(self, ZOOM, camera_x, camera_y, dt=1 / 60, sprite_scale=1):
         if self.combat_state == "attacking":
             self.frame_elapsed += dt
             while self.frame_elapsed >= ATTACK_FRAME_DURATION:
@@ -312,10 +312,10 @@ class MainCharacter():
                 self.current = (self.current + 1) % len(self.current_frames)
 
         frame = self.current_frames[self.current]
-        if ZOOM != 2:
-            key = (id(frame), ZOOM)
+        if ZOOM * sprite_scale != 2:
+            key = (id(frame), ZOOM, sprite_scale)
             if key not in self._zoom_frames:
-                factor = ZOOM / 2
+                factor = ZOOM * sprite_scale / 2
                 self._zoom_frames[key] = pygame.transform.scale(
                     frame, (max(1, round(frame.get_width() * factor)),
                             max(1, round(frame.get_height() * factor))))

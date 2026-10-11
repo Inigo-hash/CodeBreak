@@ -20,9 +20,9 @@ def open_boss_intro(screen, boss_id, background=None):
     return _boss_modal(
         screen,
         title="BOSS ENCOUNTER",
-        subtitle="THE CORRUPTED CORE",
+        subtitle="AKTAN'S THRONE" if boss_id == "zombie_aktan" else "THE CORRUPTED CORE",
         lines=(
-            f"{boss['name']} blocks the path to the castle exit.",
+            f"{boss['name']} guards the stage's final path.",
             "E attacks. Q dodges. Watch the boss health bar.",
             "You may retreat now and return after more practice.",
         ),
@@ -39,15 +39,15 @@ def open_boss_result(screen, victory, background=None):
     if victory:
         return _boss_modal(
             screen,
-            title="CORE WARDEN DEFEATED",
+            title="BOSS DEFEATED",
             subtitle="BOSS VICTORY",
             lines=(
                 "The boss requirement is complete and has been saved.",
-                "The castle exit still checks your 10 keys and all lessons.",
-                "Continue exploring or head toward the castle exit.",
+                "The stage exit still checks all required keys and lessons.",
+                "Continue exploring or head toward the stage exit.",
             ),
             primary=("CONTINUE TO EXIT", "continue"),
-            secondary=("RETURN TO ISLAND", "continue"),
+            secondary=("RETURN TO EXPLORING", "continue"),
             background=background,
         )
     return _boss_modal(
@@ -57,25 +57,25 @@ def open_boss_result(screen, victory, background=None):
         lines=(
             "Your stage progress is safe. The boss has reset.",
             "Press P while exploring if you want to enter combat practice.",
-            "Retry now, or retreat to the island and prepare first.",
+            "Retry now, or retreat and prepare first.",
         ),
         primary=("RETRY BOSS", "retry"),
-        secondary=("RETREAT TO ISLAND", "retreat"),
+        secondary=("RETREAT", "retreat"),
         background=background,
         danger=True,
     )
 
 
 def open_boss_retreat_warning(screen, background=None):
-    """Confirm leaving an unfinished Corrupted Core encounter."""
+    """Confirm leaving an unfinished boss encounter."""
     return _boss_modal(
         screen,
-        title="LEAVE THE CORRUPTED CORE?",
+        title="LEAVE THE BOSS ARENA?",
         subtitle="ACTIVE BOSS ENCOUNTER",
         lines=(
             "Crossing this boundary abandons the current fight.",
-            "The Kapre, its armor phases, and all reinforcements will reset.",
-            "Return to the battle now, or retreat to the island.",
+            "The boss and its reinforcements will reset.",
+            "Return to the battle now, or retreat and prepare.",
         ),
         primary=("RETURN TO BATTLE", "stay"),
         secondary=("RETREAT", "leave"),

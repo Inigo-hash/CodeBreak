@@ -873,9 +873,9 @@ def tutorial_screen(screen, play_music=True, show_loading=False,
                 )
 
         for training_enemy in training_enemies:
-            training_enemy.draw_frames(ZOOM, camera_x, camera_y)
+            training_enemy.draw_frames(ZOOM, camera_x, camera_y, sprite_scale=2)
 
-        main_character.draw_frames(ZOOM, camera_x, camera_y)
+        main_character.draw_frames(ZOOM, camera_x, camera_y, sprite_scale=2)
         damage_numbers.draw(screen, ZOOM, camera_x, camera_y)
 
         if state == "practice":

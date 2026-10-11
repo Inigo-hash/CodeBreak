@@ -1,4 +1,4 @@
-"""Persistent shuffle bag and attempt records for the Stage 1 final assessment."""
+"""Persistent shuffle bag and attempt records for stage final assessments."""
 import random
 import time
 from src.data.final_assessments import ASSESSMENT_IDS, get_final_assessment
@@ -14,11 +14,15 @@ def settle_interrupted(session, now=None):
     return True
 
 
-def peek_assessment(session, rng=None):
+def peek_assessment(session, rng=None, assessment_ids=None):
     rng = rng or random
-    bag = session.get('remaining', [])
+    pool = tuple(ASSESSMENT_IDS if assessment_ids is None else assessment_ids)
+    if not pool:
+        return None
+    bag = [key for key in session.get('remaining', []) if key in pool]
+    session['remaining'] = bag
     if not bag:
-        bag = list(ASSESSMENT_IDS)
+        bag = list(pool)
         rng.shuffle(bag)
         if bag[-1] == session.get('last'):
             bag[0], bag[-1] = bag[-1], bag[0]

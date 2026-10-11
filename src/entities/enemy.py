@@ -17,6 +17,9 @@ class Enemy:
     _flying_enemy_ids = frozenset(("manananggal",))
     # (movement folder, attack folder, flinch filename, visible height, canvas)
     _asset_config = {
+        "kapre_usikan": ("walking", "attack", "{direction}.png", 180, (250, 220)),
+        "white_lady": ("", "", "{direction}.png", 80, (120, 100)),
+        "zombie_aktan": ("walking", "attacking", "{direction}.png", 130, (180, 150)),
         "tiyanak_sinta": ("walking", "attacking", "{direction}.png", 40, (72, 50)),
         "manananggal": ("flying", "attacking", "manananggal_{direction}.png", 76, (110, 88)),
         "tikbalang": ("walking", "attacking", "{direction}.png", 88, (124, 98)),
@@ -29,6 +32,7 @@ class Enemy:
         ),
     }
     _asset_sources = {
+        "white_lady": "white_lady_attack",
         "corrupted_core_kapre": "kapre_usikan",
     }
 
@@ -63,6 +67,8 @@ class Enemy:
         self.action_timer = 0.0
         self.attack_cooldown = 0.0
         self.attack_connected = False
+        self.attack_animation = "attack"
+        self.attack_count = 0
         self.attack_range = self.stats.attack_range * self.combat_scale
         self.attack_width = max(
             30, max(ENEMY_BODY_SIZES[enemy_id]) + 12
@@ -84,6 +90,15 @@ class Enemy:
             self.zone = pygame.Rect(0, 0, *zone_size)
             self.zone.center = self.spawn
             self.zone.clamp_ip(pygame.Rect(0, 0, map_width, map_height))
+        # Patrol labels describe home territory, not an invisible combat wall.
+        # A pursuing enemy may cross the label edge within its home leash.
+        map_bounds = pygame.Rect(0, 0, map_width, map_height)
+        if math.isfinite(self.chase_range):
+            margin = min(max(map_width, map_height), max(0, round(self.chase_range)))
+            self.chase_bounds = self.zone.inflate(margin * 2, margin * 2).clip(map_bounds)
+        else:
+            # Training deliberately has no leash; infinity is not a pixel size.
+            self.chase_bounds = map_bounds
         self.return_buffer = 28
         self.stuck_time = 0.0
         self.detour_time = 0.0
@@ -110,6 +125,8 @@ class Enemy:
                 self.enemy_id, self.enemy_id
             )
             paths = {"walking": {}, "attack": {}, "flinch": {}}
+            if self.enemy_id in ("kapre_usikan", "corrupted_core_kapre"):
+                paths["ultimate"] = {}
             for direction in ("north", "south", "east", "west"):
                 paths["walking"][direction] = self._numbered_frames(
                     root / move_group / direction
@@ -117,6 +134,13 @@ class Enemy:
                 paths["attack"][direction] = self._numbered_frames(
                     root / attack_group / direction
                 )
+                if "ultimate" in paths:
+                    paths["ultimate"][direction] = self._numbered_frames(root / "ultimate" / direction)
+                if self.enemy_id == "white_lady":
+                    # Only attack sprites exist; reuse their first pose for locomotion/flinch.
+                    paths["walking"][direction] = paths["attack"][direction][:1]
+                    paths["flinch"][direction] = paths["attack"][direction][:1]
+                    continue
                 paths["flinch"][direction] = [
                     str(root / "flinch" / flinch_name.format(direction=direction))
                 ]
@@ -241,9 +265,7 @@ class Enemy:
         if self.state != "attack":
             self._face(direction)
         home_distance = math.dist(self.rect.center, self.spawn)
-        # Chase movement remains clamped to the authored patrol territory,
-        # while detection and attacks use visible distance instead of an
-        # invisible zone border.
+        # Visible melee range takes precedence over the home leash.
 
         if self.state == "defeated":
             self.defeat_timer -= dt
@@ -264,8 +286,7 @@ class Enemy:
             # Patrol-zone borders are invisible to the player. Once an enemy
             # is close enough to strike, crossing that bookkeeping boundary
             # must not cancel its attack.
-            if (home_distance > self.chase_range
-                    or distance > self.disengage_range):
+            if distance > max(self.disengage_range, self.attack_range):
                 self.state = "return"
                 self.action_timer = 0.0
                 return 0
@@ -286,8 +307,12 @@ class Enemy:
                 self.state = "chase"
             return damage
 
-        # RETURN is deliberately non-interruptible: an enemy must get home
-        # before it can detect the player again.
+        # Do not regenerate harmlessly beside a player who is still in melee.
+        if self.state == "return" and distance <= self.attack_range and not path_blocked:
+            self.state = "chase"
+            self.return_path.clear()
+
+        # Otherwise return home after the player disengages.
         if self.state == "return":
             self.chase_path.clear()
             self.chase_goal = None
@@ -320,14 +345,17 @@ class Enemy:
                            allow_detour=False)
             return 0
 
-        if self.state == "chase" and (home_distance > self.chase_range
-                or distance > self.disengage_range):
+        if (self.state == "chase" and distance > self.attack_range
+                and (home_distance > self.chase_range or distance > self.disengage_range)):
             self.state = "return"
             return 0
 
         if (distance <= self.attack_range and not path_blocked
                 and self.attack_cooldown == 0 and self.state == "chase"):
             self.state = "attack"
+            self.attack_count += 1
+            self.attack_animation = ("ultimate" if "ultimate" in self.frames
+                                     and self.attack_count % 2 == 0 else "attack")
             self.current = 0
             self.animation_timer = 0.0
             self.action_timer = self.stats.attack_duration
@@ -359,7 +387,7 @@ class Enemy:
                     not self.chase_path or target_moved):
                 self.chase_path = self._find_path_to(
                     player_rect.center, static_blockers,
-                    map_width, map_height, self.zone,
+                    map_width, map_height, self.chase_bounds,
                 )
                 self.chase_goal = player_rect.center
                 self.path_retry = 0.45
@@ -375,12 +403,12 @@ class Enemy:
                 move_direction,
                 self.stats.movement_speed * self.movement_speed_multiplier, dt,
                 collision_rects, map_width, map_height,
-                movement_bounds=self.zone,
+                movement_bounds=self.chase_bounds,
             )
             if became_stuck and self.path_retry == 0:
                 self.chase_path = self._find_path_to(
                     player_rect.center, static_blockers,
-                    map_width, map_height, self.zone,
+                    map_width, map_height, self.chase_bounds,
                 )
                 self.chase_goal = player_rect.center
                 self.path_retry = 0.75
@@ -411,7 +439,12 @@ class Enemy:
         frame_scale = max(0.0, dt) * 60.0
         dx, dy = direction[0] * speed * frame_scale, direction[1] * speed * frame_scale
         self.x, self.y = move_rect(self.rect, self.x, self.y, dx, dy, blockers, bounds)
-        if not self._body_on_allowed_ground(self.rect):
+        # Collision resolution can snap an overlapping body to a blocker's
+        # far edge (especially when a phase summons a crowd). Never accept
+        # that as movement, or leave the body embedded in another wall.
+        if (not self._body_on_allowed_ground(self.rect)
+                or self.rect.collidelist(blockers) != -1
+                or math.dist(before, self.rect.center) > math.hypot(dx, dy) + 2):
             self.rect.center = before
             self.x, self.y = before_x, before_y
 
@@ -555,6 +588,8 @@ class Enemy:
         self.x, self.y = float(self.rect.x), float(self.rect.y)
         self.center_x, self.center_y = self.rect.center
         self.attack_cooldown = 0
+        self.attack_count = 0
+        self.attack_animation = "attack"
         self.stuck_time = 0.0
         self.detour_time = 0.0
         self.return_path.clear()
@@ -572,10 +607,10 @@ class Enemy:
         elif dy:
             self.facing = "south" if dy > 0 else "north"
 
-    def draw_frames(self, ZOOM, camera_x, camera_y):
+    def draw_frames(self, ZOOM, camera_x, camera_y, sprite_scale=1):
         if not self.active:
             return
-        group = "attack" if self.state == "attack" else "flinch" if self.state in ("flinch", "defeated") else "walking"
+        group = self.attack_animation if self.state == "attack" else "flinch" if self.state in ("flinch", "defeated") else "walking"
         frames = self.frames[group][self.facing]
         if self.state == "attack":
             # Play the full authored sequence once over the attack duration.
@@ -591,10 +626,12 @@ class Enemy:
                 self.animation_timer = 0
                 self.current = (self.current + 1) % len(frames)
         frame = frames[self.current % len(frames)]
+        if sprite_scale != 1:
+            frame = pygame.transform.scale(frame, (round(frame.get_width() * sprite_scale), round(frame.get_height() * sprite_scale)))
         draw_x = self.rect.centerx * ZOOM - camera_x - frame.get_width() // 2
         # The normalized canvas keeps visible feet three pixels above its
         # bottom; attach that baseline to the collision rect's bottom.
-        draw_y = self.rect.bottom * ZOOM - camera_y - (frame.get_height() - 3)
+        draw_y = self.rect.bottom * ZOOM - camera_y - (frame.get_height() - 3 * sprite_scale)
         if self.state == "defeated":
             frame = frame.copy()
             frame.set_alpha(max(0, min(255, round(255 * self.defeat_timer / 0.55))))

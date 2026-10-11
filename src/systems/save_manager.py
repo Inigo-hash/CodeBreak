@@ -122,7 +122,8 @@ def migrate_save_state(state: dict) -> dict:
             migrated_passed
         )
 
-    return state
+    from src.systems.topic_mastery import reconcile_mastery
+    return reconcile_mastery(state, get_stage(state.get('stage')))
 
 def load_slot(slot: int):
     if not slot_exists(slot):

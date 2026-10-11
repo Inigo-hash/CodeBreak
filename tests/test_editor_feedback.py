@@ -2,6 +2,7 @@
 
 import os
 import unittest
+from unittest.mock import patch
 
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
@@ -26,6 +27,32 @@ class EditorFeedbackTests(unittest.TestCase):
             self.screen.copy(),
         )
         self.editor.running = True
+
+    def test_tutor_shortcut_opens_without_changing_code(self):
+        original = list(self.editor.text_buffer.lines)
+        pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_h, mod=pygame.KMOD_CTRL))
+        with patch('src.ui.code_editor.open_mang_tahimik') as tutor:
+            self.editor.handle_events()
+        tutor.assert_called_once()
+        self.assertEqual(self.editor.text_buffer.lines, original)
+
+    def test_tutor_button_click_opens_chat(self):
+        from src.screens.mang_tahimik import tutor_helper_rect
+        rect = tutor_helper_rect(self.screen, self.editor.renderer.panel_rect)
+        self.assertTrue(self.screen.get_rect().contains(rect))
+        pygame.event.post(pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=rect.center))
+        with patch('src.ui.code_editor.open_mang_tahimik') as tutor:
+            self.editor.handle_events()
+        tutor.assert_called_once()
+
+    def test_feedback_labels_fit_inside_buttons(self):
+        from src.ui.text_layout import fit_text
+        from src.ui.editor_theme import BUTTON_FONT, BUTTON_TEXT_COLOR
+        self.editor._show_submission_feedback(True, 'Complete', 'Done', 'Correct')
+        primary, secondary, _ = self.editor._feedback_layout()
+        for rect, label in ((primary, 'CONTINUE'), (secondary, 'REVIEW CODE')):
+            rendered = fit_text(BUTTON_FONT, label, BUTTON_TEXT_COLOR, (rect.w - 24, rect.h - 12))
+            self.assertTrue(rect.contains(rendered.get_rect(center=rect.center)))
 
     def test_correct_submission_shows_completion_message_and_continues(self):
         self.editor.text_buffer.lines = ['print("Hello, World!")']

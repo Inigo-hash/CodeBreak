@@ -630,6 +630,10 @@ final_message
 }
 
 
+from src.data.castle_lists import LISTS_CHALLENGES
+CHALLENGES.update(LISTS_CHALLENGES)
+
+
 def get_challenge(challenge_id):
     """
     Return a coding challenge by id.

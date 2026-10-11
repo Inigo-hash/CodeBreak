@@ -45,7 +45,7 @@ def select_stage(state, stage_id, developer_access=False):
     checkpoints[current_id] = {key: deepcopy(state.get(key)) for key in STAGE_SCOPED_KEYS}
     target = STAGES[stage_id]
     checkpoint = {
-        "keys": 0, "map_position": None, "stage_progress": {},
+        "keys": 0, "mastery_reward_claims": [], "map_position": None, "stage_progress": {},
         "room_id": None, "room_checkpoints": {}, "room_vitals": None,
         "map_layout_version": stage_world(target)["map_layout_version"],
     }

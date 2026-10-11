@@ -163,7 +163,8 @@ def evaluate_stage_gate(stage, keys, challenges_passed, defeated_enemies=()):
 
     return StageGateStatus(
         unlocked=(
-            current_keys >= required_keys
+            completion.get('content_ready', True)
+            and current_keys >= required_keys
             and not missing_ids
             and boss_defeated
             and final_challenge_completed

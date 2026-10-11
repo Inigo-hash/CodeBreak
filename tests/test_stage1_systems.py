@@ -67,14 +67,14 @@ class StageProgressCompletionTests(unittest.TestCase):
 
 
 class StageScaffoldAndDebugTests(unittest.TestCase):
-    def test_castle_is_enterable_but_has_no_lessons_authored_yet(self):
-        # The lobby map exists, so the Island's gate can hand over to it.
-        # Its lesson route does not, and nothing may pretend otherwise.
+    def test_castle_has_dining_milestone_but_is_not_finishable(self):
         castle = get_stage("castle")
         self.assertEqual(castle["id"], "castle")
         self.assertTrue(castle["playable"])
-        self.assertEqual(castle["manual"]["topics"], [])
-        self.assertEqual(stage_challenges(castle), [])
+        self.assertEqual(castle["manual"]["topics"], ['castle_lists_inspect_001', 'castle_lists_update_001'])
+        self.assertEqual(len(stage_challenges(castle)), 2)
+        self.assertFalse(castle['completion']['content_ready'])
+        self.assertNotIn('exit_rect', castle['completion'])
 
     def test_developer_hotkeys_are_guarded_by_debug_mode(self):
         for path in (

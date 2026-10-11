@@ -8,7 +8,7 @@ import pygame
 import sys
 from src.config import DEBUG_MODE, FPS_LOG
 from src.screens.settings import SettingsPanel
-from src.screens.mang_tahimik import open_mang_tahimik
+from src.screens.mang_tahimik import open_mang_tahimik, draw_tutor_helper, tutor_helper_rect
 from src.entities.player import MainCharacter
 from src.entities.enemy import Enemy
 from src.entities.chest import Chest
@@ -61,6 +61,8 @@ from src.data.enemies import get_enemy
 from src.screens.topic_lesson import open_topic_lesson
 from src.systems.enemy_spawns import resolve_encounter_spawns
 from src.systems.encounter_progress import newly_cleared_encounter_ids
+from src.systems.topic_mastery import reconcile_mastery, complete_topic_challenge
+from src.screens.topic_challenges import open_topic_challenges
 from src.systems.guards import assign_guards, remaining_guards
 from src.ui.theme import UI_COLORS, body_font, draw_button, draw_panel, title_font
 from src.ui.night_lighting import (
@@ -90,7 +92,7 @@ from src.screens.final_challenge_warning import (
     open_final_challenge_warning,
 )
 from src.data.rooms import ROOM_STAGES
-from src.systems.rooms import room_for, world_for_room, transition_room, PassageHold
+from src.systems.rooms import room_for, world_for_room, transition_room, PassageHold, stage_defeated_enemies, aggregate_stage_progress
 from src.systems.camera import camera_offset
 from src.screens.trap_alert import open_trap_alert
 
@@ -166,7 +168,7 @@ def load_interactables(tmx_data):
                 max(1, round(obj.width)), max(1, round(obj.height)),
             )
             entity = None
-            if action == "search_chest":
+            if action in ('search_chest', 'search_crate'):
                 entity = Chest(
                     rect,
                     reward_seconds=properties.get("reward_seconds", 0),
@@ -176,7 +178,8 @@ def load_interactables(tmx_data):
                 "rect": rect,
                 "actions": action or "",
                 "topic_id": properties.get("topic_id"),
-                "interaction_id": str(getattr(obj, "id", "")),
+                "interaction_id": str(properties.get('persistent_id') or getattr(obj, "id", "")),
+                "independent_search": bool(properties.get('independent_search')),
                 "entity": entity,
                 "interaction_message": properties.get("message", ""),
                 # Filled in by systems.guards once the stage's enemies are
@@ -190,7 +193,7 @@ def load_interactables(tmx_data):
     # lesson, but rewards remain locked until its challenge is passed.
     lessons = [item for item in interactables if item.get("topic_id")]
     for item in interactables:
-        if item.get("actions") in ("search_chest", "search_barrel") and not item.get("topic_id") and lessons:
+        if item.get("actions") in ("search_chest", "search_barrel") and not item.get("topic_id") and lessons and not item.get('independent_search'):
             nearest = min(lessons, key=lambda lesson: math.dist(item["rect"].center, lesson["rect"].center))
             item["topic_id"] = nearest["topic_id"]
     return interactables
@@ -229,6 +232,7 @@ def game_screen(screen, slot_num=None, save_state=None):
     # the stage record (see stages.py) rather than being named here.
     save_stage = (save_state or {}).get("stage", "Island")
     stage = get_stage(save_stage)
+    final_challenge_id = stage.get("completion", {}).get("required_final_challenge")
     room_id, room = room_for(stage["id"], save_state or {})
     world = world_for_room(stage["id"], stage_world(stage), save_state or {})
     stage_name = stage.get("name", "Island")
@@ -369,6 +373,7 @@ def game_screen(screen, slot_num=None, save_state=None):
         "topics_completed": [],
         "bonus_time": 0,
         "completed_stages": [],
+        "mastery_reward_claims": [],
     }
     assessment_sessions = deepcopy((save_state or {}).get("final_assessments", {}))
     save_challenges_passed = []
@@ -376,6 +381,7 @@ def game_screen(screen, slot_num=None, save_state=None):
     save_security = None
 
     if save_state:
+        gameplay_state['mastery_reward_claims'] = list(save_state.get('mastery_reward_claims') or [])
         gameplay_state["hearts"] = save_state.get("hearts", gameplay_state["hearts"])
         gameplay_state["keys"] = save_state.get("keys", gameplay_state["keys"])
         gameplay_state["topics_discovered"] = list(save_state.get("topics_discovered", []))
@@ -448,7 +454,7 @@ def game_screen(screen, slot_num=None, save_state=None):
     # has found so far, and is what decides whether the panel prints a
     # real entry or a "???" placeholder. `stage` itself is resolved at the
     # top of this function, because loading the map already needed it.
-    # Keys are earned by clearing enemy encounters, not completing topics.
+    # Key rewards follow each stage: Island encounters or Castle mastery bundles.
     stage_progress = StageProgress.from_dict(save_stage_progress)
     # Catches up on anything already satisfied by an older save (e.g. a
     # challenge passed before objectives existed).
@@ -483,6 +489,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             "topics_completed": gameplay_state["topics_completed"],
             "bonus_time": gameplay_state["bonus_time"],
             "challenges_passed": save_challenges_passed,
+            "mastery_reward_claims": gameplay_state['mastery_reward_claims'],
             "final_assessments": assessment_sessions,
             "completed_stages": gameplay_state["completed_stages"],
             "map_layout_version": MAP_LAYOUT_VERSION,
@@ -500,6 +507,25 @@ def game_screen(screen, slot_num=None, save_state=None):
         if save_security:
             state["_security"] = save_security
         return state
+
+    def accept_mastery_snapshot(candidate):
+        # Persist the entire transaction before publishing any reward in memory.
+        progress = StageProgress.from_dict(candidate['stage_progress'])
+        progress.sync_objectives(stage, candidate.get('challenges_passed', []), candidate.get('topics_completed', []))
+        candidate['stage_progress'] = progress.to_dict()
+        if slot_num is not None:
+            save_manager.save_slot(slot_num, candidate)
+        save_challenges_passed[:] = candidate.get('challenges_passed', [])
+        for key in ('keys', 'topics_completed', 'mastery_reward_claims'):
+            gameplay_state[key] = deepcopy(candidate.get(key, [] if key != 'keys' else 0))
+        stage_progress.sync_objectives(stage, save_challenges_passed, gameplay_state['topics_completed'])
+
+    def stage_victories():
+        return stage_defeated_enemies({
+            "room_id": room_id,
+            "stage_progress": {"defeated_enemies": stage_progress.defeated_enemies},
+            "room_checkpoints": (save_state or {}).get("room_checkpoints", {}),
+        })
 
     # Feedback message shown briefly after SAVE is pressed. Frame-based
     # (this loop doesn't track dt / delta-time), so this counts down once
@@ -587,7 +613,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             "topic_id"
         )
 
-        if topic_id in handled_topic_ids:
+        if topic_id in handled_topic_ids and not (get_topic(topic_id) or {}).get('challenge_ids'):
 
             item[
                 "topic_handled"
@@ -619,8 +645,8 @@ def game_screen(screen, slot_num=None, save_state=None):
                 save_manager.save_slot(slot_num, build_save_state())
 
         def mark_assessment_passed():
-            if "stage1_final_001" not in save_challenges_passed:
-                save_challenges_passed.append("stage1_final_001")
+            if final_challenge_id and final_challenge_id not in save_challenges_passed:
+                save_challenges_passed.append(final_challenge_id)
             stage_progress.sync_objectives(stage, save_challenges_passed)
 
         return open_final_assessment(
@@ -690,6 +716,22 @@ def game_screen(screen, slot_num=None, save_state=None):
         if lesson_result != "challenge":
 
             return "close"
+
+        if topic.get('challenge_ids'):
+            while True:
+                challenge_id = open_topic_challenges(screen, topic, save_challenges_passed)
+                if challenge_id is None:
+                    return 'solved' if topic_id in gameplay_state['topics_completed'] else 'editor_closed'
+                replay = challenge_id in save_challenges_passed
+                challenge = get_challenge(challenge_id)
+                editor = CodeEditor(screen, challenge, screen.copy(), mode='practice' if replay else 'challenge')
+                editor.run()
+                if editor.solved and not replay:
+                    candidate = complete_topic_challenge(build_save_state(), stage, topic_id, challenge_id)
+                    progress = StageProgress.from_dict(candidate['stage_progress'])
+                    progress.sync_objectives(stage, candidate['challenges_passed'], candidate['topics_completed'])
+                    candidate['stage_progress'] = progress.to_dict()
+                    accept_mastery_snapshot(candidate)
 
         # -----------------------------------------------------
         # Find challenge belonging to topic
@@ -1314,7 +1356,7 @@ def game_screen(screen, slot_num=None, save_state=None):
     ]
 
     def keep_enemy_on_dirt(enemy):
-        enemy.allowed_ground_cells = path_cells
+        enemy.allowed_ground_cells = path_cells if world['path_layer'] else None
         enemy.ground_tile_size = TILE_SIZE
         return enemy
 
@@ -1351,7 +1393,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                 "id": f"{stage.get('id', 'stage')}_boss",
                 "anchor": boss_anchor,
                 "zone_size": boss_zone["rect"].size,
-                "spawn_margin": TILE_SIZE * 4,
+                "spawn_margin": world.get("boss_spawn_margin", TILE_SIZE * 4),
                 "require_path": False,
                 "enemies": (boss_id,),
                 "detection_range": 260,
@@ -1365,13 +1407,14 @@ def game_screen(screen, slot_num=None, save_state=None):
 
     boss_enemy = None
     boss_defeated = bool(
-        boss_id and boss_id in stage_progress.defeated_enemies
+        boss_id and boss_id in stage_victories()
     )
     boss_victory_handled = boss_defeated
 
     final_challenge_revealed = (
-        boss_defeated
-        and "stage1_final_001" not in save_challenges_passed
+        bool(final_challenge_id)
+        and (not boss_id or boss_defeated)
+        and final_challenge_id not in save_challenges_passed
     )
     # Loading/spawning inside the broad authored Core label must not count as
     # walking through its door. Arm the encounter only after the player has
@@ -1412,6 +1455,8 @@ def game_screen(screen, slot_num=None, save_state=None):
         vitals = save_state["room_vitals"]
         player_combat.hp = max(1, min(player_combat.max_hp, int(vitals.get("hp", player_combat.hp))))
         player_combat.energy = max(0, min(player_combat.max_energy, float(vitals.get("energy", player_combat.energy))))
+    if stage.get('completion', {}).get('mastery_bundles'):
+        accept_mastery_snapshot(reconcile_mastery(build_save_state(), stage))
     combat_audio = CombatAudio()
     from src.ui.damage_numbers import DamageNumbers
     damage_numbers = DamageNumbers()
@@ -1586,7 +1631,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                 continue
 
             # ---------------------------------------------------------
-            # Reopen unfinished Stage 1 final challenge
+            # Reopen unfinished stage final challenge
             # ---------------------------------------------------------
 
             if (
@@ -1596,7 +1641,8 @@ def game_screen(screen, slot_num=None, save_state=None):
                 and final_challenge_reminder_rect is not None
                 and final_challenge_reminder_rect.collidepoint(event.pos)
                 and final_challenge_revealed
-                and "stage1_final_001" not in save_challenges_passed
+                and final_challenge_id
+                and final_challenge_id not in save_challenges_passed
             ):
 
                 run_final_assessment()
@@ -1733,7 +1779,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                     open_stage_info(
                         screen,
                         stage,
-                        stage_progress,
+                        aggregate_stage_progress(build_save_state(), stage),
                         background=background_snapshot,
                         tab=requested_action
                     )
@@ -1775,10 +1821,9 @@ def game_screen(screen, slot_num=None, save_state=None):
                 if (event.key == pygame.K_e and not paused and not engaged
                         and at_stage_exit):
 
-                    final_challenge_id = "stage1_final_001"
 
                     final_challenge_pending = (
-                        stage.get("id") == "island"
+                        bool(final_challenge_id)
                         and final_challenge_revealed
                         and final_challenge_id not in save_challenges_passed
                     )
@@ -1793,7 +1838,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                         stage,
                         gameplay_state["keys"],
                         save_challenges_passed,
-                        stage_progress.defeated_enemies,
+                        stage_victories(),
                     )
 
                     # Where this stage leads, if anywhere: a stage that
@@ -1951,7 +1996,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                 elif DEBUG_MODE and event.key == pygame.K_F6 and developer_mode.enabled and not paused and not engaged:
 
                     final_challenge = get_challenge(
-                        "stage1_final_001"
+                        final_challenge_id
                     )
 
                     if final_challenge is not None:
@@ -1976,6 +2021,10 @@ def game_screen(screen, slot_num=None, save_state=None):
             # and the right button raise this event as well, which had
             # the pause menu firing on a scroll.
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if not paused and not engaged and player_combat.hp > 0 and tutor_helper_rect(screen).collidepoint(event.pos):
+                    open_mang_tahimik(screen, {"stage": stage["id"], "room": room_id})
+                    clock.tick()
+                    continue
                 if paused and not show_pause_settings:
                     for btn in pause_buttons:
                         if btn["rect"].collidepoint(event.pos):
@@ -2180,7 +2229,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             if entrance_approached:
                 open_stage_gate(
                     screen, boss_access, background=screen.copy(),
-                    gate_name="Corrupted Core", show_boss_requirement=False,
+                    gate_name=boss_zone["name"], show_boss_requirement=False,
                 )
         boss_is_active = (
             boss_enemy is not None
@@ -2429,7 +2478,8 @@ def game_screen(screen, slot_num=None, save_state=None):
             # -----------------------------------------------------
             # One key is awarded for clearing the entire encounter,
             # not for each individual enemy defeated.
-            gameplay_state["keys"] += 1
+            gameplay_state["keys"] += stage.get('completion', {}).get('encounter_key_reward', 1)
+            stage_progress.sync_objectives(stage, save_challenges_passed, gameplay_state['topics_completed'])
             
             if slot_num is not None:
                 save_manager.save_slot(
@@ -2458,18 +2508,16 @@ def game_screen(screen, slot_num=None, save_state=None):
             )
 
             # ---------------------------------------------------------
-            # Stage 1 Final Coding Challenge
+            # Stage Final Coding Challenge
             # ---------------------------------------------------------
 
-            final_challenge_id = "stage1_final_001"
 
             # Do not reopen the challenge if it was already completed
             # in an earlier session.
-            if final_challenge_id not in save_challenges_passed:
+            if final_challenge_id and final_challenge_id not in save_challenges_passed:
 
                 final_challenge_revealed = True
-                if stage.get("id") == "island":
-                    run_final_assessment()
+                run_final_assessment()
 
         if player_combat.hp == 0 and death_animation_complete:
             gameplay_state["hearts"] = max(0, gameplay_state["hearts"] - 1)
@@ -2601,6 +2649,7 @@ def game_screen(screen, slot_num=None, save_state=None):
 
                     topic_id = near_interactable.get('topic_id')
                     action = near_interactable.get('actions', '')
+                    was_opened = stage_progress.has_opened_interactable(near_interactable['interaction_id'])
 
                     topic = get_topic(topic_id) if topic_id else None
                     challenge_id = (topic or {}).get("challenge_id")
@@ -2609,7 +2658,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                         or challenge_id in save_challenges_passed
                     )
 
-                    if action == "search_chest" and coding_unlocked:
+                    if action in ('search_chest', 'search_crate') and coding_unlocked:
                         entity = near_interactable.get("entity")
                         interaction_id = near_interactable.get("interaction_id")
                         if (entity is not None
@@ -2625,14 +2674,14 @@ def game_screen(screen, slot_num=None, save_state=None):
                             near_interactable["interaction_message"] = (
                                 "This chest has already been opened."
                             )
-                    elif action == "search_chest":
+                    elif action in ('search_chest', 'search_crate'):
                         near_interactable["interaction_message"] = (
                             "Solve this cache's coding challenge to unlock it."
                         )
 
                     if (
                         topic_id
-                        and not near_interactable['topic_handled']
+                        and (not near_interactable['topic_handled'] or (topic or {}).get('challenge_ids'))
                     ):
 
                         if topic_id not in gameplay_state["topics_discovered"]:
@@ -2743,12 +2792,18 @@ def game_screen(screen, slot_num=None, save_state=None):
                     # object, so it fills in its entry in the Items tab.
                     # The action string ("search_vase") is the join between
                     # the Tiled object and items.py.
+                    searched = action.startswith('search_')
+                    newly_opened = searched and stage_progress.open_interactable(near_interactable['interaction_id'])
+                    if searched and near_interactable.get('interaction_message') == '':
+                        near_interactable['interaction_message'] = 'You searched the table. Lists keep supplies in order.'
                     if stage_progress.discover_by_action(
                         near_interactable.get('actions', '')
                     ):
                         stage_progress.sync_objectives(
                             stage, save_challenges_passed
                         )
+                    if searched and not was_opened and stage_progress.has_opened_interactable(near_interactable['interaction_id']) and slot_num is not None:
+                        save_manager.save_slot(slot_num, build_save_state())
             else:
                 near_interactable['inspect_progress'] = max(
                     0, near_interactable['inspect_progress'] - dt / INSPECT_TIME
@@ -2847,7 +2902,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             if gate_screen_rect.colliderect(screen.get_rect()):
                 gate_status = evaluate_stage_gate(
                     stage, gameplay_state["keys"], save_challenges_passed,
-                    stage_progress.defeated_enemies,
+                    stage_victories(),
                 )
                 gate_color = (
                     (90, 225, 145) if gate_status.unlocked or developer_mode.enabled
@@ -3007,7 +3062,7 @@ def game_screen(screen, slot_num=None, save_state=None):
         elif near_stage_exit:
             gate_status = evaluate_stage_gate(
                 stage, gameplay_state["keys"], save_challenges_passed,
-                stage_progress.defeated_enemies,
+                stage_victories(),
             )
             interaction_prompt = (
                 "Enter Next Stage" if developer_mode.enabled else
@@ -3031,9 +3086,6 @@ def game_screen(screen, slot_num=None, save_state=None):
             else:
                 interaction_prompt = "Interact"
 
-        if not interaction_prompt and player_inventory.weapon_equipped and not engaged:
-            interaction_prompt = "[H] Ask Mang Tahimik about Python"
-
         if not interaction_prompt and not player_inventory.weapon_equipped:
             interaction_prompt = "[B] Move sword from bag to hotbar, then select its slot"
 
@@ -3049,6 +3101,9 @@ def game_screen(screen, slot_num=None, save_state=None):
             hp_healing=warmed_by_torch and player_combat.hp < player_combat.max_hp,
             bonus_time=gameplay_state["bonus_time"],
         )
+
+        if not engaged and player_combat.hp > 0:
+            draw_tutor_helper(screen, tutor_helper_rect(screen))
 
         damage_numbers.draw(screen, ZOOM, camera_x, camera_y)
         if boss_phase_effect_timer > 0:
@@ -3173,13 +3228,12 @@ def game_screen(screen, slot_num=None, save_state=None):
         draw_minimap(screen, player_rect, minimap_heading, night_mode)
 
         # ---------------------------------------------------------
-        # Final Stage 1 challenge reminder
+        # Final stage challenge reminder
         # ---------------------------------------------------------
 
-        final_challenge_id = "stage1_final_001"
 
         show_final_challenge_reminder = (
-            stage.get("id") == "island"
+            bool(final_challenge_id)
             and final_challenge_revealed
             and final_challenge_id not in save_challenges_passed
         )

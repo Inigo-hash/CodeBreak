@@ -24,6 +24,8 @@ from src.ui.text_buffer import TextBuffer
 from src.ui.editor_renderer import EditorRenderer
 from src.ui.editor_settings import EditorSettingsPanel
 from src.ui.editor_widgets import wrap_text
+from src.ui.text_layout import fit_text
+from src.screens.mang_tahimik import draw_tutor_helper, tutor_helper_rect, open_mang_tahimik
 from src.ui.editor_theme import (
     BACKGROUND_COLOR,
     BORDER_COLOR,
@@ -79,6 +81,8 @@ class CodeEditor:
         self.text_buffer = TextBuffer()
         self.screen = screen
         self.challenge = challenge
+        if challenge.get('starter_code'):
+            self.text_buffer.lines = challenge['starter_code'].split('\n')
         self.mode = mode
 
         # Timed modes freeze on success. Assessments use an absolute
@@ -244,6 +248,8 @@ class CodeEditor:
             self.renderer.last_input_time = self.last_input_time
 
             self.renderer.draw()
+            if not self.is_assessment_mode and not self.is_trap_mode:
+                draw_tutor_helper(self.screen, tutor_helper_rect(self.screen, self.renderer.panel_rect), 'Ctrl+H')
 
             # Trap timer: only ticks while unsolved, so the countdown
             # freezes the instant a correct submission comes in rather
@@ -494,6 +500,15 @@ class CodeEditor:
             if self.settings_panel.is_open:
 
                 self.settings_panel.handle_event(event)
+                continue
+
+            if not self.is_assessment_mode and not self.is_trap_mode and (
+                (event.type == pygame.KEYDOWN and event.key == pygame.K_h and getattr(event, 'mod', 0) & pygame.KMOD_CTRL)
+                or (event.type == pygame.MOUSEBUTTONDOWN and event.button == 1
+                    and tutor_helper_rect(self.screen, self.renderer.panel_rect).collidepoint(event.pos))
+            ):
+                open_mang_tahimik(self.screen, {'topic': self.challenge.get('title', '')})
+                pygame.key.start_text_input()
                 continue
 
             if (
@@ -1432,8 +1447,9 @@ class CodeEditor:
             self.screen.blit(rendered, rendered.get_rect(center=(panel.centerx, y)))
             y += TEXT_FONT.get_height() + 5
 
-        detail_box = pygame.Rect(panel.left + 46, panel.top + 226,
-                                 panel.width - 92, 92)
+        function_feedback = self.challenge.get('type') == 'function'
+        detail_box = pygame.Rect(panel.left + 46, panel.top + (204 if function_feedback else 226),
+                                 panel.width - 92, 138 if function_feedback else 92)
         pygame.draw.rect(self.screen, PANEL_COLOR, detail_box, border_radius=7)
         pygame.draw.rect(self.screen, BORDER_COLOR, detail_box, 1, border_radius=7)
         label = SMALL_FONT.render(
@@ -1442,7 +1458,7 @@ class CodeEditor:
         self.screen.blit(label, (detail_box.left + 14, detail_box.top + 10))
         detail_y = detail_box.top + 38
         for line in wrap_text(feedback["detail"], SMALL_FONT,
-                              detail_box.width - 28)[:2]:
+                              detail_box.width - 28)[:(4 if function_feedback else 2)]:
             self.screen.blit(SMALL_FONT.render(line, True, TEXT_COLOR),
                              (detail_box.left + 14, detail_y))
             detail_y += SMALL_FONT.get_height() + 3
@@ -1562,11 +1578,7 @@ class CodeEditor:
                 else "BACK TO CODE"
             )
 
-            rendered = BUTTON_FONT.render(
-                primary_label,
-                True,
-                BUTTON_TEXT_COLOR,
-            )
+            rendered = fit_text(BUTTON_FONT, primary_label, BUTTON_TEXT_COLOR, (primary.w - 24, primary.h - 12))
 
             self.screen.blit(
                 rendered,
@@ -1598,11 +1610,7 @@ class CodeEditor:
                     border_radius=6,
                 )
 
-                rendered = BUTTON_FONT.render(
-                    "REVIEW CODE",
-                    True,
-                    BUTTON_TEXT_COLOR,
-                )
+                rendered = fit_text(BUTTON_FONT, "REVIEW CODE", BUTTON_TEXT_COLOR, (secondary.w - 24, secondary.h - 12))
 
                 self.screen.blit(
                     rendered,

@@ -173,6 +173,19 @@ class BossTriggerTests(unittest.TestCase):
                     enemy.draw_frames(1, 0, 0)
                     self.assertEqual(enemy.current, index)
 
+    def test_phase_crowding_cannot_snap_boss_into_restricted_ground(self):
+        enemy = Enemy(self.screen, 1000, 800, 500, 400, enemy_id=self.boss_id)
+        before = enemy.rect.copy()
+        # A reinforcement overlaps the boss near an arena wall. Resolving
+        # the overlap used to push the boss across the entire blocker.
+        crowd = before.inflate(160, 20)
+        wall = pygame.Rect(crowd.right, before.top - 100, 40, 200)
+        enemy._move((1, 0), 3, 1 / 60, [crowd, wall], 1000, 800,
+                    movement_bounds=pygame.Rect(0, 0, 1000, 800))
+        self.assertEqual(enemy.rect, before)
+        self.assertEqual((enemy.x, enemy.y), tuple(map(float, before.topleft)))
+        self.assertFalse(enemy.rect.colliderect(wall))
+
     def test_boss_defeat_persists_and_completes_its_objective(self):
         progress = StageProgress()
         self.assertTrue(progress.defeat_enemy(self.boss_id))

@@ -130,7 +130,7 @@ class StageProgress:
     def is_objective_done(self, objective_id):
         return objective_id in self.objectives_done
 
-    def sync_objectives(self, stage, challenges_passed=()):
+    def sync_objectives(self, stage, challenges_passed=(), topics_completed=()):
         """
         Complete any objective whose condition is already satisfied, and
         return the list of objective ids newly completed by this call.
@@ -159,6 +159,10 @@ class StageProgress:
                 satisfied = target in self.defeated_enemies
             elif kind == "explore":
                 satisfied = self.knows_zone(target)
+            elif kind == 'topic':
+                satisfied = target in topics_completed
+            elif kind == 'encounter':
+                satisfied = target in self.cleared_encounters
             else:
                 satisfied = False
 

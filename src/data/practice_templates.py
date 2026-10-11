@@ -18,6 +18,7 @@ import random
 # =========================================================
 
 PRACTICE_TEMPLATE_IDS = {
+    'castle_lists': ['lists_inspect_practice', 'lists_update_practice'],
     "python_syntax_basics": [
         "python_syntax_a",
         "python_syntax_b",
@@ -142,6 +143,9 @@ def generate_practice_challenge(template_id):
     Returns None when the template ID does not exist.
     """
 
+    if template_id in ('lists_inspect_practice', 'lists_update_practice'):
+        from src.data.castle_lists import LIST_CHALLENGE_IDS, lists_practice
+        return lists_practice(LIST_CHALLENGE_IDS[0 if template_id == 'lists_inspect_practice' else 1])
     builder = _TEMPLATE_BUILDERS.get(template_id)
 
     if builder is None:

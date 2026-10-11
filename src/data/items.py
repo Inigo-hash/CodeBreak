@@ -24,6 +24,9 @@ itself in the panel.
 """
 
 ITEMS = {
+    'table': {'id': 'table', 'name': 'Dining Table', 'kind': 'interactable',
+              'action': 'search_table', 'description': 'A table of Castle supplies, recorded in order.',
+              'hint': 'Hold E to search. The Lists terminal is southwest.'},
 
     # -- Interactables ------------------------------------------------------
     # These are all searchable containers. game.py currently reports every

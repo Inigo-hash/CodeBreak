@@ -121,6 +121,20 @@ ENEMIES = {
 }
 
 
+for _id, _name, _portrait, _description in (
+    ('kapre_usikan', 'Kapre Usikan', 'kapre_usikan/walking/south/frame_0.png',
+     'A heavy Castle guard. Alternates a normal punch with its ultimate attack animation.'),
+    ('white_lady', 'White Lady', 'white_lady_attack/south/frame_0.png',
+     'A restless spirit guarding the Castle aisles.'),
+    ('zombie_aktan', 'Zombie Aktan', 'zombie_aktan/walking/south/frame_0.png',
+     'The final Castle boss, waiting in the Throne Room. Requires all five Castle keys.'),
+):
+    ENEMIES[_id] = {'id': _id, 'name': _name, 'family': _name, 'threat': 'High',
+                    'portrait': 'assets/images/frames/' + _portrait,
+                    'description': _description, 'behavior': 'Closes in and commits to a directed strike.',
+                    'weakness': 'Dodge the committed attack, then strike during recovery.', 'drops': ['Bonus time']}
+
+
 def get_enemy(enemy_id):
     """
     Look up one bestiary entry, or None when the id is unknown.

@@ -464,17 +464,20 @@ def _draw_mang_tahimik_tip(surf: pygame.Surface, t: float) -> None:
                        ground_y - shadow.get_height() // 2 + 4))
     surf.blit(frame, character_rect)
 
-    # Preserve the existing tip-box footprint, anchored just left of Mang.
+    # Size the prompt around the rendered text so font scaling keeps its spacing.
     character_left_edge = character_rect.left
     tip_gap = 20
-    tip_lines = ["Ask me about Python...", "Click me or press H to talk."]
-    minimum_tip_width = max(_tip_font.size(line)[0] for line in tip_lines) + 24
+    heading = _tip_font.render("MANG TAHIMIK'S WISDOM", True, UI_COLORS["gold"])
+    tip_lines = ["Ask me about Python", "Click or press H to chat"]
+    text_surfaces = [_tip_font.render(line, True, UI_COLORS["parchment"] if i == 0 else UI_COLORS["text_dim"])
+                     for i, line in enumerate(tip_lines)]
+    minimum_tip_width = max(heading.get_width(), *(text.get_width() for text in text_surfaces)) + 40
     # The fixed menu column ends at 60% of the screen width. On smaller
     # windows, narrow the tip rather than allowing it beneath a button.
     menu_right = round(SCREEN_WIDTH * 0.60)
     available_width = character_left_edge - tip_gap - (menu_right + 18)
     tip_w = max(minimum_tip_width, min(300, available_width))
-    tip_h = 88
+    tip_h = 18 + heading.get_height() + 24 + sum(text.get_height() for text in text_surfaces) + 10 + 18
     tip_r = pygame.Rect(character_left_edge - tip_gap - tip_w,
                         ground_y - tip_h + 18, tip_w, tip_h)
 
@@ -497,18 +500,15 @@ def _draw_mang_tahimik_tip(surf: pygame.Surface, t: float) -> None:
     pygame.draw.circle(surf, UI_COLORS["blue_bright"],
                        (gem_x, tip_r.top + 4), 3)
 
-    heading = _tip_font.render(
-        "MANG TAHIMIK'S WISDOM", True, UI_COLORS["gold"]
-    )
-    surf.blit(heading, (tip_r.left + 14, tip_r.top + 10))
-    divider_y = tip_r.top + 34
+    surf.blit(heading, (tip_r.left + 20, tip_r.top + 18))
+    divider_y = tip_r.top + 18 + heading.get_height() + 10
     pygame.draw.line(surf, UI_COLORS["bronze_dark"],
                      (tip_r.left + 12, divider_y),
                      (tip_r.right - 12, divider_y), 1)
-    for i, line in enumerate(tip_lines):
-        color = UI_COLORS["parchment"] if i == 0 else UI_COLORS["text_dim"]
-        surf.blit(_tip_font.render(line, True, color),
-                  (tip_r.left + 14, tip_r.top + 42 + i * 20))
+    text_y = divider_y + 14
+    for text in text_surfaces:
+        surf.blit(text, (tip_r.left + 20, text_y))
+        text_y += text.get_height() + 10
 
 
 _menu_logo_cache = None

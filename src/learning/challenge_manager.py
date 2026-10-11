@@ -1,5 +1,6 @@
 #challenge_manager.py
 import ast
+from src.learning.sandbox import run_function_tests
 from src.learning.validators.integrated_final_validator import IntegratedFinalValidator
 
 from src.learning.validators.variable_validator import VariableValidator
@@ -87,6 +88,10 @@ class ChallengeManager:
         variables=None,
         output=None,
     ):
+
+        if challenge.get('type') == 'function':
+            return run_function_tests(code, challenge['function_name'], challenge['function_cases'],
+                                      challenge.get('timeout', 3.0), challenge.get('preserve_args', False))
 
         try:
             tree = ast.parse(code)

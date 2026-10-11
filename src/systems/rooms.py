@@ -18,7 +18,7 @@ def room_for(stage_id, state):
 
 def world_for_room(stage_id, world, state):
     room_id, room = room_for(stage_id, state)
-    result = dict(world)
+    result = deepcopy(world)
     if room:
         result.update(map=room['map'], room_spawn=room['spawn'],
                       zoom=ROOM_STAGES[stage_id]['zoom'],
@@ -27,7 +27,36 @@ def world_for_room(stage_id, world, state):
             result.update(zones=[{'name': room['name'], 'rect': (0, 0, 1, 1)}],
                           encounters=(), path_layer=None, path_gids=frozenset(),
                           map_layout_version=1, legacy_shift_tiles=(0, 0))
+        # Explicit room content overrides the safe defaults. Never inherit
+        # another map's encounters or mutate the shared authored data.
+        result.update(deepcopy(room.get('world', {})))
     return result
+
+
+def stage_defeated_enemies(state):
+    """Stage gates include victories saved in other rooms of this stage."""
+    defeated = set((state.get('stage_progress') or {}).get('defeated_enemies') or ())
+    for room_id, checkpoint in (state.get('room_checkpoints') or {}).items():
+        # The active room's live state supersedes its older checkpoint.
+        if room_id != state.get('room_id'):
+            defeated.update((checkpoint.get('stage_progress') or {}).get('defeated_enemies') or ())
+    return defeated
+
+
+def aggregate_stage_progress(state, stage):
+    """Presentation combines rooms; live room state replaces its checkpoint."""
+    from src.systems.stage_progress import StageProgress
+    combined = {}
+    records = [state.get('stage_progress') or {}] + [
+        checkpoint.get('stage_progress') or {}
+        for room_id, checkpoint in (state.get('room_checkpoints') or {}).items()
+        if room_id != state.get('room_id')]
+    for record in records:
+        for field, values in record.items():
+            combined.setdefault(field, set()).update(values or [])
+    progress = StageProgress.from_dict(combined)
+    progress.sync_objectives(stage, state.get('challenges_passed', []), state.get('topics_completed', []))
+    return progress
 
 
 def transition_room(state, stage_id, route_id, tile_size=16):

@@ -72,10 +72,13 @@ class EnemyStats:
 
 
 ENEMY_STATS = {
+    "kapre_usikan": EnemyStats(140, 13, .85, 140, 150, 110, 180, 240, 110, 5, 1.8, 1.0, 18),
+    "white_lady": EnemyStats(75, 9, 1.05, 100, 130, 95, 180, 240, 110, 4, 1.4, .7, 12),
+    "zombie_aktan": EnemyStats(900, 18, 1.0, 96, 200, 140, 240, 400, 180, 5, 1.5, .8, 45),
     # Attack ranges share the fixed, 1x character-art scale. Enemy instances
     # convert only that value into campaign world units; detection/chase
     # distances remain authored against the map itself.
-    "duwende_mandurug": EnemyStats(60, 8, 1.15, 80, 144, 96, 220, 280, 120, 4, 1.15, 0.52, 10),
+    "duwende_mandurug": EnemyStats(60, 8, 1.15, 100, 144, 96, 220, 280, 120, 4, 1.15, 0.52, 10),
     "tiyanak_sinta": EnemyStats(40, 5, 1.00, 80, 145, 88, 220, 280, 110, 4, 1.45, 0.58, 6),
     "manananggal": EnemyStats(60, 8, 1.10, 92, 175, 100, 255, 320, 130, 4, 1.35, 0.62, 10),
     "tikbalang": EnemyStats(80, 10, 0.95, 104, 155, 100, 240, 300, 125, 5, 1.45, 0.68, 16),
@@ -87,6 +90,9 @@ ENEMY_STATS = {
 # Feet-level combat bodies, deliberately smaller than the rendered artwork.
 # These drive movement collision and sword hurtbox overlap, not sprite bounds.
 ENEMY_BODY_SIZES = {
+    "kapre_usikan": (32, 34),
+    "white_lady": (24, 24),
+    "zombie_aktan": (30, 30),
     "duwende_mandurug": (26, 26),
     "tiyanak_sinta": (20, 18),
     "manananggal": (28, 28),

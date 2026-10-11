@@ -9,6 +9,17 @@ from src.learning.sandbox import run_user_code
 
 
 VALID_SOLUTIONS = {
+    'castle_lists_inspect_001': (
+        'def describe_items(items):\n'
+        '    return (items[0], items[-1], len(items)) if items else (None, None, 0)'
+    ),
+    'castle_lists_update_001': (
+        'def update_items(items, added, removed):\n'
+        '    result = list(items)\n    result.append(added)\n'
+        '    if removed in result:\n        result.remove(removed)\n'
+        '    popped = result.pop() if result else None\n'
+        '    return (result, popped)'
+    ),
     "stage1_final_001": (
         'name = input("Enter explorer name: ")\n'
         'score_text = input("Enter score: ")\n'
@@ -79,10 +90,11 @@ class LearningChallengeTests(unittest.TestCase):
         self.assertTrue(passed, feedback)
 
     def test_every_challenge_has_a_runnable_valid_solution(self):
-        self.assertEqual(set(CHALLENGES), set(VALID_SOLUTIONS))
+        graded = {cid: challenge for cid, challenge in CHALLENGES.items() if challenge.get('type')}
+        self.assertEqual(set(graded), set(VALID_SOLUTIONS))
         manager = ChallengeManager()
 
-        for challenge_id, challenge in CHALLENGES.items():
+        for challenge_id, challenge in graded.items():
             with self.subTest(challenge=challenge_id):
                 code = VALID_SOLUTIONS[challenge_id]
                 execution = run_user_code(

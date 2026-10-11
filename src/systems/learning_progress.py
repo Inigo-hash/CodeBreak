@@ -1,5 +1,6 @@
 """Read-only Stage 1 progress shared by the HUD and save-slot percentage."""
-from src.data.topics import TOPICS
+from src.data.topics import TOPICS, topic_challenge_ids
+from src.data.challenges import CHALLENGES
 from src.systems.stage_gate import evaluate_stage_gate, required_topic_ids
 
 
@@ -9,14 +10,14 @@ def progress_snapshot(stage, state):
     completed = set(state.get('topics_completed', ()))
     gate = evaluate_stage_gate(stage, state.get('keys', 0), passed,
                                state.get('stage_progress', {}).get('defeated_enemies', ()))
-    by_challenge = {topic['challenge_id']: (key, topic) for key, topic in TOPICS.items()}
+    by_challenge = {cid: (key, topic) for key, topic in TOPICS.items() for cid in topic_challenge_ids(topic)}
     rows = []
     for challenge_id in required_topic_ids(stage):
         topic_id, topic = by_challenge.get(challenge_id, (challenge_id, {}))
         missing = [key for key in topic.get('requirements', ()) if key not in completed]
         done = challenge_id in passed
         rows.append({
-            'id': topic_id, 'title': topic.get('title', challenge_id),
+            'id': topic_id, 'title': CHALLENGES[challenge_id]['title'] if topic.get('challenge_ids') else topic.get('title', challenge_id),
             'status': 'Completed' if done else 'Locked' if missing else 'Available',
             'discovered': done or topic_id in discovered,
             'missing': [TOPICS.get(key, {}).get('title', key) for key in missing],
@@ -27,6 +28,8 @@ def progress_snapshot(stage, state):
     done = gate.completed_topics + (bool(gate.required_boss_id) and gate.boss_defeated) + (
         bool(gate.required_final_challenge_id) and gate.final_challenge_completed)
     percent = round(100 * done / units) if units else 0
+    if stage.get('completion', {}).get('mastery_bundles') and not stage.get('completion', {}).get('content_ready', True):
+        percent = round(100 * gate.keys / max(1, gate.required_keys))
     # All learning milestones can be finished before the remaining keys are earned.
     if not gate.unlocked:
         percent = min(99, percent)
@@ -38,6 +41,8 @@ def progress_snapshot(stage, state):
         guidance = f"{verb} {next_row['title']}."
     elif gate.missing_topic_ids:
         guidance = 'Complete the prerequisites shown in Topic Guidance.'
+    elif not stage.get('completion', {}).get('content_ready', True):
+        guidance = 'Dining Lists milestone complete. Key 1 earned; remaining Castle content is coming later.'
     elif gate.keys < gate.required_keys:
         guidance = 'Clear the remaining enemy areas to collect the required keys.'
     elif not gate.boss_defeated:

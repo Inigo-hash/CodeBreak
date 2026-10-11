@@ -325,7 +325,7 @@ def draw_night_and_torch(surface, player_center, facing, elapsed_seconds):
 
 
 def draw_night_and_map_torches(surface, torch_positions, elapsed_seconds,
-                               radius=None):
+                               radius=None, *, extra_lights=()):
     """Darken the world and reveal it around fixed screen-space torches."""
 
     if radius is None:
@@ -340,7 +340,9 @@ def draw_night_and_map_torches(surface, torch_positions, elapsed_seconds,
     # the veil goes down, so each one still sees the same pristine bright
     # world the single copy used to hold.
     patches = []
-    for torch_index, flame_position in enumerate(torch_positions):
+    # Mobile lights reveal the same original world patches without becoming
+    # fixed torch fixtures or applying a second darkness veil.
+    for torch_index, flame_position in enumerate((*torch_positions, *extra_lights)):
         # Two low-amplitude frequencies produce smooth flame breathing. Each
         # fixture has a phase offset, avoiding synchronized pulsing without
         # introducing the harsh jumps of random per-frame values.

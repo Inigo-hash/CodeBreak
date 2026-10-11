@@ -67,6 +67,7 @@ from src.ui.night_lighting import (
     LIGHT_CENTER_LIFT, draw_night_and_map_torches,
     in_torch_light, place_path_torches,
 )
+from src.ui.player_torch import held_torch_pose, draw_held_torch
 from src.ui.fog import build_fog_texture, draw_fog
 from src.screens.loading import StageLoadingScreen
 from src.screens.stage_gate import open_stage_gate
@@ -491,6 +492,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             "stored_topics": player_inventory.get_stored_topic_ids(),
             "weapon_obtained": player_inventory.weapon_obtained,
             "weapon_equipped": player_inventory.weapon_equipped,
+            "inventory_layout": player_inventory.to_dict(),
             "stage_progress": stage_progress.to_dict(),
             "stage_checkpoints": (save_state or {}).get("stage_checkpoints", {}),
         }
@@ -527,7 +529,7 @@ def game_screen(screen, slot_num=None, save_state=None):
     # One PlayerInventory object holds every item the player owns. The Toolbar
     # (bottom-centre hotbar) and the B-key bag screen both read from it, so
     # they can never fall out of sync. Equipment is intentionally limited to
-    # the game's single sword; discovered topics still use the bag.
+    # the selected sword or torch; discovered topics still use the bag.
     player_inventory = PlayerInventory()
     # Existing saves predate these flags and already began with the sword, so
     # they migrate as obtained/equipped. New-game state supplies them too.
@@ -535,6 +537,9 @@ def game_screen(screen, slot_num=None, save_state=None):
         True if save_state is None else save_state.get("weapon_obtained", True),
         True if save_state is None else save_state.get("weapon_equipped", True),
     )
+
+    player_inventory.restore_layout((save_state or {}).get("inventory_layout"))
+    player_inventory.ensure_starter_torch()
 
     # ---------------------------------------------------------
     # Restore stored learning topics
@@ -777,7 +782,7 @@ def game_screen(screen, slot_num=None, save_state=None):
 
     ZOOM = world.get("zoom", 2)
 
-    # Fixed torches replace the player-carried torch.  Their spacing is
+    # Fixed torches supplement the player-carried light. Their spacing is
     # derived from the actual light radius, and the placement helper keeps
     # adding them until every authored dirt-path tile is covered.
     # A compact pool of light (60 world pixels at 2x zoom) keeps the scene
@@ -2067,6 +2072,10 @@ def game_screen(screen, slot_num=None, save_state=None):
             else PLAYER_ENERGY_REGEN,
             PLAYER_TORCH_HP_REGEN if warmed_by_torch else 0.0,
         )
+        # Changing away from a sword immediately ends its pending swing.
+        if not player_inventory.weapon_equipped and player_combat.state == "attacking":
+            player_combat.state = "idle"
+            player_combat.action_time = 0.0
         main_character.set_combat_state(player_combat.state)
         keys = pygame.key.get_pressed()
 
@@ -2815,6 +2824,11 @@ def game_screen(screen, slot_num=None, save_state=None):
         # ---------------------------------------------------------
         # The world is darkened together, then nearby fixed torches reveal
         # every path. Interface panels are drawn later and remain clear.
+        torch_time = pygame.time.get_ticks() / 1000.0
+        held_torch = (held_torch_pose(
+            main_character.draw_bounds, main_character.facing, torch_time,
+            main_character.combat_state,
+        ) if player_inventory.torch_equipped else None)
         if night_mode:
             visible_torches = [
                 (world_x * ZOOM - camera_x, world_y * ZOOM - camera_y)
@@ -2831,7 +2845,9 @@ def game_screen(screen, slot_num=None, save_state=None):
                 visible_torches,
                 pygame.time.get_ticks() / 1000.0,
                 MAP_TORCH_LIGHT_RADIUS,
+                extra_lights=(held_torch[0],) if held_torch else (),
             )
+        draw_held_torch(screen, held_torch, main_character.facing, torch_time)
 
         if fog_mode:
             fog_drift_x += fog_speed_x * dt
@@ -3042,7 +3058,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             interaction_prompt = "[H] Ask Mang Tahimik about Python"
 
         if not interaction_prompt and not player_inventory.weapon_equipped:
-            interaction_prompt = "[B] Move sword from bag to hotbar, then select its slot"
+            interaction_prompt = "[B] Inventory | [1-5] Select sword, torch, or empty slot"
 
         # HUD consumes existing state and nearby-interactable detection.
         gameplay_hud.draw(

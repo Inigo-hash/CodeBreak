@@ -77,6 +77,9 @@ def create_app():
 
     @app.middleware('http')
     async def bound_body(request, call_next):
+        # Liveness probes must not wait for a request body or call Gemini.
+        if request.method in ('GET', 'HEAD') and request.url.path in ('/', '/health'):
+            return await call_next(request)
         # Count actual streamed bytes, not only the client-provided length.
         body = bytearray()
         async for chunk in request.stream():
@@ -90,7 +93,8 @@ def create_app():
     async def safe_failure(request, exc):
         return JSONResponse({'error': 'The tutor is temporarily unavailable.'}, status_code=503)
 
-    @app.get('/health')
+    @app.api_route('/', methods=['GET', 'HEAD'])
+    @app.api_route('/health', methods=['GET', 'HEAD'])
     async def health():
         # Host liveness only; deliberately reveals no settings or secrets.
         return {'status': 'ok'}

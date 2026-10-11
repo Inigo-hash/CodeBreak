@@ -3,6 +3,8 @@
 Rectangles are walkable approach zones, not the painted door arches.
 Spawns use the player's top-left collision corner. Add a room and its
 routes here without adding room-specific branches to the gameplay loop.
+A room's optional world block supplies map-specific encounters/zones and
+other stage-world overrides; non-lobby rooms otherwise default to no camps.
 """
 ROOM_STAGES = {
     'castle': {

@@ -18,7 +18,7 @@ def room_for(stage_id, state):
 
 def world_for_room(stage_id, world, state):
     room_id, room = room_for(stage_id, state)
-    result = dict(world)
+    result = deepcopy(world)
     if room:
         result.update(map=room['map'], room_spawn=room['spawn'],
                       zoom=ROOM_STAGES[stage_id]['zoom'],
@@ -27,7 +27,20 @@ def world_for_room(stage_id, world, state):
             result.update(zones=[{'name': room['name'], 'rect': (0, 0, 1, 1)}],
                           encounters=(), path_layer=None, path_gids=frozenset(),
                           map_layout_version=1, legacy_shift_tiles=(0, 0))
+        # Explicit room content overrides the safe defaults. Never inherit
+        # another map's encounters or mutate the shared authored data.
+        result.update(deepcopy(room.get('world', {})))
     return result
+
+
+def stage_defeated_enemies(state):
+    """Stage gates include victories saved in other rooms of this stage."""
+    defeated = set((state.get('stage_progress') or {}).get('defeated_enemies') or ())
+    for room_id, checkpoint in (state.get('room_checkpoints') or {}).items():
+        # The active room's live state supersedes its older checkpoint.
+        if room_id != state.get('room_id'):
+            defeated.update((checkpoint.get('stage_progress') or {}).get('defeated_enemies') or ())
+    return defeated
 
 
 def transition_room(state, stage_id, route_id, tile_size=16):

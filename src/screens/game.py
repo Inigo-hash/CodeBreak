@@ -90,7 +90,7 @@ from src.screens.final_challenge_warning import (
     open_final_challenge_warning,
 )
 from src.data.rooms import ROOM_STAGES
-from src.systems.rooms import room_for, world_for_room, transition_room, PassageHold
+from src.systems.rooms import room_for, world_for_room, transition_room, PassageHold, stage_defeated_enemies
 from src.systems.camera import camera_offset
 from src.screens.trap_alert import open_trap_alert
 
@@ -229,6 +229,7 @@ def game_screen(screen, slot_num=None, save_state=None):
     # the stage record (see stages.py) rather than being named here.
     save_stage = (save_state or {}).get("stage", "Island")
     stage = get_stage(save_stage)
+    final_challenge_id = stage.get("completion", {}).get("required_final_challenge")
     room_id, room = room_for(stage["id"], save_state or {})
     world = world_for_room(stage["id"], stage_world(stage), save_state or {})
     stage_name = stage.get("name", "Island")
@@ -501,6 +502,13 @@ def game_screen(screen, slot_num=None, save_state=None):
             state["_security"] = save_security
         return state
 
+    def stage_victories():
+        return stage_defeated_enemies({
+            "room_id": room_id,
+            "stage_progress": {"defeated_enemies": stage_progress.defeated_enemies},
+            "room_checkpoints": (save_state or {}).get("room_checkpoints", {}),
+        })
+
     # Feedback message shown briefly after SAVE is pressed. Frame-based
     # (this loop doesn't track dt / delta-time), so this counts down once
     # per rendered frame rather than in real seconds.
@@ -619,8 +627,8 @@ def game_screen(screen, slot_num=None, save_state=None):
                 save_manager.save_slot(slot_num, build_save_state())
 
         def mark_assessment_passed():
-            if "stage1_final_001" not in save_challenges_passed:
-                save_challenges_passed.append("stage1_final_001")
+            if final_challenge_id and final_challenge_id not in save_challenges_passed:
+                save_challenges_passed.append(final_challenge_id)
             stage_progress.sync_objectives(stage, save_challenges_passed)
 
         return open_final_assessment(
@@ -1365,13 +1373,14 @@ def game_screen(screen, slot_num=None, save_state=None):
 
     boss_enemy = None
     boss_defeated = bool(
-        boss_id and boss_id in stage_progress.defeated_enemies
+        boss_id and boss_id in stage_victories()
     )
     boss_victory_handled = boss_defeated
 
     final_challenge_revealed = (
-        boss_defeated
-        and "stage1_final_001" not in save_challenges_passed
+        bool(final_challenge_id)
+        and (not boss_id or boss_defeated)
+        and final_challenge_id not in save_challenges_passed
     )
     # Loading/spawning inside the broad authored Core label must not count as
     # walking through its door. Arm the encounter only after the player has
@@ -1586,7 +1595,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                 continue
 
             # ---------------------------------------------------------
-            # Reopen unfinished Stage 1 final challenge
+            # Reopen unfinished stage final challenge
             # ---------------------------------------------------------
 
             if (
@@ -1596,7 +1605,8 @@ def game_screen(screen, slot_num=None, save_state=None):
                 and final_challenge_reminder_rect is not None
                 and final_challenge_reminder_rect.collidepoint(event.pos)
                 and final_challenge_revealed
-                and "stage1_final_001" not in save_challenges_passed
+                and final_challenge_id
+                and final_challenge_id not in save_challenges_passed
             ):
 
                 run_final_assessment()
@@ -1775,10 +1785,9 @@ def game_screen(screen, slot_num=None, save_state=None):
                 if (event.key == pygame.K_e and not paused and not engaged
                         and at_stage_exit):
 
-                    final_challenge_id = "stage1_final_001"
 
                     final_challenge_pending = (
-                        stage.get("id") == "island"
+                        bool(final_challenge_id)
                         and final_challenge_revealed
                         and final_challenge_id not in save_challenges_passed
                     )
@@ -1793,7 +1802,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                         stage,
                         gameplay_state["keys"],
                         save_challenges_passed,
-                        stage_progress.defeated_enemies,
+                        stage_victories(),
                     )
 
                     # Where this stage leads, if anywhere: a stage that
@@ -1951,7 +1960,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                 elif DEBUG_MODE and event.key == pygame.K_F6 and developer_mode.enabled and not paused and not engaged:
 
                     final_challenge = get_challenge(
-                        "stage1_final_001"
+                        final_challenge_id
                     )
 
                     if final_challenge is not None:
@@ -2458,18 +2467,16 @@ def game_screen(screen, slot_num=None, save_state=None):
             )
 
             # ---------------------------------------------------------
-            # Stage 1 Final Coding Challenge
+            # Stage Final Coding Challenge
             # ---------------------------------------------------------
 
-            final_challenge_id = "stage1_final_001"
 
             # Do not reopen the challenge if it was already completed
             # in an earlier session.
-            if final_challenge_id not in save_challenges_passed:
+            if final_challenge_id and final_challenge_id not in save_challenges_passed:
 
                 final_challenge_revealed = True
-                if stage.get("id") == "island":
-                    run_final_assessment()
+                run_final_assessment()
 
         if player_combat.hp == 0 and death_animation_complete:
             gameplay_state["hearts"] = max(0, gameplay_state["hearts"] - 1)
@@ -2847,7 +2854,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             if gate_screen_rect.colliderect(screen.get_rect()):
                 gate_status = evaluate_stage_gate(
                     stage, gameplay_state["keys"], save_challenges_passed,
-                    stage_progress.defeated_enemies,
+                    stage_victories(),
                 )
                 gate_color = (
                     (90, 225, 145) if gate_status.unlocked or developer_mode.enabled
@@ -3007,7 +3014,7 @@ def game_screen(screen, slot_num=None, save_state=None):
         elif near_stage_exit:
             gate_status = evaluate_stage_gate(
                 stage, gameplay_state["keys"], save_challenges_passed,
-                stage_progress.defeated_enemies,
+                stage_victories(),
             )
             interaction_prompt = (
                 "Enter Next Stage" if developer_mode.enabled else
@@ -3173,13 +3180,12 @@ def game_screen(screen, slot_num=None, save_state=None):
         draw_minimap(screen, player_rect, minimap_heading, night_mode)
 
         # ---------------------------------------------------------
-        # Final Stage 1 challenge reminder
+        # Final stage challenge reminder
         # ---------------------------------------------------------
 
-        final_challenge_id = "stage1_final_001"
 
         show_final_challenge_reminder = (
-            stage.get("id") == "island"
+            bool(final_challenge_id)
             and final_challenge_revealed
             and final_challenge_id not in save_challenges_passed
         )

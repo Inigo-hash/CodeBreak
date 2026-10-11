@@ -13,15 +13,15 @@ STAGE_MAP_NODES = (
         "map_note": "Plays the existing Stage 1 Island map.",
     },
     {
-        "id": "castle", "number": 2, "name": "The Ancient Depths",
+        "id": "castle", "number": 2, "name": "Castle",
         "unlock_after": "island",
         "plaque": (0.481, 0.455), "marker": (0.482, 0.500),
         "region": ((.20, .31), (.44, .26), (.64, .30), (.77, .38),
                    (.77, .60), (.57, .66), (.30, .58), (.18, .44)),
         "glow": (.49, .46, .48, .34),
-        "description": "Ancient paths lead through forest, waterfalls and temple ruins. A new chapter of Python awaits.",
+        "description": "Explore the castle lobby, dining area, library, dungeon prison and throne room. Intermediate Python lessons are being built.",
         "content": "Exploration preview",
-        "map_note": "Currently opens the Castle lobby. The Ancient Depths lesson map is coming later.",
+        "map_note": "Five connected Castle rooms are available; lessons and completion content are not yet playable.",
     },
     {
         "id": "citadel", "number": 3, "name": "The Corrupted Citadel",

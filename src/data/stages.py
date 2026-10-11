@@ -384,13 +384,13 @@ STAGES = {
 
             "summary":
                 "Past the Corrupted Core's gate the island's corruption "
-                "gives way to stone. The castle lobby still stands, its "
-                "stairs climbing into the dark, and its machinery runs on "
+                "gives way to stone. The castle still stands, its "
+                "five connected rooms awaiting lessons. Its machinery runs on "
                 "intermediate Python. Its lesson route is still being "
-                "charted - for now, the way in is the way out.",
+                "charted; stage completion is not yet available.",
 
             "mechanics": [
-                "The lobby is walkable; its lessons, enemies and boss are "
+                "Five castle rooms are connected; lessons, enemies and boss are "
                 "still being authored.",
                 "Everything you learned on the island travels with you. "
                 "Keys do not - the castle's gate wants its own.",

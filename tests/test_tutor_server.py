@@ -62,7 +62,11 @@ class ServerTests(unittest.TestCase):
     @patch.dict('os.environ', {}, clear=True)
     def test_missing_key_and_health(self):
         client = self.make_client(lambda req: self.fail('called without key'))
-        self.assertEqual(client.get('/health').json(), {'status':'ok'})
+        for path in ('/', '/health'):
+            self.assertEqual(client.get(path).json(), {'status':'ok'})
+            response = client.head(path)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.content, b'')
         self.assertEqual(client.post('/ask', json={'question':'help'}).status_code, 503)
 
     @patch.dict('os.environ', {'GEMINI_API_KEY': 'test-secret'}, clear=True)

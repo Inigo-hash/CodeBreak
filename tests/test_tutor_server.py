@@ -130,3 +130,75 @@ class ServerTests(unittest.TestCase):
         serialized = json.dumps(castle)
         self.assertNotIn('function_cases', serialized)
         self.assertNotIn('starter_code', serialized)
+
+    @patch.dict('os.environ', {'GEMINI_API_KEY': 'test-secret', 'TUTOR_GLOBAL_PER_DAY': '2'}, clear=True)
+    def test_temporary_failure_retries_once_and_consumes_attempt_budget(self):
+        calls = []
+        def handler(req):
+            calls.append(req)
+            if len(calls) == 1:
+                return httpx.Response(503, text='test-secret')
+            return httpx.Response(200, json={'candidates': [{'content': {'parts': [{'text': 'Use WASD to move.'}]}}]})
+        client = self.make_client(handler)
+        from unittest.mock import AsyncMock
+        with patch('server.app.asyncio.sleep', new_callable=AsyncMock) as wait:
+            response = client.post('/ask', json={'question': 'how to play?'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['answer'], 'Use WASD to move.')
+        self.assertEqual(len(calls), 2)
+        wait.assert_awaited_once_with(1)
+        self.assertEqual(client.post('/ask', json={'question': 'again?'}).status_code, 429)
+        self.assertEqual(len(calls), 2)
+
+    @patch.dict('os.environ', {'GEMINI_API_KEY': 'test-secret'}, clear=True)
+    def test_persistent_provider_outage_is_bounded_and_safe(self):
+        calls = []
+        def handler(req):
+            calls.append(req)
+            return httpx.Response(503, text='test-secret provider internals')
+        client = self.make_client(handler)
+        from unittest.mock import AsyncMock
+        with patch('server.app.asyncio.sleep', new_callable=AsyncMock):
+            response = client.post('/ask', json={'question': 'how to play?'})
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json()['code'], 'gemini_http_503')
+        self.assertEqual(len(calls), 2)
+        self.assertNotIn('test-secret', response.text)
+
+    @patch.dict('os.environ', {'GEMINI_API_KEY': 'test-secret'}, clear=True)
+    def test_quota_auth_and_model_errors_are_not_retried(self):
+        for status in (400, 401, 403, 404, 429):
+            with self.subTest(status=status):
+                calls = []
+                def handler(req):
+                    calls.append(req)
+                    return httpx.Response(status, text='test-secret')
+                client = self.make_client(handler)
+                response = client.post('/ask', json={'question': 'help'})
+                self.assertEqual(len(calls), 1)
+                self.assertEqual(response.status_code, 429 if status == 429 else 503)
+                self.assertNotIn('test-secret', response.text)
+
+    @patch.dict('os.environ', {'GEMINI_API_KEY': 'test-secret', 'TUTOR_GLOBAL_PER_DAY': '1'}, clear=True)
+    def test_retry_does_not_bypass_one_attempt_budget(self):
+        calls = []
+        def handler(req):
+            calls.append(req)
+            return httpx.Response(503)
+        client = self.make_client(handler)
+        from unittest.mock import AsyncMock
+        with patch('server.app.asyncio.sleep', new_callable=AsyncMock):
+            response = client.post('/ask', json={'question': 'help'})
+        self.assertEqual(response.json()['code'], 'gemini_http_503')
+        self.assertEqual(len(calls), 1)
+
+    @patch.dict('os.environ', {'GEMINI_API_KEY': 'test-secret'}, clear=True)
+    def test_provider_operation_has_total_deadline(self):
+        async def handler(req):
+            await asyncio.sleep(1)
+            self.fail('request should have been cancelled')
+        client = self.make_client(handler)
+        with patch('server.app.PROVIDER_DEADLINE', 0.01):
+            response = client.post('/ask', json={'question': 'help'})
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json()['code'], 'gemini_timeout')

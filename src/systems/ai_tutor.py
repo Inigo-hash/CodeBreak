@@ -53,7 +53,34 @@ def ask_mang_tahimik(question, context=None, history=()):
     except error.HTTPError as exc:
         if exc.code == 429:
             raise TutorError('Mang Tahimik has reached a usage limit. Please try later.') from None
-        raise TutorError('My AI connection failed. Please try again later.') from None
+        # Only display messages we own. Upstream bodies may contain secrets,
+        # HTML proxy errors, or provider internals; never show their raw text.
+        code = None
+        try:
+            body = json.loads(exc.read(4096))
+            if isinstance(body, dict):
+                code = body.get('code')
+        except (OSError, ValueError, TypeError):
+            pass
+        messages = {
+            'gemini_http_502': 'The AI service is temporarily busy. Please try again shortly.',
+            'gemini_http_503': 'The AI service is temporarily busy. Please try again shortly.',
+            'gemini_http_504': 'The AI service took too long. Please try again shortly.',
+            'gemini_timeout': 'The AI service took too long. Please try again shortly.',
+            'gemini_network_error': 'The tutor server cannot reach the AI service right now. Please try again shortly.',
+            'tutor_not_configured': 'The game host needs to finish configuring the tutor server.',
+            'gemini_http_400': 'The game host needs to check the AI model and server settings.',
+            'gemini_http_401': 'The game host needs to check the server’s AI API key.',
+            'gemini_http_403': 'The game host needs to check the server’s AI API key permissions.',
+            'gemini_http_404': 'The game host needs to update the server’s AI model setting.',
+            'gemini_invalid_reply': 'The AI service returned an unusable answer. Please try again shortly.',
+        }
+        message = messages.get(code) if isinstance(code, str) else None
+        if not message:
+            message = ('The tutor server is temporarily unavailable. Please try again shortly.'
+                       if exc.code in (502, 503, 504) else
+                       'My AI connection failed. Please try again later.')
+        raise TutorError(message) from None
     except (error.URLError, TimeoutError, socket.timeout):
         raise TutorError('I cannot connect right now. Check the internet and try again.') from None
     except (ValueError, KeyError, IndexError, TypeError):

@@ -23,8 +23,7 @@ in a background thread. Internet is required.
 ```
 
 Once that public address is committed and included in the game build, every
-player connects automatically. The current empty URL intentionally reports
-that Mang Tahimik is not online yet. CODEBREAK_TUTOR_URL can override the bundled
+player connects automatically. An empty configured URL reports that Mang Tahimik is not online yet. CODEBREAK_TUTOR_URL can override the bundled
 address for testing. Changing GitHub alone does not update already downloaded
 copies of the game: pull/rebuild/distribute the new version.
 
@@ -42,7 +41,10 @@ questions at 1000 characters, history at 8 turns of 4000 characters, request
 bodies at 40000 bytes, and responses at 600 output tokens / 4000 characters.
 It allows 2 concurrent Gemini calls. Default attempt caps are 8/minute globally,
 100/day globally (UTC), and 3/minute per detected peer address. Failed provider
-calls count toward the budget; no automatic retries increase spend.
+calls count toward the budget, including the single automatic retry for HTTP
+502/503/504. Retries consume the same attempt caps, keep the same concurrency
+slot, and stop if the budget is exhausted. Quota, authentication, and model
+errors are not retried. The entire provider operation is bounded to 55 seconds.
 
 Run exactly ONE worker and ONE instance: the counters are process-local and
 reset on restart. They are conservative prototype protections, not durable
@@ -86,3 +88,20 @@ References:
 - https://ai.google.dev/gemini-api/docs/pricing
 - https://render.com/docs/blueprint-spec
 - https://render.com/docs/free
+
+## Troubleshooting an AI connection failure
+
+`/health` returning `ok` proves that Render is reachable, not that Gemini can
+answer. An `/ask` response with `code: gemini_http_503` means Gemini returned
+HTTP 503; it is not evidence of a missing API key. Google documents this as
+an overloaded or temporarily unavailable service. The relay now waits one
+second and retries once, subject to its budget. Continued provider downtime
+still returns an error; retries cannot guarantee availability.
+
+The game reads only recognized error codes and displays an actionable message;
+it does not show raw provider error bodies, keys, or secrets. Errors are not
+saved as successful conversation history. No automatic client retry duplicates
+the server's attempts. Deploy the server changes and update the game client to
+use both improvements. Existing Render environment values are unchanged.
+
+Reference: https://ai.google.dev/gemini-api/docs/troubleshooting

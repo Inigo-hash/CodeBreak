@@ -66,3 +66,43 @@ class TutorTests(unittest.TestCase):
         self.assertFalse(session.pending)
         self.assertEqual(len(session.history), 2)
         self.assertFalse(session.submit('too soon'))
+
+    @patch.dict('os.environ', {'CODEBREAK_TUTOR_URL': 'https://tutor.example/ask'})
+    def test_safe_provider_error_codes_explain_the_cause(self):
+        from io import BytesIO
+        for code, fragment in (('gemini_http_503', 'temporarily busy'),
+                               ('gemini_http_404', 'model setting'),
+                               ('tutor_not_configured', 'configuring'),
+                               ('gemini_timeout', 'took too long')):
+            with self.subTest(code=code):
+                failure = HTTPError('url', 503, 'secret', {}, BytesIO(json.dumps(
+                    {'code': code, 'error': 'secret-key-value'}).encode()))
+                with patch('src.systems.ai_tutor.request.urlopen', side_effect=failure):
+                    with self.assertRaises(TutorError) as caught:
+                        ask_mang_tahimik('how to play?')
+                self.assertIn(fragment, str(caught.exception))
+                self.assertNotIn('secret', str(caught.exception))
+
+    @patch.dict('os.environ', {'CODEBREAK_TUTOR_URL': 'https://tutor.example/ask'})
+    def test_unknown_html_and_invalid_codes_use_safe_fallback(self):
+        from io import BytesIO
+        for body in (b'<html>secret proxy error</html>', b'[]',
+                     b'{"code": [], "error": "secret"}',
+                     b'{"code": "secret-unrecognized", "error": "secret"}'):
+            failure = HTTPError('url', 503, 'secret', {}, BytesIO(body))
+            with patch('src.systems.ai_tutor.request.urlopen', side_effect=failure):
+                with self.assertRaises(TutorError) as caught:
+                    ask_mang_tahimik('help')
+            self.assertIn('temporarily unavailable', str(caught.exception))
+            self.assertNotIn('secret', str(caught.exception))
+
+    def test_failure_clears_pending_and_does_not_pollute_history(self):
+        def ask(*args):
+            raise TutorError('The AI service is temporarily busy.')
+        session = TutorSession(ask)
+        self.assertTrue(session.submit('help'))
+        result = session.results.get(timeout=2)
+        session.results.put(result)
+        self.assertIn('temporarily busy', session.poll())
+        self.assertFalse(session.pending)
+        self.assertEqual(session.history, [])

@@ -14,6 +14,9 @@ from pydantic import BaseModel, ConfigDict, Field
 from server.tutor_prompt import SYSTEM_PROMPT
 
 MAX_BODY = 40000
+RETRYABLE_STATUS = frozenset((502, 503, 504))
+MAX_PROVIDER_ATTEMPTS = 2
+PROVIDER_DEADLINE = 55
 
 
 class Turn(BaseModel):
@@ -104,7 +107,8 @@ def create_app():
         key = os.environ.get('GEMINI_API_KEY', '').strip()
         model = os.environ.get('GEMINI_MODEL', 'gemini-2.5-flash-lite').strip()
         if not key or not re.fullmatch(r'[a-zA-Z0-9._-]+', model):
-            return JSONResponse({'error': 'The tutor is not configured.'}, status_code=503)
+            return JSONResponse({'error': 'The tutor is not configured.',
+                                 'code': 'tutor_not_configured'}, status_code=503)
         if not question.question.strip():
             return JSONResponse({'error': 'Please ask a question.'}, status_code=422)
         if any(k not in ('stage', 'room', 'topic') or len(v) > 100
@@ -128,9 +132,19 @@ def create_app():
                        'contents': contents,
                        'generationConfig': {'maxOutputTokens': 600}}
             try:
-                response = await app.state.http.post(
-                    'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent',
-                    headers={'x-goog-api-key': key}, json=payload)
+                # Keep retries server-side, bounded, and within the same
+                # concurrency slot. Each provider attempt consumes the budget.
+                # A deadline bounds the whole operation, not just socket reads.
+                async with asyncio.timeout(PROVIDER_DEADLINE):
+                    for attempt in range(MAX_PROVIDER_ATTEMPTS):
+                        response = await app.state.http.post(
+                            'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent',
+                            headers={'x-goog-api-key': key}, json=payload)
+                        if response.status_code not in RETRYABLE_STATUS or attempt + 1 == MAX_PROVIDER_ATTEMPTS:
+                            break
+                        await asyncio.sleep(1)
+                        if not await limits.allow(ip):
+                            break  # Return the last error without exceeding caps.
                 if response.status_code == 429:
                     return JSONResponse({'error': 'Gemini quota reached.'}, status_code=429,
                                         headers={'Retry-After': '60'})
@@ -143,8 +157,15 @@ def create_app():
                 if not answer.strip():
                     raise ValueError('No answer')
                 return {'answer': answer.strip()[:4000]}
-            except (httpx.HTTPError, ValueError, KeyError, IndexError, TypeError):
-                return JSONResponse({'error': 'The tutor could not answer. Please try later.'}, status_code=503)
+            except (httpx.TimeoutException, TimeoutError):
+                return JSONResponse({'error': 'The AI service took too long. Please try again.',
+                                     'code': 'gemini_timeout'}, status_code=503)
+            except httpx.HTTPError:
+                return JSONResponse({'error': 'The AI service could not be reached.',
+                                     'code': 'gemini_network_error'}, status_code=503)
+            except (ValueError, KeyError, IndexError, TypeError):
+                return JSONResponse({'error': 'The tutor could not answer. Please try later.',
+                                     'code': 'gemini_invalid_reply'}, status_code=503)
 
     return app
 

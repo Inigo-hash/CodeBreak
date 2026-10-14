@@ -8,6 +8,7 @@ from src.ui.text_layout import fit_text, draw_text_block
 
 from src.screens.game import game_screen
 from src.screens.tutorial import tutorial_screen
+from src.screens.character_select import open_character_select
 from src.screens.stage_select import open_stage_select
 from src.systems.stage_selection import select_stage
 from src.systems.developer_mode import developer_mode
@@ -125,6 +126,7 @@ def start_game_menu(screen, clean_backdrop=None):
     icons, labels, seeds, tiers = SG_ICONS, SG_LABELS, SG_SEEDS, SG_TIERS
 
     show_slot_panel = None
+    new_character_id = None
     from src.screens.settings import SettingsPanel
     from src.ui.gear_icon import draw_gear
     from src.ui.theme import UI_COLORS
@@ -401,8 +403,12 @@ def start_game_menu(screen, clean_backdrop=None):
         pygame.mixer.music.play(-1)
 
     def _run_new(slot_num, state):
+        selected = new_character_id
+        if selected is None:
+            return "character_selection_cancelled"
+        state['character_id'] = selected
         pygame.mixer.music.stop()
-        tutorial_result = tutorial_screen(screen, show_loading=True)
+        tutorial_result = tutorial_screen(screen, show_loading=True, character_id=selected)
         if tutorial_result != "completed":
             # Do not create an unfinished save or overwrite an existing one
             # when the player returns from the tutorial. This also prevents
@@ -632,7 +638,9 @@ def start_game_menu(screen, clean_backdrop=None):
                                            else "legacy_create", slot)
                     continue
                 if rects[0].collidepoint(event.pos):
-                    show_slot_panel = "new"
+                    new_character_id = open_character_select(screen)
+                    if new_character_id is not None:
+                        show_slot_panel = "new"
                 elif rects[1].collidepoint(event.pos):
                     show_slot_panel = "load"
                 elif rects[2].collidepoint(event.pos):

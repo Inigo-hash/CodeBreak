@@ -10,6 +10,10 @@ from src.config import DEBUG_MODE, FPS_LOG
 from src.screens.settings import SettingsPanel
 from src.screens.mang_tahimik import open_mang_tahimik, draw_tutor_helper, tutor_helper_rect
 from src.entities.player import MainCharacter
+from src.ui.interaction_notice import draw_interaction_notice
+from src.screens.unsaved_exit import confirm_unsaved_exit
+from src.systems.exit_guard import EventExitGuard, has_unsaved_progress, install_exit_guard
+from src.data.characters import character_id as normalize_character_id
 from src.entities.enemy import Enemy
 from src.entities.chest import Chest
 from src.entities.trap import load_traps, build_trap_challenge
@@ -366,6 +370,7 @@ def game_screen(screen, slot_num=None, save_state=None):
     # this loop drains hearts or grants keys yet; inventory items aren't
     # restored either, since Item icons aren't currently serializable.)
     gameplay_state = {
+        "character_id": normalize_character_id((save_state or {}).get('character_id')),
         "hearts": 5,
         "keys": 0,
         "topics_discovered": [],
@@ -481,6 +486,7 @@ def game_screen(screen, slot_num=None, save_state=None):
 
     def build_save_state():
         state = {
+            "character_id": gameplay_state['character_id'],
             "stage": save_stage,
             "hearts": gameplay_state["hearts"],
             "keys": gameplay_state["keys"],
@@ -540,7 +546,7 @@ def game_screen(screen, slot_num=None, save_state=None):
     INSPECT_TIME = 2.0  # seconds to hold E
 
     # --- Gameplay HUD (top-left live counters) ---
-    profile_name = "Bobiles the explorer the great"
+    profile_name = "The Pathfinder" if gameplay_state['character_id'] == 'woman' else "Bobiles the explorer the great"
     # --- Inventory system ---
     # One PlayerInventory object holds every item the player owns. The Toolbar
     # (bottom-centre hotbar) and the B-key bag screen both read from it, so
@@ -1330,7 +1336,7 @@ def game_screen(screen, slot_num=None, save_state=None):
     # How close (in unscaled world pixels) the player has to get before an
     # enemy is written into the bestiary. Roughly "you have clearly seen it".
     ENEMY_SIGHT_RANGE = 180
-    main_character = MainCharacter(screen, map_width, map_height)
+    main_character = MainCharacter(screen, map_width, map_height, character_id=gameplay_state['character_id'])
     enemy_spawns = resolve_encounter_spawns(
         world["encounters"], map_width, map_height,
         collision_rects, path_cells, TILE_SIZE,
@@ -1594,6 +1600,32 @@ def game_screen(screen, slot_num=None, save_state=None):
 
     # Clickable area for the unfinished final challenge reminder.
     final_challenge_reminder_rect = None
+
+    def confirm_leaving(destination):
+        current = build_save_state()
+        try:
+            saved = save_manager.load_slot(slot_num) if slot_num is not None else None
+        except (OSError, ValueError):
+            saved = None
+        if not has_unsaved_progress(current, saved):
+            return True
+        guard = pygame.event.get
+        previous_busy = guard.busy if isinstance(guard, EventExitGuard) else False
+        if isinstance(guard, EventExitGuard):
+            guard.busy = True
+        try:
+            allowed = confirm_unsaved_exit(
+                screen,
+                save=(lambda: save_manager.save_slot(slot_num, build_save_state())) if slot_num is not None else None,
+                destination=destination,
+            )
+        finally:
+            if isinstance(guard, EventExitGuard):
+                guard.busy = previous_busy
+            clock.tick()
+        return allowed
+
+    install_exit_guard(confirm_leaving, game_screen.__code__)
 
     while running:
         dt = clock.tick(TARGET_FPS) / 1000.0
@@ -1906,6 +1938,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                     tutorial_screen(
                         screen, play_music=False, show_loading=False,
                         practice_only=True,
+                        character_id=gameplay_state['character_id'],
                     )
                     start_stage_music()
                 elif event.key == pygame.K_b and not paused:
@@ -2043,8 +2076,9 @@ def game_screen(screen, slot_num=None, save_state=None):
                                 show_pause_settings = True
                                 settings_panel.open()
                             elif btn["action"] == "main_menu":
-                                pygame.mixer.music.stop()
-                                return "main_menu"
+                                if confirm_leaving('return to the main menu'):
+                                    pygame.mixer.music.stop()
+                                    return "main_menu"
                 elif paused and show_pause_settings:
                     settings_panel.handle_event(event)
                     show_pause_settings = settings_panel.is_open
@@ -2061,6 +2095,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                             pp=int(player_combat.energy),
                             max_pp=player_combat.max_energy,
                             hearts=gameplay_state["hearts"],
+                            character_id=gameplay_state['character_id'],
                         )
 
             if event.type == pygame.MOUSEBUTTONUP:
@@ -3030,55 +3065,7 @@ def game_screen(screen, slot_num=None, save_state=None):
 
                 # Only draw the message box if there is actually a message
                 if message:
-                    msg = inspect_font.render(
-                        message,
-                        True,
-                        (255, 255, 255)
-                    )
-
-                    box = pygame.Rect(
-                        SCREEN_W // 2 - msg.get_width() // 2 - 10,
-                        SCREEN_H // 2 - msg.get_height() // 2 - 10,
-                        msg.get_width() + 20,
-                        msg.get_height() + 20
-                    )
-
-                    pygame.draw.rect(
-                        screen,
-                        (20, 20, 20),
-                        box,
-                        border_radius=6
-                    )
-
-                    pygame.draw.rect(
-                        screen,
-                        (200, 200, 100),
-                        box,
-                        2,
-                        border_radius=6
-                    )
-
-                    screen.blit(
-                        msg,
-                        (
-                            SCREEN_W // 2 - msg.get_width() // 2,
-                            SCREEN_H // 2 - msg.get_height() // 2
-                        )
-                    )
-
-                    close_hint = font.render(
-                        "Release E to close",
-                        True,
-                        (255, 0, 0)
-                    )
-
-                    screen.blit(
-                        close_hint,
-                        (
-                            SCREEN_W // 2 - close_hint.get_width() // 2,
-                            SCREEN_H // 2 + msg.get_height()
-                        )
-                    )
+                    draw_interaction_notice(screen, message)
 
                 # Keep this OUTSIDE "if message"
                 if not keys[pygame.K_e]:

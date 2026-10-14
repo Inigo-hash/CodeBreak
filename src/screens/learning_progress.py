@@ -2,6 +2,15 @@
 import pygame
 from src.systems.learning_progress import progress_snapshot
 from src.ui.theme import UI_COLORS, body_font, title_font, draw_panel, draw_button
+from src.ui.text_layout import fit_text
+
+
+def learning_progress_panel(size, topics_only=False):
+    width, height = size
+    panel = pygame.Rect(0, 0, min(880 if topics_only else 800, width-48),
+                        min(900 if topics_only else 680, height-48))
+    panel.center = (width//2, height//2)
+    return panel
 
 
 def _wrapped(text, font, width):
@@ -25,14 +34,15 @@ def draw_learning_progress(screen, stage, state, topics_only=False, scroll=0, ba
         screen.fill(UI_COLORS['stone_deep'])
     veil = pygame.Surface((width, height), pygame.SRCALPHA)
     veil.fill((0, 0, 0, 175)); screen.blit(veil, (0, 0))
-    panel = pygame.Rect(24, 24, width - 48, height - 48)
+    panel = learning_progress_panel((width, height), topics_only)
     draw_panel(screen, panel, emphasized=True, radius=12)
     font = body_font(18)
     small = body_font(16)
     heading = title_font(26)
     x = panel.left + 24
-    screen.blit(heading.render('TOPIC GUIDANCE' if topics_only else 'PLAYER PROGRESS',
-                              True, UI_COLORS['gold']), (x, panel.top + 20))
+    title = fit_text(heading, 'TOPIC GUIDANCE' if topics_only else 'PLAYER PROGRESS',
+                     UI_COLORS['gold'], (panel.w-260, 46))
+    screen.blit(title, (x, panel.top+20))
     switch = pygame.Rect(panel.right - 210, panel.top + 17, 185, 40)
     back = pygame.Rect(panel.right - 150, panel.bottom - 54, 125, 36)
     draw_button(screen, switch, 'Progress' if topics_only else 'Topic Guidance', small,
@@ -88,6 +98,12 @@ def draw_learning_progress(screen, stage, state, topics_only=False, scroll=0, ba
     for line, color, y in rendered:
         screen.blit(font.render(line, True, color), (content.left, content.top + y - scroll))
     screen.set_clip(old_clip)
+    if limit:
+        track = pygame.Rect(content.right-5, content.top, 4, content.height)
+        pygame.draw.rect(screen, UI_COLORS['stone_light'], track, border_radius=2)
+        thumb_height = max(24, round(content.height*content.height/total))
+        thumb = pygame.Rect(track.x, track.y+round((track.h-thumb_height)*scroll/limit), 4, thumb_height)
+        pygame.draw.rect(screen, UI_COLORS['gold'], thumb, border_radius=2)
     footer = 'Scroll / Up / Down for more' if limit else 'ESC to return to gameplay'
     screen.blit(small.render(footer, True, UI_COLORS['text_dim']), (x, panel.bottom - 44))
     return limit, switch, back

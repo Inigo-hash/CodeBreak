@@ -98,7 +98,7 @@ class SlotMenuTests(unittest.TestCase):
         patcher.start()
         self.addCleanup(patcher.stop)
 
-    def run_menu(self, frames, budget=40):
+    def run_menu(self, frames, budget=40, character='man'):
         """Play scripted frames, then QUIT so the menu loop ends.
 
         Returns True when the menu returned on its own before the QUIT,
@@ -116,7 +116,8 @@ class SlotMenuTests(unittest.TestCase):
                 return [pygame.event.Event(pygame.QUIT)]
             return []
 
-        with patch("pygame.event.get", scripted), \
+        with patch('src.screens.start_game_menu.open_character_select', return_value=character), \
+                patch("pygame.event.get", scripted), \
                 patch("pygame.display.flip"), patch("pygame.quit"):
             try:
                 start_game_menu(self.screen)
@@ -134,6 +135,22 @@ class SlotMenuTests(unittest.TestCase):
             [click(self.confirm_yes)],           # confirm DELETE
         ])
 
+        self.assertFalse(save_manager.slot_exists(1))
+
+    def test_new_game_passes_chosen_character_to_tutorial_and_stage(self):
+        password = [pygame.event.Event(pygame.KEYDOWN, key=ord(char), unicode=char) for char in 'pass']
+        password.append(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_RETURN, unicode=''))
+        with patch('src.screens.start_game_menu.tutorial_screen', return_value='completed') as tutorial, \
+                patch('src.screens.start_game_menu.launch_selected_stage', return_value='main_menu') as launch:
+            self.run_menu([[click(self.new_game_button)], [click(self.slots[0].center)],
+                           password, password], character='woman')
+        self.assertEqual(tutorial.call_args.kwargs['character_id'], 'woman')
+        self.assertEqual(launch.call_args.args[2]['character_id'], 'woman')
+
+    def test_cancelling_character_selection_does_not_start_or_write_an_adventure(self):
+        with patch('src.screens.start_game_menu.tutorial_screen') as tutorial:
+            self.run_menu([[click(self.new_game_button)]], character=None)
+        tutorial.assert_not_called()
         self.assertFalse(save_manager.slot_exists(1))
 
     def test_keeping_the_save_leaves_it_alone(self):

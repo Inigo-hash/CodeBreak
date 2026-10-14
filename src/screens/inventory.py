@@ -39,6 +39,8 @@ src/ui/ alongside Toolbar.
 """
 
 import pygame
+from functools import lru_cache
+from src.ui.text_layout import fit_text
 from src.systems.audio import handle_music_shortcut
 
 from src.ui.theme import UI_COLORS, body_font, title_font
@@ -52,7 +54,7 @@ from src.ui.topic_icons import topic_icon
 PANEL_BG      = UI_COLORS["modal_panel"]    # outer panel fill
 PANEL_INNER   = UI_COLORS["modal_inner"]    # inset area inside the panel
 SLOT_BG       = UI_COLORS["modal_slot"]    # empty slot interior
-SLOT_BORDER   = UI_COLORS["modal_frame"]   # normal slot frame ("metal")
+SLOT_BORDER   = UI_COLORS["bronze_dark"]
 SLOT_HOVER    = UI_COLORS["modal_frame_hover"] # slot frame when the mouse is over it
 SLOT_SELECTED = UI_COLORS["modal_accent"] # slot frame of the active toolbar slot (gold)
 METAL_FRAME   = UI_COLORS["modal_frame"]   # panel border
@@ -66,8 +68,8 @@ TOOLBAR_SLOTS   = 5    # hotbar slots; any of them can be the one in hand
 BAG_COLS        = 5    # bag grid columns - matches the toolbar so it lines up
 BAG_ROWS        = 4    # bag grid rows -> 5 x 4 = 20 bag slots
 
-SLOT_SIZE       = 54   # width & height of a single square slot (symmetric)
-SLOT_GAP        = 6    # uniform gap between slots, keeps them evenly spaced
+SLOT_SIZE       = 62
+SLOT_GAP        = 8
 TOOLBAR_PADDING = 6    # padding between the slot row and its backing panel
 TOOLBAR_BOTTOM_MARGIN = 16  # gap between the toolbar panel and screen bottom
 
@@ -207,6 +209,14 @@ class PlayerInventory:
             from src.ui.night_lighting import draw_torch
             icon = pygame.Surface((64, 64), pygame.SRCALPHA)
             draw_torch(icon, (32, 18), "right", 0)
+        elif equipment_id == "base_sword":
+            icon = pygame.Surface((64, 64), pygame.SRCALPHA)
+            pygame.draw.line(icon, (24, 18, 14), (17, 50), (49, 12), 12)
+            pygame.draw.polygon(icon, (184, 206, 213), [(24, 41), (42, 13), (52, 7), (50, 21), (31, 46)])
+            pygame.draw.line(icon, (245, 248, 231), (28, 41), (49, 12), 2)
+            pygame.draw.line(icon, (160, 107, 43), (16, 35), (39, 51), 6)
+            pygame.draw.line(icon, (108, 57, 30), (22, 46), (13, 57), 7)
+            pygame.draw.circle(icon, (222, 177, 74), (12, 57), 4)
         return Item(**definition, equipment_id=equipment_id, icon=icon)
 
     def ensure_starter_torch(self):
@@ -358,6 +368,15 @@ class PlayerInventory:
 # ===========================================================================
 #  SHARED DRAWING HELPERS
 # ===========================================================================
+@lru_cache(maxsize=8)
+def _inventory_art(size):
+    try:
+        image = pygame.image.load('assets/images/ui/inventory_frame.png').convert_alpha()
+        return pygame.transform.smoothscale(image, size)
+    except (OSError, pygame.error):
+        return None
+
+
 def _draw_slot(surface, rect, item, font, border_color, alpha=255):
     """
     Draw one square inventory slot: dark interior, coloured frame, and the
@@ -373,15 +392,16 @@ def _draw_slot(surface, rect, item, font, border_color, alpha=255):
     # Slot interior + frame.
     pygame.draw.rect(slot_surf, SLOT_BG, local, border_radius=4)
     pygame.draw.rect(slot_surf, border_color, local, 2, border_radius=4)
+    pygame.draw.rect(slot_surf, (48, 43, 36), local.inflate(-8, -8), 1, border_radius=3)
+    pygame.draw.line(slot_surf, (72, 66, 52), (7, 4), (rect.w-8, 4), 1)
 
     if item is not None:
         if item.icon is not None:
             # Scale the icon so it sits comfortably inside the slot.
             pad = 8
-            icon = pygame.transform.smoothscale(
-                item.icon, (rect.width - pad * 2, rect.height - pad * 2)
-            )
-            slot_surf.blit(icon, (pad, pad))
+            factor = min((rect.w-pad*2)/item.icon.get_width(), (rect.h-pad*2)/item.icon.get_height())
+            icon = pygame.transform.smoothscale(item.icon, (max(1, round(item.icon.get_width()*factor)), max(1, round(item.icon.get_height()*factor))))
+            slot_surf.blit(icon, icon.get_rect(center=local.center))
         else:
             # No artwork yet - show the item's initial as a placeholder.
             letter = font.render(item.name[:1].upper(), True, TEXT_MAIN)
@@ -401,7 +421,7 @@ def _draw_slot(surface, rect, item, font, border_color, alpha=255):
     surface.blit(slot_surf, rect.topleft)
 
 
-def _build_slot_grid(cols, rows, left, top):
+def _build_slot_grid(cols, rows, left, top, slot_size=SLOT_SIZE):
     """
     Build a list of evenly spaced, identically sized slot rectangles.
 
@@ -413,10 +433,10 @@ def _build_slot_grid(cols, rows, left, top):
     for row in range(rows):
         for col in range(cols):
             rects.append(pygame.Rect(
-                left + col * (SLOT_SIZE + SLOT_GAP),
-                top + row * (SLOT_SIZE + SLOT_GAP),
-                SLOT_SIZE,
-                SLOT_SIZE
+                left + col * (slot_size + SLOT_GAP),
+                top + row * (slot_size + SLOT_GAP),
+                slot_size,
+                slot_size
             ))
     return rects
 
@@ -514,9 +534,9 @@ class Toolbar:
         """Draw the hotbar panel, its 5 slots and the held item's name."""
         # Semi-transparent backing panel so the world stays a little visible.
         panel = pygame.Surface(self.panel_rect.size, pygame.SRCALPHA)
-        pygame.draw.rect(panel, (*PANEL_BG, 200),
+        pygame.draw.rect(panel, (42, 31, 23, 240),
                          panel.get_rect(), border_radius=8)
-        pygame.draw.rect(panel, METAL_FRAME,
+        pygame.draw.rect(panel, UI_COLORS['bronze'],
                          panel.get_rect(), 2, border_radius=8)
         self.screen.blit(panel, self.panel_rect.topleft)
 
@@ -587,29 +607,17 @@ class InventoryScreen:
         # --- Panel geometry ------------------------------------------------
         # Sized from the grid itself, so the slots are always perfectly centred
         # and evenly padded no matter what the layout constants above say.
-        grid_w = grid_pixel_width(BAG_COLS)
-        grid_h = grid_pixel_height(BAG_ROWS)
-
-        side_padding = 34
-        bag_top = 70          # y of the bag grid inside the panel
-        equipped_gap = 46     # vertical space between bag grid and equipped row
-
-        self.panel_w = grid_w + side_padding * 2
-        # vertical budget: title area + bag grid + gap + equipped row + hint
-        self.panel_h = bag_top + grid_h + equipped_gap + SLOT_SIZE + 54
-
-        self.panel_x = (self.screen_w - self.panel_w) // 2
-        # Final resting Y - vertically centred on screen.
-        self.panel_final_y = (self.screen_h - self.panel_h) // 2
-
-        # Slot rectangles are stored relative to the panel's top-left corner,
-        # so the slide animation only has to offset the panel once per frame.
-        self.bag_rects_local = _build_slot_grid(
-            BAG_COLS, BAG_ROWS, side_padding, bag_top
-        )
-        self.equipped_rects_local = _build_slot_grid(
-            TOOLBAR_SLOTS, 1, side_padding, bag_top + grid_h + equipped_gap
-        )
+        self.slot_size = max(32, min(SLOT_SIZE, (self.screen_h-32-292)//5))
+        grid_w = BAG_COLS*self.slot_size+(BAG_COLS-1)*SLOT_GAP
+        grid_h = BAG_ROWS*self.slot_size+(BAG_ROWS-1)*SLOT_GAP
+        side_padding, bag_top, equipped_gap = 44, 128, 56
+        self.panel_w = grid_w+side_padding*2
+        self.panel_h = bag_top+grid_h+equipped_gap+self.slot_size+84
+        self.panel_x = (self.screen_w-self.panel_w)//2
+        self.panel_final_y = (self.screen_h-self.panel_h)//2
+        self.bag_rects_local = _build_slot_grid(BAG_COLS, BAG_ROWS, side_padding, bag_top, self.slot_size)
+        self.equipped_rects_local = _build_slot_grid(TOOLBAR_SLOTS, 1, side_padding,
+                                                   bag_top+grid_h+equipped_gap, self.slot_size)
 
         # Animation state: 0.0 = fully off-screen, 1.0 = fully open.
         self.progress = 0.0
@@ -738,23 +746,25 @@ class InventoryScreen:
 
         # Panel body: outer fill, metal border, inset darker area - the same
         # three-layer look as the profile screen.
-        pygame.draw.rect(self.screen, PANEL_BG, panel_rect, border_radius=10)
-        pygame.draw.rect(self.screen, METAL_FRAME, panel_rect, 4, border_radius=10)
-        pygame.draw.rect(self.screen, PANEL_INNER,
-                         panel_rect.inflate(-14, -14), border_radius=8)
+        art = _inventory_art(panel_rect.size)
+        if art is not None:
+            self.screen.blit(art, panel_rect)
+        else:
+            pygame.draw.rect(self.screen, PANEL_INNER, panel_rect, border_radius=10)
+            pygame.draw.rect(self.screen, UI_COLORS['bronze'], panel_rect, 3, border_radius=10)
 
         # Title.
-        title = self.font_title.render("INVENTORY", True, TEXT_MAIN)
+        title = fit_text(self.font_title, "INVENTORY", UI_COLORS['gold'], (panel_rect.w-80, 36))
         self.screen.blit(title,
                          (panel_rect.centerx - title.get_width() // 2,
-                          panel_rect.top + 20))
+                          panel_rect.top + 64))
 
         # --- Bag grid -------------------------------------------------------
         first_bag = self.bag_rects_local[0]
         bag_label = self.font_section.render("BAG", True, TEXT_DIM)
         self.screen.blit(bag_label,
                          (panel_rect.left + first_bag.left,
-                          panel_rect.top + first_bag.top - 18))
+                          panel_rect.top + first_bag.top - 26))
 
         hovered_topic = None
 
@@ -793,7 +803,7 @@ class InventoryScreen:
                 border
             )
 
-            if hovered and is_topic:
+            if hovered and item is not None:
                 hovered_topic = item
 
 
@@ -801,37 +811,12 @@ class InventoryScreen:
         # Hovered topic name
         # ---------------------------------------------------------
 
-        if hovered_topic is not None:
-
-            topic_label = self.font_topic_name.render(
-                hovered_topic.name,
-                True,
-                SLOT_SELECTED
-            )
-
-            # Put the topic name just above the bag slots.
-            label_x = (
-                panel_rect.centerx
-                - topic_label.get_width() // 2
-            )
-
-            label_y = (
-                panel_rect.top
-                + first_bag.top
-                - 22
-            )
-
-            self.screen.blit(
-                topic_label,
-                (label_x, label_y)
-            )
-
         # An empty bag needs no caption: the empty slots already say it, and a
         # note floating across the middle of the grid only crowds them.
 
         # --- Divider between the bag and the equipped row --------------------
         first_eq = self.equipped_rects_local[0]
-        divider_y = panel_rect.top + first_eq.top - 26
+        divider_y = panel_rect.top + first_eq.top - 40
         pygame.draw.line(
             self.screen, METAL_FRAME,
             (panel_rect.left + 24, divider_y),
@@ -839,10 +824,10 @@ class InventoryScreen:
         )
 
         # --- Equipped (toolbar) row, mirrored inside the panel ---------------
-        eq_label = self.font_section.render("EQUIPPED", True, TEXT_DIM)
+        eq_label = self.font_section.render("HOTBAR", True, UI_COLORS['gold'])
         self.screen.blit(eq_label,
                          (panel_rect.left + first_eq.left,
-                          panel_rect.top + first_eq.top - 18))
+                          panel_rect.top + first_eq.top - 26))
 
         for i, local in enumerate(self.equipped_rects_local):
             rect = local.move(panel_rect.left, panel_rect.top)
@@ -858,12 +843,11 @@ class InventoryScreen:
             self.screen.blit(num, (rect.left + 4, rect.top + 2))
 
         # --- Close hint ------------------------------------------------------
-        hint = self.font_hint.render(
-            "DRAG TO MOVE ITEMS      B or ESC to close", True, TEXT_DIM
-        )
+        caption = hovered_topic.name if hovered_topic is not None else "Drag to equip  |  1-5 select  |  B / ESC close"
+        hint = fit_text(self.font_hint, caption, SLOT_SELECTED if hovered_topic else TEXT_DIM, (panel_rect.w-88, 20))
         self.screen.blit(hint,
                          (panel_rect.centerx - hint.get_width() // 2,
-                          panel_rect.bottom - hint.get_height() - 18))
+                          panel_rect.bottom - 78))
 
         # --- The item being dragged, riding the cursor ------------------------
         # Last, so it passes over the slots rather than under them, and
@@ -871,7 +855,7 @@ class InventoryScreen:
         # in. The slot it came from is already drawn empty - it was taken
         # out of the list the moment the drag began.
         if self.drag is not None and self.drag["lifted"]:
-            held_rect = pygame.Rect(0, 0, SLOT_SIZE, SLOT_SIZE)
+            held_rect = pygame.Rect(0, 0, self.slot_size, self.slot_size)
             held_rect.center = mouse_pos
             _draw_slot(self.screen, held_rect, self.drag["item"],
                        self.font_item, SLOT_SELECTED, alpha=225)

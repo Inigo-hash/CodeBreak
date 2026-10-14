@@ -25,8 +25,25 @@ STONE_DARK = UI_COLORS["modal_inner"]
 STONE_LIGHT = UI_COLORS["modal_button_edge"]
 
 
+def tutorial_sprite_scales(character, enemies, screen_height):
+    """Fit readable silhouettes to the tutorial canvas using one scale per actor."""
+    target = max(100, min(190, round(screen_height * .17)))
+    player_height = max(frame.get_bounding_rect(min_alpha=8).height
+                        for key, frames in character.scaled.items()
+                        if key.startswith('idle_') for frame in frames)
+    # Player sprites are authored at 2x; Enemy.draw_frames scales directly.
+    player_scale = target * 2 / max(1, player_height)
+    proportions = {'tiyanak_sinta': .75, 'manananggal': 1.15, 'tikbalang': 1.35}
+    enemy_scales = {}
+    for enemy in enemies:
+        height = max(frame.get_bounding_rect(min_alpha=8).height
+                     for frames in enemy.frames['walking'].values() for frame in frames)
+        enemy_scales[enemy.enemy_id] = target * proportions.get(enemy.enemy_id, 1) / max(1, height)
+    return player_scale, enemy_scales
+
+
 def tutorial_screen(screen, play_music=True, show_loading=False,
-                    practice_only=False):
+                    practice_only=False, character_id='man'):
     SCREEN_WIDTH, SCREEN_HEIGHT = screen.get_size()
 
     loading = None
@@ -349,7 +366,7 @@ def tutorial_screen(screen, play_music=True, show_loading=False,
     ZOOM = 1
     camera_x, camera_y = 0, 0
 
-    main_character = MainCharacter(screen, SCREEN_WIDTH, SCREEN_HEIGHT)
+    main_character = MainCharacter(screen, SCREEN_WIDTH, SCREEN_HEIGHT, character_id=character_id)
     if loading:
         loading.update(72, "Equipping your explorer...")
     player_size = 40
@@ -390,6 +407,8 @@ def tutorial_screen(screen, play_music=True, show_loading=False,
         practice_waves[0][1] if practice_only else ("tiyanak_sinta",) * 3
     )
     training_enemies = build_training_wave(initial_enemy_ids)
+    player_sprite_scale, enemy_sprite_scales = tutorial_sprite_scales(
+        main_character, training_enemies, SCREEN_HEIGHT)
     if loading:
         loading.update(88, "Summoning the training creature...")
     player_combat = PlayerCombat()
@@ -873,9 +892,13 @@ def tutorial_screen(screen, play_music=True, show_loading=False,
                 )
 
         for training_enemy in training_enemies:
-            training_enemy.draw_frames(ZOOM, camera_x, camera_y, sprite_scale=2)
+            if training_enemy.enemy_id not in enemy_sprite_scales:
+                _, wave_scales = tutorial_sprite_scales(main_character, training_enemies, SCREEN_HEIGHT)
+                enemy_sprite_scales.update(wave_scales)
+            training_enemy.draw_frames(ZOOM, camera_x, camera_y,
+                                       sprite_scale=enemy_sprite_scales[training_enemy.enemy_id])
 
-        main_character.draw_frames(ZOOM, camera_x, camera_y, sprite_scale=2)
+        main_character.draw_frames(ZOOM, camera_x, camera_y, sprite_scale=player_sprite_scale)
         damage_numbers.draw(screen, ZOOM, camera_x, camera_y)
 
         if state == "practice":

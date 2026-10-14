@@ -38,7 +38,7 @@ from src.ui.theme import UI_COLORS, body_font, draw_button, title_font
 
 
 def profile_screen(screen, background=None, name="Bobiles the explorer the great",
-                    hp=100, max_hp=100, pp=100, max_pp=100, hearts=5):
+                    hp=100, max_hp=100, pp=100, max_pp=100, hearts=5, character_id='man'):
     SCREEN_W, SCREEN_H = screen.get_size()
     clock = pygame.time.Clock()
 
@@ -50,7 +50,7 @@ def profile_screen(screen, background=None, name="Bobiles the explorer the great
     font_bar = body_font(15, bold=True)
     font_button = title_font(20)
 
-    portrait = load_portrait()
+    portrait = load_portrait(character_id)
     icons = load_hud_icons()
 
     # --- Layout -------------------------------------------------------------

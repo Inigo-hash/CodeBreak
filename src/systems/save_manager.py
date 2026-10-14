@@ -245,6 +245,7 @@ def slot_progress(slot: int) -> int:
 
 def new_game_state() -> dict:
     return {
+        "character_id": "man",
         "stage": "Island",
         "hearts": 5,
         "keys": 0,

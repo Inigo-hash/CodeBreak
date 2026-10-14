@@ -182,6 +182,25 @@ def draw_panel(surface, rect, emphasized=False, radius=8, alpha=238):
     pygame.draw.line(panel, UI_COLORS["bronze_dark"], (radius, local.bottom - 5),
                      (local.right - radius, local.bottom - 5), 1)
     surface.blit(panel, rect.topleft)
+    if rect.width >= 580 and rect.height >= 300:
+        draw_codex_frame(surface, rect)
+
+
+@lru_cache(maxsize=16)
+def _codex_art(size):
+    try:
+        image = pygame.image.load('assets/images/ui/codex_frame.png').convert_alpha()
+        image = image.subsurface(image.get_bounding_rect(min_alpha=8)).copy()
+        return pygame.transform.smoothscale(image, size)
+    except (OSError, pygame.error):
+        return None
+
+
+def draw_codex_frame(surface, rect):
+    """Illustrated slate, bronze and ivy frame shared by large information UI."""
+    art = _codex_art(tuple(rect.size))
+    if art is not None:
+        surface.blit(art, rect)
 
 
 def _rounded_vgradient(surface, rect, top_color, bottom_color, radius):

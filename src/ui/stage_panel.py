@@ -42,6 +42,7 @@ import random
 import pygame
 
 from src.ui.theme import UI_COLORS, body_font, title_font, draw_button
+from src.ui.text_layout import fit_text
 
 
 # ---------------------------------------------------------------------------
@@ -145,6 +146,20 @@ def _load_rail_sprites():
         size = (RAIL_SPRITE_WIDTH, max(1, round(image.get_height() * scale)))
         sprites[tab] = pygame.transform.smoothscale(image, size)
     return sprites
+
+
+def _load_learning_sprites():
+    try:
+        sheet = pygame.image.load(f'{RAIL_SPRITE_DIR}/rail_learning.png').convert_alpha()
+        result = {}
+        for tab, (top, bottom) in zip(('practice', 'progress', 'topic_guidance'),
+                                      ((.05, .34), (.35, .61), (.62, .91))):
+            region = sheet.subsurface((0, round(sheet.get_height()*top), sheet.get_width(),
+                                       round(sheet.get_height()*(bottom-top)))).copy()
+            result[tab] = region.subsurface(region.get_bounding_rect(min_alpha=8)).copy()
+        return result
+    except (OSError, pygame.error):
+        return None
 
 
 def _highlight(sprite, accent):
@@ -411,6 +426,13 @@ class StagePanel:
         # The drawn plaques carry a bleed margin for their shadow; the painted
         # ones are already trimmed to their own edges.
         self._bleed = 0 if self._sprites else PLAQUE_BLEED
+        self._learning_sprites = _load_learning_sprites()
+        if self._learning_sprites:
+            tabs = ('practice', 'progress', 'topic_guidance') if learning_progress else ('practice',)
+            top = self.button_rects['practice'].top
+            height = max(28, min(64, (screen.get_height()-top-20-(len(tabs)-1)*8)//len(tabs)))
+            for index, tab in enumerate(tabs):
+                self.button_rects[tab] = pygame.Rect(rect.left, top+index*(height+8), rect.width, height)
 
     # -- input --------------------------------------------------------------
     def handle_event(self, event):
@@ -441,13 +463,30 @@ class StagePanel:
         """Draw the rail. Call after the world and HUD."""
 
         self._draw_rail(mouse_pos)
-        if self.learning_progress:
+        if self._learning_sprites:
+            entries = [('practice', 'CODE PRACTICE', '')]
+            if self.learning_progress:
+                entries += [('progress', 'PROGRESS', 'R'), ('topic_guidance', 'TOPIC GUIDANCE', 'T')]
+            for tab, label, key in entries:
+                rect = self.button_rects[tab]
+                sprite = pygame.transform.smoothscale(self._learning_sprites[tab], rect.size)
+                if rect.collidepoint(mouse_pos):
+                    sprite = _highlight(sprite, UI_COLORS['gold'])
+                self.screen.blit(sprite, rect)
+                label_area = pygame.Rect(rect.x+round(rect.w*.37), rect.y+round(rect.h*.34),
+                                         round(rect.w*.52), round(rect.h*.42))
+                text = fit_text(self.font_button, label, UI_COLORS['text'], label_area.size)
+                text_rect = text.get_rect(center=label_area.center)
+                self.screen.blit(text, text_rect)
+                if key:
+                    self._draw_hotkey_badge(rect, key, 'manual', rect.collidepoint(mouse_pos), centered=True)
+        elif self.learning_progress:
             for tab, label in (("progress", "PROGRESS [R]"), ("topic_guidance", "TOPIC GUIDANCE [T]")):
                 rect = self.button_rects[tab]
                 draw_button(self.screen, rect, label, self.font_button,
                             hovered=rect.collidepoint(mouse_pos))
 
-    def _draw_hotkey_badge(self, rect, key_label, tab, hovered):
+    def _draw_hotkey_badge(self, rect, key_label, tab, hovered, centered=False):
         """Small carved chip showing the hotkey, in the gutter beside a button.
 
         The painted plaques have no clear space for it - every part of the
@@ -461,7 +500,7 @@ class StagePanel:
         chip = pygame.Rect(0, 0, 26, 26)
         # Anchored off the bottom: the plaque body sits at the foot of every
         # sprite, whatever scenery overhangs the top.
-        chip.center = (rect.left - HOTKEY_GUTTER // 2 - 2, rect.bottom - 46)
+        chip.center = (rect.left - HOTKEY_GUTTER // 2 - 2, rect.centery if centered else rect.bottom-46)
 
         badge = pygame.Surface(chip.size, pygame.SRCALPHA)
         pygame.draw.rect(badge, (*PANEL_INNER, 210), badge.get_rect(),
@@ -613,6 +652,8 @@ class StagePanel:
                 )
 
         # Separate Code Practice button.
+        if self._learning_sprites:
+            return
         tab, _, _, _ = PRACTICE_BUTTON
         rect = self.button_rects[tab]
         hovered = rect.collidepoint(mouse_pos)

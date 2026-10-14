@@ -123,6 +123,13 @@ class Stage1EndingRegressions(unittest.TestCase):
         _, intros, _, _ = self.run_frames(save_manager.new_game_state(), developer=True, doorway=False)
         self.assertEqual(intros, 0)
 
+    def test_window_close_can_be_cancelled_without_leaving_gameplay(self):
+        def events(frame, live):
+            return [pygame.event.Event(pygame.QUIT)] if frame == 0 else []
+        with patch.object(game, 'confirm_unsaved_exit', return_value=False) as warning:
+            self.run_frames(save_manager.new_game_state(), events=events, doorway=False)
+        warning.assert_called_once()
+
     def test_boss_defeat_checkpoint_is_once_and_reload_reveals_final(self):
         def defeat(frame, live):
             if frame == 1:

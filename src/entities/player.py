@@ -1,6 +1,8 @@
 import pygame
 import numpy as np
 import math
+from pathlib import Path
+from src.data.characters import character_id as normalize_character_id
 
 from src.systems.combat import (
     ATTACK_FRAME_DURATION, DEATH_FRAME_COUNT, DEATH_FRAME_DURATION,
@@ -9,8 +11,9 @@ from src.systems.combat import (
 
 
 class MainCharacter():
-    def __init__(self, screen, map_width, map_height):
+    def __init__(self, screen, map_width, map_height, character_id='man'):
         self.screen = screen
+        self.character_id = normalize_character_id(character_id)
         self.draw_bounds = None
         self._zoom_frames = {}
         self.is_idle = True
@@ -151,6 +154,10 @@ class MainCharacter():
                 max(1, round(f.get_width() * factor)),
                 max(1, round(f.get_height() * factor)))) for f in frames]
 
+        self.sword_idle_frames = {}
+        if self.character_id == 'woman':
+            self._load_woman_frames(target_content_height, compass_directions)
+
         # Named attributes kept for the original four directions so
         # nothing else that references them directly breaks.
         self.idle_right_frames = self.scaled['idle_right']
@@ -182,6 +189,42 @@ class MainCharacter():
         self.current, self.timer = 0, 0
         self.frame_elapsed = 0.0
         self.combat_state = "idle"
+
+    def _load_woman_frames(self, height, directions):
+        root = Path('assets/images/frames/girl_main_character')
+
+        def load(folder):
+            paths = sorted(folder.glob('frame_*.png'), key=lambda p: int(p.stem.split('_')[-1]))
+            frames = [pygame.image.load(str(path)).convert_alpha() for path in paths]
+            # One attack sheet contains an empty export; never blink invisible.
+            frames = [frame for frame in frames if frame.get_bounding_rect(min_alpha=8).height]
+            if not frames:
+                raise ValueError(f'No visible character frames in {folder}')
+            factor = height / max(self._robust_content_height(frame) for frame in frames)
+            return [pygame.transform.scale(frame, (max(1, round(frame.get_width()*factor)),
+                                                   max(1, round(frame.get_height()*factor)))) for frame in frames]
+
+        for facing, direction in directions.items():
+            # Two unarmed walk folders use underscores in the supplied art.
+            walk_direction = {'north-east': 'north_east', 'north-west': 'north_west'}.get(direction, direction)
+            walks = load(root/'walking'/walk_direction)
+            self.scaled['walking_'+facing] = walks
+            self.scaled['idle_'+facing] = walks[:1]
+            self.sword_walk_frames[facing] = load(root/'walking_with_sword'/direction)
+            self.sword_idle_frames[facing] = load(root/'idle'/'with_sword'/direction)
+            self.attack_frames[facing] = load(root/'attacking'/direction)
+            # Dedicated female hurt/dash/death sheets are not authored yet.
+            # Keep every fallback in the chosen character's own appearance.
+            for armed, flinches, dodges, deaths in (
+                (False, self.unarmed_flinch_frames, self.unarmed_dodge_frames, self.unarmed_death_frames),
+                (True, self.flinch_frames, self.dodge_frames, self.death_frames),
+            ):
+                pose = self.sword_idle_frames[facing][0] if armed else walks[0]
+                flinches[facing] = [pose]
+                dodges[facing] = (self.sword_walk_frames[facing] if armed else walks)[:4]
+                deaths[facing] = [pygame.transform.rotate(pose,
+                    (-90 if facing not in ('left', 'northwest', 'southwest') else 90)
+                    * i/(DEATH_FRAME_COUNT-1)) for i in range(DEATH_FRAME_COUNT)]
 
     def set_combat_state(self, state):
         """Apply combat animation priority without letting movement cancel it."""
@@ -288,7 +331,7 @@ class MainCharacter():
 
         if self.weapon_equipped:
             frames = self.sword_walk_frames[self.facing]
-            self.current_frames = frames[:1] if self.is_idle else frames
+            self.current_frames = self.sword_idle_frames.get(self.facing, frames[:1]) if self.is_idle else frames
         self.current %= len(self.current_frames)
 
     def update_position(self, dx, dy, player_rect, player_x, player_y, collision_rects, map_width, map_height):

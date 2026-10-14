@@ -85,6 +85,7 @@ def game_knowledge():
         'enemies': [{'name': enemy['name'], 'description': enemy.get('description', ''),
                      'behavior': enemy.get('behavior', '')} for enemy in ENEMIES.values()],
         'practical_help': {
+            'character_choice': 'Start New Game opens a character screen: choose the male or female explorer. Both have the same health, energy, damage and controls. The chosen appearance is saved with that adventure.',
             'equip': 'Press B, drag the sword or torch from the bag into a hotbar slot, then select it with 1-5 or the mouse wheel.',
             'dash': 'Press either Shift key to dash. Dashing costs energy and passes through enemies; walls remain solid.',
             'attack': 'Select the sword before pressing E to attack. Selecting a torch or empty slot puts the sword away.',

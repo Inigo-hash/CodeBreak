@@ -4,6 +4,7 @@ import os
 import tempfile
 import threading
 import unittest
+from unittest.mock import patch
 
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
@@ -113,7 +114,8 @@ class TutorialRegressionTests(unittest.TestCase):
                 pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE))
                 pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE))
 
-                start_menu.start_game_menu(self.screen, self.screen.copy())
+                with patch.object(start_menu, 'open_character_select', return_value='man'):
+                    start_menu.start_game_menu(self.screen, self.screen.copy())
 
                 self.assertFalse(save_manager.slot_exists(1))
                 self.assertEqual(game_calls, [])

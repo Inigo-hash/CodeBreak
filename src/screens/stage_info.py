@@ -46,7 +46,9 @@ from src.ui.stage_panel import (
     TEXT_MAIN,
     draw_tab_icon,
 )
-from src.ui.theme import body_font, title_font
+from src.ui.theme import (body_font, title_font, draw_panel, draw_button, draw_codex_frame,
+                          UI_COLORS, TIER_PRIMARY, TIER_SECONDARY)
+from src.ui.text_layout import fit_text
 
 
 # Tab order and titles come straight from the rail, so the two can never
@@ -274,8 +276,8 @@ def _render_enemy_card(surface, fonts, enemy, known, x, y, width):
     card = pygame.Rect(x, y, width, card_height)
 
     pygame.draw.rect(surface, CARD_BG, card, border_radius=6)
-    pygame.draw.rect(surface, METAL_FRAME if known else DIVIDER, card, 2,
-                     border_radius=6)
+    draw_codex_frame(surface, card)
+    pygame.draw.rect(surface, UI_COLORS['bronze'] if known else DIVIDER, card, 1, border_radius=6)
 
     # -- portrait --
     portrait_rect = pygame.Rect(x + pad, y + pad, portrait_size, portrait_size)
@@ -524,10 +526,10 @@ def open_stage_info(screen, stage, progress, background=None, tab="manual"):
     panel = pygame.Rect((SCREEN_W - panel_w) // 2, (SCREEN_H - panel_h) // 2,
                         panel_w, panel_h)
 
-    header_h = 70
+    header_h = 96
     tab_h = 48
-    footer_h = 62
-    inner_pad = 20
+    footer_h = 76
+    inner_pad = 28
 
     tab_bar = pygame.Rect(panel.left + inner_pad, panel.top + header_h,
                           panel.width - inner_pad * 2, tab_h)
@@ -628,17 +630,19 @@ def open_stage_info(screen, stage, progress, background=None, tab="manual"):
         screen.blit(overlay, (0, 0))
 
         # ---- Panel ----
-        pygame.draw.rect(screen, PANEL_BG, panel, border_radius=10)
-        pygame.draw.rect(screen, METAL_FRAME, panel, 3, border_radius=10)
+        draw_panel(screen, panel, radius=12, alpha=255)
+        pygame.draw.rect(screen, (17, 26, 39),
+                         pygame.Rect(panel.left+24, panel.top+28, panel.w-48, 50), border_radius=6)
+        pygame.draw.rect(screen, (17, 26, 39),
+                         pygame.Rect(panel.left+24, panel.bottom-footer_h, panel.w-48, 54), border_radius=6)
 
-        title = fonts.title.render("STAGE INFORMATION", True, TEXT_MAIN)
-        screen.blit(title, (panel.left + inner_pad, panel.top + 14))
+        title = fit_text(fonts.title, "STAGE INFORMATION", UI_COLORS['gold'], (round(panel.w*.62), 48))
+        screen.blit(title, (panel.left + inner_pad, panel.top + 32))
 
         stage_label = f"{stage.get('subtitle', '')}  {stage.get('name', '')}"
-        subtitle = fonts.subtitle.render(stage_label.strip().upper(), True,
-                                         ACCENT)
+        subtitle = fit_text(fonts.subtitle, stage_label.strip().upper(), ACCENT, (round(panel.w*.30), 36))
         screen.blit(subtitle, (panel.right - inner_pad - subtitle.get_width(),
-                               panel.top + 22))
+                               panel.top + 40))
 
         # ---- Tabs ----
         for tab_id, label, key_label, _ in TABS:
@@ -646,22 +650,13 @@ def open_stage_info(screen, stage, progress, background=None, tab="manual"):
             active = tab_id == tab
             hovered = rect.collidepoint(mouse_pos)
 
-            pygame.draw.rect(screen,
-                             PANEL_INNER if active else (30, 32, 40),
-                             rect, border_radius=6)
-            pygame.draw.rect(screen,
-                             ACCENT if active else
-                             (METAL_FRAME if hovered else DIVIDER),
-                             rect, 2, border_radius=6)
+            draw_button(screen, rect, f'{label} ({key_label})', fonts.tab,
+                        hovered=hovered, text_offset=12,
+                        tier=TIER_PRIMARY if active else TIER_SECONDARY)
 
             icon_rect = pygame.Rect(rect.left + 12, rect.centery - 10, 20, 20)
             draw_tab_icon(screen, icon_rect, tab_id,
-                          ACCENT if active else TEXT_DIM)
-
-            text = fonts.tab.render(f"{label}  ({key_label})", True,
-                                    TEXT_MAIN if active else TEXT_DIM)
-            screen.blit(text, (icon_rect.right + 8,
-                               rect.centery - text.get_height() // 2))
+                          UI_COLORS['gold_text_dark'] if active else TEXT_DIM)
 
         # ---- Content ----
         pygame.draw.rect(screen, PANEL_INNER, view, border_radius=6)
@@ -690,21 +685,14 @@ def open_stage_info(screen, stage, progress, background=None, tab="manual"):
                              border_radius=3)
 
         # ---- Footer ----
-        hint = fonts.small.render(
+        hint = fit_text(fonts.small,
             "ARROWS / WHEEL SCROLL    LEFT-RIGHT SWITCH TABS    ESC CLOSE",
-            True, TEXT_DIM
+            TEXT_DIM, (back_rect.left-panel.left-inner_pad-24, 26)
         )
         screen.blit(hint, (panel.left + inner_pad,
                            panel.bottom - footer_h + 18))
 
         back_hovered = back_rect.collidepoint(mouse_pos)
-        pygame.draw.rect(screen, (60, 90, 130) if back_hovered else (42, 46, 58),
-                         back_rect, border_radius=5)
-        pygame.draw.rect(screen, ACCENT if back_hovered else METAL_FRAME,
-                         back_rect, 2, border_radius=5)
-        back_text = fonts.subtitle.render("BACK", True, TEXT_MAIN)
-        screen.blit(back_text,
-                    (back_rect.centerx - back_text.get_width() // 2,
-                     back_rect.centery - back_text.get_height() // 2))
+        draw_button(screen, back_rect, 'BACK', fonts.subtitle, hovered=back_hovered)
 
         pygame.display.flip()

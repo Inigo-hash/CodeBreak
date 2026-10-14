@@ -158,7 +158,14 @@ def load_hud_icons():
     ]
 
 
-def load_portrait():
+def load_portrait(character_id='man'):
+    if character_id == 'woman':
+        from src.data.characters import CHARACTERS
+        image = pygame.image.load(CHARACTERS['woman']['preview']).convert_alpha()
+        bounds = image.get_bounding_rect(min_alpha=8)
+        crop = pygame.Rect(0, 0, max(1, round(bounds.height*.38)), max(1, round(bounds.height*.38)))
+        crop.midtop = (bounds.centerx, bounds.top)
+        return image.subsurface(crop.clip(image.get_rect())).copy()
     return pygame.image.load(PORTRAIT_PATH).convert_alpha()
 
 
@@ -385,7 +392,7 @@ class GameplayHUD:
         return load_hud_icons()
 
     def _load_portrait(self):
-        return load_portrait()
+        return load_portrait(self.state.get('character_id', 'man'))
 
     def draw(self, interaction_prompt=None, in_combat=False,
              current_hp=None, max_hp=None, bonus_time=None,

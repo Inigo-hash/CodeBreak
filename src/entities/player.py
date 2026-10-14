@@ -11,6 +11,7 @@ from src.systems.combat import (
 class MainCharacter():
     def __init__(self, screen, map_width, map_height):
         self.screen = screen
+        self.draw_bounds = None
         self._zoom_frames = {}
         self.is_idle = True
         self.idle_bob_timer = 0.0
@@ -122,6 +123,34 @@ class MainCharacter():
                 for frame in dodges
             ]
 
+        # Matching unarmed artwork prevents a sword reappearing during dodge,
+        # flinch, or defeat after selecting the torch or an empty slot.
+        self.unarmed_flinch_frames = {}
+        self.unarmed_death_frames = {}
+        self.unarmed_dodge_frames = {}
+        for facing, direction in compass_directions.items():
+            flinch = pygame.image.load(
+                f"assets/images/frames/main_character/flinch/{direction}.png"
+            ).convert_alpha()
+            factor = target_content_height / self._robust_content_height(flinch)
+            upright = pygame.transform.scale(flinch, (
+                max(1, round(flinch.get_width() * factor)),
+                max(1, round(flinch.get_height() * factor))))
+            self.unarmed_flinch_frames[facing] = [upright]
+            self.unarmed_death_frames[facing] = [
+                pygame.transform.rotate(upright,
+                    (-90 if facing not in ('left', 'northwest', 'southwest') else 90)
+                    * index / (DEATH_FRAME_COUNT - 1))
+                for index in range(DEATH_FRAME_COUNT)]
+            dodge_direction = {"north-west": "nort-west"}.get(direction, direction)
+            frames = [pygame.image.load(
+                f"assets/images/frames/main_character/dodging/sheathed/{dodge_direction}/frame_{i}.png"
+            ).convert_alpha() for i in range(4)]
+            factor = target_content_height / max(self._robust_content_height(f) for f in frames)
+            self.unarmed_dodge_frames[facing] = [pygame.transform.scale(f, (
+                max(1, round(f.get_width() * factor)),
+                max(1, round(f.get_height() * factor)))) for f in frames]
+
         # Named attributes kept for the original four directions so
         # nothing else that references them directly breaks.
         self.idle_right_frames = self.scaled['idle_right']
@@ -179,15 +208,21 @@ class MainCharacter():
             self.is_idle = False
             return
         if self.combat_state == "defeated":
-            self.current_frames = self.death_frames[self.facing]
+            frames = self.death_frames if self.weapon_equipped else self.unarmed_death_frames
+            self.current_frames = frames[self.facing]
+            self.current %= len(self.current_frames)
             self.is_idle = False
             return
         if self.combat_state == "flinch":
-            self.current_frames = self.flinch_frames[self.facing]
+            frames = self.flinch_frames if self.weapon_equipped else self.unarmed_flinch_frames
+            self.current_frames = frames[self.facing]
+            self.current %= len(self.current_frames)
             self.is_idle = False
             return
         if self.combat_state == "dodging":
-            self.current_frames = self.dodge_frames[self.facing]
+            frames = self.dodge_frames if self.weapon_equipped else self.unarmed_dodge_frames
+            self.current_frames = frames[self.facing]
+            self.current %= len(self.current_frames)
             self.is_idle = False
             return
         up = keys[pygame.K_w] or keys[pygame.K_UP]
@@ -332,3 +367,6 @@ class MainCharacter():
             self.idle_bob_timer = 0.0
 
         self.screen.blit(frame, (draw_x, draw_y))
+        # Accessories follow the visible sprite, including zoom and idle bob,
+        # rather than its much smaller ground collision rectangle.
+        self.draw_bounds = frame.get_bounding_rect().move(round(draw_x), round(draw_y))

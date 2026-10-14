@@ -84,6 +84,9 @@ DRAG_THRESHOLD = 6
 # ===========================================================================
 #  DATA MODEL
 # ===========================================================================
+from src.data.equipment import EQUIPMENT
+
+
 class Item:
     """
     A single inventory item.
@@ -93,7 +96,7 @@ class Item:
     """
 
     def __init__(self, name, icon=None, count=1, description="", kind="item",
-                 topic_id=None, damage=None):
+                 topic_id=None, damage=None, equipment_id=None):
         self.name = name
         self.icon = icon
         self.count = count
@@ -107,6 +110,7 @@ class Item:
         self.topic_id = topic_id
         # Used only by weapon items. Combat falls back safely when absent.
         self.damage = damage
+        self.equipment_id = equipment_id
 
 
 class PlayerInventory:
@@ -179,10 +183,7 @@ class PlayerInventory:
         if not self.weapon_obtained:
             return
 
-        sword = Item(
-            "Base Sword", kind="weapon", damage=20,
-            description="A dependable starter blade.",
-        )
+        sword = self.equipment_item("base_sword")
 
         if equipped:
             self.toolbar[0] = sword
@@ -192,6 +193,78 @@ class PlayerInventory:
                 if slot is None:
                     self.bag[i] = sword
                     break
+
+    @property
+    def torch_equipped(self):
+        item = self.get_selected_item()
+        return item is not None and item.equipment_id == "torch"
+
+    @staticmethod
+    def equipment_item(equipment_id):
+        definition = EQUIPMENT[equipment_id]
+        icon = None
+        if equipment_id == "torch":
+            from src.ui.night_lighting import draw_torch
+            icon = pygame.Surface((64, 64), pygame.SRCALPHA)
+            draw_torch(icon, (32, 18), "right", 0)
+        return Item(**definition, equipment_id=equipment_id, icon=icon)
+
+    def ensure_starter_torch(self):
+        """New games and older saves receive one torch, packed in the bag."""
+        if any(item and item.equipment_id == "torch"
+               for item in self.toolbar + self.bag):
+            return
+        for index, item in enumerate(self.bag):
+            if item is None:
+                self.bag[index] = self.equipment_item("torch")
+                return
+
+    def to_dict(self):
+        """Persist slot positions and selection; never serialize pygame icons."""
+        def encode(item):
+            if item is None:
+                return None
+            if item.equipment_id in EQUIPMENT:
+                return {"equipment_id": item.equipment_id}
+            if item.kind == "topic":
+                return {"topic_id": item.topic_id, "name": item.name}
+            return None
+        return {"version": 1, "selected": self.selected,
+                "toolbar": [encode(item) for item in self.toolbar],
+                "bag": [encode(item) for item in self.bag]}
+
+    def restore_layout(self, layout):
+        """Restore supported items, rejecting duplicate equipment and hotbar books."""
+        if (not isinstance(layout, dict) or layout.get("version") != 1
+                or not isinstance(layout.get("toolbar"), list)
+                or not isinstance(layout.get("bag"), list)):
+            return False
+        seen = set()
+        for name in ("toolbar", "bag"):
+            slots = getattr(self, name)
+            slots[:] = [None] * len(slots)
+            for index, record in enumerate(layout[name][:len(slots)]):
+                if not isinstance(record, dict):
+                    continue
+                equipment_id = record.get("equipment_id")
+                topic_id = record.get("topic_id")
+                if isinstance(equipment_id, str) and equipment_id in EQUIPMENT:
+                    identity = ("equipment", equipment_id)
+                    item = self.equipment_item(equipment_id)
+                elif name == "bag" and isinstance(topic_id, str):
+                    identity = ("topic", topic_id)
+                    item = Item(str(record.get("name", topic_id)), kind="topic",
+                                topic_id=topic_id, icon=topic_icon(topic_id))
+                else:
+                    continue
+                if identity not in seen:
+                    slots[index] = item
+                    seen.add(identity)
+        selected = layout.get("selected", 0)
+        self.selected = selected if isinstance(selected, int) and 0 <= selected < TOOLBAR_SLOTS else 0
+        self.weapon_obtained = any(item and item.kind == "weapon"
+                                   for item in self.toolbar + self.bag)
+        return True
 
     # -- item helpers -------------------------------------------------------
     def add_item(self, item):
@@ -605,8 +678,10 @@ class InventoryScreen:
 
             # Topics are learning resources, not equipment - the same rule
             # add_topic() follows when it refuses to fill a hotbar slot.
-            if not (is_topic and target_name == "toolbar"):
-                slots = self._slots(target_name)
+            slots = self._slots(target_name)
+            swaps_topic_to_hotbar = (origin_name == "toolbar"
+                                    and getattr(slots[target_index], "kind", None) == "topic")
+            if not (is_topic and target_name == "toolbar") and not swaps_topic_to_hotbar:
                 self._slots(origin_name)[origin_index] = slots[target_index]
                 slots[target_index] = item
                 self.drag = None

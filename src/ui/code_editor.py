@@ -1299,10 +1299,11 @@ class CodeEditor:
         # Lifted clear of the keyboard hint along the bottom edge, which
         # grew when the editor's body text did.
         if self.submission_feedback and self.submission_feedback["passed"]:
-            primary = pygame.Rect(panel.centerx - 190, panel.bottom - 82, 180, 46)
-            secondary = pygame.Rect(panel.centerx + 10, panel.bottom - 82, 180, 46)
+            primary = pygame.Rect(panel.centerx + 10, panel.bottom - 82, 180, 46)
+            secondary = pygame.Rect(panel.centerx - 190, panel.bottom - 82, 180, 46)
         else:
             primary = pygame.Rect(panel.centerx - 100, panel.bottom - 82, 200, 46)
+            primary.right = panel.right - 46
             secondary = None
         return primary, secondary, panel
 
@@ -1347,6 +1348,7 @@ class CodeEditor:
             button_height,
         )
 
+        next_rect.x, exit_rect.x = exit_rect.x, next_rect.x
         return (
             next_rect,
             review_rect,

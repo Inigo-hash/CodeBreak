@@ -138,6 +138,8 @@ class TopicLessonScreen:
             button_width,
             button_height
         )
+        self.yes_button.x, self.no_button.x = self.no_button.x, self.yes_button.x
+        self.challenge_button.right = self.panel_rect.right - 30
 
         # -------------------------------------------------
         # Lesson scrolling

@@ -32,14 +32,14 @@ class UnsavedExitTests(unittest.TestCase):
     @patch('pygame.display.flip')
     def test_save_and_leave_writes_before_leaving(self, flip):
         save = Mock()
-        with patch('pygame.event.get', return_value=[self.key(pygame.K_TAB), self.key(pygame.K_RETURN)]):
+        with patch('pygame.event.get', return_value=[self.key(pygame.K_LEFT), self.key(pygame.K_RETURN)]):
             self.assertTrue(confirm_unsaved_exit(self.screen, save))
         save.assert_called_once()
 
     @patch('pygame.display.flip')
     def test_discard_requires_explicit_choice_and_does_not_save(self, flip):
         save = Mock()
-        with patch('pygame.event.get', return_value=[self.key(pygame.K_LEFT), self.key(pygame.K_RETURN)]):
+        with patch('pygame.event.get', return_value=[self.key(pygame.K_RIGHT), self.key(pygame.K_RETURN)]):
             self.assertTrue(confirm_unsaved_exit(self.screen, save))
         save.assert_not_called()
 
@@ -47,7 +47,7 @@ class UnsavedExitTests(unittest.TestCase):
     def test_save_failure_keeps_game_open(self, flip):
         save = Mock(side_effect=OSError('disk full'))
         with patch('pygame.event.get', side_effect=[
-            [self.key(pygame.K_TAB), self.key(pygame.K_RETURN)], [self.key(pygame.K_ESCAPE)]
+            [self.key(pygame.K_LEFT), self.key(pygame.K_RETURN)], [self.key(pygame.K_ESCAPE)]
         ]):
             self.assertFalse(confirm_unsaved_exit(self.screen, save))
         save.assert_called_once()

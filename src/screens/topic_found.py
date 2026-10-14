@@ -114,6 +114,7 @@ class TopicFoundScreen:
             button_width,
             button_height
         )
+        self.start_button.x, self.store_button.x = self.store_button.x, self.start_button.x
 
     # ---------------------------------------------------------
     # Main loop

@@ -107,6 +107,7 @@ def _boss_modal(screen, title, subtitle, lines, primary, secondary,
         panel.centerx + 9, panel.bottom - 82,
         button_width, 48,
     )
+    primary_rect.x, secondary_rect.x = secondary_rect.x, primary_rect.x
 
     focus = 0
     keyboard_focus = False

@@ -42,13 +42,13 @@ def open_stage_gate(screen, status, gate_name="Stage Exit", background=None,
 
     button_width = min(280, panel.width // 2 - 34)
     primary = pygame.Rect(
-        panel.centerx - button_width - 8,
+        panel.centerx + 8,
         panel.bottom - 72,
         button_width,
         44,
     )
     secondary = pygame.Rect(
-        panel.centerx + 8,
+        panel.centerx - button_width - 8,
         panel.bottom - 72,
         button_width,
         44,
@@ -63,7 +63,7 @@ def open_stage_gate(screen, status, gate_name="Stage Exit", background=None,
     else:
         title_text = "THE GATE IS SEALED"
         primary_label = "CONTINUE EXPLORING"
-        primary.centerx = panel.centerx
+        primary.right = panel.right-26
         secondary = None
 
     # Both labels now carry a stage name, so neither can be trusted to fit

@@ -53,7 +53,7 @@ class TutorialRegressionTests(unittest.TestCase):
         width, height = self.screen.get_size()
         exit_rect = pygame.Rect(0, 0, min(620, width - 60), 280)
         exit_rect.center = (width // 2, height // 2)
-        return_menu = pygame.Rect(exit_rect.right - 268,
+        return_menu = pygame.Rect(exit_rect.left + 48,
                                   exit_rect.bottom - 76, 220, 46)
         # Post the explicit click after the first event batch. This exercises
         # repeated Escape across the actual modal frame boundary rather than
@@ -131,7 +131,7 @@ class TutorialRegressionTests(unittest.TestCase):
         exit_rect = pygame.Rect(0, 0, min(620, width - 60), 280)
         exit_rect.center = (width // 2, height // 2)
         return_island = pygame.Rect(
-            exit_rect.right - 268, exit_rect.bottom - 76, 220, 46
+            exit_rect.left + 48, exit_rect.bottom - 76, 220, 46
         )
         pygame.event.post(pygame.event.Event(
             pygame.KEYDOWN, key=pygame.K_ESCAPE

@@ -291,7 +291,7 @@ class StageGateModalTests(unittest.TestCase):
         with patch("pygame.event.get", side_effect=[[], [confirm_event]]):
             self.assertEqual(open_stage_gate(self.screen, locked), "stay")
 
-    def test_locked_gate_has_one_centered_dismiss_button(self):
+    def test_locked_gate_has_one_right_aligned_dismiss_button(self):
         locked = evaluate_stage_gate(self.stage, 2, ())
         close_event = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE)
         with patch("pygame.event.get", side_effect=[[], [close_event]]), patch(
@@ -300,13 +300,13 @@ class StageGateModalTests(unittest.TestCase):
             self.assertEqual(open_stage_gate(self.screen, locked), "stay")
         self.assertEqual(draw.call_count, 1)
         self.assertEqual(draw.call_args.args[2], "CONTINUE EXPLORING")
-        self.assertEqual(draw.call_args.args[1].centerx, self.screen.get_width() // 2)
+        self.assertGreater(draw.call_args.args[1].centerx, self.screen.get_width() // 2)
 
-    def test_locked_gate_center_button_dismisses_without_exiting(self):
+    def test_locked_gate_right_button_dismisses_without_exiting(self):
         locked = evaluate_stage_gate(self.stage, 2, ())
         # The 620px panel is centered in this 720px canvas; the button is
         # 50px above its bottom edge.
-        click = pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=(640, 620))
+        click = pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=(854, 620))
         with patch("pygame.event.get", side_effect=[[], [click]]):
             self.assertEqual(open_stage_gate(self.screen, locked), "stay")
 

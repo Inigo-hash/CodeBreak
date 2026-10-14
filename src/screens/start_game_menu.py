@@ -149,8 +149,8 @@ def start_game_menu(screen, clean_backdrop=None):
     slot_rects, delete_rects = slot_layout(panel_rect, save_manager.NUM_SLOTS)
     back_rect = pygame.Rect(panel_rect.centerx - 80, panel_rect.bottom - 56, 160, 38)
     confirm_rect = pygame.Rect(width // 2 - 240, height // 2 - 100, 480, 200)
-    confirm_yes = pygame.Rect(confirm_rect.centerx - 160, confirm_rect.bottom - 58, 140, 42)
-    confirm_no = pygame.Rect(confirm_rect.centerx + 20, confirm_rect.bottom - 58, 140, 42)
+    confirm_yes = pygame.Rect(confirm_rect.centerx + 20, confirm_rect.bottom - 58, 140, 42)
+    confirm_no = pygame.Rect(confirm_rect.centerx - 160, confirm_rect.bottom - 58, 140, 42)
     password_rect = pygame.Rect(width // 2 - 290, height // 2 - 180, 580, 360)
     password_input = pygame.Rect(password_rect.left + 48, password_rect.top + 145,
                                  password_rect.width - 96, 54)

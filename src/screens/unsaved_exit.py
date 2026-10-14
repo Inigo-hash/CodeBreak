@@ -12,6 +12,7 @@ def confirm_unsaved_exit(screen, save=None, destination='exit the game'):
     gap, padding = 14, 26
     button_w = (panel.w-padding*2-gap*2)//3
     buttons = [pygame.Rect(panel.x+padding+i*(button_w+gap), panel.bottom-88, button_w, 48) for i in range(3)]
+    buttons[0].x, buttons[2].x = buttons[2].x, buttons[0].x
     labels = ('SAVE & LEAVE' if save else 'NO SAVE SLOT', 'LEAVE WITHOUT SAVING', 'KEEP PLAYING')
     focus = 2  # Never default a keyboard confirmation to discarding progress.
     error = ''
@@ -44,9 +45,10 @@ def confirm_unsaved_exit(screen, save=None, destination='exit the game'):
                 if event.key == pygame.K_ESCAPE:
                     return False
                 if event.key in (pygame.K_TAB, pygame.K_RIGHT, pygame.K_LEFT):
-                    focus = (focus+(-1 if event.key == pygame.K_LEFT else 1)) % 3
+                    order = (2, 1, 0)  # Left to right: keep, discard, save.
+                    focus = order[(order.index(focus)+(-1 if event.key == pygame.K_LEFT else 1)) % 3]
                     if focus == 0 and save is None:
-                        focus = 1 if event.key != pygame.K_LEFT else 2
+                        focus = 2 if event.key != pygame.K_LEFT else 1
                 elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
                     action = focus
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:

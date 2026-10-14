@@ -583,8 +583,8 @@ def tutorial_screen(screen, play_music=True, show_loading=False,
     show_exit_confirm = False
     exit_rect = pygame.Rect(0, 0, min(620, SCREEN_WIDTH - 60), 280)
     exit_rect.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
-    keep_learning_rect = pygame.Rect(exit_rect.left + 48, exit_rect.bottom - 76, 220, 46)
-    return_menu_rect = pygame.Rect(exit_rect.right - 268, exit_rect.bottom - 76, 220, 46)
+    keep_learning_rect = pygame.Rect(exit_rect.right - 268, exit_rect.bottom - 76, 220, 46)
+    return_menu_rect = pygame.Rect(exit_rect.left + 48, exit_rect.bottom - 76, 220, 46)
 
     def draw_exit_confirmation(surf):
         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)

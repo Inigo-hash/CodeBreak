@@ -50,8 +50,8 @@ def confirm_buttons():
 
     width, height = CANVAS
     confirm = pygame.Rect(width // 2 - 240, height // 2 - 100, 480, 200)
-    yes = pygame.Rect(confirm.centerx - 160, confirm.bottom - 58, 140, 42)
-    no = pygame.Rect(confirm.centerx + 20, confirm.bottom - 58, 140, 42)
+    yes = pygame.Rect(confirm.centerx + 20, confirm.bottom - 58, 140, 42)
+    no = pygame.Rect(confirm.centerx - 160, confirm.bottom - 58, 140, 42)
     return yes.center, no.center
 
 

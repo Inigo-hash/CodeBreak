@@ -16,7 +16,7 @@ def character_select_layout(size):
     cards = [pygame.Rect(panel.x+padding+i*(card_w+gap), panel.y+116,
                          card_w, panel.h-240) for i in range(2)]
     confirm = pygame.Rect(0, 0, min(380, panel.w-320), 48)
-    confirm.midbottom = (panel.centerx, panel.bottom-38)
+    confirm.bottomright = (panel.right-28, panel.bottom-38)
     back = pygame.Rect(panel.x+28, confirm.y, 110, 48)
     return panel, cards, confirm, back
 

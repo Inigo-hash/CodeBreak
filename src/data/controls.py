@@ -84,7 +84,7 @@ CONTROL_SECTIONS = [
 CONTROL_NOTES = [
     "Open B, drag the sword from your bag to the hotbar, then select its slot before attacking.",
     "E attacks - but next to a searchable object, hold E to search instead.",
-    "Dodging spends 25 energy; energy refills by 5 every second.",
+    "Dodging spends 25 energy; energy refills by 8 per second, or 32 near fixed torches at night.",
     "Run and Submit inside the editor are buttons you click.",
     "F1 and F2 change the light and fog outside; inside the editor the "
     "same keys switch its light and dark theme.",

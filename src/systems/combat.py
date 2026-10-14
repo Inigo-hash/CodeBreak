@@ -3,28 +3,26 @@
 from dataclasses import dataclass
 import math
 import pygame
+from src.data.player_rules import (
+    PLAYER_MAX_HP, PLAYER_MAX_ENERGY, PLAYER_DODGE_ENERGY_COST,
+    PLAYER_ENERGY_REGEN, PLAYER_TORCH_ENERGY_REGEN,
+    PLAYER_TORCH_HP_REGEN, PLAYER_TORCH_HEAL_DELAY,
+)
 
 
-PLAYER_MAX_HP = 100
-PLAYER_MAX_ENERGY = 100
 # Energy is the dodge budget: four dodges from full, and a steady trickle
 # back so a fight is paced by when the player spends it, not by a cooldown
 # alone. Regen is per second and applied continuously, not in 1s ticks.
-PLAYER_DODGE_ENERGY_COST = 25
-PLAYER_ENERGY_REGEN = 8.0
 # Standing in a lit torch's pool restores the dodge budget four times as
 # fast: a full dodge back roughly every second and a quarter, which makes
 # the lit stretches of path worth retreating to during a night fight.
-PLAYER_TORCH_ENERGY_REGEN = 32.0
 # The same light closes wounds at the same rate it restores energy: five
 # seconds in a pool takes the player from near death back to full. A lit
 # stretch of path is therefore a genuine refuge rather than a slow drip,
 # and the pressure comes from reaching one rather than from waiting in it.
-PLAYER_TORCH_HP_REGEN = 20.0
 # Torchlight is recovery space, not armour.  Passive healing starts only
 # after the player has avoided damage for a moment, preventing a weak enemy
 # from being out-healed while its attack is still connecting.
-PLAYER_TORCH_HEAL_DELAY = 2.0
 ATTACK_FRAME_COUNT = 9
 ATTACK_FRAME_DURATION = 0.055
 PLAYER_ATTACK_DURATION = ATTACK_FRAME_COUNT * ATTACK_FRAME_DURATION

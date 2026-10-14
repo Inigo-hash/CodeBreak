@@ -10,6 +10,20 @@ from src.data.challenges import CHALLENGES
 
 
 class ServerTests(unittest.TestCase):
+    def test_game_facts_explain_real_healing_and_current_controls(self):
+        from src.data.player_rules import PLAYER_TORCH_HP_REGEN, PLAYER_TORCH_HEAL_DELAY
+        facts = game_knowledge()
+        recovery = facts['healing_and_energy']
+        self.assertEqual(recovery['hp_per_second_in_fixed_torch_light'], PLAYER_TORCH_HP_REGEN)
+        self.assertEqual(recovery['heal_delay_after_damage_seconds'], PLAYER_TORCH_HEAL_DELAY)
+        self.assertIn('does not', recovery['held_torch'])
+        self.assertIn('night mode off', recovery['castle'])
+        self.assertIn('Shift', facts['practical_help']['dash'])
+        self.assertIn('walls remain solid', facts['practical_help']['dash'])
+        self.assertIn('sword', facts['practical_help']['equip'])
+        self.assertTrue(facts['enemies'])
+        self.assertTrue(facts['items'])
+
     def make_client(self, handler):
         app = create_app()
         client = TestClient(app)

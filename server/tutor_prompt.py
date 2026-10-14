@@ -7,6 +7,13 @@ from src.data.items import ITEMS
 from src.data.rooms import ROOM_STAGES
 from src.data.stages import STAGES
 from src.data.topics import TOPICS, topic_challenge_ids
+from src.data.player_rules import (
+    PLAYER_MAX_HP, PLAYER_MAX_ENERGY, PLAYER_DODGE_ENERGY_COST,
+    PLAYER_ENERGY_REGEN, PLAYER_TORCH_ENERGY_REGEN,
+    PLAYER_TORCH_HP_REGEN, PLAYER_TORCH_HEAL_DELAY,
+)
+from src.data.equipment import EQUIPMENT
+from src.data.enemies import ENEMIES
 
 
 def game_knowledge():
@@ -18,6 +25,8 @@ def game_knowledge():
         stages.append({
             'name': stage['name'],
             'label': stage.get('subtitle'),
+            'id': stage['id'],
+            'content_ready': completion.get('content_ready', True),
             'has_map': bool(stage.get('world', {}).get('map')),
             'next_stage': STAGES.get(stage.get('next_stage'), {}).get('name'),
             'summary': manual.get('summary', ''),
@@ -53,6 +62,41 @@ def game_knowledge():
         'mang_tahimik': ITEMS['mang_tahimik']['description'],
         'controls': CONTROL_SECTIONS,
         'control_notes': CONTROL_NOTES,
+        'healing_and_energy': {
+            'where_to_heal': ('On the Island at night, stand inside a fixed map torch light pool. '
+                              'Retreat from enemies first, then stay in the light.'),
+            'max_hp': PLAYER_MAX_HP,
+            'heal_delay_after_damage_seconds': PLAYER_TORCH_HEAL_DELAY,
+            'hp_per_second_in_fixed_torch_light': PLAYER_TORCH_HP_REGEN,
+            'conditions': 'Healing requires night mode, living HP above zero, and no recent damage.',
+            'held_torch': ('The torch selected from your hotbar lights your way but does not '
+                           'trigger healing or faster energy recovery. Use a fixed map torch.'),
+            'castle': ('Castle rooms are lit interiors with night mode off by default; '
+                       'do not promise torch healing there or invent a healer, potion shop, or healing room.'),
+            'max_energy': PLAYER_MAX_ENERGY,
+            'normal_energy_per_second': PLAYER_ENERGY_REGEN,
+            'fixed_torch_energy_per_second': PLAYER_TORCH_ENERGY_REGEN,
+            'dodge_energy_cost': PLAYER_DODGE_ENERGY_COST,
+            'hp_and_hearts': 'HP is combat health; hearts are lives. Torch healing restores HP, not lost hearts.',
+        },
+        'equipment': EQUIPMENT,
+        'items': [{'name': item['name'], 'description': item.get('description', ''),
+                   'hint': item.get('hint', '')} for item in ITEMS.values()],
+        'enemies': [{'name': enemy['name'], 'description': enemy.get('description', ''),
+                     'behavior': enemy.get('behavior', '')} for enemy in ENEMIES.values()],
+        'practical_help': {
+            'equip': 'Press B, drag the sword or torch from the bag into a hotbar slot, then select it with 1-5 or the mouse wheel.',
+            'dash': 'Press either Shift key to dash. Dashing costs energy and passes through enemies; walls remain solid.',
+            'attack': 'Select the sword before pressing E to attack. Selecting a torch or empty slot puts the sword away.',
+            'search': 'Hold E beside a searchable object. During combat, fighting takes priority; clear its guards first.',
+            'learning': 'Read the lesson, type code, use Run to test, and Submit to validate. Failed submissions unlock progressive hints.',
+            'castle_lists': 'The Lists terminal is in the southwest Dining Area. Master both Lists challenges for Castle Key 1, once. Practice gives no extra keys.',
+            'navigation': 'Press I for the stage manual, J for enemies, K for items, O for objectives, M for the local map, and G for the atlas.',
+            'settings': 'Press Escape, then Settings. F10 mutes or unmutes music.',
+            'saving': 'Use Escape then Save Game. Three password-protected save slots are available; passwords cannot be recovered.',
+            'tutor': 'Press H during safe exploration or Ctrl+H inside a normal coding challenge to chat. Mang Tahimik gives hints, not complete challenge answers.',
+            'future_content': 'Stage 3, the Citadel, is a future placeholder. Castle is not yet a complete finishable learning stage.',
+        },
     }
 
 
@@ -66,7 +110,12 @@ short sentences, under 60 words. Use up to 120 words only for an explanation
 or debugging. Do not repeat greetings, apologize unnecessarily, ramble, or end
 every answer with a question. Ask one follow-up only if needed to help.
 Game questions (what CodeBreak is, stage counts, controls, progression, rooms,
-items, objectives) are on-topic. Answer them directly from the GAME FACTS below.
+items, objectives, healing, HP, hearts, energy, equipment and saving) are on-topic.
+Answer them directly from the GAME FACTS below. For "where to heal", explain
+fixed map torch pools at night and the delay after damage. Distinguish fixed
+torches from the held torch; do not invent healers, shops, potions or locations.
+If the player's stage is unknown, give the Island rule and mention that Castle
+interiors have night mode off by default; ask their stage only if needed.
 Do not turn a game question into a Python exercise, attach unrelated sample code,
 or tell the player to focus on Python. Distinguish islands, stages and rooms.
 Never invent locations such as Variable Valley, Loop Lagoon or Function Forest.

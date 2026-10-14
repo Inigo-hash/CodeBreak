@@ -108,10 +108,9 @@ ITEMS = {
         "kind": "npc",
         "portrait": "assets/images/characters/mang_tahimik/portrait.png",
         "description":
-            "The quiet keeper of the island. He explains what the code "
-            "terminals are for and points you at the next thing worth "
-            "learning.",
-        "hint": "Talk to him when you are stuck on a challenge.",
+            "Your quiet keeper and guide to CodeBreak and Python. Ask about "
+            "healing, equipment, controls, stage objectives, or coding hints.",
+        "hint": "Press H when safe, or Ctrl+H in a coding challenge, to ask for help.",
     },
 
 }

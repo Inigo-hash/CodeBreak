@@ -76,7 +76,7 @@ class MangTahimikChat:
         shade = pygame.Surface((w, h), pygame.SRCALPHA)
         shade.fill((8, 12, 20, 65))
         self.background.blit(shade, (0, 0))
-        self.messages = [('Mang Tahimik', 'May tanong ka ba tungkol sa Python? I can explain concepts and give hints.')]
+        self.messages = [('Mang Tahimik', 'May tanong ka tungkol sa CodeBreak o Python? Ask me about healing, equipment, controls, stages, or coding hints.')]
         self.question = ''
         self.cursor = 0
         self.anchor = 0

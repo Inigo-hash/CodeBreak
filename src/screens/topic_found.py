@@ -2,7 +2,7 @@ import pygame
 from src.ui.text_layout import fit_text, draw_text_block
 from src.systems.audio import handle_music_shortcut
 
-from src.ui.theme import UI_COLORS, body_font, title_font
+from src.ui.theme import UI_COLORS, body_font, title_font, draw_button, TIER_PRIMARY, TIER_SECONDARY
 
 
 # ---------------------------------------------------------
@@ -262,39 +262,9 @@ class TopicFoundScreen:
         )
 
     def draw_button(self, rect, label, mouse_pos):
-
-        hovered = rect.collidepoint(mouse_pos)
-
-        color = (
-            BUTTON_HOVER
-            if hovered
-            else BUTTON_BG
-        )
-
-        border = (
-            ACCENT
-            if hovered
-            else FRAME
-        )
-
-        pygame.draw.rect(
-            self.screen,
-            color,
-            rect,
-            border_radius=6
-        )
-
-        pygame.draw.rect(
-            self.screen,
-            border,
-            rect,
-            2,
-            border_radius=6
-        )
-
-        text = fit_text(self.button_font, label, TEXT_MAIN,
-                        (rect.width - 24, rect.height - 12))
-        self.screen.blit(text, text.get_rect(center=rect.center))
+        draw_button(self.screen, rect, label, self.button_font,
+                    hovered=rect.collidepoint(mouse_pos),
+                    tier=TIER_PRIMARY if rect == self.start_button else TIER_SECONDARY)
 
 
 

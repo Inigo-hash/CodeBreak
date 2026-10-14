@@ -535,7 +535,7 @@ class GameplayHUD:
         # Two renders instead of one line so the dodge half can grey out on
         # its own while energy is below the cost of a dodge.
         attack = render_text(self.small, "[E] ATTACK     ", TEXT)
-        dodge = render_text(self.small, "[Q] DODGE", TEXT if dodge_ready else DIM)
+        dodge = render_text(self.small, "[SHIFT] DODGE", TEXT if dodge_ready else DIM)
         rect = pygame.Rect(0, 0, attack.get_width() + dodge.get_width(),
                            max(attack.get_height(), dodge.get_height()))
         rect.inflate_ip(24, 14)

@@ -13,7 +13,7 @@ from src.systems.stage_selection import select_stage
 from src.systems.developer_mode import developer_mode
 from src.systems import save_manager
 from src.systems.audio import apply_music_volume, handle_music_shortcut, music_shortcut_label
-from src.ui.theme import TIER_PRIMARY, TIER_SECONDARY, TIER_TERTIARY
+from src.ui.theme import TIER_PRIMARY, TIER_SECONDARY, TIER_TERTIARY, TIER_DANGER, draw_button
 
 
 SG_ICONS = ["play", "chest", "quit"]
@@ -152,8 +152,8 @@ def start_game_menu(screen, clean_backdrop=None):
     password_rect = pygame.Rect(width // 2 - 290, height // 2 - 180, 580, 360)
     password_input = pygame.Rect(password_rect.left + 48, password_rect.top + 145,
                                  password_rect.width - 96, 54)
-    password_ok = pygame.Rect(password_rect.centerx - 170, password_rect.bottom - 70, 150, 44)
-    password_cancel = pygame.Rect(password_rect.centerx + 20, password_rect.bottom - 70, 150, 44)
+    password_cancel = pygame.Rect(password_rect.centerx - 170, password_rect.bottom - 70, 150, 44)
+    password_ok = pygame.Rect(password_rect.centerx + 20, password_rect.bottom - 70, 150, 44)
 
     def _draw_slot_panel(surf, mode):
         overlay = pygame.Surface((width, height), pygame.SRCALPHA)
@@ -311,15 +311,12 @@ def start_game_menu(screen, clean_backdrop=None):
         surf.blit(note, note.get_rect(center=(confirm_rect.centerx, confirm_rect.top + 82)))
         # The destructive choice has to look unlike the safe one, or the
         # two buttons read as the same answer twice.
-        if deleting:
-            labels, colors = ("DELETE", "KEEP"), ((176, 52, 52), (72, 76, 90))
-        else:
-            labels, colors = ("YES", "NO"), ((70, 140, 70), (140, 70, 70))
-        for rect, label, color in ((confirm_yes, labels[0], colors[0]),
-                                   (confirm_no, labels[1], colors[1])):
-            pygame.draw.rect(surf, color, rect, border_radius=4)
-            text = fit_text(_button_font, label, WHITE, (rect.width - 20, rect.height - 10))
-            surf.blit(text, text.get_rect(center=rect.center))
+        labels = ("DELETE SAVE", "KEEP SAVE") if deleting else ("REPLACE SAVE", "KEEP SAVE")
+        mouse = pygame.mouse.get_pos()
+        draw_button(surf, confirm_yes, labels[0], _button_font,
+                    hovered=confirm_yes.collidepoint(mouse), tier=TIER_DANGER)
+        draw_button(surf, confirm_no, labels[1], _button_font,
+                    hovered=confirm_no.collidepoint(mouse), tier=TIER_SECONDARY)
 
     def _password_heading():
         if password_action == "delete_unlock":
@@ -331,7 +328,11 @@ def start_game_menu(screen, clean_backdrop=None):
         return "CREATE SAVE PASSWORD"
 
     def _lockout_remaining(slot_num):
+        nonlocal password_error
         deadline = _password_locked_until.get(slot_num, 0.0)
+        if slot_num in _password_locked_until and deadline <= time.monotonic():
+            _password_locked_until.pop(slot_num, None)
+            password_error = ""
         return max(0, math.ceil(deadline - time.monotonic()))
 
     def _draw_password(surf):
@@ -389,10 +390,10 @@ def start_game_menu(screen, clean_backdrop=None):
                         pygame.Rect(password_rect.x + 28, password_rect.y + 215,
                                     password_rect.width - 56, 62), center=True)
         for rect, label in ((password_ok, "CONTINUE"), (password_cancel, "CANCEL")):
-            pygame.draw.rect(surf, STONE_MID, rect, border_radius=4)
-            pygame.draw.rect(surf, STONE_LIGHT, rect, 2, border_radius=4)
-            text = fit_text(_button_font, label, WHITE, (rect.width - 20, rect.height - 10))
-            surf.blit(text, text.get_rect(center=rect.center))
+            draw_button(surf, rect, label, _button_font,
+                        hovered=rect.collidepoint(pygame.mouse.get_pos()),
+                        tier=TIER_PRIMARY if rect == password_ok else TIER_SECONDARY,
+                        enabled=not remaining if rect == password_ok else True)
 
     def _resume_menu_music():
         pygame.mixer.music.load("assets/audios/mainMenuBgm.mp3")
@@ -639,6 +640,8 @@ def start_game_menu(screen, clean_backdrop=None):
                     return
 
         paint_menu_backdrop(screen, t)
+        has_save = any(save_manager.slot_exists(slot) for slot in range(1, save_manager.NUM_SLOTS + 1))
+        tiers = ([TIER_SECONDARY, TIER_PRIMARY, TIER_TERTIARY] if has_save else SG_TIERS)
         for rect, label, icon, hovered, seed, tier in zip(
             rects, labels, icons, hovers, seeds, tiers
         ):

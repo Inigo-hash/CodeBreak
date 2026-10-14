@@ -1,6 +1,6 @@
 """Explain timed attempts before starting; report retakes after they end."""
 import pygame
-from src.ui.theme import UI_COLORS, body_font, title_font, draw_button, draw_panel
+from src.ui.theme import UI_COLORS, body_font, title_font, draw_button, draw_panel, TIER_PRIMARY
 from src.screens.learning_progress import _wrapped
 
 
@@ -29,7 +29,7 @@ def assessment_dialog(screen, title, lines, button='START ASSESSMENT', allow_bac
                 screen.blit(font.render(line, True, UI_COLORS['text']), (panel.left + 24, y))
                 y += font.get_linesize() + 3
             y += 9
-        draw_button(screen, start, button, font, hovered=start.collidepoint(pygame.mouse.get_pos()))
+        draw_button(screen, start, button, font, hovered=start.collidepoint(pygame.mouse.get_pos()), tier=TIER_PRIMARY)
         pygame.display.flip()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:

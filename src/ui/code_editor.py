@@ -24,7 +24,8 @@ from src.ui.text_buffer import TextBuffer
 from src.ui.editor_renderer import EditorRenderer
 from src.ui.editor_settings import EditorSettingsPanel
 from src.ui.editor_widgets import wrap_text
-from src.ui.text_layout import fit_text
+from src.ui.text_layout import fit_text, draw_text_block
+from src.ui.theme import draw_button, TIER_PRIMARY, TIER_SECONDARY, TIER_SUCCESS
 from src.screens.mang_tahimik import draw_tutor_helper, tutor_helper_rect, open_mang_tahimik
 from src.ui.editor_theme import (
     BACKGROUND_COLOR,
@@ -352,6 +353,7 @@ class CodeEditor:
         Handles keyboard and window events.
         """
 
+        feedback_owned_batch = bool(self.submission_feedback)
         for event in pygame.event.get():
 
             # Close the game
@@ -372,6 +374,7 @@ class CodeEditor:
             # owns focus until acknowledged. Repeated clicks cannot resubmit
             # the challenge underneath it.
             if self.submission_feedback:
+                feedback_owned_batch = True
 
                 passed = self.submission_feedback["passed"]
 
@@ -488,6 +491,11 @@ class CodeEditor:
 
                     continue
 
+                continue
+
+            # The key that dismisses a popup also generates TEXTINPUT.
+            # Consume the rest of this event batch before returning focus.
+            if feedback_owned_batch:
                 continue
 
             # -------------------------------
@@ -1438,30 +1446,29 @@ class CodeEditor:
             pygame.draw.circle(self.screen, accent,
                                (icon_center[0], icon_center[1] + 15), 3)
 
-        title = HEADER_FONT.render(feedback["title"], True, accent)
+        title = fit_text(HEADER_FONT, feedback["title"], accent,
+                         (panel.width - 60, 40))
         self.screen.blit(title, title.get_rect(center=(panel.centerx, panel.top + 118)))
-
-        y = panel.top + 153
-        for line in wrap_text(feedback["message"], TEXT_FONT, panel.width - 80)[:2]:
-            rendered = TEXT_FONT.render(line, True, TEXT_COLOR)
-            self.screen.blit(rendered, rendered.get_rect(center=(panel.centerx, y)))
-            y += TEXT_FONT.get_height() + 5
 
         function_feedback = self.challenge.get('type') == 'function'
         detail_box = pygame.Rect(panel.left + 46, panel.top + (204 if function_feedback else 226),
                                  panel.width - 92, 138 if function_feedback else 92)
+        draw_text_block(
+            self.screen, feedback["message"], TEXT_FONT, TEXT_COLOR,
+            pygame.Rect(panel.left + 40, panel.top + 148, panel.width - 80,
+                        detail_box.top - (panel.top + 148) - 10), center=True,
+        )
         pygame.draw.rect(self.screen, PANEL_COLOR, detail_box, border_radius=7)
         pygame.draw.rect(self.screen, BORDER_COLOR, detail_box, 1, border_radius=7)
         label = SMALL_FONT.render(
             "WHAT THE CHECKER SAYS", True, SECONDARY_TEXT
         )
         self.screen.blit(label, (detail_box.left + 14, detail_box.top + 10))
-        detail_y = detail_box.top + 38
-        for line in wrap_text(feedback["detail"], SMALL_FONT,
-                              detail_box.width - 28)[:(4 if function_feedback else 2)]:
-            self.screen.blit(SMALL_FONT.render(line, True, TEXT_COLOR),
-                             (detail_box.left + 14, detail_y))
-            detail_y += SMALL_FONT.get_height() + 3
+        draw_text_block(
+            self.screen, feedback["detail"], SMALL_FONT, TEXT_COLOR,
+            pygame.Rect(detail_box.left + 14, detail_box.top + 38,
+                        detail_box.width - 28, detail_box.height - 46),
+        )
 
         mouse = pygame.mouse.get_pos()
 
@@ -1493,60 +1500,9 @@ class CodeEditor:
             )
 
             for rect, label_text, primary_style in practice_buttons:
-
-                if primary_style:
-
-                    fill = (
-                        accent
-                        if not rect.collidepoint(mouse)
-                        else tuple(
-                            min(255, channel + 28)
-                            for channel in accent[:3]
-                        )
-                    )
-
-                    pygame.draw.rect(
-                        self.screen,
-                        fill,
-                        rect,
-                        border_radius=6,
-                    )
-
-                else:
-
-                    fill = (
-                        BUTTON_HOVER_COLOR
-                        if rect.collidepoint(mouse)
-                        else BUTTON_COLOR
-                    )
-
-                    pygame.draw.rect(
-                        self.screen,
-                        fill,
-                        rect,
-                        border_radius=6,
-                    )
-
-                    pygame.draw.rect(
-                        self.screen,
-                        BORDER_COLOR,
-                        rect,
-                        2,
-                        border_radius=6,
-                    )
-
-                rendered = SMALL_FONT.render(
-                    label_text,
-                    True,
-                    BUTTON_TEXT_COLOR,
-                )
-
-                self.screen.blit(
-                    rendered,
-                    rendered.get_rect(
-                        center=rect.center
-                    ),
-                )
+                draw_button(self.screen, rect, label_text, SMALL_FONT,
+                            hovered=rect.collidepoint(mouse),
+                            tier=TIER_SUCCESS if primary_style else TIER_SECONDARY)
 
             hint_text = (
                 "ENTER = Next   "
@@ -1556,68 +1512,13 @@ class CodeEditor:
 
         else:
 
-            primary_color = (
-                accent
-                if not primary.collidepoint(mouse)
-                else tuple(
-                    min(255, channel + 28)
-                    for channel in accent[:3]
-                )
-            )
-
-            pygame.draw.rect(
-                self.screen,
-                primary_color,
-                primary,
-                border_radius=6,
-            )
-
-            primary_label = (
-                "CONTINUE"
-                if passed
-                else "BACK TO CODE"
-            )
-
-            rendered = fit_text(BUTTON_FONT, primary_label, BUTTON_TEXT_COLOR, (primary.w - 24, primary.h - 12))
-
-            self.screen.blit(
-                rendered,
-                rendered.get_rect(
-                    center=primary.center
-                ),
-            )
-
+            draw_button(self.screen, primary,
+                        "CONTINUE" if passed else "BACK TO CODE", BUTTON_FONT,
+                        hovered=primary.collidepoint(mouse),
+                        tier=TIER_SUCCESS if passed else TIER_PRIMARY)
             if secondary:
-
-                fill = (
-                    BUTTON_HOVER_COLOR
-                    if secondary.collidepoint(mouse)
-                    else BUTTON_COLOR
-                )
-
-                pygame.draw.rect(
-                    self.screen,
-                    fill,
-                    secondary,
-                    border_radius=6,
-                )
-
-                pygame.draw.rect(
-                    self.screen,
-                    BORDER_COLOR,
-                    secondary,
-                    2,
-                    border_radius=6,
-                )
-
-                rendered = fit_text(BUTTON_FONT, "REVIEW CODE", BUTTON_TEXT_COLOR, (secondary.w - 24, secondary.h - 12))
-
-                self.screen.blit(
-                    rendered,
-                    rendered.get_rect(
-                        center=secondary.center
-                    ),
-                )
+                draw_button(self.screen, secondary, "REVIEW CODE", BUTTON_FONT,
+                            hovered=secondary.collidepoint(mouse), tier=TIER_SECONDARY)
 
             hint_text = (
                 "E / ENTER = Continue"

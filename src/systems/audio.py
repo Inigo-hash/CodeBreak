@@ -36,6 +36,50 @@ def apply_music_volume():
         pygame.mixer.music.set_volume(effective_music_volume())
 
 
+class EncounterMusic:
+    """Fade battle music as danger passes, then restore exploration."""
+
+    def __init__(self, exploration, combat, boss=None):
+        self.exploration = exploration
+        self.combat = combat or boss or exploration
+        self.boss = boss or self.combat
+        self.current = None
+        self.danger_remaining = 0.0
+        self.gain = 1.0
+
+    def play(self, path):
+        if not path or not pygame.mixer.get_init():
+            return
+        if path == self.current and pygame.mixer.music.get_busy():
+            return
+        try:
+            pygame.mixer.music.load(path)
+            apply_music_volume()
+            pygame.mixer.music.play(-1, fade_ms=1200 if path == self.exploration else 450)
+        except (pygame.error, OSError):
+            return
+        self.current = path
+        self.gain = 1.0
+
+    def update(self, dt, threatened=False, boss_active=False):
+        dt = max(0.0, dt)
+        if threatened or boss_active:
+            self.danger_remaining = 2.5
+        else:
+            self.danger_remaining = max(0.0, self.danger_remaining - dt)
+        self.play(self.boss if boss_active else self.combat
+                  if self.danger_remaining > 0 else self.exploration)
+        if threatened or boss_active:
+            # Re-entering combat restores a fading theme without restarting it.
+            self.gain = min(1.0, self.gain + dt / .6)
+        elif self.danger_remaining > 0 and self.current != self.exploration:
+            self.gain = self.danger_remaining / 2.5
+        else:
+            self.gain = 1.0
+        if pygame.mixer.get_init():
+            pygame.mixer.music.set_volume(effective_music_volume() * self.gain)
+
+
 def toggle_music_mute():
     settings_state["music_muted"] = not settings_state.get("music_muted", False)
     apply_music_volume()

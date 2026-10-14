@@ -16,8 +16,8 @@ from src.ui.theme import UI_COLORS, body_font, draw_button, draw_panel, title_fo
 HELP_COPY = {
     "font_size": "Font size controls text readability. Use - / + or arrow keys, or select the number and type 12 to 28. A larger number makes text bigger; a smaller number fits more text on screen.",
     "text_speed": "Text speed controls how dialogue appears. Select Slow, Normal, or Instant. Slow reveals letters gradually; Normal is faster; Instant shows the whole line at once.",
-    "music": "Music is the background soundtrack. Drag or click the slider, use - / +, or press Left / Right. Left makes music quieter; right makes it louder. F10 mutes or unmutes music.",
-    "sfx": "Sound effects are short sounds such as clicks, sword swings and hits. Drag or click the slider, use - / +, or press Left / Right. Left makes effects quieter; right makes them louder.",
+    "music": "Music is the background soundtrack. Drag or click the slider, use - / +, or press Left / Right. Dragging the slider to the left makes music quieter; dragging it to the right makes it louder. F10 mutes or unmutes music.",
+    "sfx": "Sound effects are short sounds such as clicks, sword swings and hits. Drag or click the slider, use - / +, or press Left / Right. Dragging the slider to the left makes effects quieter; dragging it to the right makes them louder.",
     "theme": "Color theme is the coding editor's palette. Use either arrow to choose Blue, Dark, or Light. The editor changes its background and text colors to your selection.",
 }
 

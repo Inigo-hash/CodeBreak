@@ -34,7 +34,7 @@ UI_COLORS = {
     # A deep navy belongs to the same world the background does.
     "button_fill": (20, 26, 42),
     "button_fill_hover": (34, 45, 69),
-    "gold_deep": (139, 105, 20),
+    "gold_deep": (171, 132, 38),
     "gold_bright": (226, 186, 96),
     "gold_text_dark": (26, 19, 6),
 
@@ -62,6 +62,9 @@ UI_COLORS = {
     # The empty inventory slot: darker than the window it sits in, so a slot
     # reads as a hole in the panel rather than a tile on top of it.
     "modal_slot": (20, 22, 28),
+    "action_success": (28, 104, 70),
+    "action_danger": (153, 39, 49),
+    "action_disabled": (40, 43, 52),
 }
 
 # Button emphasis tiers. A menu where every row looks identical gives the eye
@@ -69,6 +72,23 @@ UI_COLORS = {
 TIER_PRIMARY = "primary"
 TIER_SECONDARY = "secondary"
 TIER_TERTIARY = "tertiary"
+TIER_SUCCESS = "success"
+TIER_DANGER = "danger"
+
+
+def readable_button_text(fill):
+    """Choose light or dark text with the stronger luminance contrast."""
+    def luminance(color):
+        channels = [value / 255 for value in color[:3]]
+        linear = [value / 12.92 if value <= .04045
+                  else ((value + .055) / 1.055) ** 2.4 for value in channels]
+        return sum(value * weight for value, weight in zip(linear, (.2126, .7152, .0722)))
+
+    def contrast(text):
+        a, b = sorted((luminance(fill), luminance(text)))
+        return (b + .05) / (a + .05)
+
+    return max((UI_COLORS["text"], (12, 24, 18)), key=contrast)
 
 # Every font in the game comes from here. Two families only: Exo 2 for
 # headings, buttons and menu chrome (it echoes the blocky sans of the
@@ -194,19 +214,20 @@ def _rounded_vgradient(surface, rect, top_color, bottom_color, radius):
 
 
 def draw_button(surface, rect, label, font, hovered=False, text_offset=0,
-                tier=TIER_SECONDARY):
+                tier=TIER_SECONDARY, enabled=True, focused=False):
     """Shared carved stone button used by the Main and Pause menus.
 
     `tier` controls emphasis only — geometry, hit area and the returned rect
     are unchanged, so callers that do their own layout math stay correct.
     """
+    hovered = hovered and enabled
     grow = 4 if hovered else 0
-    if tier == TIER_PRIMARY:
+    if tier == TIER_PRIMARY and enabled:
         grow += 3  # the hero action sits slightly proud of the rest
     draw_rect = rect.inflate(grow, grow) if grow else rect
 
     # Outer glow: always lit on the primary action, hover-only elsewhere.
-    if tier == TIER_PRIMARY or hovered:
+    if enabled and (tier == TIER_PRIMARY or hovered):
         glow_color = UI_COLORS["gold"] if tier == TIER_PRIMARY else UI_COLORS["blue"]
         glow_alpha = 70 if (tier == TIER_PRIMARY and hovered) else (
             46 if tier == TIER_PRIMARY else 55)
@@ -217,7 +238,19 @@ def draw_button(surface, rect, label, font, hovered=False, text_offset=0,
 
     pygame.draw.rect(surface, (6, 7, 10), draw_rect.move(0, 4), border_radius=7)
 
-    if tier == TIER_PRIMARY:
+    if not enabled:
+        pygame.draw.rect(surface, UI_COLORS["action_disabled"], draw_rect, border_radius=7)
+        border = UI_COLORS["modal_frame"]
+        text_color = UI_COLORS["text_dim"]
+        inner_line = border
+    elif tier in (TIER_SUCCESS, TIER_DANGER):
+        base = UI_COLORS["action_success" if tier == TIER_SUCCESS else "action_danger"]
+        fill = tuple(min(255, value + (15 if hovered else 0)) for value in base)
+        pygame.draw.rect(surface, fill, draw_rect, border_radius=7)
+        border = UI_COLORS["modal_success" if tier == TIER_SUCCESS else "modal_danger"]
+        text_color = UI_COLORS["text"]
+        inner_line = border
+    elif tier == TIER_PRIMARY:
         top = UI_COLORS["gold_bright"] if hovered else UI_COLORS["gold"]
         _rounded_vgradient(surface, draw_rect, top, UI_COLORS["gold_deep"], 7)
         border = UI_COLORS["gold_bright"] if hovered else UI_COLORS["bronze"]
@@ -248,4 +281,7 @@ def draw_button(surface, rect, label, font, hovered=False, text_offset=0,
                     (draw_rect.width - 24 - abs(text_offset) * 2, draw_rect.height - 12))
     text_rect = text.get_rect(center=(draw_rect.centerx + text_offset, draw_rect.centery))
     surface.blit(text, text_rect)
+    if focused and enabled:
+        pygame.draw.rect(surface, UI_COLORS["text"], draw_rect.inflate(10, 10),
+                         2, border_radius=10)
     return draw_rect

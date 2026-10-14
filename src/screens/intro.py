@@ -6,7 +6,7 @@ import sys
 import pygame
 
 from src.systems.audio import apply_music_volume, handle_music_shortcut, music_shortcut_label
-from src.ui.theme import UI_COLORS, body_font, draw_button, draw_panel, title_font
+from src.ui.theme import UI_COLORS, body_font, draw_button, draw_panel, title_font, TIER_PRIMARY
 
 
 PAGES = (
@@ -139,7 +139,7 @@ def opening_walkthrough(screen, replay=False):
 
         draw_button(screen, next_button,
                     "OPEN MAIN MENU" if page == len(PAGES) - 1 else "NEXT",
-                    button_font, hovered=next_button.collidepoint(pygame.mouse.get_pos()))
+                    button_font, hovered=next_button.collidepoint(pygame.mouse.get_pos()), tier=TIER_PRIMARY)
         if page > 0:
             draw_button(
                 screen, back_button, "BACK", button_font,

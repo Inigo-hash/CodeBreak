@@ -17,8 +17,9 @@ Island's files itself:
 
     map                 TMX path; a stage without one cannot be entered
     music               background track, or None for silence
+    combat_music        intense theme while ordinary enemies are engaged
     boss_music          track for this stage's boss fight, or None to
-                        keep the ordinary stage music playing
+                        use the combat theme
     night               True for the night veil and torch lighting, False
                         for a stage lit by its own tiles. An interior has
                         no dirt path to hang torches along, so inheriting
@@ -65,6 +66,7 @@ from src.data.controls import WORLD_CONTROLS
 from src.data.encounters import BEGINNER_PATH_GIDS, BEGINNER_STAGE_ENCOUNTERS
 from src.data.zones import CASTLE_ZONES, ISLAND_ZONES
 from src.data.castle_lists import LIST_CHALLENGE_IDS
+from src.data.stage_music import STAGE_MUSIC
 
 
 # Filled in for any stage that leaves a world setting out. A stage with no
@@ -72,6 +74,7 @@ from src.data.castle_lists import LIST_CHALLENGE_IDS
 WORLD_DEFAULTS = {
     "map": None,
     "music": None,
+    "combat_music": None,
     "boss_music": None,
     "night": True,
     "spawn": (0.5, 0.5),
@@ -105,11 +108,7 @@ STAGES = {
 
             "map": "assets/map/tmx/map1.tmx",
 
-            "music": "assets/audios/gameStage1Bgm.mp3",
-
-            "boss_music": (
-                "assets/audios/bgm/boss_fight/easy/Boss_fight_easy_sound_01.mp3"
-            ),
+            **STAGE_MUSIC["island"],
 
             # The original spawn: bottom-centre of the island, seven tiles
             # right of the middle and six tiles in from the ocean border.
@@ -355,11 +354,7 @@ STAGES = {
 
             "map": "assets/map/tmx/map2_castle_lobby.tmx",
 
-            # Placeholder until a castle theme is recorded - silence reads
-            # as a broken build rather than as atmosphere.
-            "music": "assets/audios/gameStage1Bgm.mp3",
-
-            "boss_music": None,
+            **STAGE_MUSIC["castle"],
 
             # An interior lights itself. The night veil hangs its torches
             # off the walkable dirt path, and a marble floor has none, so
@@ -482,6 +477,7 @@ def stage_world(stage):
     """
 
     world = dict(WORLD_DEFAULTS)
+    world.update(STAGE_MUSIC.get(stage.get("id"), {}))
     world.update(stage.get("world", {}))
     return world
 

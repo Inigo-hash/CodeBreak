@@ -18,7 +18,7 @@ class Enemy:
     # (movement folder, attack folder, flinch filename, visible height, canvas)
     _asset_config = {
         "kapre_usikan": ("walking", "attack", "{direction}.png", 180, (250, 220)),
-        "white_lady": ("", "", "{direction}.png", 80, (120, 100)),
+        "white_lady": ("", "", "{direction}.png", 120, (180, 144)),
         "zombie_aktan": ("walking", "attacking", "{direction}.png", 130, (180, 150)),
         "tiyanak_sinta": ("walking", "attacking", "{direction}.png", 40, (72, 50)),
         "manananggal": ("flying", "attacking", "manananggal_{direction}.png", 76, (110, 88)),

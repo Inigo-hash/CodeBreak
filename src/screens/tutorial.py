@@ -429,7 +429,7 @@ def tutorial_screen(screen, play_music=True, show_loading=False,
         "Ah, a new soul in CodeBreak... I am Mang Tahimik, and I will guide you through these halls.",
         "Use W, A, S, D to move. Try walking in every direction so your legs remember the way.",
         "The red HP bar is your health. If it empties, you fall, but this training ground will revive you so you can try again.",
-        "The gold Energy bar powers your Q dash. Each dash costs 25 energy, and energy slowly refills on its own.",
+        "The gold Energy bar powers your Shift dash. Each dash costs 25 energy, and energy slowly refills on its own.",
         "Dash out of danger and press E while facing the Tiyanak to strike back.",
     ]
     death_lesson_lines = [
@@ -714,7 +714,7 @@ def tutorial_screen(screen, play_music=True, show_loading=False,
                     combat_audio.play("sword_swing")
 
             if (state == "practice" and event.type == pygame.KEYDOWN
-                    and event.key == pygame.K_q):
+                    and event.key in (pygame.K_LSHIFT, pygame.K_RSHIFT)):
                 if player_combat.start_dodge():
                     has_dodged = True
                     combat_audio.play("dodge")
@@ -912,7 +912,7 @@ def tutorial_screen(screen, play_music=True, show_loading=False,
                     ("Move DOWN (S)", has_moved["down"]),
                     ("Move LEFT (A)", has_moved["left"]),
                     ("Move RIGHT (D)", has_moved["right"]),
-                    ("Dash (Q)", has_dodged),
+                    ("Dash (Shift)", has_dodged),
                     ("Defeat all 3 Tiyanak (E)", has_attacked),
                 ]
                 line_width = max(

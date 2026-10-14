@@ -44,7 +44,7 @@ from src.systems.combat import (
     boss_phase_table, move_rect, selected_weapon_damage,
 )
 from src.systems.audio import (
-    CombatAudio, apply_music_volume, handle_music_shortcut, play_crumble_sfx,
+    CombatAudio, EncounterMusic, apply_music_volume, handle_music_shortcut, play_crumble_sfx,
 )
 from src.data.zones import get_zone_at
 from src.data.stages import get_stage, stage_world
@@ -64,12 +64,13 @@ from src.systems.encounter_progress import newly_cleared_encounter_ids
 from src.systems.topic_mastery import reconcile_mastery, complete_topic_challenge
 from src.screens.topic_challenges import open_topic_challenges
 from src.systems.guards import assign_guards, remaining_guards
-from src.ui.theme import UI_COLORS, body_font, draw_button, draw_panel, title_font
+from src.ui.theme import UI_COLORS, body_font, draw_button, draw_panel, title_font, TIER_PRIMARY, TIER_SECONDARY, TIER_TERTIARY
 from src.ui.night_lighting import (
     LIGHT_CENTER_LIFT, draw_night_and_map_torches,
     in_torch_light, place_path_torches,
 )
 from src.ui.player_torch import held_torch_pose, draw_held_torch
+from src.ui.ghost_attack import ghost_attack_pose, draw_ghost_attack
 from src.ui.fog import build_fog_texture, draw_fog
 from src.screens.loading import StageLoadingScreen
 from src.screens.stage_gate import open_stage_gate
@@ -254,28 +255,25 @@ def game_screen(screen, slot_num=None, save_state=None):
         previous_frame=screen,
     )
 
+    encounter_music = EncounterMusic(
+        world["music"], world.get("combat_music"), world["boss_music"],
+    )
+
     def play_track(path):
         """Loop one authored track, or leave the music alone if unset."""
 
-        if not path:
-            return
-        pygame.mixer.music.load(path)
-        apply_music_volume()
-        pygame.mixer.music.play(-1)
+        encounter_music.play(path)
 
     def start_stage_music():
         """Play this stage's ordinary exploration track."""
 
+        encounter_music.danger_remaining = 0.0
         play_track(world["music"])
 
     def start_boss_music():
-        """Play this stage's boss theme, if it has authored one.
+        """Play the boss theme, falling back to the stage's combat theme."""
 
-        A stage with no boss track simply keeps its exploration music, so
-        a new stage can ship its boss before its theme is chosen.
-        """
-
-        play_track(world["boss_music"])
+        play_track(encounter_music.boss)
 
     start_stage_music()
     loading.update(5, f"Loading {stage_name} terrain...")
@@ -1253,7 +1251,9 @@ def game_screen(screen, slot_num=None, save_state=None):
         })
 
     def draw_pause_button(surf, rect, label, hovered):
-        draw_button(surf, rect, label, pause_button_font, hovered=hovered)
+        tier = TIER_PRIMARY if label == "RESUME" else (
+            TIER_TERTIARY if label == "RETURN TO MAIN MENU" else TIER_SECONDARY)
+        draw_button(surf, rect, label, pause_button_font, hovered=hovered, tier=tier)
 
     def blur_frame(surf):
         """
@@ -1899,7 +1899,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                     if (player_inventory.weapon_equipped
                             and player_combat.start_attack()):
                         combat_audio.play("sword_swing")
-                elif event.key == pygame.K_q and not paused:
+                elif event.key in (pygame.K_LSHIFT, pygame.K_RSHIFT) and not paused:
                     if player_combat.start_dodge():
                         combat_audio.play("dodge")
                 elif event.key == pygame.K_p and not paused and not engaged:
@@ -2177,9 +2177,11 @@ def game_screen(screen, slot_num=None, save_state=None):
             dy *= player_speed * frame_scale
 
         previous_player_position = player_rect.topleft
+        # A dash passes through combatants; terrain still blocks every step.
         movement_blockers = collision_rects + [
             enemy.rect for enemy in enemies
             if enemy.active and enemy.state != "defeated" and not developer_mode.enabled
+            and player_combat.state != "dodging"
         ]
         player_x, player_y = move_rect(
             player_rect, player_x, player_y, dx, dy, movement_blockers,
@@ -2320,7 +2322,9 @@ def game_screen(screen, slot_num=None, save_state=None):
                 [] if enemy.flies_over_terrain else collision_rects
             )
 
-            enemy_blockers = terrain_blockers + [player_rect] + [
+            enemy_blockers = terrain_blockers + (
+                [] if player_combat.state == "dodging" else [player_rect]
+            ) + [
                 other.rect for other in enemies
                 if other is not enemy
                 and other.active
@@ -2613,6 +2617,16 @@ def game_screen(screen, slot_num=None, save_state=None):
                     pygame.mixer.music.stop()
                     return "main_menu"
 
+        encounter_music.update(
+            dt,
+            threatened=player_combat.hp > 0 and not developer_mode.enabled and (
+                engaged or any(enemy.active and enemy.state == "alert" for enemy in enemies)
+            ),
+            boss_active=player_combat.hp > 0 and not developer_mode.enabled
+                        and boss_enemy is not None and boss_enemy.active
+                        and boss_enemy.state != "defeated",
+        )
+
         # --- Check if player is near an interactable ---
         # Coordinates remain unscaled here (ZOOM is draw-only). A two-tile
         # reach lets the player use a prop while its solid artwork keeps the
@@ -2877,6 +2891,8 @@ def game_screen(screen, slot_num=None, save_state=None):
             main_character.draw_bounds, main_character.facing, torch_time,
             main_character.combat_state,
         ) if player_inventory.torch_equipped else None)
+        ghost_attacks = [pose for enemy in enemies
+                         if (pose := ghost_attack_pose(enemy, ZOOM, camera_x, camera_y))]
         if night_mode:
             visible_torches = [
                 (world_x * ZOOM - camera_x, world_y * ZOOM - camera_y)
@@ -2893,7 +2909,8 @@ def game_screen(screen, slot_num=None, save_state=None):
                 visible_torches,
                 pygame.time.get_ticks() / 1000.0,
                 MAP_TORCH_LIGHT_RADIUS,
-                extra_lights=(held_torch[0],) if held_torch else (),
+                extra_lights=([(held_torch[0])] if held_torch else [])
+                             + [pose[0] for pose in ghost_attacks],
             )
         draw_held_torch(screen, held_torch, main_character.facing, torch_time)
 
@@ -2904,6 +2921,9 @@ def game_screen(screen, slot_num=None, save_state=None):
                 screen, fog_texture, camera_x, camera_y,
                 fog_drift_x, fog_drift_y,
             )
+
+        for pose in ghost_attacks:
+            draw_ghost_attack(screen, pose)
 
         # Keep the castle exit discoverable at night. Its colour immediately
         # communicates whether all completion requirements are satisfied;

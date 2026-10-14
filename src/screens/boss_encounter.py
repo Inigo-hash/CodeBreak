@@ -8,7 +8,7 @@ from src.ui.text_layout import fit_text, draw_text_block
 from src.data.enemies import get_enemy
 from src.systems.audio import handle_music_shortcut
 from src.ui.theme import (
-    TIER_PRIMARY, TIER_SECONDARY, UI_COLORS, body_font, draw_button,
+    TIER_PRIMARY, TIER_SECONDARY, TIER_SUCCESS, UI_COLORS, body_font, draw_button,
     draw_panel, title_font,
 )
 
@@ -23,7 +23,7 @@ def open_boss_intro(screen, boss_id, background=None):
         subtitle="AKTAN'S THRONE" if boss_id == "zombie_aktan" else "THE CORRUPTED CORE",
         lines=(
             f"{boss['name']} guards the stage's final path.",
-            "E attacks. Q dodges. Watch the boss health bar.",
+            "E attacks. Shift dodges. Watch the boss health bar.",
             "You may retreat now and return after more practice.",
         ),
         primary=("BEGIN FIGHT", "fight"),
@@ -108,6 +108,8 @@ def _boss_modal(screen, title, subtitle, lines, primary, secondary,
         button_width, 48,
     )
 
+    focus = 0
+    keyboard_focus = False
     while True:
         mouse = pygame.mouse.get_pos()
         for event in pygame.event.get():
@@ -117,13 +119,18 @@ def _boss_modal(screen, title, subtitle, lines, primary, secondary,
             if handle_music_shortcut(event):
                 continue
             if event.type == pygame.KEYDOWN:
+                if event.key in (pygame.K_TAB, pygame.K_LEFT, pygame.K_RIGHT):
+                    focus = 1 - focus
+                    keyboard_focus = True
+                    continue
                 if event.key in (
                     pygame.K_e, pygame.K_RETURN, pygame.K_KP_ENTER, pygame.K_SPACE
                 ):
-                    return primary[1]
+                    return (primary if focus == 0 else secondary)[1]
                 if event.key == pygame.K_ESCAPE:
                     return secondary[1]
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                keyboard_focus = False
                 if primary_rect.collidepoint(event.pos):
                     return primary[1]
                 if secondary_rect.collidepoint(event.pos):
@@ -154,14 +161,17 @@ def _boss_modal(screen, title, subtitle, lines, primary, secondary,
 
         draw_button(
             screen, primary_rect, primary[0], button_font,
-            hovered=primary_rect.collidepoint(mouse), tier=TIER_PRIMARY,
+            hovered=primary_rect.collidepoint(mouse),
+            tier=TIER_SUCCESS if title == "BOSS DEFEATED" else TIER_PRIMARY,
+            focused=keyboard_focus and focus == 0,
         )
         draw_button(
             screen, secondary_rect, secondary[0], button_font,
             hovered=secondary_rect.collidepoint(mouse), tier=TIER_SECONDARY,
+            focused=keyboard_focus and focus == 1,
         )
         hint = hint_font.render(
-            "E / ENTER = first option    ESC = second option",
+            "TAB / ARROWS = choose    ENTER = confirm    ESC = back",
             True,
             UI_COLORS["text_dim"],
         )

@@ -37,7 +37,7 @@ CONTROL_SECTIONS = [
     ("MOVING AND FIGHTING", [
         ("W A S D / Arrows", "Move"),
         ("E", "Attack with your sword"),
-        ("Q", "Dodge (costs energy)"),
+        ("Shift", "Dodge (costs energy)"),
     ]),
 
     # Actions are kept short on purpose: the manuals print them in a

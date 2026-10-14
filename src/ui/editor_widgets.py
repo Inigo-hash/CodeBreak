@@ -16,6 +16,7 @@ Future widgets:
 
 import pygame
 from src.ui.text_layout import fit_text, wrap_text
+from src.ui.theme import readable_button_text
 
 from src.ui.editor_theme import *
 
@@ -100,6 +101,7 @@ class Button:
 
         label = fit_text(BUTTON_FONT,
             self.text,
+            readable_button_text(color) if self.variant == "primary" else
             BUTTON_TEXT_COLOR if self.variant != "tertiary" or self.hovered
             else TEXT_COLOR,
             (self.rect.width - 16, self.rect.height - 8)

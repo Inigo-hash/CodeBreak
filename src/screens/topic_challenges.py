@@ -2,7 +2,7 @@
 import pygame
 from src.data.challenges import CHALLENGES
 from src.data.topics import topic_challenge_ids
-from src.ui.theme import body_font, title_font, UI_COLORS
+from src.ui.theme import body_font, title_font, UI_COLORS, draw_button, TIER_PRIMARY, TIER_SECONDARY
 from src.ui.text_layout import fit_text
 
 
@@ -23,12 +23,13 @@ def open_topic_challenges(screen, topic, passed):
         pygame.draw.rect(screen, UI_COLORS['modal_panel'], panel, border_radius=10)
         pygame.draw.rect(screen, UI_COLORS['gold'], panel, 2, border_radius=10)
         screen.blit(title_font(26).render(topic['title'] + ' - Challenges', True, UI_COLORS['gold']), (panel.x + 24, panel.y + 20))
+        next_required = next((cid for cid, _ in rows if cid not in passed), None)
         for cid, rect in rows:
             done = cid in passed
-            pygame.draw.rect(screen, UI_COLORS['button_fill_hover'] if rect.collidepoint(pygame.mouse.get_pos()) else UI_COLORS['modal_inner'], rect, border_radius=6)
             label = CHALLENGES[cid]['title'] + (' - Passed / Practice' if done else ' - Not passed')
-            rendered = fit_text(font, label, UI_COLORS['text'], (rect.w - 20, rect.h - 12))
-            screen.blit(rendered, rendered.get_rect(center=rect.center))
+            draw_button(screen, rect, label, font,
+                        hovered=rect.collidepoint(pygame.mouse.get_pos()),
+                        tier=TIER_PRIMARY if cid == next_required else TIER_SECONDARY)
         note = 'Master both for Key 1. Replays earn no rewards. Esc: return'
         rendered = fit_text(body_font(16), note, UI_COLORS['text_dim'], (panel.w - 48, 28))
         screen.blit(rendered, (panel.x + 24, panel.bottom - 40))

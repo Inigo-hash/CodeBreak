@@ -136,6 +136,28 @@ class EditorFeedbackTests(unittest.TestCase):
         )
         self.assertIn("Syntax error", self.editor.submission_feedback["detail"])
 
+    def test_dismissing_feedback_does_not_type_the_acknowledgement(self):
+        for key, text in ((pygame.K_e, 'e'), (pygame.K_SPACE, ' ')):
+            self.editor._show_submission_feedback(False, 'Try again', 'Keep going', 'Expected:\n\nprint("Hello")')
+            original = list(self.editor.text_buffer.lines)
+            pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=key, unicode=text))
+            pygame.event.post(pygame.event.Event(pygame.TEXTINPUT, text=text))
+            self.editor.handle_events()
+            self.assertIsNone(self.editor.submission_feedback)
+            self.assertEqual(self.editor.text_buffer.lines, original)
+        # Typing on the next event batch works normally.
+        pygame.event.post(pygame.event.Event(pygame.TEXTINPUT, text='x'))
+        self.editor.handle_events()
+        self.assertNotEqual(self.editor.text_buffer.lines, original)
+
+    def test_expected_answer_is_not_truncated_at_blank_lines(self):
+        detail = 'Expected:\n\nprint("Hello, World!")'
+        self.editor._show_submission_feedback(False, 'Try again', 'Keep going', detail)
+        with patch('src.ui.code_editor.draw_text_block') as draw:
+            self.editor.draw_submission_feedback()
+        self.assertEqual(draw.call_args.args[1], detail)
+        self.assertGreater(draw.call_args.args[4].height, 0)
+
     def test_four_progressive_hints_unlock_on_repeated_failures(self):
         panel = self.editor.renderer.problem_panel
         self.assertEqual(panel.hint_level, 0)

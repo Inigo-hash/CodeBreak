@@ -11,7 +11,7 @@ import pygame
 from src.systems.audio import handle_music_shortcut
 
 from src.ui.editor_widgets import wrap_text
-from src.ui.theme import UI_COLORS, body_font, title_font
+from src.ui.theme import UI_COLORS, body_font, title_font, draw_button, TIER_PRIMARY, TIER_SECONDARY
 
 
 # ---------------------------------------------------------
@@ -483,14 +483,14 @@ class TopicLessonScreen:
 
         self.draw_button(
             self.yes_button,
-            "YES",
+            "START CHALLENGE",
             mouse_pos,
             SUCCESS
         )
 
         self.draw_button(
             self.no_button,
-            "NO",
+            "KEEP READING",
             mouse_pos,
             DANGER
         )
@@ -503,39 +503,9 @@ class TopicLessonScreen:
         border_color
     ):
 
-        hovered = rect.collidepoint(mouse_pos)
-
-        pygame.draw.rect(
-            self.screen,
-            BUTTON_HOVER
-            if hovered
-            else BUTTON_BG,
-
-            rect,
-            border_radius=6
-        )
-
-        pygame.draw.rect(
-            self.screen,
-            border_color if hovered else FRAME,
-            rect,
-            2,
-            border_radius=6
-        )
-
-        text = self.button_font.render(
-            label,
-            True,
-            TEXT_MAIN
-        )
-
-        self.screen.blit(
-            text,
-            (
-                rect.centerx - text.get_width() // 2,
-                rect.centery - text.get_height() // 2
-            )
-        )
+        draw_button(self.screen, rect, label, self.button_font,
+                    hovered=rect.collidepoint(mouse_pos),
+                    tier=TIER_SECONDARY if rect == self.no_button else TIER_PRIMARY)
 
 
 def open_topic_lesson(

@@ -193,6 +193,43 @@ class SlotMenuTests(unittest.TestCase):
 
         self.assertFalse(left_early)
 
+    def test_password_lockout_warning_clears_when_countdown_expires(self):
+        import src.screens.start_game_menu as menu
+        state = save_manager.protect_state(save_manager.new_game_state(), 'hunter2')
+        save_manager.save_slot(1, state)
+        now = [100.0]
+        frame = [0]
+        warnings = []
+        enter = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_RETURN, unicode='')
+        frames = [[click(self.continue_button)], [click(self.slots[0].center)],
+                  [enter], [enter], [enter], [], []]
+
+        def events(*_args, **_kwargs):
+            i = frame[0]
+            frame[0] += 1
+            if i == 6:
+                now[0] += menu.PASSWORD_LOCKOUT_SECONDS + 1
+            return frames[i] if i < len(frames) else [pygame.event.Event(pygame.QUIT)]
+
+        original_draw = menu.draw_text_block
+
+        def draw(surface, text, *args, **kwargs):
+            warnings.append((now[0], text))
+            return original_draw(surface, text, *args, **kwargs)
+
+        with patch.dict(menu._password_locked_until, {}, clear=True), \
+                patch.dict(menu._password_failures, {}, clear=True), \
+                patch.object(menu.time, 'monotonic', side_effect=lambda: now[0]), \
+                patch('pygame.event.get', side_effect=events), \
+                patch.object(menu, 'draw_text_block', side_effect=draw), \
+                patch('pygame.display.flip'), patch('pygame.quit'):
+            with self.assertRaises(SystemExit):
+                start_game_menu(self.screen)
+        self.assertTrue(any('Try again in' in text for _, text in warnings))
+        after = [text for timestamp, text in warnings if timestamp > 100]
+        self.assertTrue(any('Passwords cannot be recovered' in text for text in after))
+        self.assertFalse(any('locked' in text or 'Try again in' in text for text in after))
+
 
 if __name__ == "__main__":
     unittest.main()

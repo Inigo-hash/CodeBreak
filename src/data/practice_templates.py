@@ -146,6 +146,9 @@ def generate_practice_challenge(template_id):
     if template_id in ('lists_inspect_practice', 'lists_update_practice'):
         from src.data.castle_lists import LIST_CHALLENGE_IDS, lists_practice
         return lists_practice(LIST_CHALLENGE_IDS[0 if template_id == 'lists_inspect_practice' else 1])
+    from src.data.castle_curriculum import CASTLE_CHALLENGES, castle_practice
+    if template_id in CASTLE_CHALLENGES:
+        return castle_practice(template_id)
     builder = _TEMPLATE_BUILDERS.get(template_id)
 
     if builder is None:
@@ -1288,3 +1291,8 @@ _TEMPLATE_BUILDERS = {
     "control_flow_d": _control_flow_d,
     "control_flow_e": _control_flow_e,
 }
+
+
+from src.data.castle_curriculum import CASTLE_TOPICS
+for _topic_id, _topic in CASTLE_TOPICS.items():
+    PRACTICE_TEMPLATE_IDS[_topic_id] = list(_topic['challenge_ids'])

@@ -20,6 +20,7 @@ from src.entities.trap import load_traps, build_trap_challenge
 from src.ui.code_editor import CodeEditor
 from src.screens.learning_progress import open_learning_progress
 from src.screens.final_assessment import open_final_assessment
+from src.ui.lesson_terminal import terminal_art
 from src.screens.game_over import game_over_screen
 from src.screens.profile import profile_screen
 from src.screens.inventory import PlayerInventory, Toolbar, open_inventory
@@ -184,6 +185,7 @@ def load_interactables(tmx_data):
                 "rect": rect,
                 "actions": action or "",
                 "topic_id": properties.get("topic_id"),
+                "terminal_visual": properties.get("terminal_visual", False),
                 "interaction_id": str(properties.get('persistent_id') or getattr(obj, "id", "")),
                 "independent_search": bool(properties.get('independent_search')),
                 "entity": entity,
@@ -468,6 +470,8 @@ def game_screen(screen, slot_num=None, save_state=None):
     # into world-pixel coordinates for the current TMX map.
     completion_rules = stage.get("completion", {})
     exit_fraction = completion_rules.get("exit_rect")
+    if completion_rules.get("exit_room") and completion_rules["exit_room"] != room_id:
+        exit_fraction = None
     stage_exit_rect = None
     if isinstance(exit_fraction, (tuple, list)) and len(exit_fraction) == 4:
         exit_x, exit_y, exit_width, exit_height = exit_fraction
@@ -658,9 +662,12 @@ def game_screen(screen, slot_num=None, save_state=None):
                 save_challenges_passed.append(final_challenge_id)
             stage_progress.sync_objectives(stage, save_challenges_passed)
 
+        def consume_bonus(seconds):
+            gameplay_state["bonus_time"] = max(0, gameplay_state["bonus_time"] - seconds)
+
         return open_final_assessment(
             screen, stage, build_save_state(), assessment_sessions,
-            persist_assessment, mark_assessment_passed,
+            persist_assessment, mark_assessment_passed, consume_bonus=consume_bonus,
         )
     loading.update(54, f"Lighting {stage_name} paths...")
 
@@ -2882,6 +2889,13 @@ def game_screen(screen, slot_num=None, save_state=None):
                 -camera_y
             )
         )
+        for terminal in interactables:
+            if terminal.get('terminal_visual'):
+                rect = terminal['rect']
+                sprite = terminal_art(round(rect.w * ZOOM),
+                                      terminal['topic_id'] in gameplay_state['topics_completed'])
+                screen.blit(sprite, (round(rect.x * ZOOM - camera_x), round(rect.y * ZOOM - camera_y)))
+
 
         # game.py already resolved movement/collision above; only synchronize
         # the renderer here so the player is not moved a second time.

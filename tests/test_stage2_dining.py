@@ -170,11 +170,11 @@ class MasteryTests(unittest.TestCase):
         self.assertFalse(evaluate_stage_gate(self.stage, 5, state['challenges_passed']).unlocked)
         self.assertEqual(get_stage('island')['completion']['required_keys'], 9)
 
-    def test_progress_describes_twenty_percent_and_no_future_unlock(self):
+    def test_progress_guides_from_dining_to_library(self):
         from src.systems.learning_progress import progress_snapshot
         snapshot = progress_snapshot(self.stage, self.mastered())
-        self.assertEqual(snapshot['percent'], 20)
-        self.assertIn('coming later', snapshot['next'])
+        self.assertEqual(snapshot['percent'], 10)
+        self.assertIn('Archive Record', snapshot['next'])
 
     def test_atomic_interruption_keeps_old_snapshot_and_retry_claims_once(self):
         with tempfile.TemporaryDirectory() as tmp, patch.object(save_manager, 'SAVE_DIR', tmp):
@@ -272,7 +272,7 @@ class DiningMapTests(unittest.TestCase):
         progress.clear_encounter('castle_dining_duwende_01')
         state['stage_progress'] = progress.to_dict()
         lobby = transition_room(state, 'castle', 'lobby')
-        self.assertEqual(aggregate_stage_progress(lobby, get_stage('castle')).objective_counts(get_stage('castle')), (2, 2))
+        self.assertEqual(aggregate_stage_progress(lobby, get_stage('castle')).objective_counts(get_stage('castle')), (1, 11))
         returned = transition_room(lobby, 'castle', 'dining')
         with tempfile.TemporaryDirectory() as tmp, patch.object(save_manager, 'SAVE_DIR', tmp):
             save_manager.save_slot(1, returned)

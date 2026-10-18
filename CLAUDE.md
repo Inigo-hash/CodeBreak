@@ -17,29 +17,19 @@ Dependencies are in `requirements.txt` (pygame, pytmx, numpy).
 
 ## Running the tests
 
-There is no pytest in this environment, and `tests/` has no `__init__.py`,
-so `unittest discover` cannot import it as a package. Run modules by name
-with the repo root on the path:
+Run each module in a separate process with the repository root on the path.
+Pygame/SDL teardown can segfault when every module shares one process.
 
 ```bash
-PYTHONPATH=. python -m unittest tests.test_stage_gate
+for f in tests/test_*.py; do
+  SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy PYTHONPATH=. python -m unittest discover -s tests -p "$(basename "$f")" || exit 1
+done
 ```
 
-Running every module in one process segfaults during teardown (SDL, not a
-test failure). Loop over them instead:
-
-```bash
-for f in tests/test_*.py; do n=$(basename $f .py); PYTHONPATH=. python -m unittest "tests.$n"; done
-```
-
-158 tests, 150 passing. The eight failures predate the stage handoff work
-and are all tuning that drifted from its own tests: the torch heal rate
-(`test_night_lighting`), the manananggal's reach
-(`test_bug_report_regressions`), the trapped chest's authoring
-(`test_stage1_systems`), and the Island's tenth lesson, which the data
-lists nine of (`test_stage_gate`). To check a change boots the real game
-without a display:
+Install `requirements.txt` and `server/requirements.txt` for the complete suite.
+A headless startup smoke check is:
 `SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy timeout 10 python main.py`.
+A timeout exit code of 124 means the game stayed open for that check.
 
 ## Where things live
 
@@ -112,42 +102,46 @@ map fails the tests rather than stranding a player.
   another stage's zone labels.
 - **Comments explain why, not what.** Existing files carry the reasoning
   behind non-obvious choices; match that when editing them.
-- `game_screen` is ~2,200 lines and holds loading, input, combat, drawing
+- `game_screen` is ~3,400 lines and holds loading, input, combat, drawing
   and saving. It should be split, but incrementally, behind the tests.
 
 ## Current state
 
-**Stage 1 (Island)** is playable and complete: 10 beginner lessons, three
-roaming enemy types, a boss with four armour phases, night lighting with fixed
-torches, save slots with PBKDF2-protected passwords (deletable from the slot
-panel, password required for a protected one), a paper world map, and
-a stage information panel. Searchable props are guarded (`systems/guards.py`):
-a prop with enemies camped around it stays shut until they are defeated, and
-standing in torchlight regenerates energy four times as fast and heals
-at the same rate.
+**Stage 1 (Island)** has nine required beginner lessons, nine keys, a
+Corrupted Core boss and a timed assessment rotation. Searchable props, torch
+healing, room/stage save checkpoints, password-protected slots and inventory
+are implemented. Preserve its existing progression contract.
 
-**Stage 2 (Castle)** is enterable. Clearing the Island's gate now hands the
-run over to `map2_castle_lobby.tmx` instead of returning to the main menu:
-the player keeps their lessons, stored topics and cleared-stage list, loses
-the Island's keys and map position, and arrives at the foot of the grand
-staircase with a full heart row. The lobby is lit rather than night, has
-two named zones and one placeholder objective, and is otherwise empty. It
-still needs: the rest of the map drawn (its lower half is void), 10
-intermediate lessons with behavioural validators, enemies and encounters, a
-boss, and an exit gate - all of them additions to `stages.py` rather than
-to `game.py`.
+**Stage 2 (Castle)** has five connected maps, nine intermediate topic groups
+and 18 required function challenges. Dining: Lists; Library: Tuples and
+Dictionaries; Dungeon: For/While/Nested Loops and Break/Continue; Throne:
+Functions and Try/Except. `castle_curriculum.py` owns the new lesson data.
+Two challenges master a topic; five bundles each earn one key exactly once.
+Topic mastery is separate from bundle rewards, so a prerequisite topic can
+unlock the next one before a shared key bundle is complete.
 
-**Known gaps**, in rough priority:
+All five keys and all required challenges unlock Zombie Aktan's Throne arena.
+Boss victory unlocks a three-report timed assessment rotation. Failed or
+interrupted Castle attempts require a solved untimed practice report before
+retaking. Passing records `castle_supply_final` as the completion marker,
+regardless of which rotation variant was used. The exit exists only in
+Throne. Completing Castle saves completion and returns to the menu; Citadel
+has no playable map yet.
 
-- Validators check code *shape* via AST, not behaviour. Beginner syntax
-  lessons survive this; loops and functions will not. Stage 2 needs
-  behavioural validation - run the code, compare output - using the
-  sandbox that already exists.
-- `bonus_time` is awarded by kills and chests, displayed, and saved, but
-  nothing consumes it.
-- The exit gate's key requirement and lesson requirement are the same
-  condition: keys only come from those lessons, one each.
-- Hearts reset to 5 on reaching zero, so death has no lasting cost.
+Earned `bonus_time` extends final assessment attempts by up to 300 seconds per
+attempt. It is spent and persisted with the started attempt; unspent time
+remains saved. Declining the briefing or doing required practice spends none.
+
+White Lady uses `white_lady/floating` and `white_lady/white_lady_attack`.
+There are no dedicated flinch frames, so flinch reuses an attack pose.
+Missing animation sequences raise a clear asset error instead of crashing
+through `max()` on an empty sequence.
+
+Debug mode remains enabled by default for active development, by request.
+Developer exploration itself still requires F4 and never marks a bypassed
+stage as legitimately complete. Assessment timings and new curriculum need
+learner playtesting; automated tests do not establish teaching effectiveness.
+See `docs/castle-completion.md` for the current implementation and verification.
 
 ## Design docs
 

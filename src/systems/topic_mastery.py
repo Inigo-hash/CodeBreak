@@ -14,9 +14,10 @@ def reconcile_mastery(state, stage):
     for bundle_id, bundle in bundles.items():
         mastered = set(bundle['challenges']).issubset(passed)
         for topic_id in bundle['topics']:
-            if mastered and topic_id not in completed:
+            topic_mastered = set(topic_challenge_ids(TOPICS[topic_id])).issubset(passed)
+            if topic_mastered and topic_id not in completed:
                 completed.append(topic_id)
-            elif not mastered and topic_id in completed:
+            elif not topic_mastered and topic_id in completed:
                 completed.remove(topic_id)
         if mastered:
             claims.add(bundle_id)

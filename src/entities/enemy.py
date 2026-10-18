@@ -18,7 +18,7 @@ class Enemy:
     # (movement folder, attack folder, flinch filename, visible height, canvas)
     _asset_config = {
         "kapre_usikan": ("walking", "attack", "{direction}.png", 180, (250, 220)),
-        "white_lady": ("", "", "{direction}.png", 120, (180, 144)),
+        "white_lady": ("floating", "white_lady_attack", "{direction}.png", 120, (180, 144)),
         "zombie_aktan": ("walking", "attacking", "{direction}.png", 130, (180, 150)),
         "tiyanak_sinta": ("walking", "attacking", "{direction}.png", 40, (72, 50)),
         "manananggal": ("flying", "attacking", "manananggal_{direction}.png", 76, (110, 88)),
@@ -32,7 +32,6 @@ class Enemy:
         ),
     }
     _asset_sources = {
-        "white_lady": "white_lady_attack",
         "corrupted_core_kapre": "kapre_usikan",
     }
 
@@ -137,8 +136,7 @@ class Enemy:
                 if "ultimate" in paths:
                     paths["ultimate"][direction] = self._numbered_frames(root / "ultimate" / direction)
                 if self.enemy_id == "white_lady":
-                    # Only attack sprites exist; reuse their first pose for locomotion/flinch.
-                    paths["walking"][direction] = paths["attack"][direction][:1]
+                    # There is no separate flinch sheet; keep the walking animation intact.
                     paths["flinch"][direction] = paths["attack"][direction][:1]
                     continue
                 paths["flinch"][direction] = [
@@ -182,6 +180,8 @@ class Enemy:
         for group, directions in animation_paths.items():
             loaded[group] = {}
             for direction, paths in directions.items():
+                if not paths:
+                    raise ValueError(f"Missing enemy animation frames: {group}/{direction}")
                 originals = [pygame.image.load(path).convert_alpha() for path in paths]
                 loaded[group][direction] = originals
                 tallest = max(tallest, *(frame.get_bounding_rect(min_alpha=8).height

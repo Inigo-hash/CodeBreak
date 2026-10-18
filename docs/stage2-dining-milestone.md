@@ -1,3 +1,5 @@
+> Historical milestone snapshot. Current Castle content and verification are documented in [castle-completion.md](castle-completion.md). Older preview-only status and test counts below no longer describe main.
+
 > Combat follow-up: regular Kapre art is now 180px tall (previously 108px), with unchanged movement body. Enemies can pursue beyond their home patrol label within bounded chase territory; close melee is not cancelled by the home leash, and returning enemies defend themselves in melee. Stage 2 melee reaches were increased. Walls still block attacks. Initial strict patrol-containment claims below are superseded by this pursuit behavior.
 
 > Roster correction: Castle regular camps now mix **Mandurug Duwende, Kapre Usikan and White Lady**. **Zombie Aktan** is the configured final boss in the upper Throne arena, gated behind five keys. Kapre (including the Island boss variant) alternates normal/ultimate nine-frame attack sequences. White Lady currently reuses the first attack pose for locomotion/flinch because separate assets are absent. Unfinished Castle curriculum/completion remains unavailable.

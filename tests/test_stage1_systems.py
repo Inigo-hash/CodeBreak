@@ -67,14 +67,16 @@ class StageProgressCompletionTests(unittest.TestCase):
 
 
 class StageScaffoldAndDebugTests(unittest.TestCase):
-    def test_castle_has_dining_milestone_but_is_not_finishable(self):
+    def test_castle_has_complete_curriculum_and_room_local_exit(self):
         castle = get_stage("castle")
         self.assertEqual(castle["id"], "castle")
         self.assertTrue(castle["playable"])
-        self.assertEqual(castle["manual"]["topics"], ['castle_lists_inspect_001', 'castle_lists_update_001'])
-        self.assertEqual(len(stage_challenges(castle)), 2)
-        self.assertFalse(castle['completion']['content_ready'])
-        self.assertNotIn('exit_rect', castle['completion'])
+        from src.data.castle_curriculum import CASTLE_CHALLENGE_IDS
+        self.assertEqual(tuple(castle["manual"]["topics"]), CASTLE_CHALLENGE_IDS)
+        self.assertEqual(len(stage_challenges(castle)), 18)
+        self.assertTrue(castle['completion']['content_ready'])
+        self.assertEqual(castle['completion']['exit_room'], 'throne')
+        self.assertIn('exit_rect', castle['completion'])
 
     def test_developer_hotkeys_are_guarded_by_debug_mode(self):
         for path in (

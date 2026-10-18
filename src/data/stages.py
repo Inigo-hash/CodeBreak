@@ -66,6 +66,8 @@ from src.data.controls import WORLD_CONTROLS
 from src.data.encounters import BEGINNER_PATH_GIDS, BEGINNER_STAGE_ENCOUNTERS
 from src.data.zones import CASTLE_ZONES, ISLAND_ZONES
 from src.data.castle_lists import LIST_CHALLENGE_IDS
+from src.data.castle_curriculum import CASTLE_CHALLENGE_IDS, CASTLE_BUNDLES, CASTLE_TOPIC_ORDER
+from src.data.castle_assessments import CASTLE_FINAL_ID, CASTLE_ASSESSMENT_IDS
 from src.data.stage_music import STAGE_MUSIC
 
 
@@ -331,11 +333,7 @@ STAGES = {
         ],
     },
 
-    # Stage 2. The lobby map is authored, so the Island's exit gate can
-    # hand a finished run over to it. Everything else is still being
-    # written: no lessons, no enemies, no boss, and no exit rect, which
-    # means the Castle can be walked but not yet completed. Each of those
-    # is a data addition here rather than a change to game.py.
+    # Stage 2: five room maps share nine topic groups and five mastery keys.
     "castle": {
 
         "id": "castle",
@@ -367,7 +365,7 @@ STAGES = {
 
             "zones": CASTLE_ZONES,
 
-            # No camps authored yet. Enemies arrive with the lesson route.
+            # Per-room camps and zones are supplied by rooms.py.
             "encounters": (),
 
             "path_layer": None,
@@ -383,23 +381,23 @@ STAGES = {
             "summary":
                 "Past the Corrupted Core's gate the island's corruption "
                 "gives way to stone. The castle has five connected rooms. "
-                "The Dining Area now teaches Lists "
-                "through two coding challenges. Master both for the first "
-                "of five Castle keys. Other rooms are exploration previews; "
-                "stage completion is not yet available.",
+                "Study Lists in Dining Area, Tuples and Dictionaries in Library, "
+                "Loops in Dungeon, then Functions and Error Handling in Throne. "
+                "Master all nine topic groups for five keys, defeat Aktan, "
+                "and pass the final assessment to leave Castle.",
 
             "mechanics": [
                 "Visit the Lists terminal in the southwest Dining Area. Pass "
                 "both challenges to earn Key 1 once; practice grants no keys.",
                 "Mandurug Duwende, Kapre and White Lady patrol Castle rooms. Zombie Aktan is the final Throne Room boss. "
-                "Clearing camps grants no Castle keys. Other rooms have combat, but their lessons remain unfinished.",
+                "Clearing camps grants bonus time, not Castle keys. Bonus time extends your next final assessment attempt.",
                 "Everything you learned on the island travels with you. "
                 "Keys do not - the castle's gate wants its own.",
             ],
 
             "controls": WORLD_CONTROLS,
 
-            "topics": list(LIST_CHALLENGE_IDS),
+            "topics": list(CASTLE_CHALLENGE_IDS),
 
             "tips": [
                 "Door arrivals and the Lists terminal are safe. "
@@ -411,33 +409,31 @@ STAGES = {
 
         "items": ['table', 'crate', 'mang_tahimik'],
 
-        # No exit_rect: without one game.py builds no gate, which is the
-        # honest state of a stage that cannot yet be finished.
+        # The exit is room-local; identical coordinates in other rooms are not gates.
         "completion": {
             "required_keys": 5,
             "required_boss": "zombie_aktan",
             "exit_name": "Castle Exit",
-            "topic_key_rewards": {challenge_id: 0 for challenge_id in LIST_CHALLENGE_IDS},
+            "topic_key_rewards": {challenge_id: 0 for challenge_id in CASTLE_CHALLENGE_IDS},
             "encounter_key_reward": 0,
-            "content_ready": False,
-            "mastery_bundles": {
-                'castle_lists_key_1': {'topics': ['castle_lists'],
-                                     'challenges': LIST_CHALLENGE_IDS, 'keys': 1},
-            },
+            "content_ready": True,
+            "exit_room": "throne",
+            "exit_rect": (18/40, 11/40, 4/40, 2/40),
+            "required_final_challenge": CASTLE_FINAL_ID,
+            "final_assessment_ids": CASTLE_ASSESSMENT_IDS,
+            "practice_after_failure": True,
+            "mastery_bundles": CASTLE_BUNDLES,
         },
 
         "objectives": [
-            # Only playable milestone objectives are listed; future bundles
-            # must not look like tasks the player can already finish.
-            {
-                "id": "castle_lists_mastery",
-                "text": "Master both Dining Lists challenges to earn Castle Key 1.",
-                "kind": "topic",
-                "target": "castle_lists",
-                "optional": False,
-            },
-            {'id': 'castle_dining_guards', 'text': 'Clear the Dining Duwende camp.',
-             'kind': 'encounter', 'target': 'castle_dining_duwende_01', 'optional': False},
+            {"id": topic_id + "_mastery", "text": "Master " + topic_id.removeprefix("castle_").replace("_", " ") + ".",
+             "kind": "topic", "target": topic_id, "optional": False}
+            for topic_id in CASTLE_TOPIC_ORDER
+        ] + [
+            {"id": "castle_aktan", "text": "Defeat Zombie Aktan in the Throne arena.",
+             "kind": "defeat", "target": "zombie_aktan", "optional": False},
+            {"id": "castle_final", "text": "Pass the Castle final coding assessment.",
+             "kind": "challenge", "target": CASTLE_FINAL_ID, "optional": False},
         ],
     },
 

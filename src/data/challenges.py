@@ -632,6 +632,10 @@ final_message
 
 from src.data.castle_lists import LISTS_CHALLENGES
 CHALLENGES.update(LISTS_CHALLENGES)
+from src.data.castle_curriculum import CASTLE_CHALLENGES
+CHALLENGES.update(CASTLE_CHALLENGES)
+from src.data.castle_assessments import CASTLE_ASSESSMENTS
+CHALLENGES.update(CASTLE_ASSESSMENTS)
 
 
 def get_challenge(challenge_id):

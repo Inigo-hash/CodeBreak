@@ -96,7 +96,7 @@ def game_knowledge():
             'settings': 'Press Escape, then Settings. F10 mutes or unmutes music.',
             'saving': 'Use Escape then Save Game. Three password-protected save slots are available; passwords cannot be recovered.',
             'tutor': 'Press H during safe exploration or Ctrl+H inside a normal coding challenge to chat. Mang Tahimik gives hints, not complete challenge answers.',
-            'future_content': 'Stage 3, the Citadel, is a future placeholder. Castle is not yet a complete finishable learning stage.',
+            'future_content': 'Stage 3, the Citadel, is a future placeholder. Castle has nine topic groups, five mastery keys, Zombie Aktan and a final assessment. The exit is in the Throne arena; completing Castle returns to the menu. Earned bonus time extends final assessments by up to 300 seconds per attempt. Failed Castle attempts require untimed report practice.',
         },
     }
 

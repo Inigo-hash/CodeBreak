@@ -44,7 +44,8 @@ DINING MASTERY
 Pass BOTH Dining challenges to master Lists and earn Castle Key 1 once.
 The first inspects a list; the second changes a COPY in a specified order.
 Completed challenges can be replayed as practice with no extra keys.
-The other four Castle key bundles and stage completion are not ready yet.
+Continue to the Library for Tuples and Dictionaries, then study loops in the
+Dungeon and Functions and Error Handling in the Throne Room.
 ''',
 }
 

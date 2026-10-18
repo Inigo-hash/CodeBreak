@@ -15,6 +15,12 @@ def _helper_portrait():
         return None
 
 
+@lru_cache(maxsize=4)
+def _scaled_helper_portrait(size):
+    portrait = _helper_portrait()
+    return pygame.transform.smoothscale(portrait, (size, size)) if portrait is not None else None
+
+
 def tutor_helper_rect(screen, editor_panel=None):
     w, h = screen.get_size()
     if editor_panel is not None:
@@ -30,9 +36,9 @@ def draw_tutor_helper(screen, rect, shortcut='H'):
     pygame.draw.rect(screen, UI_COLORS['gold'], rect, 1, border_radius=8)
     compact = rect.h < 60
     portrait_size = 34 if compact else 64
-    portrait = _helper_portrait()
-    if portrait:
-        screen.blit(pygame.transform.smoothscale(portrait, (portrait_size, portrait_size)),
+    portrait = _scaled_helper_portrait(portrait_size)
+    if portrait is not None:
+        screen.blit(portrait,
                     (rect.x + 8, rect.centery - portrait_size // 2))
     text_x = rect.x + portrait_size + 16
     text_w = rect.right - text_x - 8

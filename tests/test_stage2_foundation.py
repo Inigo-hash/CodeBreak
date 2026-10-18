@@ -46,7 +46,8 @@ class Stage2FoundationTests(unittest.TestCase):
 
     def test_stage1_rotation_remains_and_empty_castle_is_not_completed(self):
         self.assertEqual(assessment_ids_for_stage(get_stage('island')), ASSESSMENT_IDS)
-        self.assertEqual(assessment_ids_for_stage(get_stage('castle')), ())
+        from src.data.castle_assessments import CASTLE_ASSESSMENT_IDS
+        self.assertEqual(assessment_ids_for_stage(get_stage('castle')), CASTLE_ASSESSMENT_IDS)
         self.assertIsNone(peek_assessment({}, assessment_ids=()))
 
     def test_stage2_pool_isolated_and_attempt_records_persist(self):

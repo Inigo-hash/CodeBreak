@@ -918,6 +918,8 @@ Conditions can also use:
 
 from src.data.castle_lists import LISTS_TOPIC
 TOPICS['castle_lists'] = LISTS_TOPIC
+from src.data.castle_curriculum import CASTLE_TOPICS
+TOPICS.update(CASTLE_TOPICS)
 
 
 def topic_challenge_ids(topic):

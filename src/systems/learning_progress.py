@@ -46,7 +46,7 @@ def progress_snapshot(stage, state):
     elif gate.keys < gate.required_keys:
         guidance = 'Clear the remaining enemy areas to collect the required keys.'
     elif not gate.boss_defeated:
-        guidance = 'Enter the boss area and defeat the Stage 1 boss.'
+        guidance = 'Enter the boss area and defeat the stage guardian.'
     elif not gate.final_challenge_completed:
         guidance = 'Take the final assessment using the reminder or stage gate.'
     else:

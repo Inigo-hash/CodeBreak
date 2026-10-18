@@ -1,6 +1,7 @@
 """Regression tests for the reusable stage-loading presentation."""
 
 import os
+import ast
 from pathlib import Path
 import unittest
 from unittest.mock import patch
@@ -127,7 +128,13 @@ class LoadingScreenTests(unittest.TestCase):
         source = (root / "src" / "screens" / "start_game_menu.py").read_text(
             encoding="utf-8"
         )
-        self.assertIn("tutorial_screen(screen, show_loading=True)", source)
+        calls = [node for node in ast.walk(ast.parse(source))
+                 if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+                 and node.func.id == 'tutorial_screen']
+        self.assertTrue(any(any(keyword.arg == 'show_loading'
+                                and isinstance(keyword.value, ast.Constant)
+                                and keyword.value.value is True
+                                for keyword in call.keywords) for call in calls))
 
 
 if __name__ == "__main__":

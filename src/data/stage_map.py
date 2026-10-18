@@ -19,9 +19,9 @@ STAGE_MAP_NODES = (
         "region": ((.20, .31), (.44, .26), (.64, .30), (.77, .38),
                    (.77, .60), (.57, .66), (.30, .58), (.18, .44)),
         "glow": (.49, .46, .48, .34),
-        "description": "Explore the castle lobby, dining area, library, dungeon prison and throne room. Intermediate Python lessons are being built.",
-        "content": "Lists milestone / Key 1 of 5",
-        "map_note": "Dining Lists lessons and a Duwende camp are playable. Other rooms are previews; Castle completion is not available.",
+        "description": "Explore the castle lobby, dining area, library, dungeon prison and throne room. Study collections, loops, functions and error handling.",
+        "content": "9 topics / 5 keys / Aktan + coding final",
+        "map_note": "Five connected rooms. Earn all mastery keys, defeat Aktan and pass the final assessment. Citadel is a future chapter.",
     },
     {
         "id": "citadel", "number": 3, "name": "The Corrupted Citadel",

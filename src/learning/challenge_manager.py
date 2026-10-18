@@ -90,6 +90,33 @@ class ChallengeManager:
     ):
 
         if challenge.get('type') == 'function':
+            try:
+                tree = ast.parse(code)
+            except SyntaxError as error:
+                return False, f'Syntax error on line {error.lineno}: {error.msg}'
+            target = next((node for node in tree.body if isinstance(node, ast.FunctionDef)
+                           and node.name == challenge['function_name']), None)
+            if target is None:
+                return False, f"Define the required function {challenge['function_name']}."
+            nodes = list(ast.walk(target))
+            construct = challenge.get('learning_construct')
+            required = {'for_loops': ast.For, 'while_loops': ast.While,
+                        'nested_loops': ast.For, 'loop_control': ast.Break,
+                        'exceptions': ast.Try}.get(construct)
+            if required and not any(isinstance(node, required) for node in nodes):
+                return False, f'This lesson asks you to use {construct.replace("_", " ")} inside your function.'
+            if construct == 'nested_loops' and not any(
+                isinstance(node, ast.For) and any(isinstance(inner, ast.For)
+                    for statement in node.body for inner in ast.walk(statement)) for node in nodes):
+                return False, 'Use an inner for loop inside an outer for loop.'
+            if construct == 'loop_control' and 'positive_before_stop' == target.name and not any(
+                    isinstance(node, ast.Continue) for node in nodes):
+                return False, 'Use continue to skip negative readings.'
+            helper = challenge.get('required_helper')
+            if helper and (not any(isinstance(node, ast.FunctionDef) and node.name == helper for node in ast.walk(tree))
+                           or not any(isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+                                      and node.func.id == helper for node in nodes)):
+                return False, f'Define and call the helper {helper}.'
             return run_function_tests(code, challenge['function_name'], challenge['function_cases'],
                                       challenge.get('timeout', 3.0), challenge.get('preserve_args', False))
 

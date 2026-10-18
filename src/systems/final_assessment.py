@@ -30,7 +30,7 @@ def peek_assessment(session, rng=None, assessment_ids=None):
     return get_final_assessment(bag[-1])
 
 
-def start_attempt(session, challenge, now=None):
+def start_attempt(session, challenge, now=None, bonus_time=0):
     if session.get('active'):
         raise ValueError('An assessment attempt is already active.')
     now = time.time() if now is None else now
@@ -38,8 +38,10 @@ def start_attempt(session, challenge, now=None):
         raise ValueError('Start the selected assessment from the rotation.')
     session['remaining'].pop()
     session['last'] = challenge['id']
+    bonus = max(0, min(300, int(bonus_time or 0)))
+    limit = challenge['time_limit'] + bonus
     session['active'] = {'challenge_id': challenge['id'], 'started_at': now,
-                         'deadline': now + challenge['time_limit'], 'time_limit': challenge['time_limit']}
+                         'deadline': now + limit, 'time_limit': limit, 'bonus_time': bonus}
     return session['active']
 
 
@@ -50,3 +52,5 @@ def finish_attempt(session, result, now=None):
     record = dict(active)
     record.update(result=result, finished_at=time.time() if now is None else now)
     session.setdefault('history', []).append(record)
+    if result != 'passed':
+        session['practice_required'] = True

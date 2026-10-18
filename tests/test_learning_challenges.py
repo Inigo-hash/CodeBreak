@@ -67,6 +67,10 @@ VALID_SOLUTIONS = {
 }
 
 
+from castle_solutions import CASTLE_SOLUTIONS
+VALID_SOLUTIONS.update(CASTLE_SOLUTIONS)
+
+
 class LearningChallengeTests(unittest.TestCase):
     def test_formatted_output_accepts_empty_suffix(self):
         challenge = generate_practice_challenge("formatted_output_d")

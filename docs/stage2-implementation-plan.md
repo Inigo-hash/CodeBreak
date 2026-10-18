@@ -1,3 +1,5 @@
+> Historical milestone snapshot. Current Castle content and verification are documented in [castle-completion.md](castle-completion.md). Older preview-only status and test counts below no longer describe main.
+
 # Stage 2: verified Castle implementation plan
 
 Audit date: 2026-10-11. Repository baseline: `cd9b5b4`.

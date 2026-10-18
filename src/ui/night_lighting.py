@@ -9,7 +9,8 @@ import pygame
 # The stage begins at night; F1 may temporarily preview daylight.
 WORLD_IS_NIGHT = True
 NIGHT_COLOR = (8, 15, 40)
-NIGHT_ALPHA = 228
+# Keep unlit terrain readable while retaining the blue nighttime tint.
+NIGHT_ALPHA = 170
 
 # _light_mask's contour wobbles, so the drawn pool is both smaller and less
 # round than the radius handed to the renderer. Measured against rendered

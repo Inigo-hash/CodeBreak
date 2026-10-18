@@ -30,6 +30,8 @@ def tutor_helper_rect(screen, editor_panel=None):
         return pygame.Rect(editor_panel.right - 214, editor_panel.bottom - 60, 198, 44)
     # The right rail may include progress/guidance buttons as well as practice.
     # Keep this in the gap between the hotbar and the rail's bottom buttons.
+    if w < 1200:
+        return pygame.Rect(w - 214, h - 64, 200, 44)
     return pygame.Rect(max(14, w - 440), h - 64, 200, 44)
 
 

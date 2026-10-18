@@ -96,7 +96,7 @@ class TextLayoutTests(unittest.TestCase):
         from src.screens import mang_tahimik as tutor
         from src.screens.inventory import PlayerInventory,Toolbar
         from src.ui.stage_panel import StagePanel
-        for size in ((1280,720),(1920,1080),(1920,1536),(2560,1080)):
+        for size in ((1024,768),(1280,720),(1920,1080),(1920,1536),(2560,1080)):
             recordings = {}
             screen = RecordedSurface(size,recordings)
             rect = tutor.tutor_helper_rect(screen)

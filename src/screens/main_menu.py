@@ -1,7 +1,6 @@
 import math
 import random
 import sys
-from pathlib import Path
 import pygame  # type: ignore[import-not-found]
 from src.screens.game import game_screen
 from src.screens.mang_tahimik import open_mang_tahimik
@@ -412,24 +411,19 @@ def _draw_stone_button(
     _draw_menu_icon(surf, icon, pygame.Rect(r.left, r.top, r.w, r.h), hovered, t)
 
 
-_mang_idle_cache = None
+_mang_portrait_cache = None
 
 
-def _load_mang_tahimik_idle():
-    """Load authored idle frames when present, otherwise the existing portrait."""
-    global _mang_idle_cache
-    if _mang_idle_cache is not None:
-        return _mang_idle_cache
+def _load_mang_tahimik_portrait():
+    """Load the portrait used for Mang Tahimik in the main menu."""
+    global _mang_portrait_cache
+    if _mang_portrait_cache is not None:
+        return _mang_portrait_cache
 
-    idle_root = Path("assets/images/characters/mang_tahimik/idle")
-    paths = sorted(
-        idle_root.rglob("frame_*.png"),
-        key=lambda path: int(path.stem.rsplit("_", 1)[1]),
-    ) if idle_root.exists() else []
-    if not paths:
-        paths = [Path("assets/images/characters/mang_tahimik/portrait.png")]
-
-    originals = [pygame.image.load(str(path)).convert_alpha() for path in paths]
+    portrait = pygame.image.load(
+        "assets/images/characters/mang_tahimik/portrait.png"
+    ).convert_alpha()
+    originals = [portrait]
     target_height = max(96, min(136, round(SCREEN_HEIGHT * 0.145)))
     scale = target_height / max(frame.get_height() for frame in originals)
     scaled = [
@@ -441,16 +435,16 @@ def _load_mang_tahimik_idle():
         for frame in originals
     ]
     canvas_size = (max(frame.get_width() for frame in scaled), target_height)
-    _mang_idle_cache = []
+    _mang_portrait_cache = []
     for frame in scaled:
         canvas = pygame.Surface(canvas_size, pygame.SRCALPHA)
         canvas.blit(frame, frame.get_rect(midbottom=canvas.get_rect().midbottom))
-        _mang_idle_cache.append(canvas)
-    return _mang_idle_cache
+        _mang_portrait_cache.append(canvas)
+    return _mang_portrait_cache
 
 
 def _draw_mang_tahimik_tip(surf: pygame.Surface, t: float) -> None:
-    frames = _load_mang_tahimik_idle()
+    frames = _load_mang_tahimik_portrait()
     frame = frames[int(t / 0.14) % len(frames)]
     ground_y = SCREEN_HEIGHT - 98
     center_x = SCREEN_WIDTH - 92
@@ -776,7 +770,7 @@ def main_menu():
             # one.
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if not show_settings:
-                    frames = _load_mang_tahimik_idle()
+                    frames = _load_mang_tahimik_portrait()
                     frame = frames[int(t / 0.14) % len(frames)]
                     npc_rect = frame.get_rect(midbottom=(SCREEN_WIDTH - 92,
                         SCREEN_HEIGHT - 98 + round(math.sin(t * 2.4) * 2)))

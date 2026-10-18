@@ -106,7 +106,10 @@ def create_app():
     async def ask(question: Question, request: Request):
         key = os.environ.get('GEMINI_API_KEY', '').strip()
         model = os.environ.get('GEMINI_MODEL', 'gemini-2.5-flash-lite').strip()
-        if not key or not re.fullmatch(r'[a-zA-Z0-9._-]+', model):
+        fallback = os.environ.get('GEMINI_FALLBACK_MODEL',
+                                  'gemini-2.5-flash' if model == 'gemini-2.5-flash-lite' else '').strip()
+        if (not key or not re.fullmatch(r'[a-zA-Z0-9._-]+', model)
+                or (fallback and not re.fullmatch(r'[a-zA-Z0-9._-]+', fallback))):
             return JSONResponse({'error': 'The tutor is not configured.',
                                  'code': 'tutor_not_configured'}, status_code=503)
         if not question.question.strip():
@@ -117,11 +120,11 @@ def create_app():
         # Uvicorn/proxy owns request.client. Do not trust raw forwarded headers.
         ip = request.client.host if request.client else 'unknown'
         if busy.locked():
-            return JSONResponse({'error': 'The tutor is busy.'}, status_code=429,
+            return JSONResponse({'error': 'The tutor is busy.', 'code': 'tutor_busy'}, status_code=429,
                                 headers={'Retry-After': '30'})
         async with busy:
             if not await limits.allow(ip):
-                return JSONResponse({'error': 'Tutor usage limit reached.'}, status_code=429,
+                return JSONResponse({'error': 'Tutor usage limit reached.', 'code': 'tutor_usage_limit'}, status_code=429,
                                     headers={'Retry-After': '60'})
             contents = [{'role': 'model' if t.role == 'assistant' else 'user',
                          'parts': [{'text': t.content}]} for t in question.history]
@@ -137,8 +140,12 @@ def create_app():
                 # A deadline bounds the whole operation, not just socket reads.
                 async with asyncio.timeout(PROVIDER_DEADLINE):
                     for attempt in range(MAX_PROVIDER_ATTEMPTS):
+                        # A second request to an overloaded model often fails
+                        # identically. Use the configured backup in that slot,
+                        # without adding attempts or bypassing the budget.
+                        attempt_model = fallback if attempt and fallback else model
                         response = await app.state.http.post(
-                            'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent',
+                            'https://generativelanguage.googleapis.com/v1beta/models/' + attempt_model + ':generateContent',
                             headers={'x-goog-api-key': key}, json=payload)
                         if response.status_code not in RETRYABLE_STATUS or attempt + 1 == MAX_PROVIDER_ATTEMPTS:
                             break
@@ -146,7 +153,7 @@ def create_app():
                         if not await limits.allow(ip):
                             break  # Return the last error without exceeding caps.
                 if response.status_code == 429:
-                    return JSONResponse({'error': 'Gemini quota reached.'}, status_code=429,
+                    return JSONResponse({'error': 'Gemini quota reached.', 'code': 'gemini_quota'}, status_code=429,
                                         headers={'Retry-After': '60'})
                 if response.status_code != 200:
                     return JSONResponse({'error': 'The tutor is temporarily unavailable.',

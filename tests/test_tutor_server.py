@@ -146,6 +146,8 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()['answer'], 'Use WASD to move.')
         self.assertEqual(len(calls), 2)
+        self.assertIn('/gemini-2.5-flash-lite:generateContent', str(calls[0].url))
+        self.assertIn('/gemini-2.5-flash:generateContent', str(calls[1].url))
         wait.assert_awaited_once_with(1)
         self.assertEqual(client.post('/ask', json={'question': 'again?'}).status_code, 429)
         self.assertEqual(len(calls), 2)
@@ -202,3 +204,23 @@ class ServerTests(unittest.TestCase):
             response = client.post('/ask', json={'question': 'help'})
         self.assertEqual(response.status_code, 503)
         self.assertEqual(response.json()['code'], 'gemini_timeout')
+
+    @patch.dict('os.environ', {'GEMINI_API_KEY': 'test-secret', 'GEMINI_FALLBACK_MODEL': ''}, clear=True)
+    def test_backup_can_be_disabled_without_removing_retry(self):
+        calls = []
+        def handler(req):
+            calls.append(req)
+            return httpx.Response(503)
+        client = self.make_client(handler)
+        from unittest.mock import AsyncMock
+        with patch('server.app.asyncio.sleep', new_callable=AsyncMock):
+            response = client.post('/ask', json={'question': 'help'})
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(calls[0].url, calls[1].url)
+
+    @patch.dict('os.environ', {'GEMINI_API_KEY': 'test-secret', 'GEMINI_FALLBACK_MODEL': 'bad/model'}, clear=True)
+    def test_invalid_backup_never_sends_credentials(self):
+        client = self.make_client(lambda req: self.fail('invalid backup reached provider'))
+        response = client.post('/ask', json={'question': 'help'})
+        self.assertEqual(response.json()['code'], 'tutor_not_configured')

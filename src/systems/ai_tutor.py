@@ -51,8 +51,6 @@ def ask_mang_tahimik(question, context=None, history=()):
             raise ValueError('empty answer')
         return answer.strip()[:4000]
     except error.HTTPError as exc:
-        if exc.code == 429:
-            raise TutorError('Mang Tahimik has reached a usage limit. Please try later.') from None
         # Only display messages we own. Upstream bodies may contain secrets,
         # HTML proxy errors, or provider internals; never show their raw text.
         code = None
@@ -63,6 +61,9 @@ def ask_mang_tahimik(question, context=None, history=()):
         except (OSError, ValueError, TypeError):
             pass
         messages = {
+            'tutor_busy': 'Mang Tahimik is answering other players. Please try again in 30 seconds.',
+            'tutor_usage_limit': 'Mang Tahimik has reached the shared usage limit. Please try later.',
+            'gemini_quota': 'The AI service has reached its usage quota. Please try later.',
             'gemini_http_502': 'The AI service is temporarily busy. Please try again shortly.',
             'gemini_http_503': 'The AI service is temporarily busy. Please try again shortly.',
             'gemini_http_504': 'The AI service took too long. Please try again shortly.',
@@ -77,7 +78,9 @@ def ask_mang_tahimik(question, context=None, history=()):
         }
         message = messages.get(code) if isinstance(code, str) else None
         if not message:
-            message = ('The tutor server is temporarily unavailable. Please try again shortly.'
+            message = ('Mang Tahimik has reached a usage limit. Please try later.'
+                       if exc.code == 429 else
+                       'The tutor server is temporarily unavailable. Please try again shortly.'
                        if exc.code in (502, 503, 504) else
                        'My AI connection failed. Please try again later.')
         raise TutorError(message) from None

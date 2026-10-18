@@ -42,7 +42,11 @@ bodies at 40000 bytes, and responses at 600 output tokens / 4000 characters.
 It allows 2 concurrent Gemini calls. Default attempt caps are 8/minute globally,
 100/day globally (UTC), and 3/minute per detected peer address. Failed provider
 calls count toward the budget, including the single automatic retry for HTTP
-502/503/504. Retries consume the same attempt caps, keep the same concurrency
+502/503/504. That retry uses `GEMINI_FALLBACK_MODEL` (default `gemini-2.5-flash`
+when the primary is `gemini-2.5-flash-lite`) so one overloaded model does not
+block both attempts. Set it to an empty string to retry the primary instead;
+custom primary models have no implicit backup. Both models must be available
+to the server's Google project. Retries consume the same attempt caps, keep the same concurrency
 slot, and stop if the budget is exhausted. Quota, authentication, and model
 errors are not retried. The entire provider operation is bounded to 55 seconds.
 
@@ -95,7 +99,7 @@ References:
 answer. An `/ask` response with `code: gemini_http_503` means Gemini returned
 HTTP 503; it is not evidence of a missing API key. Google documents this as
 an overloaded or temporarily unavailable service. The relay now waits one
-second and retries once, subject to its budget. Continued provider downtime
+second and tries the configured backup once, subject to its budget. Continued provider downtime
 still returns an error; retries cannot guarantee availability.
 
 The game reads only recognized error codes and displays an actionable message;
@@ -103,5 +107,11 @@ it does not show raw provider error bodies, keys, or secrets. Errors are not
 saved as successful conversation history. No automatic client retry duplicates
 the server's attempts. Deploy the server changes and update the game client to
 use both improvements. Existing Render environment values are unchanged.
+
+The client distinguishes concurrent-player capacity, the relay's shared usage
+limit, and Google's quota. A capacity error asks the player to retry in 30
+seconds rather than incorrectly reporting that the daily quota is exhausted.
+Pushes must finish deploying on Render before the server improvement is live;
+already installed game clients must also be updated for the new error messages.
 
 Reference: https://ai.google.dev/gemini-api/docs/troubleshooting

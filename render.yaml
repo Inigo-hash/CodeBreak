@@ -11,6 +11,8 @@ services:
         sync: false
       - key: GEMINI_MODEL
         value: gemini-2.5-flash-lite
+      - key: GEMINI_FALLBACK_MODEL
+        value: gemini-2.5-flash
       - key: TUTOR_IP_PER_MINUTE
         value: "3"
       - key: TUTOR_GLOBAL_PER_MINUTE

@@ -84,6 +84,18 @@ class TutorTests(unittest.TestCase):
                 self.assertNotIn('secret', str(caught.exception))
 
     @patch.dict('os.environ', {'CODEBREAK_TUTOR_URL': 'https://tutor.example/ask'})
+    def test_concurrency_busy_is_distinct_from_quota(self):
+        from io import BytesIO
+        for code, fragment in (('tutor_busy', 'other players'),
+                               ('tutor_usage_limit', 'shared usage limit'),
+                               ('gemini_quota', 'usage quota')):
+            failure = HTTPError('url', 429, 'secret', {}, BytesIO(json.dumps({'code': code}).encode()))
+            with patch('src.systems.ai_tutor.request.urlopen', side_effect=failure):
+                with self.assertRaises(TutorError) as caught:
+                    ask_mang_tahimik('help')
+            self.assertIn(fragment, str(caught.exception))
+
+    @patch.dict('os.environ', {'CODEBREAK_TUTOR_URL': 'https://tutor.example/ask'})
     def test_unknown_html_and_invalid_codes_use_safe_fallback(self):
         from io import BytesIO
         for body in (b'<html>secret proxy error</html>', b'[]',

@@ -3342,26 +3342,12 @@ def game_screen(screen, slot_num=None, save_state=None):
         # Stage info rail (right side)
         stage_panel.draw(mouse_pos)
 
-        # Key hints (top-right, out of the way of the profile HUD)
-        hint_width = min(430, SCREEN_W - gameplay_hud.profile_rect.right - 32)
-        hint = fit_text(font, 'G: Atlas  P: Practice  F1/F2: Light/Fog  F10: Mute',
-                        (255,255,255), (hint_width,16))
-        screen.blit(hint, hint.get_rect(topright=(SCREEN_W-14,4)))
-
         draw_low_health_warning(
             screen,
             player_combat.hp if engaged else None,
             player_combat.max_hp,
             pygame.time.get_ticks() / 1000.0,
         )
-
-        if DEBUG_MODE:
-            developer_label = fit_text(font,
-                'F4: Developer exploration ON' if developer_mode.enabled else 'F4: Developer exploration OFF',
-                (255,215,100) if developer_mode.enabled else (180,185,195), (hint_width,14))
-            developer_rect = developer_label.get_rect(topright=(SCREEN_W-14,24))
-            pygame.draw.rect(screen, (15, 18, 26), developer_rect.inflate(8, 2), border_radius=3)
-            screen.blit(developer_label, developer_rect)
 
         pygame.display.flip()
         if player_combat.state == "defeated" and player_combat.action_time == 0:

@@ -305,8 +305,8 @@ class StageGateModalTests(unittest.TestCase):
     def test_locked_gate_right_button_dismisses_without_exiting(self):
         locked = evaluate_stage_gate(self.stage, 2, ())
         # The 620px panel is centered in this 720px canvas; the button is
-        # 50px above its bottom edge.
-        click = pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=(854, 620))
+        # centered 72px above its bottom edge, leaving room for the footer.
+        click = pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=(854, 598))
         with patch("pygame.event.get", side_effect=[[], [click]]):
             self.assertEqual(open_stage_gate(self.screen, locked), "stay")
 

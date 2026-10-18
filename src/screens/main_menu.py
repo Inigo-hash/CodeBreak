@@ -9,6 +9,7 @@ from src.screens.how_to_play import how_to_play_screen
 from src.screens.start_game_menu import start_game_menu
 from src.ui.ambient_particles import AmbientParticles
 from src.ui.gear_icon import draw_gear, draw_medallion
+from src.ui.text_layout import fit_text
 from src.systems.audio import (
     apply_music_volume, handle_music_shortcut, music_shortcut_label,
 )
@@ -136,9 +137,10 @@ def compute_menu_layout(screen_w, screen_h, count, labels=()):
 
     block_height = count * bh + (count - 1) * gap
     if block_height > available_height:
-        shrink = available_height / block_height
-        bh = max(min_bh, int(bh * shrink))
-        gap = max(min_gap, int(gap * shrink))
+        # Labels fit the resulting rows; the row block must never extend
+        # into the footer just because a larger font raised its minimum.
+        gap = max(6, min(gap, int(available_height * .06)))
+        bh = max(30, (available_height - (count - 1) * gap) // count)
         block_height = count * bh + (count - 1) * gap
 
     by0 = available_top + max(0, (available_height - block_height) // 2)
@@ -398,16 +400,15 @@ def _draw_stone_button(
 ) -> None:
     grow = (4 if hovered else 0) + (3 if tier == TIER_PRIMARY else 0)
     preview_rect = rect.inflate(grow, grow) if grow else rect
-    text_width = _button_font.size(label)[0]
-    centered_left = preview_rect.centerx - text_width // 2
-    # Keep the label truly centered whenever there is room. Only narrow
-    # buttons receive the minimum shift needed to clear the medallion.
-    minimum_text_left = preview_rect.left + 68
-    text_offset = max(0, minimum_text_left - centered_left)
     r = draw_button(
-        surf, rect, label, _button_font, hovered=hovered,
-        text_offset=text_offset, tier=tier,
+        surf, rect, '', _button_font, hovered=hovered, tier=tier,
     )
+    content = pygame.Rect(r.left + MEDALLION_CLEARANCE, r.top + 8,
+                          r.w - MEDALLION_CLEARANCE - LABEL_RIM_MARGIN, r.h - 16)
+    text_color = UI_COLORS['gold_text_dark'] if tier == TIER_PRIMARY else UI_COLORS['text_dim'] if tier == TIER_TERTIARY else UI_COLORS['text']
+    text = fit_text(_button_font,label,text_color,content.size)
+    text_rect = text.get_rect(center=(max(r.centerx,content.left+text.get_width()//2),r.centery))
+    surf.blit(text,text_rect)
     _draw_menu_icon(surf, icon, pygame.Rect(r.left, r.top, r.w, r.h), hovered, t)
 
 
@@ -468,9 +469,12 @@ def _draw_mang_tahimik_tip(surf: pygame.Surface, t: float) -> None:
     minimum_tip_width = max(heading.get_width(), *(text.get_width() for text in text_surfaces)) + 40
     # The fixed menu column ends at 60% of the screen width. On smaller
     # windows, narrow the tip rather than allowing it beneath a button.
-    menu_right = round(SCREEN_WIDTH * 0.60)
+    menu_right = max(rect.right for rect in compute_menu_layout(SCREEN_WIDTH,SCREEN_HEIGHT,len(MM_LABELS),MM_LABELS)[0])
     available_width = character_left_edge - tip_gap - (menu_right + 18)
-    tip_w = max(minimum_tip_width, min(300, available_width))
+    tip_w = max(100,min(minimum_tip_width,300,available_width))
+    heading = fit_text(_tip_font,"MANG TAHIMIK'S WISDOM",UI_COLORS['gold'],(tip_w-40,28))
+    text_surfaces = [fit_text(_tip_font,line,UI_COLORS['parchment'] if i==0 else UI_COLORS['text_dim'],(tip_w-40,26))
+                     for i,line in enumerate(tip_lines)]
     tip_h = 18 + heading.get_height() + 24 + sum(text.get_height() for text in text_surfaces) + 10 + 18
     tip_r = pygame.Rect(character_left_edge - tip_gap - tip_w,
                         ground_y - tip_h + 18, tip_w, tip_h)

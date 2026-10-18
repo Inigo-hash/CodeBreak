@@ -3,6 +3,7 @@
 import sys
 
 import pygame
+from src.ui.text_layout import fit_text, draw_text_block
 
 from src.data.enemies import get_enemy
 from src.systems.audio import handle_music_shortcut
@@ -43,13 +44,13 @@ def open_stage_gate(screen, status, gate_name="Stage Exit", background=None,
     button_width = min(280, panel.width // 2 - 34)
     primary = pygame.Rect(
         panel.centerx + 8,
-        panel.bottom - 72,
+        panel.bottom - 94,
         button_width,
         44,
     )
     secondary = pygame.Rect(
         panel.centerx - button_width - 8,
-        panel.bottom - 72,
+        panel.bottom - 94,
         button_width,
         44,
     )
@@ -101,15 +102,13 @@ def open_stage_gate(screen, status, gate_name="Stage Exit", background=None,
         screen.blit(shade, (0, 0))
         draw_panel(screen, panel, emphasized=status.unlocked, radius=12)
 
-        title_surface = title.render(
-            title_text,
-            True,
-            UI_COLORS["blue_bright"] if status.unlocked else UI_COLORS["gold"],
-        )
+        title_surface = fit_text(title,title_text,
+                                 UI_COLORS['blue_bright'] if status.unlocked else UI_COLORS['gold'],
+                                 (panel.w-128,36))
         screen.blit(title_surface, title_surface.get_rect(
-            center=(panel.centerx, panel.top + 48)
+            center=(panel.centerx, panel.top + 46)
         ))
-        gate_surface = small.render(gate_name.upper(), True, UI_COLORS["text_dim"])
+        gate_surface = fit_text(small,gate_name.upper(),UI_COLORS['text_dim'],(panel.w-104,20))
         screen.blit(gate_surface, gate_surface.get_rect(
             center=(panel.centerx, panel.top + 78)
         ))
@@ -150,11 +149,11 @@ def open_stage_gate(screen, status, gate_name="Stage Exit", background=None,
                 2,
                 border_radius=6,
             )
-            label_surface = heading.render(label, True, UI_COLORS["text"])
+            value_width = max(90,heading.size(value)[0])
+            label_surface = fit_text(heading,label,UI_COLORS['text'],(rect.w-value_width-40,30))
             screen.blit(label_surface, label_surface.get_rect(midleft=(rect.left + 14, rect.centery)))
-            value_surface = heading.render(
-                value, True, (126, 230, 154) if complete else (255, 128, 128)
-            )
+            value_surface = fit_text(heading,value,(126,230,154) if complete else (255,128,128),
+                                     (min(value_width,rect.w//2),30))
             screen.blit(value_surface, value_surface.get_rect(midright=(rect.right - 14, rect.centery)))
 
         list_y = (
@@ -169,11 +168,8 @@ def open_stage_gate(screen, status, gate_name="Stage Exit", background=None,
                 "Keys, lessons, and boss requirements are bypassed.",
                 "Your actual lesson and boss progress stays unchanged.",
             ]
-            for index, line in enumerate(lines):
-                rendered = text_font.render(line, True, UI_COLORS["text"])
-                screen.blit(rendered, rendered.get_rect(
-                    center=(panel.centerx, list_y + index * 34)
-                ))
+            draw_text_block(screen,'\n'.join(lines),text_font,UI_COLORS['text'],
+                            pygame.Rect(panel.x+52,list_y-12,panel.w-104,primary.top-list_y-8),center=True)
         elif status.unlocked:
             lines = [
                 f"All {status.required_keys} keys are accounted for."
@@ -193,22 +189,15 @@ def open_stage_gate(screen, status, gate_name="Stage Exit", background=None,
                 f"You may now leave the {stage_name}. "
                 "Your completion will be saved."
             )
-            for index, line in enumerate(lines):
-                rendered = text_font.render(line, True, UI_COLORS["text"])
-                screen.blit(rendered, rendered.get_rect(
-                    center=(panel.centerx, list_y + index * 34)
-                ))
+            draw_text_block(screen,'\n'.join(lines),text_font,UI_COLORS['text'],
+                            pygame.Rect(panel.x+52,list_y-12,panel.w-104,primary.top-list_y-8),center=True)
         else:
             instruction_text = (
                 "Finish every requirement before this exit can open."
                 if show_boss_requirement else
                 "Collect every key and finish every lesson to enter the Core."
             )
-            instruction = text_font.render(
-                instruction_text,
-                True,
-                UI_COLORS["text"],
-            )
+            instruction = fit_text(text_font,instruction_text,UI_COLORS['text'],(panel.w-104,28))
             screen.blit(instruction, instruction.get_rect(
                 center=(panel.centerx, list_y)
             ))
@@ -219,11 +208,10 @@ def open_stage_gate(screen, status, gate_name="Stage Exit", background=None,
                 screen.blit(missing_heading, missing_heading.get_rect(
                     center=(panel.centerx, list_y + 44)
                 ))
-                capacity = max(0, ((panel.bottom - 100 - (list_y + 80)) // 29) * 2)
+                capacity = max(0, ((primary.top - 38 - (list_y + 80)) // 29) * 2)
                 for index, topic_title in enumerate(status.missing_topic_titles[:capacity]):
                     column = index % 2
                     row = index // 2
-                    from src.ui.text_layout import fit_text
                     line = fit_text(text_font, f"- {topic_title}", UI_COLORS["text"],
                                     (panel.width // 2 - 90, 25))
                     x = panel.left + 74 + column * (panel.width // 2 - 36)
@@ -231,9 +219,9 @@ def open_stage_gate(screen, status, gate_name="Stage Exit", background=None,
                     screen.blit(line, (x, y))
 
                 if len(status.missing_topic_titles) > capacity:
-                    note = small.render('More lessons remain. See the stage manual for the full list.',
-                                        True, UI_COLORS['text_dim'])
-                    screen.blit(note, note.get_rect(center=(panel.centerx, panel.bottom - 92)))
+                    note = fit_text(small,'More lessons remain. See the stage manual for the full list.',
+                                     UI_COLORS['text_dim'],(panel.w-128,20))
+                    screen.blit(note,note.get_rect(center=(panel.centerx,primary.top-22)))
 
         draw_button(
             screen, primary, primary_label, primary_font,
@@ -245,12 +233,11 @@ def open_stage_gate(screen, status, gate_name="Stage Exit", background=None,
                 screen, secondary, "STAY HERE", button_font,
                 hovered=secondary.collidepoint(mouse), tier=TIER_TERTIARY,
             )
-        hint = small.render(
+        hint = fit_text(small,
             "E / ENTER = confirm    ESC = stay" if can_exit else
             "E / ENTER / ESC = close",
-            True,
-            UI_COLORS["text_dim"],
+            UI_COLORS["text_dim"], (panel.w-128,20),
         )
-        screen.blit(hint, hint.get_rect(center=(panel.centerx, panel.bottom - 15)))
+        screen.blit(hint, hint.get_rect(center=(panel.centerx, panel.bottom - 28)))
         pygame.display.flip()
         clock.tick(60)

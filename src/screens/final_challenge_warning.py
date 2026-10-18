@@ -1,4 +1,5 @@
 import pygame
+from src.ui.text_layout import fit_text, draw_text_block
 
 from src.ui.theme import (
     UI_COLORS,
@@ -120,11 +121,7 @@ def open_final_challenge_warning(screen, background=None):
             radius=12,
         )
 
-        heading = heading_font.render(
-            "FINAL CHALLENGE",
-            True,
-            UI_COLORS["gold"],
-        )
+        heading = fit_text(heading_font, 'FINAL CHALLENGE', UI_COLORS['gold'], (panel.w - 100, 48))
 
         screen.blit(
             heading,
@@ -138,30 +135,10 @@ def open_final_challenge_warning(screen, background=None):
         # Warning text
         # -----------------------------------------------------
 
-        y = panel.top + 92
-
-        for line in lines:
-
-            if not line:
-
-                y += 12
-                continue
-
-            rendered = text_font.render(
-                line,
-                True,
-                UI_COLORS["text"],
-            )
-
-            screen.blit(
-                rendered,
-                rendered.get_rect(
-                    centerx=panel.centerx,
-                    top=y,
-                ),
-            )
-
-            y += text_font.get_height() + 5
+        paragraphs = [' '.join(lines[:2]), ' '.join(lines[3:5]), lines[-1]]
+        draw_text_block(screen, '\n\n'.join(paragraphs), text_font, UI_COLORS['text'],
+                        pygame.Rect(panel.x + 44, panel.y + 94, panel.w - 88,
+                                    continue_button.top - panel.top - 114), center=True)
 
         # -----------------------------------------------------
         # Continue button

@@ -22,7 +22,9 @@ def open_topic_challenges(screen, topic, passed):
         screen.blit(shade, (0, 0))
         pygame.draw.rect(screen, UI_COLORS['modal_panel'], panel, border_radius=10)
         pygame.draw.rect(screen, UI_COLORS['gold'], panel, 2, border_radius=10)
-        screen.blit(title_font(26).render(topic['title'] + ' - Challenges', True, UI_COLORS['gold']), (panel.x + 24, panel.y + 20))
+        heading = fit_text(title_font(26), topic['title'] + ' - Challenges',
+                           UI_COLORS['gold'], (panel.w - 48, 44))
+        screen.blit(heading, heading.get_rect(midtop=(panel.centerx, panel.y + 20)))
         next_required = next((cid for cid, _ in rows if cid not in passed), None)
         for cid, rect in rows:
             done = cid in passed

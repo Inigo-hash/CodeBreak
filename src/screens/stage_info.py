@@ -122,7 +122,7 @@ class _Fonts:
 # ===========================================================================
 
 def _heading(surface, fonts, text, x, y, width):
-    label = fonts.heading.render(text, True, ACCENT)
+    label = fit_text(fonts.heading, text, ACCENT, (width, fonts.heading.get_height()))
     surface.blit(label, (x, y))
     y += label.get_height() + 6
     pygame.draw.line(surface, DIVIDER, (x, y), (x + width, y), 1)
@@ -199,16 +199,18 @@ def _render_manual(surface, fonts, stage, progress, x, y, width):
     if topics:
         y = _heading(surface, fonts, "TOPICS YOU WILL PRACTICE", x, y, width)
         for challenge_id, challenge in topics:
-            title = fonts.entry.render(challenge.get("title", challenge_id),
-                                       True, TEXT_MAIN)
+            title = fit_text(fonts.entry, challenge.get('title', challenge_id), TEXT_MAIN,
+                             (width, fonts.entry.get_height()))
             surface.blit(title, (x, y))
+            y += title.get_height() + 3
 
             difficulty = challenge.get("difficulty", "")
             if difficulty:
                 tag = fonts.small.render(difficulty.upper(), True, TEXT_DIM)
-                surface.blit(tag, (x + title.get_width() + 10, y + 4))
+                surface.blit(tag, (x, y))
+                y += tag.get_height() + 2
 
-            y += title.get_height() + 2
+            y += 2
             y = _paragraph(surface, fonts, challenge.get("objective", ""),
                            x, y, width, TEXT_DIM) + 10
         y += 12
@@ -246,7 +248,7 @@ def _render_enemies(surface, fonts, stage, progress, x, y, width):
 
 def _render_enemy_card(surface, fonts, enemy, known, x, y, width):
     portrait_size = 104
-    pad = 14
+    pad = 28
     text_x = x + pad + portrait_size + pad
     text_width = width - (text_x - x) - pad
 
@@ -258,7 +260,8 @@ def _render_enemy_card(surface, fonts, enemy, known, x, y, width):
     if known:
         text_height = (
             name_block
-            + fonts.small.get_height() + 8                       # threat line
+            + _text_block_height(fonts, [f"THREAT: {enemy.get('threat', 'Unknown').upper()}  |  {enemy.get('family', '').upper()}"],
+                                 text_width, fonts.small) + 8
             + _text_block_height(fonts, [enemy.get("description", "")],
                                  text_width) + 8
             # BEHAVIOR and WEAKNESS: a small header above each paragraph.
@@ -300,8 +303,8 @@ def _render_enemy_card(surface, fonts, enemy, known, x, y, width):
     ty = y + pad
 
     name = enemy["name"] if known else "???"
-    surface.blit(fonts.entry.render(name, True,
-                                    TEXT_MAIN if known else TEXT_DIM),
+    surface.blit(fit_text(fonts.entry, name,
+                          TEXT_MAIN if known else TEXT_DIM, (text_width, fonts.entry.get_height())),
                  (text_x, ty))
     ty += fonts.entry.get_height() + 6
 
@@ -312,17 +315,9 @@ def _render_enemy_card(surface, fonts, enemy, known, x, y, width):
 
     threat = enemy.get("threat", "Unknown")
     threat_color = THREAT_COLORS.get(threat, TEXT_DIM)
-    threat_surf = fonts.small.render(f"THREAT: {threat.upper()}", True,
-                                     threat_color)
-    surface.blit(threat_surf, (text_x, ty))
-
     family = enemy.get("family")
-    if family:
-        family_surf = fonts.small.render(family.upper(), True, TEXT_DIM)
-        surface.blit(family_surf,
-                     (text_x + threat_surf.get_width() + 14, ty))
-
-    ty += threat_surf.get_height() + 8
+    metadata = f"THREAT: {threat.upper()}" + (f"  |  {family.upper()}" if family else '')
+    ty = _paragraph(surface, fonts, metadata, text_x, ty, text_width, threat_color, fonts.small) + 8
 
     ty = _paragraph(surface, fonts, enemy.get("description", ""),
                     text_x, ty, text_width, TEXT_MAIN) + 8
@@ -384,8 +379,8 @@ def _render_item_row(surface, fonts, item, known, x, y, width):
     text_width = width - indent
 
     name = item["name"] if known else "???"
-    surface.blit(fonts.entry.render(name, True,
-                                    TEXT_MAIN if known else TEXT_DIM),
+    surface.blit(fit_text(fonts.entry, name,
+                          TEXT_MAIN if known else TEXT_DIM, (text_width, fonts.entry.get_height())),
                  (text_x, y))
     y += fonts.entry.get_height() + 2
 

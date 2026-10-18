@@ -5,6 +5,10 @@ import pygame
 def fit_text(font, text, color, size):
     """Keep a complete label inside its slot without stretching its aspect."""
     rendered = font.render(str(text), True, color)
+    # SDL smoothscale cannot read a zero-width surface (Font.render('')).
+    # Empty decorative button labels still need a valid transparent result.
+    if not rendered.get_width() or not rendered.get_height():
+        return pygame.Surface((1,1),pygame.SRCALPHA)
     width, height = max(1, int(size[0])), max(1, int(size[1]))
     scale = min(1.0, width / max(1, rendered.get_width()),
                 height / max(1, rendered.get_height()))

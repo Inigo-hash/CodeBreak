@@ -46,7 +46,7 @@ from src.ui.theme import title_font as _display_font
 from src.ui.chart import (
     BOSS_INK, INK, INK_FADED, INK_SOFT, MARKER_INK, MARKER_SIZE, PARCHMENT,
     PARCHMENT_DARK, build_chart_texture, build_night_veil, draw_marker,
-    ink_text as _ink_text,
+    ink_text as _ink_text, layout_map_labels,
 )
 
 
@@ -355,6 +355,7 @@ def _build_paper(map_texture, map_width, map_height, zone_rects,
     region_layer = pygame.Surface(paper_size, pygame.SRCALPHA)
     label_font = _paper_font(15)
 
+    labels = []
     for zone in zone_rects:
         rect = zone["rect"]
         on_paper = pygame.Rect(
@@ -378,10 +379,11 @@ def _build_paper(map_texture, map_width, map_height, zone_rects,
             map_rect.left + rect.centerx * scale,
             map_rect.top + rect.centery * scale,
         )
-        boss = zone.get("is_boss_zone", False)
-        label_rect = _ink_text(paper, label_font, zone["name"], center,
+        labels.append((zone['name'],center,zone.get('is_boss_zone',False)))
+    for name,label_rect,boss in layout_map_labels(label_font,labels,map_rect.inflate(-24,-24),gap=18):
+        label_rect = _ink_text(paper,label_font,name,label_rect.center,
                                BOSS_INK if boss else INK,
-                               clamp_rect=map_rect.inflate(-12, -12))
+                               clamp_rect=map_rect.inflate(-12,-12))
 
         # A short rule under each name, dotted at both ends - the same
         # flourish old charts use to separate a label from the terrain.

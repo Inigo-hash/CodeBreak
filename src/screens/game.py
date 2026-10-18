@@ -5,6 +5,7 @@ import time
 
 from pytmx.util_pygame import load_pygame
 import pygame
+from src.ui.text_layout import fit_text
 import sys
 from src.config import DEBUG_MODE, FPS_LOG
 from src.screens.settings import SettingsPanel
@@ -40,7 +41,7 @@ from src.ui.gameplay_hud import (
 )
 from src.ui.chart import (
     BOSS_INK, INK, build_chart_texture, build_night_veil, build_sea_tile,
-    chart_sea_color, draw_marker, fill_sea, ink_text,
+    chart_sea_color, draw_marker, fill_sea, ink_text, layout_map_labels,
 )
 from src.systems.combat import (
     COMBAT_DEBUG, DEBUG_ENEMY_AI, FACING_VECTORS, PLAYER_DODGE_SPEED,
@@ -1028,6 +1029,7 @@ def game_screen(screen, slot_num=None, save_state=None):
         # read in, names included, not a filter on the terrain alone.
         surf.blit(minimap_vignette, view_rect.topleft)
 
+        labels = []
         for zone in zone_pixel_rects:
 
             zone_center_x = zone["rect"].centerx * minimap_px_per_unit
@@ -1040,11 +1042,11 @@ def game_screen(screen, slot_num=None, save_state=None):
             # brown ink, boss ground in red. The halo is tighter and
             # thinner than the sheet's - at this size a full one covers
             # most of the zone it is naming.
-            ink_text(
-                surf, zone_label_font, zone["name"], (label_x, label_y),
-                BOSS_INK if zone["is_boss_zone"] else INK,
-                halo_alpha=120, halo_pad=(8, 4)
-            )
+            if view_rect.collidepoint(label_x,label_y):
+                labels.append((zone['name'],(label_x,label_y),zone['is_boss_zone']))
+        for name,rect,boss in layout_map_labels(zone_label_font,labels,view_rect.inflate(-8,-8)):
+            ink_text(surf,zone_label_font,name,rect.center,BOSS_INK if boss else INK,
+                     halo_alpha=120,halo_pad=(8,4))
 
         if night:
             surf.blit(minimap_night_veil, view_rect.topleft)
@@ -3341,12 +3343,10 @@ def game_screen(screen, slot_num=None, save_state=None):
         stage_panel.draw(mouse_pos)
 
         # Key hints (top-right, out of the way of the profile HUD)
-        hint = font.render(
-            "G = World Atlas    P = Practice    F1 = Light    F2 = Fog    F10 = Mute",
-            True,
-            (255, 255, 255)
-        )
-        screen.blit(hint, (SCREEN_W - hint.get_width() - 10, 10))
+        hint_width = min(430, SCREEN_W - gameplay_hud.profile_rect.right - 32)
+        hint = fit_text(font, 'G: Atlas  P: Practice  F1/F2: Light/Fog  F10: Mute',
+                        (255,255,255), (hint_width,16))
+        screen.blit(hint, hint.get_rect(topright=(SCREEN_W-14,4)))
 
         draw_low_health_warning(
             screen,
@@ -3356,13 +3356,11 @@ def game_screen(screen, slot_num=None, save_state=None):
         )
 
         if DEBUG_MODE:
-            developer_label = font.render(
-                "F4: DEVELOPER EXPLORATION ON" if developer_mode.enabled else
-                "F4: Developer exploration OFF",
-                True, (255, 215, 100) if developer_mode.enabled else (180, 185, 195),
-            )
-            developer_rect = developer_label.get_rect(midtop=(SCREEN_W // 2, 12))
-            pygame.draw.rect(screen, (15, 18, 26), developer_rect.inflate(18, 10), border_radius=5)
+            developer_label = fit_text(font,
+                'F4: Developer exploration ON' if developer_mode.enabled else 'F4: Developer exploration OFF',
+                (255,215,100) if developer_mode.enabled else (180,185,195), (hint_width,14))
+            developer_rect = developer_label.get_rect(topright=(SCREEN_W-14,24))
+            pygame.draw.rect(screen, (15, 18, 26), developer_rect.inflate(8, 2), border_radius=3)
             screen.blit(developer_label, developer_rect)
 
         pygame.display.flip()

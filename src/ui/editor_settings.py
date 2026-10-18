@@ -15,6 +15,7 @@ immediately and doubles as a live preview of the choice.
 """
 
 import pygame
+from src.ui.text_layout import fit_text
 
 from src.ui.editor_theme import *
 from src.settings_state import (
@@ -364,8 +365,8 @@ class EditorSettingsPanel:
             return
 
         self.screen.blit(
-            SMALL_FONT.render("TEXT SPEED", True, SECONDARY_TEXT),
-            (self.speed_rects[0].left, self.speed_rects[0].top - 22)
+            fit_text(SMALL_FONT, 'TEXT SPEED', SECONDARY_TEXT, (self.panel_rect.w-56, 22)),
+            (self.speed_rects[0].left, self.speed_rects[0].top - 30)
         )
 
         selected = current_text_speed()
@@ -391,9 +392,8 @@ class EditorSettingsPanel:
             if active:
                 pygame.draw.rect(self.screen, TEXT_COLOR, rect, 2, border_radius=4)
 
-            label = SMALL_FONT.render(
-                name, True, BUTTON_TEXT_COLOR if active else SECONDARY_TEXT
-            )
+            label = fit_text(SMALL_FONT, name, BUTTON_TEXT_COLOR if active else SECONDARY_TEXT,
+                             (rect.w-12, rect.h-8))
             self.screen.blit(
                 label,
                 (
@@ -424,8 +424,8 @@ class EditorSettingsPanel:
     def _draw_slider(self, label, bar, value):
 
         self.screen.blit(
-            SMALL_FONT.render(label, True, SECONDARY_TEXT),
-            (bar.left, bar.top - 22)
+            fit_text(SMALL_FONT, label, SECONDARY_TEXT, (bar.w, 22)),
+            (bar.left, bar.top - 30)
         )
 
         pygame.draw.rect(
@@ -451,8 +451,8 @@ class EditorSettingsPanel:
     def _draw_theme_row(self, mouse_position):
 
         self.screen.blit(
-            SMALL_FONT.render("COLOR THEME", True, SECONDARY_TEXT),
-            (self.theme_left_rect.left, self.theme_left_rect.top - 22)
+            fit_text(SMALL_FONT, 'COLOR THEME', SECONDARY_TEXT, (self.panel_rect.w-56, 22)),
+            (self.theme_left_rect.left, self.theme_left_rect.top - 30)
         )
 
         for rect in (self.theme_left_rect, self.theme_right_rect):
@@ -480,7 +480,8 @@ class EditorSettingsPanel:
         # Plain body text rather than a per-theme swatch color: the
         # panel is already painted in the theme being previewed, so the
         # name only has to stay readable.
-        name = BUTTON_FONT.render(current_theme_name(), True, TEXT_COLOR)
+        name = fit_text(BUTTON_FONT, current_theme_name(), TEXT_COLOR,
+                        (self.theme_right_rect.left-self.theme_left_rect.right-24, self.theme_left_rect.h-6))
         self.screen.blit(
             name,
             (
@@ -500,7 +501,8 @@ class EditorSettingsPanel:
             border_radius=BUTTON_RADIUS
         )
 
-        label = BUTTON_FONT.render("CLOSE", True, BUTTON_TEXT_COLOR)
+        label = fit_text(BUTTON_FONT, 'CLOSE', BUTTON_TEXT_COLOR,
+                         (self.close_rect.w-20,self.close_rect.h-10))
         self.screen.blit(
             label,
             (

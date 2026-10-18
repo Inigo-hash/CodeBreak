@@ -350,7 +350,7 @@ def draw_stat_bar(surface, font, x, y, width, label, current, maximum,
         text = f"{label} -- / --"
     label_width = min(label_width, max(1, width - 48))
     surface.blit(fit_text(font, text, TEXT if maximum else DIM,
-                          (label_width - 8, font.get_height())), (x, y - 1))
+                          (label_width - 8, min(20,font.get_height()))), (x, y - 1))
 
     bar = pygame.Rect(x + label_width, y + 2, max(40, width - label_width), 13)
     pygame.draw.rect(surface, (12, 13, 18), bar, border_radius=3)

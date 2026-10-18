@@ -14,6 +14,8 @@ src/data/controls.py, which is checked against the actual key handlers.
 """
 
 import pygame
+from functools import lru_cache
+from src.ui.text_layout import fit_text, wrap_text
 from src.systems.audio import handle_music_shortcut
 import sys
 
@@ -93,7 +95,7 @@ def manual_layout(screen_width, screen_height):
     # The footer contains three separate notes and the Back button has its
     # own row below them. Derive the column height from those reserved areas
     # instead of letting the manual body continue underneath both.
-    footer_height = max(44, len(CONTROL_NOTES) * FOOTER_LINE_HEIGHT)
+    footer_height = 32
     footer_bottom = panel.bottom - 72
 
     footer = pygame.Rect(
@@ -125,39 +127,35 @@ def draw_control_rows(surface, rect, sections, header_font, key_font, line_font)
     column now shrinks its own line height rather than overflowing.
     """
 
-    row_h, header_h, gap = ROW_HEIGHT, HEADER_HEIGHT, SECTION_GAP
-    needed = sum(header_h + len(rows) * row_h + gap for _, rows in sections)
-    if needed > rect.height > 0:
-        squeeze = rect.height / needed
-        # A floor, because past this the rows collide with each other and a
-        # tighter table is worse than a shorter one.
-        row_h = max(15, int(row_h * squeeze))
-        header_h = max(20, int(header_h * squeeze))
-        gap = max(2, int(gap * squeeze))
-
+    key_width = min(rect.w // 2, max(key_font.size(key)[0] for _, rows in sections for key, _ in rows) + 16)
+    line_height = max(line_font.get_linesize(), key_font.get_linesize()) + 4
     y = rect.top
     for heading, rows in sections:
-        surface.blit(header_font.render(heading, True, BLUE_GLOW), (rect.left, y))
-        y += header_h
+        label = fit_text(header_font, heading, BLUE_GLOW, (rect.w, header_font.get_height()))
+        surface.blit(label, (rect.left, y))
+        y += label.get_height() + 12
         for key, action in rows:
-            surface.blit(key_font.render(key, True, YELLOW_GLOW), (rect.left, y))
-            surface.blit(line_font.render(action, True, BODY_TEXT),
-                         (rect.left + KEY_COLUMN, y))
-            y += row_h
-        y += gap
+            key_label = fit_text(key_font, key, YELLOW_GLOW, (key_width - 12, line_height))
+            surface.blit(key_label, (rect.left, y))
+            lines = wrap_text(action, line_font, rect.w - key_width)
+            for index, line in enumerate(lines):
+                surface.blit(line_font.render(line, True, BODY_TEXT), (rect.left + key_width, y + index * line_height))
+            y += max(1, len(lines)) * line_height + 7
+        y += 16
     return y
 
 
 def draw_rule_lines(surface, rect, lines, header_font, line_font, header):
     """The right-hand column: a heading and a bulleted list."""
 
-    surface.blit(header_font.render(header, True, BLUE_GLOW), (rect.left, rect.top))
-    y = rect.top + HEADER_HEIGHT + 6
+    title = fit_text(header_font, header, BLUE_GLOW, (rect.w, header_font.get_height()))
+    surface.blit(title, (rect.left, rect.top))
+    y = rect.top + title.get_height() + 12
     for entry in lines:
-        for wrapped in _wrap(line_font, f"- {entry}", rect.width):
+        for wrapped in wrap_text(f"- {entry}", line_font, rect.width):
             surface.blit(line_font.render(wrapped, True, BODY_TEXT), (rect.left, y))
-            y += 24
-        y += 6
+            y += line_font.get_linesize() + 4
+        y += 10
     return y
 
 
@@ -170,38 +168,62 @@ def draw_manual_footer(surface, rect, font):
 
     y = rect.top
     for note in CONTROL_NOTES:
-        rendered = font.render(note, True, UI_COLORS["modal_text_dim"])
-        surface.blit(rendered, (rect.centerx - rendered.get_width() // 2, y))
-        y += FOOTER_LINE_HEIGHT
+        for line in wrap_text(note, font, rect.w):
+            rendered = font.render(line, True, UI_COLORS["modal_text_dim"])
+            surface.blit(rendered, (rect.x, y))
+            y += font.get_linesize() + 3
+        y += 8
     return y
+
+
+@lru_cache(maxsize=8)
+def _manual_content(width, left_width, right_x, right_width,
+                    header_font, key_font, line_font, note_font, rules_header):
+    """Build once per geometry/font setting; scrolling only blits the result."""
+    world_sections = [s for s in CONTROL_SECTIONS if s[0] != "IN THE CODE EDITOR"]
+    editor_sections = [s for s in CONTROL_SECTIONS if s[0] == "IN THE CODE EDITOR"]
+
+    # Measure/draw onto a tall content surface. Scrolling moves complete rows;
+    # reducing row spacing independently of glyph height caused the overlaps.
+    body = pygame.Surface((width, 6000), pygame.SRCALPHA)
+    left = pygame.Rect(0, 0, left_width, 6000)
+    right = pygame.Rect(right_x, 0, right_width, 6000)
+    left_bottom = draw_control_rows(body, left, world_sections,
+                      header_font, key_font, line_font)
+
+    y = draw_rule_lines(body, right, RULES_LINES,
+                        header_font, line_font, rules_header)
+
+    editor_rect = pygame.Rect(right.left, y + 20, right.width, 6000 - y)
+    right_bottom = draw_control_rows(body, editor_rect, editor_sections,
+                      header_font, key_font, line_font)
+
+    notes = pygame.Rect(0, max(left_bottom, right_bottom) + 24, width - 14, 1000)
+    used = draw_manual_footer(body, notes, note_font)
+    return body.subsurface((0,0,width,min(6000,max(1,used)))).copy(), used
 
 
 def draw_manual_columns(surface, left_col, right_col, footer,
                         header_font, key_font, line_font, note_font,
-                        rules_header="PYTHON CHALLENGE RULES"):
-    """
-    The whole manual body: controls on the left, rules and editor keys
-    on the right, notes underneath.
-
-    The editor section is split off to the right so the left column stays
-    a single uninterrupted list of things you press while walking around.
-    """
-
-    world_sections = [s for s in CONTROL_SECTIONS if s[0] != "IN THE CODE EDITOR"]
-    editor_sections = [s for s in CONTROL_SECTIONS if s[0] == "IN THE CODE EDITOR"]
-
-    draw_control_rows(surface, left_col, world_sections,
-                      header_font, key_font, line_font)
-
-    y = draw_rule_lines(surface, right_col, RULES_LINES,
-                        header_font, line_font, rules_header)
-
-    editor_rect = pygame.Rect(right_col.left, y + 10, right_col.width,
-                              right_col.bottom - y)
-    draw_control_rows(surface, editor_rect, editor_sections,
-                      header_font, key_font, line_font)
-
-    draw_manual_footer(surface, footer, note_font)
+                        rules_header="PYTHON CHALLENGE RULES", scroll=0):
+    """Scrollable measured columns shared by How To Play and the tutorial."""
+    viewport = left_col.union(right_col).union(footer)
+    body, used = _manual_content(viewport.w - 14, left_col.w - 14,
+                                right_col.x - viewport.x, right_col.w - 14,
+                                header_font,key_font,line_font,note_font,rules_header)
+    limit = max(0, used - viewport.h)
+    scroll = max(0, min(scroll, limit))
+    old_clip = surface.get_clip()
+    surface.set_clip(viewport)
+    surface.blit(body, (viewport.x, viewport.y - scroll))
+    surface.set_clip(old_clip)
+    if limit:
+        track = pygame.Rect(viewport.right - 5, viewport.y, 4, viewport.h)
+        pygame.draw.rect(surface, UI_COLORS['bronze_dark'], track)
+        height = max(24, round(track.h * viewport.h / used))
+        thumb = pygame.Rect(track.x, track.y + round((track.h-height)*scroll/limit), 4, height)
+        pygame.draw.rect(surface, UI_COLORS['gold'], thumb)
+    return limit
 
 
 def how_to_play_screen(screen):
@@ -216,6 +238,7 @@ def how_to_play_screen(screen):
 
     panel_rect, left_col, right_col, footer = manual_layout(SCREEN_WIDTH, SCREEN_HEIGHT)
     back_rect = pygame.Rect(panel_rect.centerx - 70, panel_rect.bottom - 56, 140, 36)
+    back_rect.right = panel_rect.right - 40
 
     # Imported here, not at module scope: main_menu imports this module, so
     # naming it up top would close the import loop.
@@ -223,6 +246,8 @@ def how_to_play_screen(screen):
 
     clock = pygame.time.Clock()
     running = True
+    scroll = 0
+    limit = 0
 
     while running:
         mouse_pos = pygame.mouse.get_pos()
@@ -236,6 +261,11 @@ def how_to_play_screen(screen):
             if (event.type == pygame.KEYDOWN
                     and event.key in (pygame.K_ESCAPE, pygame.K_BACKSPACE)):
                 return
+            if event.type == pygame.MOUSEWHEEL:
+                scroll = max(0, min(limit, scroll - event.y * 70))
+            if event.type == pygame.KEYDOWN and event.key in (pygame.K_UP, pygame.K_DOWN, pygame.K_PAGEUP, pygame.K_PAGEDOWN):
+                amount = 280 if event.key in (pygame.K_PAGEUP, pygame.K_PAGEDOWN) else 50
+                scroll = max(0, min(limit, scroll + amount * (1 if event.key in (pygame.K_DOWN, pygame.K_PAGEDOWN) else -1)))
             # Left button only - see the note in main_menu.py: the wheel
             # and the right button raise this event as well.
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -254,21 +284,24 @@ def how_to_play_screen(screen):
         pygame.draw.rect(screen, UI_COLORS["modal_inner"], panel_rect.inflate(-24, -24),
                          border_radius=6)
 
-        title = heading_font.render("HOW TO PLAY", True, WHITE)
-        screen.blit(title, (panel_rect.centerx - title.get_width() // 2, panel_rect.top + 24))
+        title = fit_text(heading_font, 'HOW TO PLAY', WHITE, (panel_rect.w - 100, 42))
+        screen.blit(title, title.get_rect(midtop=(panel_rect.centerx,panel_rect.top+20)))
         pygame.draw.line(screen, YELLOW_GLOW,
                           (panel_rect.left + 40, panel_rect.top + 70),
                           (panel_rect.right - 40, panel_rect.top + 70), 1)
 
-        draw_manual_columns(screen, left_col, right_col, footer,
-                            header_font, key_font, line_font, note_font)
+        limit = draw_manual_columns(screen, left_col, right_col, footer,
+                                    header_font, key_font, line_font, note_font, scroll=scroll)
+        hint = fit_text(note_font, 'Scroll / Up / Down to read all controls', BODY_TEXT,
+                        (back_rect.left-panel_rect.left-64, 22))
+        screen.blit(hint, (panel_rect.left + 40, back_rect.y + 8))
 
         back_hovered = back_rect.collidepoint(mouse_pos)
         pygame.draw.rect(screen,
                          UI_COLORS["modal_button_hover"] if back_hovered else STONE_MID,
                          back_rect, border_radius=4)
         pygame.draw.rect(screen, STONE_LIGHT, back_rect, 2, border_radius=4)
-        bt = btn_font.render("BACK", True, WHITE)
+        bt = fit_text(btn_font, 'BACK', WHITE, (back_rect.w - 20, back_rect.h - 10))
         screen.blit(bt, (back_rect.centerx - bt.get_width() // 2, back_rect.centery - bt.get_height() // 2))
 
         pygame.display.flip()

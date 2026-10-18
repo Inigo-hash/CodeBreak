@@ -1,5 +1,6 @@
 import math
 import pygame
+from src.ui.text_layout import fit_text, draw_text_block, wrap_text as bounded_wrap_text
 import sys
 from src.settings_state import revealed_characters
 from src.entities.player import MainCharacter
@@ -23,6 +24,15 @@ from src.screens.loading import StageLoadingScreen
 # meant this file restyled itself whenever that one changed.
 STONE_DARK = UI_COLORS["modal_inner"]
 STONE_LIGHT = UI_COLORS["modal_button_edge"]
+
+
+def paginate_dialogue(lines, font, width, rows=3):
+    pages = []
+    for text in lines:
+        wrapped = bounded_wrap_text(text,font,width)
+        pages.extend(' '.join(wrapped[index:index+rows])
+                     for index in range(0,len(wrapped),rows))
+    return pages
 
 
 def tutorial_sprite_scales(character, enemies, screen_height):
@@ -239,7 +249,7 @@ def tutorial_screen(screen, play_music=True, show_loading=False,
         """
 
         def __init__(self, lines, on_finish=None):
-            self.lines = lines
+            self.lines = list(lines)
             self.index = 0
             self.on_finish = on_finish
             self.active = True
@@ -251,9 +261,12 @@ def tutorial_screen(screen, play_music=True, show_loading=False,
             # measured once here rather than per frame: a box that resized
             # itself as the text typed out would jump on every character.
             self.text_width = (SCREEN_WIDTH - 120 - PORTRAIT_SIDE - 24) - 36
+            # A larger accessibility font may need extra pages. Preserve all
+            # dialogue rather than dropping wrapped rows after the third one.
+            self.lines = paginate_dialogue(self.lines,dialogue_font,self.text_width,MAX_DIALOGUE_LINES)
             self.rows = max(
                 (len(self.wrap_text(line, dialogue_font, self.text_width))
-                 for line in lines),
+                 for line in self.lines),
                 default=1
             )
             self.rows = max(1, min(MAX_DIALOGUE_LINES, self.rows))
@@ -296,18 +309,7 @@ def tutorial_screen(screen, play_music=True, show_loading=False,
                 self.advance()
 
         def wrap_text(self, text, font, max_width):
-            words = text.split(" ")
-            lines, current = [], ""
-            for word in words:
-                test = (current + " " + word).strip()
-                if font.size(test)[0] <= max_width:
-                    current = test
-                else:
-                    lines.append(current)
-                    current = word
-            if current:
-                lines.append(current)
-            return lines
+            return bounded_wrap_text(text,font,max_width)
 
         def draw(self, surf):
             if not self.active:
@@ -574,8 +576,10 @@ def tutorial_screen(screen, play_music=True, show_loading=False,
         manual_layout(SCREEN_WIDTH, SCREEN_HEIGHT)
     )
     manual_begin_rect = pygame.Rect(
-        manual_panel_rect.centerx - 110, manual_panel_rect.bottom - 56, 220, 40
+        manual_panel_rect.right - 300, manual_panel_rect.bottom - 56, 260, 40
     )
+    manual_scroll = 0
+    manual_scroll_limit = 0
 
     # Escape opens a decision instead of silently skipping into gameplay.
     # Keeping the destructive/navigation choice mouse-only means repeated
@@ -596,7 +600,7 @@ def tutorial_screen(screen, play_music=True, show_loading=False,
             "LEAVE TRAINING GROUNDS?"
             if practice_only else "LEAVE THE TUTORIAL?"
         )
-        heading = exit_title_font.render(heading_text, True, YELLOW_GLOW)
+        heading = fit_text(exit_title_font,heading_text,YELLOW_GLOW,(exit_rect.w-72,40))
         surf.blit(heading, heading.get_rect(center=(exit_rect.centerx, exit_rect.top + 48)))
         copy_text = (
             "Leaving ends this training run. Press P on the island whenever you want to return."
@@ -622,17 +626,11 @@ def tutorial_screen(screen, play_music=True, show_loading=False,
                             top + index * (font.get_height() + 2))
                 ))
 
-        draw_centered_wrapped(
-            copy_text, hint_font, WHITE, exit_rect.top + 98,
-            exit_rect.width - 64,
-        )
-        draw_centered_wrapped(
-            ("Press ESC to resume training, or choose an option below."
-             if practice_only else
-             "Press ESC to keep learning, or choose an option below."),
-            prompt_font, DIM_TEXT, exit_rect.top + 150,
-            exit_rect.width - 64,
-        )
+        note = ('Press ESC to resume training, or choose an option below.' if practice_only else
+                'Press ESC to keep learning, or choose an option below.')
+        draw_text_block(surf,copy_text+'\n\n'+note,hint_font,WHITE,
+                        pygame.Rect(exit_rect.x+32,exit_rect.y+88,exit_rect.w-64,
+                                    keep_learning_rect.top-exit_rect.y-108),center=True)
         mouse = pygame.mouse.get_pos()
         for rect, label, color in (
             (keep_learning_rect, (
@@ -646,10 +644,11 @@ def tutorial_screen(screen, play_music=True, show_loading=False,
             fill = tuple(min(255, channel + 20) for channel in color) if rect.collidepoint(mouse) else color
             pygame.draw.rect(surf, fill, rect, border_radius=5)
             pygame.draw.rect(surf, STONE_LIGHT, rect, 2, border_radius=5)
-            rendered = prompt_font.render(label, True, WHITE)
+            rendered = fit_text(prompt_font,label,WHITE,(rect.w-24,rect.h-12))
             surf.blit(rendered, rendered.get_rect(center=rect.center))
 
     def draw_stage_manual(surf, mouse_pos):
+        nonlocal manual_scroll_limit
         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 170))
         surf.blit(overlay, (0, 0))
@@ -658,7 +657,8 @@ def tutorial_screen(screen, play_music=True, show_loading=False,
         pygame.draw.rect(surf, METAL_FRAME, manual_panel_rect, 4, border_radius=8)
         pygame.draw.rect(surf, STONE_DARK, manual_panel_rect.inflate(-24, -24), border_radius=6)
 
-        title = manual_title_font.render("STAGE MANUAL", True, WHITE)
+        title = fit_text(manual_title_font, 'STAGE MANUAL', WHITE,
+                         (manual_panel_rect.w - 100, 42))
         surf.blit(title, (manual_panel_rect.centerx - title.get_width() // 2, manual_panel_rect.top + 24))
         pygame.draw.line(
             surf, YELLOW_GLOW,
@@ -666,20 +666,23 @@ def tutorial_screen(screen, play_music=True, show_loading=False,
             (manual_panel_rect.right - 40, manual_panel_rect.top + 70), 1
         )
 
-        draw_manual_columns(
+        manual_scroll_limit = draw_manual_columns(
             surf, manual_left_col, manual_right_col, manual_footer,
             manual_header_font, manual_key_font, manual_line_font,
-            manual_note_font,
+            manual_note_font, scroll=manual_scroll,
         )
 
         begin_hovered = manual_begin_rect.collidepoint(mouse_pos)
         pygame.draw.rect(surf, (70, 140, 70) if begin_hovered else GREEN_OK, manual_begin_rect, border_radius=4)
         pygame.draw.rect(surf, STONE_LIGHT, manual_begin_rect, 2, border_radius=4)
-        bt = manual_btn_font.render("BEGIN ADVENTURE", True, (20, 30, 20) if not begin_hovered else WHITE)
+        bt = fit_text(manual_btn_font, 'BEGIN ADVENTURE',
+                      (20, 30, 20) if not begin_hovered else WHITE,
+                      (manual_begin_rect.w - 20, manual_begin_rect.h - 10))
         surf.blit(bt, (manual_begin_rect.centerx - bt.get_width() // 2, manual_begin_rect.centery - bt.get_height() // 2))
 
-        hint = hint_font.render("Press SPACE or click BEGIN ADVENTURE", True, DIM_TEXT)
-        surf.blit(hint, (manual_panel_rect.centerx - hint.get_width() // 2, manual_begin_rect.bottom + 10))
+        hint = fit_text(hint_font, 'Scroll / Up / Down to read  |  SPACE: begin', DIM_TEXT,
+                        (manual_begin_rect.left-manual_panel_rect.left-64, 20))
+        surf.blit(hint,hint.get_rect(midleft=(manual_panel_rect.left+40,manual_begin_rect.centery)))
 
     if loading:
         loading.finish()
@@ -739,6 +742,10 @@ def tutorial_screen(screen, play_music=True, show_loading=False,
                     combat_audio.play("dodge")
 
             if state == "stage_manual":
+                if event.type == pygame.MOUSEWHEEL:
+                    manual_scroll = max(0,min(manual_scroll_limit, manual_scroll-event.y*70))
+                if event.type == pygame.KEYDOWN and event.key in (pygame.K_UP,pygame.K_DOWN):
+                    manual_scroll = max(0,min(manual_scroll_limit,manual_scroll+(50 if event.key==pygame.K_DOWN else -50)))
                 begin_pressed = (
                     event.type == pygame.KEYDOWN
                     and event.key == pygame.K_SPACE
@@ -1014,7 +1021,7 @@ def tutorial_screen(screen, play_music=True, show_loading=False,
                 "ESC = Exit training"
                 if practice_only else "ESC = Tutorial options"
             )
-            esc_hint = hint_font.render(esc_label, True, DIM_TEXT)
+            esc_hint = fit_text(hint_font,esc_label,DIM_TEXT,(min(360,SCREEN_WIDTH//3),22))
             screen.blit(esc_hint, (SCREEN_WIDTH - esc_hint.get_width() - 16, 16))
             # practice_only deliberately starts in "practice" and must not
             # leak the normal tutorial's already-created introduction over

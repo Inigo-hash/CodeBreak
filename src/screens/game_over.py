@@ -38,6 +38,7 @@ import math
 import random
 
 import pygame
+from src.ui.text_layout import fit_text, draw_text_block
 from src.config import DEBUG_MODE
 from src.systems.audio import handle_music_shortcut
 
@@ -282,9 +283,9 @@ def _draw_menu_button(screen, button, label_font, icon_font, hovered, progress):
         _draw_home_icon(panel, icon_cx, icon_cy, 12, icon_color)
 
     label_color = BLOOD_RED if accent else TEXT_WHITE
-    label = label_font.render(button["label"], True, label_color)
-    panel.blit(label, (rect.width // 2 - label.get_width() // 2,
-                        rect.height // 2 - label.get_height() // 2))
+    label = fit_text(label_font,button['label'],label_color,(rect.w-100,rect.h-16))
+    label_rect = label.get_rect(center=(max(rect.w//2,78+label.get_width()//2),rect.h//2))
+    panel.blit(label,label_rect)
 
     panel.set_alpha(int(255 * progress))
     screen.blit(panel, draw_pos)
@@ -418,16 +419,12 @@ def game_over_screen(screen, background=None, failed_snippet=None):
 
             guide_lines = (
                 "Mang Tahimik: Try again. Watch your health and retreat when it runs low.",
-                "Dash with Q to avoid attacks, face enemies before pressing E,",
-                "and use healing items from your hotbar before your health reaches zero.",
+                "Select your sword and face an enemy before pressing E. Shift dodges.",
+                "Retreat to prepare, then retry when you are ready.",
             )
-            for line_index, line_text in enumerate(guide_lines):
-                rendered = guide_font.render(line_text, True, TEXT_GREY)
-                screen.blit(rendered, rendered.get_rect(center=(
-                    SCREEN_W // 2,
-                    int(SCREEN_H * 0.495)
-                    + line_index * (guide_font.get_height() + 2),
-                )))
+            top = round(SCREEN_H*.49)
+            draw_text_block(screen,'\n'.join(guide_lines),guide_font,TEXT_GREY,
+                            pygame.Rect(64,top,SCREEN_W-128,first_btn_y-top-20),center=True)
 
             for i, b in enumerate(buttons):
                 reveal_at = TITLE_DONE_MS + i * BUTTON_STAGGER_MS

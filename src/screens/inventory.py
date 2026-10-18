@@ -564,7 +564,7 @@ class Toolbar:
         # Name of the currently held item, centred just above the toolbar.
         held = self.inventory.get_selected_item()
         if held is not None:
-            label = self.font_label.render(held.name, True, TEXT_MAIN)
+            label = fit_text(self.font_label,held.name,TEXT_MAIN,(self.panel_rect.w,26))
             self.screen.blit(
                 label,
                 (self.panel_rect.centerx - label.get_width() // 2,
@@ -761,7 +761,7 @@ class InventoryScreen:
 
         # --- Bag grid -------------------------------------------------------
         first_bag = self.bag_rects_local[0]
-        bag_label = self.font_section.render("BAG", True, TEXT_DIM)
+        bag_label = fit_text(self.font_section,'BAG',TEXT_DIM,(self.panel_w-100,20))
         self.screen.blit(bag_label,
                          (panel_rect.left + first_bag.left,
                           panel_rect.top + first_bag.top - 26))

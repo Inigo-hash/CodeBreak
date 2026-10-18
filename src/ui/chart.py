@@ -217,6 +217,36 @@ def fill_sea(surface, rect, tile, offset=(0, 0)):
 _label_cache = {}
 
 
+def layout_map_labels(font, labels, bounds, *, gap=8):
+    """Keep chart names inside the map and apart, including their ink halos.
+
+    Labels are (name, center, payload). Payload is returned unchanged so each
+    chart can keep its own boss colors and underline drawing.
+    """
+    bounds = pygame.Rect(bounds)
+    occupied = []
+    result = []
+    for name, center, payload in labels:
+        text = str(name)
+        while text and font.size(text)[0] > bounds.w - 12:
+            text = text[:-1]
+        if text != name and len(text) > 3:
+            text = text[:-3] + '...'
+        width,height = font.size(text)
+        if not text or height + gap > bounds.h:
+            continue
+        for offset in (0,-1,1,-2,2,-3,3,-4,4):
+            rect = pygame.Rect(0,0,width,height)
+            rect.center = (round(center[0]),round(center[1]+offset*(height+gap+6)))
+            rect.clamp_ip(bounds.inflate(-12,-gap))
+            reservation = rect.inflate(12,gap)
+            if not any(reservation.colliderect(previous) for previous in occupied):
+                occupied.append(reservation)
+                result.append((text,rect,payload))
+                break
+    return result
+
+
 def _label_surface(font, text, color, halo, halo_alpha, halo_pad):
     """
     Returns ``(surface, origin, text_size)``.

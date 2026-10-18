@@ -28,7 +28,9 @@ def tutor_helper_rect(screen, editor_panel=None):
         if side_width >= 180:
             return pygame.Rect(editor_panel.right + 12, editor_panel.bottom - 110, min(230, side_width), 100)
         return pygame.Rect(editor_panel.right - 214, editor_panel.bottom - 60, 198, 44)
-    return pygame.Rect(w - 250, h - 172, 230, 100)
+    # The right rail may include progress/guidance buttons as well as practice.
+    # Keep this in the gap between the hotbar and the rail's bottom buttons.
+    return pygame.Rect(max(14, w - 440), h - 64, 200, 44)
 
 
 def draw_tutor_helper(screen, rect, shortcut='H'):
@@ -42,10 +44,10 @@ def draw_tutor_helper(screen, rect, shortcut='H'):
                     (rect.x + 8, rect.centery - portrait_size // 2))
     text_x = rect.x + portrait_size + 16
     text_w = rect.right - text_x - 8
-    name = fit_text(title_font(18), 'Mang Tahimik', UI_COLORS['gold'], (text_w, 24))
-    hint = fit_text(body_font(16), f'[{shortcut}] Chat', UI_COLORS['text'], (text_w, 22))
-    screen.blit(name, (text_x, rect.centery - 23))
-    screen.blit(hint, (text_x, rect.centery + 3))
+    name = fit_text(title_font(18), 'Mang Tahimik', UI_COLORS['gold'], (text_w, 16 if compact else 24))
+    hint = fit_text(body_font(16), f'[{shortcut}] Chat', UI_COLORS['text'], (text_w, 14 if compact else 22))
+    screen.blit(name, (text_x, rect.y + 4 if compact else rect.centery - 23))
+    screen.blit(hint, (text_x, rect.y + 24 if compact else rect.centery + 3))
 
 
 def wrap_lines(text, font, width, word_wrap=True):

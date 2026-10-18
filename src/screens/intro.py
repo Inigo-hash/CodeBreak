@@ -4,6 +4,7 @@ import math
 import sys
 
 import pygame
+from src.ui.text_layout import fit_text, draw_text_block
 
 from src.systems.audio import apply_music_volume, handle_music_shortcut, music_shortcut_label
 from src.ui.theme import UI_COLORS, body_font, draw_button, draw_panel, title_font, TIER_PRIMARY
@@ -119,23 +120,12 @@ def opening_walkthrough(screen, replay=False):
         draw_panel(screen, panel, emphasized=True, radius=12, alpha=248)
 
         heading, description, tips = PAGES[page]
-        label = title.render(heading, True, UI_COLORS["gold"])
+        label = fit_text(title, heading, UI_COLORS['gold'], (panel.w-140,48))
         screen.blit(label, label.get_rect(center=(panel.centerx, panel.top + 88)))
-        y = panel.top + 150
-        for line in wrap(description, body, panel.width - 100):
-            rendered = body.render(line, True, UI_COLORS["text"])
-            screen.blit(rendered, rendered.get_rect(center=(panel.centerx, y)))
-            y += body.get_height() + 8
-        y += 24
-        for tip in tips:
-            icon = small.render("?", True, UI_COLORS["stone_deep"])
-            pygame.draw.circle(screen, UI_COLORS["blue_bright"], (panel.left + 78, y + 10), 14)
-            screen.blit(icon, icon.get_rect(center=(panel.left + 78, y + 10)))
-            for line in wrap(tip, small, panel.width - 145):
-                screen.blit(small.render(line, True, UI_COLORS["parchment"]),
-                            (panel.left + 108, y))
-                y += small.get_height() + 4
-            y += 16
+        content = description + '\n\n' + '\n\n'.join('? '+tip for tip in tips)
+        draw_text_block(screen,content,body,UI_COLORS['text'],
+                        pygame.Rect(panel.left+64,panel.top+140,panel.w-128,
+                                    next_button.top-panel.top-205),center=True)
 
         draw_button(screen, next_button,
                     "OPEN MAIN MENU" if page == len(PAGES) - 1 else "NEXT",
@@ -164,11 +154,8 @@ def opening_walkthrough(screen, replay=False):
         screen.blit(close_label, close_label.get_rect(center=close_button.center))
 
         if page == 0:
-            prompt = small.render(
-                "Select NEXT or press SPACE to go to the next page.",
-                True,
-                UI_COLORS["parchment"],
-            )
+            prompt = fit_text(small,'Select NEXT or press SPACE to go to the next page.',
+                              UI_COLORS['parchment'],(panel.w-128,24))
             prompt_box = prompt.get_rect(
                 center=(panel.centerx, next_button.top - 24)
             ).inflate(24, 12)
@@ -185,9 +172,6 @@ def opening_walkthrough(screen, replay=False):
         if page > 0:
             footer_parts.append("BACKSPACE = Back")
         footer_parts.append("ESC = Close")
-        footer = small.render(
-            "  |  ".join(footer_parts),
-            True, UI_COLORS["text_dim"],
-        )
-        screen.blit(footer, footer.get_rect(center=(panel.centerx, panel.bottom - 20)))
+        footer = fit_text(small,'  |  '.join(footer_parts),UI_COLORS['text_dim'],(panel.w-128,22))
+        screen.blit(footer, footer.get_rect(center=(panel.centerx, panel.bottom - 36)))
         pygame.display.flip()

@@ -1,6 +1,7 @@
 import sys
 
 import pygame
+from src.ui.text_layout import fit_text
 
 from src.settings_state import (
     save_settings,
@@ -77,7 +78,7 @@ class SettingsPanel:
         arrow_y = self.panel.top + 455
         self.left_arrow = pygame.Rect(self.panel.left + 60, arrow_y, 40, 34)
         self.right_arrow = pygame.Rect(self.panel.right - 100, arrow_y, 40, 34)
-        self.back_button = pygame.Rect(self.panel.centerx - 80, self.panel.bottom - 56, 160, 40)
+        self.back_button = pygame.Rect(self.panel.centerx - 80, self.panel.bottom - 80, 160, 40)
         self.help_rects = {
             "font_size": pygame.Rect(self.panel.right - 58, self.panel.top + 70, 26, 26),
             "text_speed": pygame.Rect(self.panel.right - 58, self.panel.top + 150, 26, 26),
@@ -238,8 +239,8 @@ class SettingsPanel:
         overlay.fill((0, 0, 0, 120))
         self.screen.blit(overlay, (0, 0))
         draw_panel(self.screen, self.panel, radius=9)
-        self._text(self.title_font, "SETTINGS", UI_COLORS["gold"],
-                   center=(self.panel.centerx, self.panel.top + 34))
+        title = fit_text(self.title_font,'SETTINGS',UI_COLORS['gold'],(self.panel.w-160,34))
+        self.screen.blit(title,title.get_rect(center=(self.panel.centerx,self.panel.top+52)))
         self._text(self.label_font, "FONT SIZE", UI_COLORS["text"],
                    (self.panel.left + 28, self.panel.top + 72))
         self._draw_font_size_input()

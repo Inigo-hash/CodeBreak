@@ -8,6 +8,7 @@ It simply displays the topic and returns the player's decision.
 """
 
 import pygame
+from src.ui.text_layout import fit_text, draw_text_block
 from src.systems.audio import handle_music_shortcut
 
 from src.ui.editor_widgets import wrap_text
@@ -328,11 +329,9 @@ class TopicLessonScreen:
         )
 
         # Title
-        title = self.title_font.render(
-            self.topic["title"],
-            True,
-            ACCENT
-        )
+        difficulty_width = min(160, self.panel_rect.width // 4)
+        title = fit_text(self.title_font, self.topic['title'], ACCENT,
+                         (self.panel_rect.width - 80 - difficulty_width, 46))
 
         self.screen.blit(
             title,
@@ -342,14 +341,9 @@ class TopicLessonScreen:
             )
         )
 
-        difficulty = self.difficulty_font.render(
-            self.topic.get(
-                "difficulty",
-                ""
-            ).upper(),
-            True,
-            TEXT_DIM
-        )
+        difficulty = fit_text(self.difficulty_font,
+                              self.topic.get('difficulty', '').upper(), TEXT_DIM,
+                              (difficulty_width, 30))
 
         self.screen.blit(
             difficulty,
@@ -467,11 +461,8 @@ class TopicLessonScreen:
             border_radius=10
         )
 
-        text = self.confirm_font.render(
-            "Start this topic's challenge?",
-            True,
-            TEXT_MAIN
-        )
+        text = fit_text(self.confirm_font, "Start this topic's challenge?", TEXT_MAIN,
+                        (self.confirm_rect.w - 48, 54))
 
         self.screen.blit(
             text,

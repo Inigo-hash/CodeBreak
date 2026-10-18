@@ -12,6 +12,7 @@ a topic_id rather than opening the editor themselves.
 """
 
 import pygame
+from src.ui.text_layout import fit_text, draw_text_block
 
 from src.ui.theme import (
     UI_COLORS,
@@ -106,8 +107,8 @@ def open_code_practice_menu(screen, background=None):
     panel = pygame.Rect(
         0,
         0,
-        int(screen_w * PANEL_WIDTH_RATIO),
-        int(screen_h * PANEL_HEIGHT_RATIO),
+        min(900,screen_w-64),
+        min(520,screen_h-64),
     )
 
     panel.center = (
@@ -118,8 +119,8 @@ def open_code_practice_menu(screen, background=None):
     # Reserved so the button block never starts under the "CODE
     # PRACTICE" heading / subtitle drawn near the panel's top edge,
     # and so there's real breathing room above the footer line.
-    HEADER_HEIGHT = 112
-    FOOTER_HEIGHT = 46
+    HEADER_HEIGHT = 150
+    FOOTER_HEIGHT = 78
 
     content_top = panel.top + HEADER_HEIGHT
     content_bottom = panel.bottom - FOOTER_HEIGHT
@@ -131,7 +132,7 @@ def open_code_practice_menu(screen, background=None):
     # ---------------------------------------------------------
 
     gap = 26
-    max_button_height = 86
+    max_button_height = 108
 
     button_height = min(
         max_button_height,
@@ -215,22 +216,18 @@ def open_code_practice_menu(screen, background=None):
 
         draw_panel(screen, panel, emphasized=True, radius=12)
 
-        heading = title.render("CODE PRACTICE", True, UI_COLORS["gold"])
+        heading = fit_text(title,'CODE PRACTICE',UI_COLORS['gold'],(panel.w-140,42))
 
         screen.blit(
             heading,
-            (panel.left + 28, panel.top + 22),
+            heading.get_rect(midtop=(panel.centerx,panel.top+34)),
         )
 
-        info = body_font(17).render(
-            "Choose how you want to code.",
-            True,
-            UI_COLORS["text"],
-        )
+        info = fit_text(body_font(17),'Choose how you want to code.',UI_COLORS['text'],(panel.w-96,28))
 
         screen.blit(
             info,
-            (panel.left + 30, panel.top + 62),
+            info.get_rect(midtop=(panel.centerx,panel.top+96)),
         )
 
         # -----------------------------------------------------
@@ -250,7 +247,7 @@ def open_code_practice_menu(screen, background=None):
                 rect.left,
                 rect.top,
                 rect.width,
-                int(rect.height * 0.55),
+                int(rect.height * 0.45),
             )
 
             hovered = rect.collidepoint(mouse)
@@ -264,32 +261,18 @@ def open_code_practice_menu(screen, background=None):
                 tier=option["tier"],
             )
 
-            desc_surface = desc_font.render(
-                option["description"],
-                True,
-                UI_COLORS["text_dim"],
-            )
-
-            screen.blit(
-                desc_surface,
-                desc_surface.get_rect(
-                    center=(rect.centerx, label_rect.bottom + 20)
-                ),
-            )
+            draw_text_block(screen,option['description'],desc_font,UI_COLORS['text_dim'],
+                            pygame.Rect(rect.x+12,label_rect.bottom+10,rect.w-24,rect.bottom-label_rect.bottom-16),center=True)
 
         # -----------------------------------------------------
         # Footer
         # -----------------------------------------------------
 
-        footer = footer_font.render(
-            "Click an option   •   ESC = Back",
-            True,
-            UI_COLORS["text_dim"],
-        )
+        footer = fit_text(footer_font,'Click an option   •   ESC = Back',UI_COLORS['text_dim'],(panel.w-128,24))
 
         screen.blit(
             footer,
-            (panel.left + 30, panel.bottom - 32),
+            (panel.left + 64, panel.bottom - 54),
         )
 
         pygame.display.flip()

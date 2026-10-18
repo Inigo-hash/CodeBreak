@@ -11,6 +11,7 @@ and just applies its damage silently, same as before.
 """
 
 import pygame
+from src.ui.text_layout import fit_text, draw_text_block
 
 from src.ui.theme import (
     TIER_PRIMARY,
@@ -64,12 +65,8 @@ def open_trap_alert(screen, background=None):
     heading_font = title_font(32)
     text_font = body_font(20)
 
-    lines = [
-        "You triggered a hidden trap!",
-        "",
-        "Solve the coding challenge before the timer",
-        "runs out, or you'll take damage.",
-    ]
+    message = ('You triggered a hidden trap!\n\n'
+               "Solve the coding challenge before the timer runs out, or you'll take damage.")
 
     pygame.event.clear()
 
@@ -147,11 +144,7 @@ def open_trap_alert(screen, background=None):
             border_radius=12,
         )
 
-        heading = heading_font.render(
-            "TRAP!",
-            True,
-            UI_COLORS["crimson"],
-        )
+        heading = fit_text(heading_font, 'TRAP!', UI_COLORS['crimson'], (panel.w - 100, 46))
 
         screen.blit(
             heading,
@@ -165,30 +158,9 @@ def open_trap_alert(screen, background=None):
         # Warning text
         # -----------------------------------------------------
 
-        y = panel.top + 92
-
-        for line in lines:
-
-            if not line:
-
-                y += 12
-                continue
-
-            rendered = text_font.render(
-                line,
-                True,
-                UI_COLORS["text"],
-            )
-
-            screen.blit(
-                rendered,
-                rendered.get_rect(
-                    centerx=panel.centerx,
-                    top=y,
-                ),
-            )
-
-            y += text_font.get_height() + 5
+        draw_text_block(screen, message, text_font, UI_COLORS['text'],
+                        pygame.Rect(panel.left + 44, panel.top + 88, panel.w - 88,
+                                    start_button.top - panel.top - 108), center=True)
 
         # -----------------------------------------------------
         # Start button

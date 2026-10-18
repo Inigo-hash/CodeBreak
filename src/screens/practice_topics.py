@@ -9,6 +9,22 @@ content will become available later.
 """
 
 import pygame
+from src.ui.text_layout import fit_text, draw_text_block
+
+
+def topic_card_layout(rect):
+    """Separate icon, title and status even in a short three-row grid."""
+    rect = pygame.Rect(rect)
+    if rect.h < 150:
+        icon_size = min(32, max(20, rect.h - 28))
+        icon = pygame.Rect(rect.x + 12, rect.centery - icon_size // 2, icon_size, icon_size)
+        title = pygame.Rect(icon.right + 10, rect.y + 7, rect.right - icon.right - 22, max(18, rect.h - 36))
+        status = pygame.Rect(title.x, rect.bottom - 26, title.w, 18)
+    else:
+        icon = pygame.Rect(rect.centerx - 20, rect.y + 20, 40, 40)
+        title = pygame.Rect(rect.x + 16, icon.bottom + 10, rect.w - 32, 48)
+        status = pygame.Rect(rect.x + 16, rect.bottom - 42, rect.w - 32, 24)
+    return icon, title, status
 
 from src.data.topics import TOPICS
 from src.ui.theme import (
@@ -123,10 +139,10 @@ def open_practice_topics(
     # cards paint over it - only a sliver survives in the 18px gaps
     # between columns, which is what shows up as stray text there.
     content = pygame.Rect(
-        panel.left + 27,
-        panel.top + 118,
-        panel.width - 54,
-        panel.height - 118 - 65,
+        panel.left + 48,
+        panel.top + 168,
+        panel.width - 96,
+        panel.height - 168 - 80,
     )
 
     topic_ids = _stage_topic_ids(stage)
@@ -249,45 +265,35 @@ def open_practice_topics(
             radius=12,
         )
 
-        heading = title.render(
-            "CODE PRACTICE",
-            True,
-            UI_COLORS["gold"],
-        )
+        heading = fit_text(title, 'CODE PRACTICE', UI_COLORS['gold'], (panel.w - 160, 46))
 
         screen.blit(
             heading,
             (
-                panel.left + 28,
-                panel.top + 22,
+                panel.centerx - heading.get_width() // 2,
+                panel.top + 34,
             ),
         )
 
-        stage_label = subtitle.render(
-            f"{stage.get('name', 'Stage')} Topics",
-            True,
-            UI_COLORS["text_dim"],
-        )
+        stage_label = fit_text(subtitle, f"{stage.get('name', 'Stage')} Topics",
+                               UI_COLORS['text_dim'], (panel.w - 96, 28))
 
         screen.blit(
             stage_label,
             (
-                panel.left + 30,
-                panel.top + 62,
+                panel.left + 48,
+                panel.top + 92,
             ),
         )
 
-        info = subtitle.render(
-            "Complete a campaign topic to unlock its practice problems.",
-            True,
-            UI_COLORS["text"],
-        )
+        info = fit_text(subtitle, 'Complete a campaign topic to unlock its practice problems.',
+                        UI_COLORS['text'], (panel.w - 96, 28))
 
         screen.blit(
             info,
             (
-                panel.left + 30,
-                panel.top + 88,
+                panel.left + 48,
+                panel.top + 128,
             ),
         )
 
@@ -349,17 +355,8 @@ def open_practice_topics(
             # Topic icon
             # -------------------------------------------------
 
-            icon = topic_icon(
-                topic_id,
-                48,
-            )
-
-            icon_rect = icon.get_rect(
-                center=(
-                    rect.centerx,
-                    rect.top + 48,
-                )
-            )
+            icon_rect, title_rect, status_rect = topic_card_layout(rect)
+            icon = topic_icon(topic_id, icon_rect.w)
 
             if unlocked:
 
@@ -387,25 +384,9 @@ def open_practice_topics(
             # Topic title
             # -------------------------------------------------
 
-            title_surface = card_title.render(
-                topic["title"],
-                True,
-                (
-                    UI_COLORS["text"]
-                    if unlocked
-                    else UI_COLORS["text_dim"]
-                ),
-            )
-
-            screen.blit(
-                title_surface,
-                title_surface.get_rect(
-                    center=(
-                        rect.centerx,
-                        rect.top + 88,
-                    )
-                ),
-            )
+            draw_text_block(screen, topic['title'], card_title,
+                            UI_COLORS['text'] if unlocked else UI_COLORS['text_dim'],
+                            title_rect, center=True)
 
             # -------------------------------------------------
             # Status
@@ -431,37 +412,21 @@ def open_practice_topics(
                     UI_COLORS["text_dim"]
                 )
 
-            status = card_status.render(
-                status_text,
-                True,
-                status_color,
-            )
-
-            screen.blit(
-                status,
-                status.get_rect(
-                    center=(
-                        rect.centerx,
-                        rect.bottom - 24,
-                    )
-                ),
-            )
+            status = fit_text(card_status, status_text, status_color, status_rect.size)
+            screen.blit(status, status.get_rect(center=status_rect.center))
 
         # -----------------------------------------------------
         # Footer
         # -----------------------------------------------------
 
-        footer = footer_font.render(
-            "Click an available topic to practice   •   ESC = Back",
-            True,
-            UI_COLORS["text_dim"],
-        )
+        footer = fit_text(footer_font, 'Click an available topic to practice   •   ESC = Back',
+                          UI_COLORS['text_dim'], (panel.w - 128, 24))
 
         screen.blit(
             footer,
             (
-                panel.left + 30,
-                panel.bottom - 32,
+                panel.left + 64,
+                panel.bottom - 54,
             ),
         )
 

@@ -9,7 +9,7 @@ from src.ui.text_layout import fit_text
 import sys
 from src.config import DEBUG_MODE, FPS_LOG
 from src.screens.settings import SettingsPanel
-from src.screens.mang_tahimik import open_mang_tahimik, draw_tutor_helper, tutor_helper_rect
+from src.screens.mang_tahimik import open_mang_tahimik, draw_tutor_helper, tutor_helper_rect, tutor_minimap_rect
 from src.entities.player import MainCharacter
 from src.ui.interaction_notice import draw_interaction_notice
 from src.screens.unsaved_exit import confirm_unsaved_exit
@@ -883,12 +883,7 @@ def game_screen(screen, slot_num=None, save_state=None):
     # should no more look like the ground than a real map does.
     MINIMAP_SIZE = max(200, min(300, int(SCREEN_H * 0.30)))
     MINIMAP_MARGIN = 14
-    minimap_panel_rect = pygame.Rect(
-        MINIMAP_MARGIN,
-        SCREEN_H - MINIMAP_MARGIN - MINIMAP_SIZE,
-        MINIMAP_SIZE,
-        MINIMAP_SIZE,
-    )
+    minimap_panel_rect = tutor_minimap_rect(screen)
     # The carved frame eats into the panel rather than growing it, so the
     # minimap keeps the screen footprint it always had.
     MINIMAP_VIEW = MINIMAP_SIZE - MINIMAP_FRAME * 2

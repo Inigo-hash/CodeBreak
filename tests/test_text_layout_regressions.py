@@ -71,15 +71,18 @@ class TextLayoutTests(unittest.TestCase):
 
     def test_menu_tutor_text_does_not_cover_menu_buttons(self):
         from src.screens import main_menu as menu
-        for size in ((1280,720),(1920,1080),(2560,1080)):
+        from src.screens import mang_tahimik as tutor
+        for size in ((1024,768),(1280,720),(1920,1080),(2560,1080)):
             recordings = {}
             screen = RecordedSurface(size,recordings)
             with patch.object(menu,'SCREEN_WIDTH',size[0]),patch.object(menu,'SCREEN_HEIGHT',size[1]), \
                     patch.object(menu,'_button_font',title_font(26)),patch.object(menu,'_tip_font',ui_font(15)), \
-                    patch.object(menu,'fit_text',recording_fit(recordings)):
+                    patch.object(tutor,'fit_text',recording_fit(recordings)):
                 rows,*_ = menu.compute_menu_layout(*size,len(menu.MM_LABELS),menu.MM_LABELS)
                 menu._draw_mang_tahimik_tip(screen,0)
-            self.assertEqual(len(screen.text),3)
+            self.assertEqual(len(screen.text),2)
+            self.assertEqual(tutor.menu_tutor_rect(screen).left,14)
+            self.assertFalse(any(tutor.menu_tutor_rect(screen).colliderect(row) for row in rows))
             for text,rect in screen.text:
                 self.assertTrue(screen.get_rect().contains(rect),text)
                 self.assertFalse(any(rect.colliderect(row) for row in rows),text)
@@ -100,6 +103,12 @@ class TextLayoutTests(unittest.TestCase):
             recordings = {}
             screen = RecordedSurface(size,recordings)
             rect = tutor.tutor_helper_rect(screen)
+            self.assertEqual(rect.left,14)
+            self.assertEqual(rect.bottom,size[1]-14)
+            self.assertGreaterEqual(rect.height,100)
+            minimap = tutor.tutor_minimap_rect(screen)
+            self.assertFalse(rect.colliderect(minimap))
+            self.assertTrue(screen.get_rect().contains(minimap))
             rail = StagePanel(screen,learning_progress=True)
             self.assertFalse(any(rect.colliderect(part) for part in rail.button_rects.values()))
             self.assertFalse(rect.colliderect(Toolbar(screen,PlayerInventory()).panel_rect))
@@ -108,6 +117,15 @@ class TextLayoutTests(unittest.TestCase):
             self.assertEqual(len(screen.text),2)
             self.assertTrue(all(rect.contains(text_rect) for _,text_rect in screen.text))
             self.assertFalse(screen.text[0][1].colliderect(screen.text[1][1]))
+
+    def test_chat_is_larger_and_anchored_to_bottom_left(self):
+        from src.screens.mang_tahimik import tutor_chat_rect
+        for size in ((640,480),(1024,768),(1920,1080),(2560,1080)):
+            screen = pygame.Surface(size)
+            panel = tutor_chat_rect(screen)
+            self.assertEqual(panel.bottomleft,(14,size[1]-14))
+            self.assertTrue(screen.get_rect().contains(panel))
+        self.assertEqual(tutor_chat_rect(pygame.Surface((1920,1080))).width,1100)
 
     def test_control_rows_use_rendered_font_heights_and_separate_key_column(self):
         from src.screens import how_to_play as manual

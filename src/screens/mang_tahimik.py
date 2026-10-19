@@ -28,18 +28,35 @@ def tutor_helper_rect(screen, editor_panel=None):
         if side_width >= 180:
             return pygame.Rect(editor_panel.right + 12, editor_panel.bottom - 110, min(230, side_width), 100)
         return pygame.Rect(editor_panel.right - 214, editor_panel.bottom - 60, 198, 44)
-    # The right rail may include progress/guidance buttons as well as practice.
-    # Keep this in the gap between the hotbar and the rail's bottom buttons.
-    if w < 1200:
-        return pygame.Rect(w - 214, h - 64, 200, 44)
-    return pygame.Rect(max(14, w - 440), h - 64, 200, 44)
+    return pygame.Rect(14, h - 122, min(320, round(w * .29)), 108)
+
+
+def tutor_minimap_rect(screen):
+    """Stack the map above the tutor instead of covering either control."""
+    w, h = screen.get_size()
+    size = max(200, min(300, int(h * .30)))
+    return pygame.Rect(14, tutor_helper_rect(screen).top - 12 - size, size, size)
+
+
+def menu_tutor_rect(screen):
+    rect = tutor_helper_rect(screen)
+    rect.width = min(320, round(screen.get_width() * .24))
+    rect.bottom = screen.get_height() - 104
+    return rect
+
+
+def tutor_chat_rect(screen):
+    w, h = screen.get_size()
+    rect = pygame.Rect(0, 0, min(1100, w - 28), min(1000, h - 28))
+    rect.bottomleft = (14, h - 14)
+    return rect
 
 
 def draw_tutor_helper(screen, rect, shortcut='H'):
     pygame.draw.rect(screen, UI_COLORS['modal_inner'], rect, border_radius=8)
     pygame.draw.rect(screen, UI_COLORS['gold'], rect, 1, border_radius=8)
     compact = rect.h < 60
-    portrait_size = 34 if compact else 64
+    portrait_size = 34 if compact else 80
     portrait = _scaled_helper_portrait(portrait_size)
     if portrait is not None:
         screen.blit(portrait,
@@ -189,8 +206,7 @@ class MangTahimikChat:
 
     def draw(self):
         w, h = self.screen.get_size()
-        panel = pygame.Rect(0, 0, min(880, w - 24), h - 24)
-        panel.center = (w // 2, h // 2)
+        panel = tutor_chat_rect(self.screen)
         self.screen.blit(self.background, (0, 0))
         pygame.draw.rect(self.screen, UI_COLORS['modal_panel'], panel, border_radius=10)
         pygame.draw.rect(self.screen, UI_COLORS['gold'], panel, 2, border_radius=10)

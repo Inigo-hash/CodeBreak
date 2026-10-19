@@ -17,6 +17,7 @@ MAX_BODY = 40000
 RETRYABLE_STATUS = frozenset((502, 503, 504))
 MAX_PROVIDER_ATTEMPTS = 2
 PROVIDER_DEADLINE = 55
+TUTOR_REVISION = 'model-recovery-20261019'
 
 
 class Turn(BaseModel):
@@ -100,14 +101,18 @@ def create_app():
     @app.api_route('/health', methods=['GET', 'HEAD'])
     async def health():
         # Host liveness only; deliberately reveals no settings or secrets.
-        return {'status': 'ok'}
+        return JSONResponse({'status': 'ok'}, headers={'X-Tutor-Revision': TUTOR_REVISION})
 
     @app.post('/ask')
     async def ask(question: Question, request: Request):
         key = os.environ.get('GEMINI_API_KEY', '').strip()
         model = os.environ.get('GEMINI_MODEL', 'gemini-2.5-flash-lite').strip()
         fallback = os.environ.get('GEMINI_FALLBACK_MODEL',
-                                  'gemini-2.5-flash' if model == 'gemini-2.5-flash-lite' else '').strip()
+                                  'gemini-3.1-flash-lite' if model == 'gemini-2.5-flash-lite' else '').strip()
+        # Upgrade the backup shipped by the previous blueprint, including
+        # existing Render environment values that a code deploy cannot reset.
+        if model == 'gemini-2.5-flash-lite' and fallback == 'gemini-2.5-flash':
+            fallback = 'gemini-3.1-flash-lite'
         if (not key or not re.fullmatch(r'[a-zA-Z0-9._-]+', model)
                 or (fallback and not re.fullmatch(r'[a-zA-Z0-9._-]+', fallback))):
             return JSONResponse({'error': 'The tutor is not configured.',
@@ -147,7 +152,9 @@ def create_app():
                         response = await app.state.http.post(
                             'https://generativelanguage.googleapis.com/v1beta/models/' + attempt_model + ':generateContent',
                             headers={'x-goog-api-key': key}, json=payload)
-                        if response.status_code not in RETRYABLE_STATUS or attempt + 1 == MAX_PROVIDER_ATTEMPTS:
+                        missing_model = response.status_code == 404 and fallback and fallback != model
+                        if ((response.status_code not in RETRYABLE_STATUS and not missing_model)
+                                or attempt + 1 == MAX_PROVIDER_ATTEMPTS):
                             break
                         await asyncio.sleep(1)
                         if not await limits.allow(ip):

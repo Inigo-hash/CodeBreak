@@ -84,6 +84,7 @@ class ServerTests(unittest.TestCase):
         client = self.make_client(lambda req: self.fail('called without key'))
         for path in ('/', '/health'):
             self.assertEqual(client.get(path).json(), {'status':'ok'})
+            self.assertEqual(client.get(path).headers['x-tutor-revision'], 'model-recovery-20261019')
             response = client.head(path)
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.content, b'')
@@ -147,7 +148,7 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(response.json()['answer'], 'Use WASD to move.')
         self.assertEqual(len(calls), 2)
         self.assertIn('/gemini-2.5-flash-lite:generateContent', str(calls[0].url))
-        self.assertIn('/gemini-2.5-flash:generateContent', str(calls[1].url))
+        self.assertIn('/gemini-3.1-flash-lite:generateContent', str(calls[1].url))
         wait.assert_awaited_once_with(1)
         self.assertEqual(client.post('/ask', json={'question': 'again?'}).status_code, 429)
         self.assertEqual(len(calls), 2)
@@ -167,7 +168,7 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(len(calls), 2)
         self.assertNotIn('test-secret', response.text)
 
-    @patch.dict('os.environ', {'GEMINI_API_KEY': 'test-secret'}, clear=True)
+    @patch.dict('os.environ', {'GEMINI_API_KEY': 'test-secret', 'GEMINI_FALLBACK_MODEL': ''}, clear=True)
     def test_quota_auth_and_model_errors_are_not_retried(self):
         for status in (400, 401, 403, 404, 429):
             with self.subTest(status=status):
@@ -224,3 +225,21 @@ class ServerTests(unittest.TestCase):
         client = self.make_client(lambda req: self.fail('invalid backup reached provider'))
         response = client.post('/ask', json={'question': 'help'})
         self.assertEqual(response.json()['code'], 'tutor_not_configured')
+
+    @patch.dict('os.environ', {'GEMINI_API_KEY': 'test-secret',
+                            'GEMINI_MODEL': 'gemini-2.5-flash-lite',
+                            'GEMINI_FALLBACK_MODEL': 'gemini-2.5-flash'}, clear=True)
+    def test_missing_model_recovers_with_current_backup_even_with_legacy_env(self):
+        calls = []
+        def handler(req):
+            calls.append(req)
+            if len(calls) == 1:
+                return httpx.Response(404)
+            self.assertIn('/gemini-3.1-flash-lite:generateContent', str(req.url))
+            return httpx.Response(200, json={'candidates':[{'content':{'parts':[{'text':'Use WASD.'}]}}]})
+        client = self.make_client(handler)
+        from unittest.mock import AsyncMock
+        with patch('server.app.asyncio.sleep', new_callable=AsyncMock):
+            response = client.post('/ask',json={'question':'how do I move?'})
+        self.assertEqual(response.json(),{'answer':'Use WASD.'})
+        self.assertEqual(len(calls),2)

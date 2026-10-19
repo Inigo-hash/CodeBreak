@@ -3,7 +3,7 @@ import random
 import sys
 import pygame  # type: ignore[import-not-found]
 from src.screens.game import game_screen
-from src.screens.mang_tahimik import open_mang_tahimik
+from src.screens.mang_tahimik import open_mang_tahimik, draw_tutor_helper, menu_tutor_rect
 from src.screens.settings import SettingsPanel
 from src.screens.how_to_play import how_to_play_screen
 from src.screens.start_game_menu import start_game_menu
@@ -445,68 +445,7 @@ def _load_mang_tahimik_portrait():
 
 
 def _draw_mang_tahimik_tip(surf: pygame.Surface, t: float) -> None:
-    frames = _load_mang_tahimik_portrait()
-    frame = frames[int(t / 0.14) % len(frames)]
-    ground_y = SCREEN_HEIGHT - 98
-    center_x = SCREEN_WIDTH - 92
-    idle_bob = round(math.sin(t * 2.4) * 2)
-    character_rect = frame.get_rect(midbottom=(center_x, ground_y + idle_bob))
-
-    # A soft floor shadow keeps the transparent pixel art visually grounded.
-    shadow = pygame.Surface((frame.get_width(), 18), pygame.SRCALPHA)
-    pygame.draw.ellipse(shadow, (0, 0, 0, 105), shadow.get_rect().inflate(-16, -8))
-    surf.blit(shadow, (character_rect.centerx - shadow.get_width() // 2,
-                       ground_y - shadow.get_height() // 2 + 4))
-    surf.blit(frame, character_rect)
-
-    # Size the prompt around the rendered text so font scaling keeps its spacing.
-    character_left_edge = character_rect.left
-    tip_gap = 20
-    heading = _tip_font.render("MANG TAHIMIK'S WISDOM", True, UI_COLORS["gold"])
-    tip_lines = ["Ask me about Python", "Click or press H to chat"]
-    text_surfaces = [_tip_font.render(line, True, UI_COLORS["parchment"] if i == 0 else UI_COLORS["text_dim"])
-                     for i, line in enumerate(tip_lines)]
-    minimum_tip_width = max(heading.get_width(), *(text.get_width() for text in text_surfaces)) + 40
-    # The fixed menu column ends at 60% of the screen width. On smaller
-    # windows, narrow the tip rather than allowing it beneath a button.
-    menu_right = max(rect.right for rect in compute_menu_layout(SCREEN_WIDTH,SCREEN_HEIGHT,len(MM_LABELS),MM_LABELS)[0])
-    available_width = character_left_edge - tip_gap - (menu_right + 18)
-    tip_w = max(100,min(minimum_tip_width,300,available_width))
-    heading = fit_text(_tip_font,"MANG TAHIMIK'S WISDOM",UI_COLORS['gold'],(tip_w-40,28))
-    text_surfaces = [fit_text(_tip_font,line,UI_COLORS['parchment'] if i==0 else UI_COLORS['text_dim'],(tip_w-40,26))
-                     for i,line in enumerate(tip_lines)]
-    tip_h = 18 + heading.get_height() + 24 + sum(text.get_height() for text in text_surfaces) + 10 + 18
-    tip_r = pygame.Rect(character_left_edge - tip_gap - tip_w,
-                        ground_y - tip_h + 18, tip_w, tip_h)
-
-    draw_panel(surf, tip_r, radius=7, alpha=246)
-
-    # Small bronze pins and a magical-blue gem echo the menu medallions.
-    for corner in (
-        (tip_r.left + 8, tip_r.top + 8),
-        (tip_r.right - 8, tip_r.top + 8),
-        (tip_r.left + 8, tip_r.bottom - 8),
-        (tip_r.right - 8, tip_r.bottom - 8),
-    ):
-        pygame.draw.circle(surf, UI_COLORS["bronze"], corner, 2)
-
-    gem_x = tip_r.centerx
-    pygame.draw.polygon(surf, UI_COLORS["bronze_dark"], [
-        (gem_x, tip_r.top - 3), (gem_x + 8, tip_r.top + 4),
-        (gem_x, tip_r.top + 11), (gem_x - 8, tip_r.top + 4),
-    ])
-    pygame.draw.circle(surf, UI_COLORS["blue_bright"],
-                       (gem_x, tip_r.top + 4), 3)
-
-    surf.blit(heading, (tip_r.left + 20, tip_r.top + 18))
-    divider_y = tip_r.top + 18 + heading.get_height() + 10
-    pygame.draw.line(surf, UI_COLORS["bronze_dark"],
-                     (tip_r.left + 12, divider_y),
-                     (tip_r.right - 12, divider_y), 1)
-    text_y = divider_y + 14
-    for text in text_surfaces:
-        surf.blit(text, (tip_r.left + 20, text_y))
-        text_y += text.get_height() + 10
+    draw_tutor_helper(surf, menu_tutor_rect(surf))
 
 
 _menu_logo_cache = None
@@ -774,10 +713,7 @@ def main_menu():
             # one.
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if not show_settings:
-                    frames = _load_mang_tahimik_portrait()
-                    frame = frames[int(t / 0.14) % len(frames)]
-                    npc_rect = frame.get_rect(midbottom=(SCREEN_WIDTH - 92,
-                        SCREEN_HEIGHT - 98 + round(math.sin(t * 2.4) * 2)))
+                    npc_rect = menu_tutor_rect(screen)
                     if npc_rect.collidepoint(event.pos):
                         open_mang_tahimik(screen)
                         clock.tick()

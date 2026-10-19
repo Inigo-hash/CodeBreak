@@ -4,10 +4,12 @@ import os
 import socket
 import threading
 import time
+import uuid
 from queue import Queue, Empty
 from urllib import request, error
 
 MAX_QUESTION = 1000
+CLIENT_ID = uuid.uuid4().hex
 
 
 class TutorError(Exception):
@@ -40,7 +42,8 @@ def ask_mang_tahimik(question, context=None, history=()):
     safe_history = [{'role': item['role'], 'content': str(item.get('content', ''))[:4000]}
                     for item in list(history)[-8:]
                     if item.get('role') in ('user', 'assistant')]
-    payload = {'question': question, 'context': safe_context, 'history': safe_history}
+    payload = {'question': question, 'context': safe_context, 'history': safe_history,
+               'client_id': CLIENT_ID}
     req = request.Request(endpoint, data=json.dumps(payload).encode('utf-8'),
                           headers={'Content-Type': 'application/json'})
     try:
@@ -54,13 +57,16 @@ def ask_mang_tahimik(question, context=None, history=()):
         # Only display messages we own. Upstream bodies may contain secrets,
         # HTML proxy errors, or provider internals; never show their raw text.
         code = None
+        retry_after = None
         try:
             body = json.loads(exc.read(4096))
             if isinstance(body, dict):
                 code = body.get('code')
+                retry_after = body.get('retry_after')
         except (OSError, ValueError, TypeError):
             pass
         messages = {
+            'tutor_daily_limit': 'The shared AI budget for today is used up. It resets at 8:00 AM Philippine time.',
             'tutor_busy': 'Mang Tahimik is answering other players. Please try again in 30 seconds.',
             'tutor_usage_limit': 'Mang Tahimik has reached the shared usage limit. Please try later.',
             'gemini_quota': 'The AI service has reached its usage quota. Please try later.',
@@ -77,6 +83,10 @@ def ask_mang_tahimik(question, context=None, history=()):
             'gemini_invalid_reply': 'The AI service returned an unusable answer. Please try again shortly.',
         }
         message = messages.get(code) if isinstance(code, str) else None
+        if code in ('tutor_session_limit', 'tutor_minute_limit'):
+            wait = retry_after if type(retry_after) is int and 1 <= retry_after <= 60 else 60
+            message = (f'Please wait {wait} seconds before asking again.' if code == 'tutor_session_limit'
+                       else f'The tutor is handling several requests. Please try again in {wait} seconds.')
         if not message:
             message = ('Mang Tahimik has reached a usage limit. Please try later.'
                        if exc.code == 429 else

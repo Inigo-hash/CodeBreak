@@ -84,7 +84,7 @@ class ServerTests(unittest.TestCase):
         client = self.make_client(lambda req: self.fail('called without key'))
         for path in ('/', '/health'):
             self.assertEqual(client.get(path).json(), {'status':'ok'})
-            self.assertEqual(client.get(path).headers['x-tutor-revision'], 'model-recovery-20261019')
+            self.assertEqual(client.get(path).headers['x-tutor-revision'], 'session-limits-20261019')
             response = client.head(path)
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.content, b'')
@@ -243,3 +243,65 @@ class ServerTests(unittest.TestCase):
             response = client.post('/ask',json={'question':'how do I move?'})
         self.assertEqual(response.json(),{'answer':'Use WASD.'})
         self.assertEqual(len(calls),2)
+
+    @patch.dict('os.environ', {'GEMINI_API_KEY':'test-secret', 'TUTOR_IP_PER_MINUTE':'1'}, clear=True)
+    def test_sessions_on_same_network_have_separate_question_allowances(self):
+        calls = []
+        def handler(req):
+            calls.append(req)
+            return httpx.Response(200,json={'candidates':[{'content':{'parts':[{'text':'hint'}]}}]})
+        client = self.make_client(handler)
+        def ask(identity):
+            return client.post('/ask',json={'question':'help','client_id':identity * 32})
+        self.assertEqual(ask('a').status_code,200)
+        limited = ask('a')
+        self.assertEqual(limited.status_code,429)
+        self.assertEqual(limited.json()['code'],'tutor_session_limit')
+        self.assertTrue(1 <= int(limited.headers['retry-after']) <= 60)
+        self.assertEqual(ask('b').status_code,200)
+        self.assertEqual(len(calls),2)
+
+    def test_retry_uses_provider_budget_but_not_another_question_allowance(self):
+        async def check():
+            limits = Limits(2,4,10)
+            self.assertTrue((await limits.reserve('a',now=100))[0])
+            self.assertTrue((await limits.reserve('a',retry=True,now=101))[0])
+            self.assertTrue((await limits.reserve('a',now=102))[0])
+            self.assertEqual((await limits.reserve('a',now=103))[1],'tutor_session_limit')
+            self.assertTrue((await limits.reserve('b',now=104))[0])
+            self.assertEqual((await limits.reserve('c',now=105))[1],'tutor_minute_limit')
+            daily = Limits(10,10,1)
+            self.assertTrue((await daily.reserve('a',now=100))[0])
+            result = await daily.reserve('b',now=101)
+            self.assertEqual(result[1],'tutor_daily_limit')
+            self.assertEqual(result[2],86400-101+1)
+        asyncio.run(check())
+
+    @patch.dict('os.environ', {'GEMINI_API_KEY':'test-secret'}, clear=True)
+    def test_primary_quota_can_use_distinct_backup_within_same_budget(self):
+        calls = []
+        def handler(req):
+            calls.append(req)
+            if len(calls)==1:return httpx.Response(429)
+            self.assertNotEqual(calls[0].url,req.url)
+            return httpx.Response(200,json={'candidates':[{'content':{'parts':[{'text':'hint'}]}}]})
+        client = self.make_client(handler)
+        from unittest.mock import AsyncMock
+        with patch('server.app.asyncio.sleep',new_callable=AsyncMock):
+            response = client.post('/ask',json={'question':'help'})
+        self.assertEqual(response.json(),{'answer':'hint'})
+        self.assertEqual(len(calls),2)
+
+    @patch.dict('os.environ', {'GEMINI_API_KEY':'test-secret','TUTOR_GLOBAL_PER_MINUTE':'1'}, clear=True)
+    def test_rotating_session_tokens_cannot_bypass_shared_budget(self):
+        client = self.make_client(lambda req:httpx.Response(500))
+        self.assertEqual(client.post('/ask',json={'question':'help','client_id':'a'*32}).status_code,503)
+        response = client.post('/ask',json={'question':'help','client_id':'b'*32})
+        self.assertEqual(response.status_code,429)
+        self.assertEqual(response.json()['code'],'tutor_minute_limit')
+
+    @patch.dict('os.environ', {'GEMINI_API_KEY':'test-secret','TUTOR_IP_PER_MINUTE':'1'}, clear=True)
+    def test_legacy_clients_share_global_budget_without_single_peer_bucket(self):
+        client=self.make_client(lambda req:httpx.Response(200,json={'candidates':[{'content':{'parts':[{'text':'hint'}]}}]}))
+        for _ in range(3):
+            self.assertEqual(client.post('/ask',json={'question':'help'}).status_code,200)

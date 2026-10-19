@@ -28,6 +28,7 @@ class TutorTests(unittest.TestCase):
             self.assertEqual(req.full_url, 'https://tutor.example/ask')
             self.assertNotIn('Authorization', req.headers)
             self.assertEqual(data['context'], {'stage': 'island'})
+            self.assertRegex(data['client_id'],r'^[a-f0-9]{32}$')
             self.assertNotIn('ignore tutor', req.data.decode())
             self.assertNotIn('system', data)
             self.assertLessEqual(len(data['history']), 8)
@@ -94,6 +95,18 @@ class TutorTests(unittest.TestCase):
                 with self.assertRaises(TutorError) as caught:
                     ask_mang_tahimik('help')
             self.assertIn(fragment, str(caught.exception))
+
+    @patch.dict('os.environ', {'CODEBREAK_TUTOR_URL':'https://tutor.example/ask'})
+    def test_limits_explain_wait_and_daily_reset(self):
+        from io import BytesIO
+        for code,wait,fragment in (('tutor_session_limit',23,'23 seconds'),
+                                   ('tutor_minute_limit',8,'8 seconds'),
+                                   ('tutor_session_limit',-1,'60 seconds'),
+                                   ('tutor_daily_limit',8000,'8:00 AM')):
+            failure=HTTPError('url',429,'secret',{},BytesIO(json.dumps({'code':code,'retry_after':wait}).encode()))
+            with patch('src.systems.ai_tutor.request.urlopen',side_effect=failure):
+                with self.assertRaises(TutorError) as caught:ask_mang_tahimik('help')
+            self.assertIn(fragment,str(caught.exception))
 
     @patch.dict('os.environ', {'CODEBREAK_TUTOR_URL': 'https://tutor.example/ask'})
     def test_unknown_html_and_invalid_codes_use_safe_fallback(self):

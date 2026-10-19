@@ -40,25 +40,31 @@ is shipped in the game. The server owns the prompt and model settings, caps
 questions at 1000 characters, history at 8 turns of 4000 characters, request
 bodies at 40000 bytes, and responses at 600 output tokens / 4000 characters.
 It allows 2 concurrent Gemini calls. Default attempt caps are 8/minute globally,
-100/day globally (UTC), and 3/minute per detected peer address. Failed provider
+100/day globally (UTC), and 3 questions/minute per anonymous game process.
+The legacy `TUTOR_IP_PER_MINUTE` setting now controls this session allowance.
+Clients send an in-memory random token, with no saved player/device identity.
+Older clients without that token use only the global provider caps, so a
+whole school is not incorrectly treated as one player. Failed provider
 calls count toward the budget, including the single automatic retry for HTTP
 502/503/504. That retry uses `GEMINI_FALLBACK_MODEL` (default `gemini-3.1-flash-lite`
 when the primary is `gemini-2.5-flash-lite`) so one overloaded model does not
 block both attempts. Set it to an empty string to retry the primary instead;
-custom primary models have no implicit backup. A missing model (404) also
+custom primary models have no implicit backup. A missing model (404) or
+model-specific quota (429) also
 tries the distinct backup once. The previous blueprint's `gemini-2.5-flash`
 backup is migrated to `gemini-3.1-flash-lite` when paired with the default
 primary, including existing Render environments. Both models must be available
 to the server's Google project. Retries consume the same attempt caps, keep the same concurrency
 slot, and stop if the budget is exhausted. Quota, authentication, and model
-errors are not retried against the same model. The entire provider operation is bounded to 55 seconds.
+errors are not retried against the same model. A provider retry consumes
+global minute/day budget, but does not consume another question allowance.
+The entire provider operation is bounded to 55 seconds.
 
 Run exactly ONE worker and ONE instance: the counters are process-local and
 reset on restart. They are conservative prototype protections, not durable
-billing caps or player authentication. Render's proxy may cause players to
-share the same peer bucket because forwarded IP headers are disabled. This
-avoids letting callers bypass limits with forged forwarded headers. Do not
-enable trust for all proxies without validating Render's forwarding behavior.
+billing caps or player authentication. Anonymous session tokens are fairness
+labels, not authentication; rotating them cannot bypass global provider caps.
+Forwarded IP headers remain disabled and untrusted.
 For larger/public launches add authenticated players and a durable shared quota
 store; anyone who knows the public endpoint can consume its prototype quota.
 
@@ -119,7 +125,10 @@ already installed game clients must also be updated for the new error messages.
 
 The `X-Tutor-Revision` health response header identifies the deployed server
 fix without spending provider quota. `model-recovery-20261019` includes model
-404 recovery and the upgraded backup. The health body remains a liveness check.
+404 recovery and the upgraded backup. `session-limits-20261019` additionally
+separates session/minute/day limits and includes precise retry times. The
+daily counter resets at 00:00 UTC (08:00 Philippine time). The health body
+remains a liveness check.
 
 Mang Tahimik's larger helper card is anchored at the bottom left in gameplay
 and the main menu. The minimap stacks above it; the chat opens in a wider,

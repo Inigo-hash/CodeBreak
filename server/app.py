@@ -17,7 +17,7 @@ MAX_BODY = 40000
 RETRYABLE_STATUS = frozenset((502, 503, 504))
 MAX_PROVIDER_ATTEMPTS = 2
 PROVIDER_DEADLINE = 55
-TUTOR_REVISION = 'model-recovery-20261019'
+TUTOR_REVISION = 'session-limits-20261019'
 
 
 class Turn(BaseModel):
@@ -31,6 +31,7 @@ class Question(BaseModel):
     question: str = Field(min_length=1, max_length=1000)
     context: dict[str, str] = Field(default_factory=dict, max_length=3)
     history: list[Turn] = Field(default_factory=list, max_length=8)
+    client_id: str | None = Field(default=None, pattern=r'^[a-f0-9]{32}$')
 
 
 class Limits:
@@ -38,11 +39,15 @@ class Limits:
     def __init__(self, per_ip=3, per_minute=8, per_day=100):
         self.per_ip, self.per_minute, self.per_day = per_ip, per_minute, per_day
         self.recent = deque()
+        self.questions = deque()
         self.day = None
         self.count = 0
         self.lock = asyncio.Lock()
 
     async def allow(self, ip, now=None):
+        return (await self.reserve(ip, now=now))[0]
+
+    async def reserve(self, client, *, retry=False, now=None):
         now = time.time() if now is None else now
         async with self.lock:
             day = int(now // 86400)
@@ -50,12 +55,20 @@ class Limits:
                 self.day, self.count = day, 0
             while self.recent and self.recent[0][0] <= now - 60:
                 self.recent.popleft()
-            if (self.count >= self.per_day or len(self.recent) >= self.per_minute
-                    or sum(address == ip for _, address in self.recent) >= self.per_ip):
-                return False
-            self.recent.append((now, ip))
+            while self.questions and self.questions[0][0] <= now - 60:
+                self.questions.popleft()
+            if self.count >= self.per_day:
+                return False, 'tutor_daily_limit', max(1, int((day + 1) * 86400 - now) + 1)
+            if len(self.recent) >= self.per_minute:
+                return False, 'tutor_minute_limit', max(1, int(self.recent[0][0] + 60 - now) + 1)
+            own = [when for when, identity in self.questions if identity == client]
+            if not retry and len(own) >= self.per_ip:
+                return False, 'tutor_session_limit', max(1, int(own[0] + 60 - now) + 1)
+            self.recent.append((now, client))
+            if not retry:
+                self.questions.append((now, client))
             self.count += 1
-            return True
+            return True, None, 0
 
 
 def positive_setting(name, default):
@@ -124,13 +137,20 @@ def create_app():
             return JSONResponse({'error': 'Invalid level context.'}, status_code=422)
         # Uvicorn/proxy owns request.client. Do not trust raw forwarded headers.
         ip = request.client.host if request.client else 'unknown'
+        # Anonymous fairness token, not authentication. Global provider budgets
+        # still apply even if a caller creates new tokens. Never trust XFF.
+        identity = 'session:' + question.client_id if question.client_id else 'peer:' + ip
         if busy.locked():
             return JSONResponse({'error': 'The tutor is busy.', 'code': 'tutor_busy'}, status_code=429,
                                 headers={'Retry-After': '30'})
         async with busy:
-            if not await limits.allow(ip):
-                return JSONResponse({'error': 'Tutor usage limit reached.', 'code': 'tutor_usage_limit'}, status_code=429,
-                                    headers={'Retry-After': '60'})
+            # Older game builds have no session token; only shared provider
+            # caps apply rather than putting a whole lab into one player bucket.
+            allowed, limit_code, wait = await limits.reserve(identity, retry=question.client_id is None)
+            if not allowed:
+                return JSONResponse({'error': 'Tutor usage limit reached.', 'code': limit_code,
+                                     'retry_after': wait}, status_code=429,
+                                    headers={'Retry-After': str(wait)})
             contents = [{'role': 'model' if t.role == 'assistant' else 'user',
                          'parts': [{'text': t.content}]} for t in question.history]
             import json
@@ -152,12 +172,12 @@ def create_app():
                         response = await app.state.http.post(
                             'https://generativelanguage.googleapis.com/v1beta/models/' + attempt_model + ':generateContent',
                             headers={'x-goog-api-key': key}, json=payload)
-                        missing_model = response.status_code == 404 and fallback and fallback != model
-                        if ((response.status_code not in RETRYABLE_STATUS and not missing_model)
+                        alternate_model = response.status_code in (404, 429) and fallback and fallback != model
+                        if ((response.status_code not in RETRYABLE_STATUS and not alternate_model)
                                 or attempt + 1 == MAX_PROVIDER_ATTEMPTS):
                             break
                         await asyncio.sleep(1)
-                        if not await limits.allow(ip):
+                        if not (await limits.reserve(identity, retry=True))[0]:
                             break  # Return the last error without exceeding caps.
                 if response.status_code == 429:
                     return JSONResponse({'error': 'Gemini quota reached.', 'code': 'gemini_quota'}, status_code=429,

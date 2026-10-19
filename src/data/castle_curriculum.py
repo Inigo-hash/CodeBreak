@@ -248,6 +248,7 @@ for _key in ('for_loops', 'while_loops', 'nested_loops', 'loop_control', 'except
     for _cid in CASTLE_TOPICS['castle_' + _key]['challenge_ids']:
         CASTLE_CHALLENGES[_cid]['learning_construct'] = _key
 CASTLE_CHALLENGES['castle_functions_invoice_001']['required_helper'] = 'line_cost'
+CASTLE_CHALLENGES['castle_loop_control_skip_001']['required_constructs'] = ('break', 'continue')
 
 CASTLE_TOPIC_ORDER = ('castle_lists', *CASTLE_TOPICS)
 CASTLE_CHALLENGE_IDS = (*LIST_CHALLENGE_IDS, *CASTLE_CHALLENGES)

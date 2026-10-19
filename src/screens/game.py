@@ -20,6 +20,7 @@ from src.entities.chest import Chest
 from src.entities.trap import load_traps, build_trap_challenge
 from src.ui.code_editor import CodeEditor
 from src.screens.learning_progress import open_learning_progress
+from src.systems.learning_progress import learning_progress_enabled
 from src.screens.final_assessment import open_final_assessment
 from src.ui.lesson_terminal import terminal_art
 from src.screens.game_over import game_over_screen
@@ -650,7 +651,7 @@ def game_screen(screen, slot_num=None, save_state=None):
     # The rail of buttons that opens the full Stage Information screen.
     # Objectives are still tracked in `stage_progress`; they are read on
     # the OBJECTIVES tab rather than from a box on the HUD.
-    stage_panel = StagePanel(screen, learning_progress=stage.get("id") == "island")
+    stage_panel = StagePanel(screen, learning_progress=learning_progress_enabled(stage))
     practice_manager = PracticeManager()
 
     def run_final_assessment():

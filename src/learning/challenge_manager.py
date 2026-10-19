@@ -1,6 +1,7 @@
 #challenge_manager.py
 import ast
 from src.learning.sandbox import run_function_tests
+from src.learning.validators.structure_validator import missing_construct
 from src.learning.validators.integrated_final_validator import IntegratedFinalValidator
 
 from src.learning.validators.variable_validator import VariableValidator
@@ -109,9 +110,9 @@ class ChallengeManager:
                 isinstance(node, ast.For) and any(isinstance(inner, ast.For)
                     for statement in node.body for inner in ast.walk(statement)) for node in nodes):
                 return False, 'Use an inner for loop inside an outer for loop.'
-            if construct == 'loop_control' and 'positive_before_stop' == target.name and not any(
-                    isinstance(node, ast.Continue) for node in nodes):
-                return False, 'Use continue to skip negative readings.'
+            missing = missing_construct(nodes, challenge.get('required_constructs', ()))
+            if missing:
+                return False, f'Use {missing} inside your function as required by this challenge.'
             helper = challenge.get('required_helper')
             if helper and (not any(isinstance(node, ast.FunctionDef) and node.name == helper for node in ast.walk(tree))
                            or not any(isinstance(node, ast.Call) and isinstance(node.func, ast.Name)

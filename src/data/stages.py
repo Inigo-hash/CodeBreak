@@ -342,6 +342,11 @@ STAGES = {
 
         "subtitle": "Stage 2 - Intermediate",
 
+        "progress": {
+            "enabled": True,
+            "unfinished_content_message": "Available Castle lessons complete. More Castle content is coming later.",
+        },
+
         "playable": True,
 
         # The last authored stage: its gate, once it has one, ends the run

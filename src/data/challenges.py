@@ -528,6 +528,26 @@ Welcome, Alex!
 
         "type": "stage1_final",
 
+        "structure_requirements": [
+            {"kind": "variables", "names": ["name", "score_text", "score", "rank", "message", "final_message"],
+             "feedback": "Create all required variables: name, score_text, score, rank, message, final_message."},
+            {"kind": "input", "target": "name", "single_target": True,
+             "feedback": "Use input() to store the explorer name in name."},
+            {"kind": "input", "target": "score_text", "single_target": True,
+             "feedback": "Use input() to store the score in score_text."},
+            {"kind": "cast", "function": "int", "source": "score_text", "target": "score", "exactly_one_arg": True,
+             "feedback": "Convert score_text using int() and store it in score."},
+            {"kind": "aug_assign", "target": "score", "operator": "Add", "value": 10,
+             "feedback": "Add 10 to score using +=."},
+            {"kind": "if_elif_else", "first_top_level": True,
+             "feedback": "Use if/elif/else to decide the rank."},
+            {"kind": "f_string", "target": "message", "feedback": "Create message using an f-string."},
+            {"kind": "method", "source": "message", "method": "upper", "target": "final_message",
+             "feedback": "Create final_message using message.upper()."},
+            {"kind": "print", "source": "final_message", "feedback": "Print final_message."},
+        ],
+        "structure_success": "Excellent! You applied the Stage 1 Python concepts correctly.",
+
         "problem": """
 The Corrupted Core has been defeated,
 but the castle gate still needs one final program.

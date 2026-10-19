@@ -1,7 +1,8 @@
-"""Read-only Stage 1 progress shared by the HUD and save-slot percentage."""
+"""Read-only stage progress shared by the HUD and save-slot percentage."""
 from src.data.topics import TOPICS, topic_challenge_ids
 from src.data.challenges import CHALLENGES
 from src.systems.stage_gate import evaluate_stage_gate, required_topic_ids
+from src.systems.rooms import stage_defeated_enemies
 
 
 def progress_snapshot(stage, state):
@@ -9,7 +10,7 @@ def progress_snapshot(stage, state):
     discovered = set(state.get('topics_discovered', ()))
     completed = set(state.get('topics_completed', ()))
     gate = evaluate_stage_gate(stage, state.get('keys', 0), passed,
-                               state.get('stage_progress', {}).get('defeated_enemies', ()))
+                               stage_defeated_enemies(state))
     by_challenge = {cid: (key, topic) for key, topic in TOPICS.items() for cid in topic_challenge_ids(topic)}
     rows = []
     for challenge_id in required_topic_ids(stage):
@@ -17,7 +18,7 @@ def progress_snapshot(stage, state):
         missing = [key for key in topic.get('requirements', ()) if key not in completed]
         done = challenge_id in passed
         rows.append({
-            'id': topic_id, 'title': CHALLENGES[challenge_id]['title'] if topic.get('challenge_ids') else topic.get('title', challenge_id),
+            'id': topic_id, 'title': CHALLENGES.get(challenge_id, {}).get('title', challenge_id) if topic.get('challenge_ids') else topic.get('title', challenge_id),
             'status': 'Completed' if done else 'Locked' if missing else 'Available',
             'discovered': done or topic_id in discovered,
             'missing': [TOPICS.get(key, {}).get('title', key) for key in missing],
@@ -33,7 +34,7 @@ def progress_snapshot(stage, state):
     # All learning milestones can be finished before the remaining keys are earned.
     if not gate.unlocked:
         percent = min(99, percent)
-    if stage.get('id') in state.get('completed_stages', ()):
+    if str(stage.get('id', '')).lower() in {str(value).lower() for value in state.get('completed_stages', ())}:
         percent = 100
     next_row = next((row for row in rows if row['status'] == 'Available'), None)
     if next_row:
@@ -42,7 +43,10 @@ def progress_snapshot(stage, state):
     elif gate.missing_topic_ids:
         guidance = 'Complete the prerequisites shown in Topic Guidance.'
     elif not stage.get('completion', {}).get('content_ready', True):
-        guidance = 'Dining Lists milestone complete. Key 1 earned; remaining Castle content is coming later.'
+        guidance = stage.get('progress', {}).get(
+            'unfinished_content_message',
+            'Available lessons complete. More stage content is coming later.',
+        )
     elif gate.keys < gate.required_keys:
         guidance = 'Clear the remaining enemy areas to collect the required keys.'
     elif not gate.boss_defeated:
@@ -52,3 +56,8 @@ def progress_snapshot(stage, state):
     else:
         guidance = 'Stage requirements complete. Proceed to the stage gate.'
     return {'percent': percent, 'topics': rows, 'gate': gate, 'next': guidance}
+
+
+def learning_progress_enabled(stage):
+    """Any stage with lessons gets progress/guidance, unless explicitly disabled."""
+    return bool(stage.get('progress', {}).get('enabled', bool(required_topic_ids(stage))))

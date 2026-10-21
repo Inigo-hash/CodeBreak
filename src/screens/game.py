@@ -199,13 +199,8 @@ def load_interactables(tmx_data):
                 "inspect_progress": 0.0,
                 "topic_handled": False,
             })
-    # Empty caches use the nearest authored lesson. They can introduce that
-    # lesson, but rewards remain locked until its challenge is passed.
-    lessons = [item for item in interactables if item.get("topic_id")]
-    for item in interactables:
-        if item.get("actions") in ("search_chest", "search_barrel") and not item.get("topic_id") and lessons and not item.get('independent_search'):
-            nearest = min(lessons, key=lambda lesson: math.dist(item["rect"].center, lesson["rect"].center))
-            item["topic_id"] = nearest["topic_id"]
+    # Only explicitly tagged Tiled objects provide lessons. Untagged
+    # interactables remain searchable but intentionally have no topic.
     return interactables
 
 
@@ -2731,6 +2726,14 @@ def game_screen(screen, slot_num=None, save_state=None):
                     topic_id = near_interactable.get('topic_id')
                     action = near_interactable.get('actions', '')
                     was_opened = stage_progress.has_opened_interactable(near_interactable['interaction_id'])
+                    was_searched = near_interactable.get("searched", False)
+
+                    if was_searched:
+                        topic_id = None
+                        object_name = action.removeprefix("search_").replace("_", " ") or "object"
+                        near_interactable["interaction_message"] = f"The {object_name} is empty."
+                    else:
+                        near_interactable["searched"] = True
 
                     topic = get_topic(topic_id) if topic_id else None
                     challenge_id = (topic or {}).get("challenge_id")
@@ -2739,7 +2742,13 @@ def game_screen(screen, slot_num=None, save_state=None):
                         or challenge_id in save_challenges_passed
                     )
 
-                    if action in ('search_chest', 'search_crate') and coding_unlocked:
+                    if was_searched:
+                        # A searched object is consumed: never grant another
+                        # topic or chest reward from the same map object.
+                        pass
+                    elif action in ('search_chest', 'search_crate') and not topic_id:
+                        near_interactable["interaction_message"] = "The chest is empty."
+                    elif action in ('search_chest', 'search_crate') and coding_unlocked:
                         entity = near_interactable.get("entity")
                         interaction_id = near_interactable.get("interaction_id")
                         if (entity is not None
@@ -2761,7 +2770,8 @@ def game_screen(screen, slot_num=None, save_state=None):
                         )
 
                     if (
-                        topic_id
+                        not was_searched
+                        and topic_id
                         and (not near_interactable['topic_handled'] or (topic or {}).get('challenge_ids'))
                     ):
 

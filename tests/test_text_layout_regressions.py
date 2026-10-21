@@ -103,10 +103,11 @@ class TextLayoutTests(unittest.TestCase):
             recordings = {}
             screen = RecordedSurface(size,recordings)
             rect = tutor.tutor_helper_rect(screen)
-            self.assertEqual(rect.left,14)
+            self.assertEqual(rect.right,size[0]-14)
             self.assertEqual(rect.bottom,size[1]-14)
             self.assertGreaterEqual(rect.height,100)
             minimap = tutor.tutor_minimap_rect(screen)
+            self.assertEqual(minimap.bottomleft,(14,size[1]-14))
             self.assertFalse(rect.colliderect(minimap))
             self.assertTrue(screen.get_rect().contains(minimap))
             rail = StagePanel(screen,learning_progress=True)

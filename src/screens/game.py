@@ -980,6 +980,16 @@ def game_screen(screen, slot_num=None, save_state=None):
         })
 
     zone_label_font = title_font(13, bold=False)
+    # Lay out every name once in chart coordinates. Reflowing only the
+    # visible names made them slide and jump as they reached the view edge.
+    minimap_zone_labels = layout_map_labels(
+        zone_label_font,
+        [(zone['name'],
+          (zone['rect'].centerx * minimap_px_per_unit,
+           zone['rect'].centery * minimap_px_per_unit),
+          zone['is_boss_zone']) for zone in zone_pixel_rects],
+        minimap_texture.get_rect(),
+    )
 
     def draw_minimap(surf, player_rect, heading, night=False):
         panel_rect = minimap_panel_rect
@@ -1022,22 +1032,12 @@ def game_screen(screen, slot_num=None, save_state=None):
         # read in, names included, not a filter on the terrain alone.
         surf.blit(minimap_vignette, view_rect.topleft)
 
-        labels = []
-        for zone in zone_pixel_rects:
-
-            zone_center_x = zone["rect"].centerx * minimap_px_per_unit
-            zone_center_y = zone["rect"].centery * minimap_px_per_unit
-
-            label_x = view_rect.left - src_left + zone_center_x
-            label_y = view_rect.top - src_top + zone_center_y
-
-            # Same ink hand as the paper map: a parchment halo carrying
-            # brown ink, boss ground in red. The halo is tighter and
-            # thinner than the sheet's - at this size a full one covers
-            # most of the zone it is naming.
-            if view_rect.collidepoint(label_x,label_y):
-                labels.append((zone['name'],(label_x,label_y),zone['is_boss_zone']))
-        for name,rect,boss in layout_map_labels(zone_label_font,labels,view_rect.inflate(-8,-8)):
+        chart_offset = (int(view_rect.left - src_left),
+                        int(view_rect.top - src_top))
+        for name, chart_rect, boss in minimap_zone_labels:
+            rect = chart_rect.move(chart_offset)
+            if not rect.inflate(8, 4).colliderect(view_rect):
+                continue
             ink_text(surf,zone_label_font,name,rect.center,BOSS_INK if boss else INK,
                      halo_alpha=120,halo_pad=(8,4))
 

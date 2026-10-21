@@ -583,14 +583,12 @@
   <object id="204" x="240" y="382.5" width="31.25" height="30.5">
    <properties>
     <property name="actions" value="search_chest"/>
-    <property name="types" value="interactive"/>
-       <property name="topic_id" value="iterative_structure_lesson"/>\n   </properties>
+    <property name="types" value="interactive"/>   </properties>
   </object>
   <object id="205" x="368.125" y="382.625" width="31.5" height="30.25">
    <properties>
     <property name="actions" value="search_chest"/>
-    <property name="types" value="interactive"/>
-       <property name="topic_id" value="iterative_structure_lesson"/>\n   </properties>
+    <property name="types" value="interactive"/>   </properties>
   </object>
  </objectgroup>
 </map>

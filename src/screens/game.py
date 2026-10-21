@@ -3141,8 +3141,6 @@ def game_screen(screen, slot_num=None, save_state=None):
             action = near_interactable.get("actions", "")
             if action == "read_sign":
                 interaction_prompt = "Read Sign"
-            elif near_interactable.get("topic_id"):
-                interaction_prompt = "Read Topic"
             elif action.startswith("search_"):
                 target = action.removeprefix("search_").replace("_", " ").title()
                 interaction_prompt = f"Search {target}" if target else "Interact"

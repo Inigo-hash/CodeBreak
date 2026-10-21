@@ -647,7 +647,17 @@
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 </data>
  </layer>
- <objectgroup id="15" name="chests" locked="1"/>
+ <objectgroup id="15" name="chests" locked="1">
+  <object id="1" name="Castle Lobby Chest" type="interactive" x="448" y="112" width="16" height="16">
+   <properties>
+    <property name="actions" value="search_chest" />
+    <property name="topic_id" value="iterative_structure_lesson" />
+    <property name="types" value="interactive" />
+    <property name="persistent_id" value="castle_lobby_chest" />
+    <property name="message" value="Hold E to study iterative structures" />
+   </properties>
+  </object>
+ </objectgroup>
  <layer id="17" name="more designs" width="46" height="48" locked="1">
   <data encoding="csv">
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,

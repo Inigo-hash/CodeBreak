@@ -49,7 +49,7 @@ class SettingsPanel:
         self.label_font = body_font(17)
         self.option_font = body_font(14, bold=True)
         self.button_font = title_font(20)
-        self.help_font = body_font(13)
+        self.help_font = body_font(16)
 
     def _layout(self):
         width, height = self.screen.get_size()

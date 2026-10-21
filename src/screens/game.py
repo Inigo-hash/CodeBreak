@@ -510,6 +510,10 @@ def game_screen(screen, slot_num=None, save_state=None):
             "weapon_equipped": player_inventory.weapon_equipped,
             "inventory_layout": player_inventory.to_dict(),
             "stage_progress": stage_progress.to_dict(),
+            "active_boss": boss_id if (
+                boss_enemy is not None and boss_enemy.active
+                and boss_enemy.state != "defeated" and player_combat.hp > 0
+            ) else None,
             "stage_checkpoints": (save_state or {}).get("stage_checkpoints", {}),
         }
         if room:
@@ -1465,6 +1469,16 @@ def game_screen(screen, slot_num=None, save_state=None):
             boss.zone = pygame.Rect(round(x * map_width), round(y * map_height),
                                     round(w * map_width), round(h * map_height))
         return boss
+
+    # An interrupted fight is restarted at full health on reload. Victory
+    # remains authoritative, so a stale encounter marker cannot revive it.
+    if (boss_id and not boss_defeated
+            and (save_state or {}).get("active_boss") == boss_id):
+        boss_enemy = create_boss()
+        if boss_enemy is not None:
+            enemies.append(boss_enemy)
+            boss_entry_position = player_rect.topleft
+            start_boss_music()
     loading.update(97, "Finalizing expedition...")
     player_combat = PlayerCombat()
     if room and (save_state or {}).get("room_vitals"):
@@ -1476,6 +1490,7 @@ def game_screen(screen, slot_num=None, save_state=None):
     combat_audio = CombatAudio()
     from src.ui.damage_numbers import DamageNumbers
     damage_numbers = DamageNumbers()
+    player_damage_numbers = DamageNumbers((255, 125, 125))
     boss_phase_effect_timer = 0.0
     boss_phase_effect_text = ""
     boss_phase_effect_world = (0, 0)
@@ -1662,6 +1677,7 @@ def game_screen(screen, slot_num=None, save_state=None):
         frame_scale = dt * 60.0
         boss_phase_effect_timer = max(0.0, boss_phase_effect_timer - dt)
         damage_numbers.update(dt)
+        player_damage_numbers.update(dt)
         mouse_pos = pygame.mouse.get_pos()
 
         # --- Events ---
@@ -2391,7 +2407,8 @@ def game_screen(screen, slot_num=None, save_state=None):
 
             # F4 bypass means enemies deal no damage.
             if incoming_damage and not developer_mode.enabled:
-                if player_combat.take_damage(incoming_damage):
+                if player_damage_numbers.apply_damage(
+                        player_combat, player_rect.center, incoming_damage):
                     combat_audio.play(
                         "player_death"
                         if player_combat.hp == 0
@@ -2503,7 +2520,8 @@ def game_screen(screen, slot_num=None, save_state=None):
 
                 if (
                     not trap_solved
-                    and player_combat.take_damage(trap.damage)
+                    and player_damage_numbers.apply_damage(
+                        player_combat, player_rect.center, trap.damage)
                 ):
                     combat_audio.play(
                         "player_death"
@@ -3141,6 +3159,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             draw_tutor_helper(screen, tutor_helper_rect(screen))
 
         damage_numbers.draw(screen, ZOOM, camera_x, camera_y)
+        player_damage_numbers.draw(screen, ZOOM, camera_x, camera_y)
         if boss_phase_effect_timer > 0:
             effect_progress = 1.0 - boss_phase_effect_timer / 1.25
             pulse_alpha = round(115 * (1.0 - effect_progress))

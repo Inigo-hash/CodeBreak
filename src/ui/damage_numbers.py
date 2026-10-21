@@ -4,8 +4,17 @@ from src.ui.theme import body_font
 
 
 class DamageNumbers:
-    def __init__(self):
+    def __init__(self, color=(255, 221, 117)):
         self.hits = []
+        self.color = color
+
+    def apply_damage(self, target, position, amount):
+        """Show actual HP lost, excluding dodges and invulnerable hits."""
+        before = target.hp
+        if not target.take_damage(amount):
+            return False
+        self.add(position, before - target.hp)
+        return True
 
     def add(self, position, damage):
         if damage > 0:
@@ -18,7 +27,7 @@ class DamageNumbers:
     def draw(self, screen, zoom, camera_x, camera_y):
         font = body_font(25, bold=True)
         for (x, y), damage, age in self.hits:
-            text = font.render(f"-{damage:g}", True, (255, 221, 117))
+            text = font.render(f"-{damage:g}", True, self.color)
             shadow = font.render(f"-{damage:g}", True, (15, 12, 15))
             alpha = round(255 * min(1, (0.85 - age) / 0.3))
             text.set_alpha(alpha)

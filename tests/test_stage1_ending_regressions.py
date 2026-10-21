@@ -123,6 +123,22 @@ class Stage1EndingRegressions(unittest.TestCase):
         _, intros, _, _ = self.run_frames(save_manager.new_game_state(), developer=True, doorway=False)
         self.assertEqual(intros, 0)
 
+    def test_unfinished_boss_is_restored_after_save_and_reload(self):
+        state = save_manager.new_game_state()
+        state['keys'] = 9
+        state['challenges_passed'] = list(required_topic_ids(get_stage('island')))
+        saved, intros, _, _ = self.run_frames(state)
+        self.assertEqual(intros, 1)
+        self.assertEqual(saved['active_boss'], 'corrupted_core_kapre')
+
+        def check(frame, live):
+            self.assertIsNotNone(live['boss_enemy'])
+            self.assertIn(live['boss_enemy'], live['enemies'])
+            self.assertNotEqual(live['boss_enemy'].state, 'defeated')
+
+        _, intros, _, _ = self.run_frames(saved, doorway=False, check=check)
+        self.assertEqual(intros, 0)
+
     def test_window_close_can_be_cancelled_without_leaving_gameplay(self):
         def events(frame, live):
             return [pygame.event.Event(pygame.QUIT)] if frame == 0 else []
@@ -143,6 +159,7 @@ class Stage1EndingRegressions(unittest.TestCase):
         self.assertEqual((intros, results, warnings), (1, 1, 0))
         boss = get_stage("island")["completion"]["required_boss"]
         self.assertIn(boss, saved["stage_progress"]["defeated_enemies"])
+        saved['active_boss'] = boss  # An older/stale marker must not revive a victory.
         def restored(frame, live):
             self.assertIsNone(live["boss_enemy"])
             self.assertTrue(live["final_challenge_revealed"])

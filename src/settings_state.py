@@ -24,7 +24,7 @@ settings_state = {
     # Start at the report's requested readable size. Existing saved choices
     # are preserved, and players can reduce this in Settings.
     # The shared font loaders carry this choice into menus, dialogue and HUDs.
-    "font_size": 25,
+    "font_size": 28,
     "walkthrough_seen": False,
 }
 

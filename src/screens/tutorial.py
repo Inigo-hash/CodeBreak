@@ -416,6 +416,7 @@ def tutorial_screen(screen, play_music=True, show_loading=False,
     player_combat = PlayerCombat()
     from src.ui.damage_numbers import DamageNumbers
     damage_numbers = DamageNumbers()
+    player_damage_numbers = DamageNumbers((255, 125, 125))
     combat_audio = CombatAudio()
     attack_has_hit = False
 
@@ -693,6 +694,7 @@ def tutorial_screen(screen, play_music=True, show_loading=False,
     while running:
         dt = clock.tick(60) / 1000.0
         damage_numbers.update(dt)
+        player_damage_numbers.update(dt)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -813,7 +815,8 @@ def tutorial_screen(screen, play_music=True, show_loading=False,
                     + practice_collision_rects,
                     SCREEN_WIDTH, SCREEN_HEIGHT,
                 )
-                if incoming_damage and player_combat.take_damage(incoming_damage):
+                if incoming_damage and player_damage_numbers.apply_damage(
+                        player_combat, player_rect.center, incoming_damage):
                     combat_audio.play(
                         "player_death" if player_combat.hp == 0 else "player_hurt"
                     )
@@ -907,6 +910,7 @@ def tutorial_screen(screen, play_music=True, show_loading=False,
 
         main_character.draw_frames(ZOOM, camera_x, camera_y, sprite_scale=player_sprite_scale)
         damage_numbers.draw(screen, ZOOM, camera_x, camera_y)
+        player_damage_numbers.draw(screen, ZOOM, camera_x, camera_y)
 
         if state == "practice":
             if practice_only:

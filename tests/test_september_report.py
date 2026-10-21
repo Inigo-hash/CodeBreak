@@ -78,6 +78,21 @@ class SeptemberReportTests(unittest.TestCase):
         effects.update(0.86)
         self.assertFalse(effects.hits)
 
+    def test_player_damage_numbers_respect_immunity_and_remaining_health(self):
+        from src.systems.combat import PlayerCombat
+        player = PlayerCombat()
+        effects = DamageNumbers((255, 125, 125))
+        player.hp = 7
+        player.invulnerable = 1
+        self.assertFalse(effects.apply_damage(player, (100, 100), 20))
+        self.assertFalse(effects.hits)
+        player.invulnerable = 0
+        self.assertTrue(effects.apply_damage(player, (100, 100), 20))
+        self.assertEqual(player.hp, 0)
+        self.assertEqual(effects.hits, [((100, 100), 7, 0.0)])
+        self.assertFalse(effects.apply_damage(player, (100, 100), 20))
+        self.assertEqual(len(effects.hits), 1)
+
     def test_monitor_aspects_fill_without_stretching_or_cropping(self):
         for size in ((1366, 768), (1280, 1024), (2560, 1080), (1920, 1200)):
             canvas = pygame.Surface(display.canvas_size_for_window(size))

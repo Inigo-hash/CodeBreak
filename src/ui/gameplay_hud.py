@@ -69,71 +69,36 @@ def render_text(font, text, color):
 
 
 def build_low_health_corner_overlay(size):
-    """Build transparent red corner marks for the low-health warning."""
-
+    """Cache a soft crimson edge fade with a completely clear combat area."""
     cached = _low_health_overlay_cache.get(size)
     if cached is not None:
         return cached
 
-    width, height = size
-    band = max(110, min(280, round(min(width, height) * 0.24)))
-    overlay = pygame.Surface(size, pygame.SRCALPHA)
-
-    # A broad edge glow remains visible beyond the HUD and minimap corners.
-    # The centre stays transparent so the player can still read the fight.
-    edge_band = max(24, round(min(width, height) * 0.065))
-    for inset in range(edge_band):
-        alpha = round(155 * (1 - inset / edge_band) ** 1.5)
-        pygame.draw.rect(overlay, (230, 12, 28, alpha),
-                         (inset, inset, width - inset * 2, height - inset * 2), 1)
-
-    # Nested corner wedges create a soft inward fade while leaving the
-    # centre of the play area completely clear.
-    corners = pygame.Surface(size, pygame.SRCALPHA)
-    for radius in range(band, 0, -3):
-        alpha = round(235 * (1.0 - radius / band) ** 1.1)
-        color = (240, 12, 28, alpha)
-        pygame.draw.polygon(corners, color, ((0, 0), (radius, 0), (0, radius)))
-        pygame.draw.polygon(
-            corners, color,
-            ((width, 0), (width - radius, 0), (width, radius)),
-        )
-        pygame.draw.polygon(
-            corners, color,
-            ((0, height), (radius, height), (0, height - radius)),
-        )
-        pygame.draw.polygon(
-            corners, color,
-            ((width, height), (width - radius, height),
-             (width, height - radius)),
-        )
-
-    overlay.blit(corners, (0, 0))
-
-    # Three sharper diagonal marks in each corner make the warning read as
-    # damage rather than as a general red color filter.
-    mark_color = (255, 46, 56, 245)
-    for offset in (36, 65, 94):
-        reach = min(band - 8, offset + 70)
-        pygame.draw.line(overlay, mark_color, (offset, 0), (0, reach), 6)
-        pygame.draw.line(
-            overlay, mark_color, (width - offset, 0), (width, reach), 6
-        )
-        pygame.draw.line(
-            overlay, mark_color, (offset, height), (0, height - reach), 6
-        )
-        pygame.draw.line(
-            overlay, mark_color,
-            (width - offset, height), (width, height - reach), 6,
-        )
-
+    # Build a small, continuous gradient once. Scaling removes hard bands
+    # without the cost of full-resolution per-pixel work during combat.
+    sw, sh = 240, 136
+    small = pygame.Surface((sw, sh), pygame.SRCALPHA)
+    for y in range(sh):
+        ny = min(y, sh - 1 - y) / (sh - 1)
+        for x in range(sw):
+            nx = min(x, sw - 1 - x) / (sw - 1)
+            # A rounded contour avoids a visible rectangular inner border.
+            distance = ((1.0 - 2.0 * nx) ** 4 + (1.0 - 2.0 * ny) ** 4) ** .25
+            edge = max(0.0, min(1.0, (distance - .64) / .36))
+            fade = edge * edge * (3.0 - 2.0 * edge)
+            corner = max(0.0, 1.0 - nx / .30) * max(0.0, 1.0 - ny / .30)
+            alpha = round(170 * fade + 36 * corner)
+            small.set_at((x, y), (174, 18, 36, min(210, alpha)))
+    overlay = pygame.transform.smoothscale(small, size)
+    # Only the latest few window sizes need to stay in memory.
+    if len(_low_health_overlay_cache) >= 4:
+        _low_health_overlay_cache.clear()
     _low_health_overlay_cache[size] = overlay
     return overlay
 
 
 def draw_low_health_warning(surface, current_hp, max_hp, time_seconds=0.0):
-    """Pulse red corner marks while HP is at or below thirty percent."""
-
+    """A gentle double heartbeat grows stronger as health falls below 30%."""
     if current_hp is None or not max_hp or current_hp <= 0:
         return False
     hp_ratio = max(0.0, min(1.0, current_hp / max_hp))
@@ -141,8 +106,10 @@ def draw_low_health_warning(surface, current_hp, max_hp, time_seconds=0.0):
         return False
 
     urgency = 1.0 - hp_ratio / LOW_HP_THRESHOLD
-    pulse = 0.82 + 0.18 * (0.5 + 0.5 * math.sin(time_seconds * 5.2))
-    alpha = round(255 * (0.85 + 0.15 * urgency) * pulse)
+    phase = (time_seconds * (0.72 + .28 * urgency)) % 1.0
+    beat = math.exp(-((phase - .10) / .075) ** 2)
+    beat += .55 * math.exp(-((phase - .29) / .10) ** 2)
+    alpha = round(255 * min(1.0, .65 + .20 * urgency + .15 * beat))
     overlay = build_low_health_corner_overlay(surface.get_size())
     overlay.set_alpha(alpha)
     surface.blit(overlay, (0, 0))

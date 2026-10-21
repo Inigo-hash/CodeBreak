@@ -657,6 +657,10 @@ CHALLENGES.update(CASTLE_CHALLENGES)
 from src.data.castle_assessments import CASTLE_ASSESSMENTS
 CHALLENGES.update(CASTLE_ASSESSMENTS)
 
+from src.data.stage2_topics import ITERATIVE_CHALLENGES, LISTS_STAGE2_CHALLENGES
+CHALLENGES.update(ITERATIVE_CHALLENGES)
+CHALLENGES.update(LISTS_STAGE2_CHALLENGES)
+
 
 def get_challenge(challenge_id):
     """

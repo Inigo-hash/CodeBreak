@@ -2936,14 +2936,9 @@ def game_screen(screen, slot_num=None, save_state=None):
             ('prop', p['sort_y'], p)
             for p in visible_props(camera_x, camera_y)
         ]
-        # Topic-bound chests already have authored artwork in the Tiled map.
-        # Keep their gameplay entity for rewards/interactions, but do not draw a
-        # second chest sprite on top of the chest placed by the level designer.
-        draw_list.extend(
-            ('chest', item['entity'].rect.bottom, item['entity'])
-            for item in interactables
-            if item.get('entity') is not None and not item.get('topic_id')
-        )
+        # Chest artwork is authored in the Tiled maps. Keep chest entities
+        # for interaction/reward logic, but never draw a second generated sprite
+        # over the map artwork, including for untagged empty library chests.
         draw_list.append(('player', player_rect.bottom, None))
         for enemy in enemies:
             if enemy.active:
@@ -2957,8 +2952,6 @@ def game_screen(screen, slot_num=None, save_state=None):
                 main_character.draw_frames(ZOOM, camera_x, camera_y, dt=dt)
             elif kind == 'enemy':
                 prop.draw_frames(ZOOM, camera_x, camera_y)
-            elif kind == 'chest':
-                prop.draw(screen, ZOOM, camera_x, camera_y)
 
         # ---------------------------------------------------------
         # Nighttime and fixed map torches

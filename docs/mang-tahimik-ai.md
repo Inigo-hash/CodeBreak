@@ -3,7 +3,8 @@
 The desktop game now calls your online server. Only the server holds the Gemini
 key. Players do not need API keys. Press H in gameplay outside combat, or click
 Mang Tahimik in the menu. Escape returns immediately while network work runs
-in a background thread. Internet is required.
+in a background thread. Generated AI answers require internet; recognized basic
+questions also have labelled built-in reference answers that work offline.
 
 ## Deploy from an iPad (free prototype)
 
@@ -135,3 +136,30 @@ and the main menu. The minimap stacks above it; the chat opens in a wider,
 bottom-left panel. The entire menu helper card is clickable.
 
 Reference: https://ai.google.dev/gemini-api/docs/troubleshooting
+
+## Timeout failover and built-in reference help (2026-10-21)
+
+A primary model timeout now reaches the second provider slot instead of exiting
+before the backup is tried. Each slot has a 20-second deadline inside the
+existing 55-second overall deadline. Both attempts consume the same global
+budget and concurrency slot; a retry cannot bypass those caps. Authentication
+errors are still not retried. The live Gemini service can remain unavailable
+regardless of the retry logic.
+
+Recognized basic Python definitions and game-control questions are answered by
+`src/systems/tutor_guide.py` on both desktop and server. Answers begin with
+`Built-in guide:` and server responses include `source: built_in`; these are
+reference answers, not generated AI responses. They work without an API key or
+internet on updated game clients and do not consume Gemini quota. For example,
+`who is python`, `what is python`, and `how do i play codebreak` return immediately.
+Only whole known questions match. Debugging, follow-ups and unrecognized
+questions continue to use the live AI, with its existing safe error handling.
+No built-in guide entry supplies a complete challenge solution.
+
+After pulling the game update, ask `who is python` to verify the local guide.
+To verify the deployed server, `/health` should return header
+`X-Tutor-Revision: timeout-failover-guide-20261021`, and a POST to `/ask` with
+`{"question":"what is python"}` should return `source: built_in`. Use a distinct
+open-ended debugging question to test live Gemini separately; a successful guide
+answer alone does not prove Gemini has recovered. Never publish API keys in logs
+or game files.

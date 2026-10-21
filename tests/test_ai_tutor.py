@@ -9,7 +9,7 @@ from src.systems.ai_tutor import ask_mang_tahimik, TutorError, TutorSession
 class TutorTests(unittest.TestCase):
     def test_missing_config_and_invalid_input_do_not_send(self):
         with patch.dict('os.environ', {}, clear=True), patch('pathlib.Path.read_text', return_value='{}'), patch('src.systems.ai_tutor.request.urlopen') as send:
-            for question in ('', 'x' * 1001, 'what is a variable?'):
+            for question in ('', 'x' * 1001, 'why does my recursion fail?'):
                 with self.assertRaises(TutorError):
                     ask_mang_tahimik(question)
             send.assert_not_called()

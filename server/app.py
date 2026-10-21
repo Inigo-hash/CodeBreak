@@ -12,12 +12,14 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 from server.tutor_prompt import SYSTEM_PROMPT
+from src.systems.tutor_guide import built_in_answer
 
 MAX_BODY = 40000
 RETRYABLE_STATUS = frozenset((502, 503, 504))
 MAX_PROVIDER_ATTEMPTS = 2
 PROVIDER_DEADLINE = 55
-TUTOR_REVISION = 'session-limits-20261019'
+PROVIDER_ATTEMPT_TIMEOUT = 20
+TUTOR_REVISION = 'timeout-failover-guide-20261021'
 
 
 class Turn(BaseModel):
@@ -118,6 +120,14 @@ def create_app():
 
     @app.post('/ask')
     async def ask(question: Question, request: Request):
+        if not question.question.strip():
+            return JSONResponse({'error': 'Please ask a question.'}, status_code=422)
+        if any(k not in ('stage', 'room', 'topic') or len(v) > 100
+               for k, v in question.context.items()):
+            return JSONResponse({'error': 'Invalid level context.'}, status_code=422)
+        guide = built_in_answer(question.question)
+        if guide:
+            return {'answer': guide, 'source': 'built_in'}
         key = os.environ.get('GEMINI_API_KEY', '').strip()
         model = os.environ.get('GEMINI_MODEL', 'gemini-2.5-flash-lite').strip()
         fallback = os.environ.get('GEMINI_FALLBACK_MODEL',
@@ -130,11 +140,6 @@ def create_app():
                 or (fallback and not re.fullmatch(r'[a-zA-Z0-9._-]+', fallback))):
             return JSONResponse({'error': 'The tutor is not configured.',
                                  'code': 'tutor_not_configured'}, status_code=503)
-        if not question.question.strip():
-            return JSONResponse({'error': 'Please ask a question.'}, status_code=422)
-        if any(k not in ('stage', 'room', 'topic') or len(v) > 100
-               for k, v in question.context.items()):
-            return JSONResponse({'error': 'Invalid level context.'}, status_code=422)
         # Uvicorn/proxy owns request.client. Do not trust raw forwarded headers.
         ip = request.client.host if request.client else 'unknown'
         # Anonymous fairness token, not authentication. Global provider budgets
@@ -169,15 +174,27 @@ def create_app():
                         # identically. Use the configured backup in that slot,
                         # without adding attempts or bypassing the budget.
                         attempt_model = fallback if attempt and fallback else model
-                        response = await app.state.http.post(
-                            'https://generativelanguage.googleapis.com/v1beta/models/' + attempt_model + ':generateContent',
-                            headers={'x-goog-api-key': key}, json=payload)
-                        alternate_model = response.status_code in (404, 429) and fallback and fallback != model
-                        if ((response.status_code not in RETRYABLE_STATUS and not alternate_model)
-                                or attempt + 1 == MAX_PROVIDER_ATTEMPTS):
-                            break
+                        # A timed-out primary must not skip the backup slot.
+                        # Bound each attempt so the backup still has time left.
+                        failure = None
+                        try:
+                            async with asyncio.timeout(PROVIDER_ATTEMPT_TIMEOUT):
+                                response = await app.state.http.post(
+                                    'https://generativelanguage.googleapis.com/v1beta/models/' + attempt_model + ':generateContent',
+                                    headers={'x-goog-api-key': key}, json=payload)
+                        except (httpx.HTTPError, TimeoutError) as exc:
+                            if attempt + 1 == MAX_PROVIDER_ATTEMPTS:
+                                raise
+                            failure = exc
+                        else:
+                            alternate_model = response.status_code in (404, 429) and fallback and fallback != model
+                            if ((response.status_code not in RETRYABLE_STATUS and not alternate_model)
+                                    or attempt + 1 == MAX_PROVIDER_ATTEMPTS):
+                                break
                         await asyncio.sleep(1)
                         if not (await limits.reserve(identity, retry=True))[0]:
+                            if failure is not None:
+                                raise failure
                             break  # Return the last error without exceeding caps.
                 if response.status_code == 429:
                     return JSONResponse({'error': 'Gemini quota reached.', 'code': 'gemini_quota'}, status_code=429,

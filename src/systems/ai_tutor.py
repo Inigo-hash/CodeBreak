@@ -8,6 +8,8 @@ import uuid
 from queue import Queue, Empty
 from urllib import request, error
 
+from src.systems.tutor_guide import built_in_answer
+
 MAX_QUESTION = 1000
 CLIENT_ID = uuid.uuid4().hex
 
@@ -20,6 +22,9 @@ def ask_mang_tahimik(question, context=None, history=()):
     question = question.strip()
     if not question or len(question) > MAX_QUESTION:
         raise TutorError('Ask a question between 1 and 1000 characters.')
+    guide = built_in_answer(question)
+    if guide:
+        return guide
     from urllib.parse import urlparse
     from pathlib import Path
     endpoint = os.environ.get('CODEBREAK_TUTOR_URL', '').strip()

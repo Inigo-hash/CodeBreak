@@ -84,7 +84,7 @@ class ServerTests(unittest.TestCase):
         client = self.make_client(lambda req: self.fail('called without key'))
         for path in ('/', '/health'):
             self.assertEqual(client.get(path).json(), {'status':'ok'})
-            self.assertEqual(client.get(path).headers['x-tutor-revision'], 'session-limits-20261019')
+            self.assertEqual(client.get(path).headers['x-tutor-revision'], 'timeout-failover-guide-20261021')
             response = client.head(path)
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.content, b'')
@@ -240,7 +240,7 @@ class ServerTests(unittest.TestCase):
         client = self.make_client(handler)
         from unittest.mock import AsyncMock
         with patch('server.app.asyncio.sleep', new_callable=AsyncMock):
-            response = client.post('/ask',json={'question':'how do I move?'})
+            response = client.post('/ask',json={'question':'why does my movement code fail?'})
         self.assertEqual(response.json(),{'answer':'Use WASD.'})
         self.assertEqual(len(calls),2)
 
@@ -305,3 +305,61 @@ class ServerTests(unittest.TestCase):
         client=self.make_client(lambda req:httpx.Response(200,json={'candidates':[{'content':{'parts':[{'text':'hint'}]}}]}))
         for _ in range(3):
             self.assertEqual(client.post('/ask',json={'question':'help'}).status_code,200)
+
+    @patch.dict('os.environ', {'GEMINI_API_KEY': 'test-secret'}, clear=True)
+    def test_primary_timeout_reaches_backup_and_recovers(self):
+        calls = []
+        def handler(req):
+            calls.append(req)
+            if len(calls) == 1:
+                raise httpx.ReadTimeout('private upstream details', request=req)
+            return httpx.Response(200, json={'candidates': [{'content': {'parts': [{'text': 'Try tracing each iteration.'}]}}]})
+        client = self.make_client(handler)
+        from unittest.mock import AsyncMock
+        with patch('server.app.asyncio.sleep', new_callable=AsyncMock):
+            response = client.post('/ask', json={'question': 'why does my loop repeat forever?'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['answer'], 'Try tracing each iteration.')
+        self.assertEqual(len(calls), 2)
+        self.assertNotEqual(calls[0].url, calls[1].url)
+
+    @patch.dict('os.environ', {'GEMINI_API_KEY': 'test-secret'}, clear=True)
+    def test_per_attempt_deadline_leaves_room_for_backup(self):
+        calls = []
+        async def handler(req):
+            calls.append(req)
+            if len(calls) == 1:
+                await asyncio.sleep(1)
+            return httpx.Response(200, json={'candidates': [{'content': {'parts': [{'text': 'Check your condition.'}]}}]})
+        client = self.make_client(handler)
+        with patch('server.app.PROVIDER_ATTEMPT_TIMEOUT', 0.01):
+            response = client.post('/ask', json={'question': 'why does my loop never stop?'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(calls), 2)
+
+    @patch.dict('os.environ', {'GEMINI_API_KEY': 'test-secret', 'TUTOR_GLOBAL_PER_DAY': '1'}, clear=True)
+    def test_timeout_retry_cannot_exceed_budget(self):
+        calls = []
+        def handler(req):
+            calls.append(req)
+            raise httpx.ReadTimeout('test-secret', request=req)
+        client = self.make_client(handler)
+        from unittest.mock import AsyncMock
+        with patch('server.app.asyncio.sleep', new_callable=AsyncMock):
+            response = client.post('/ask', json={'question': 'why does this loop not stop?'})
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json()['code'], 'gemini_timeout')
+        self.assertNotIn('test-secret', response.text)
+        self.assertEqual(len(calls), 1)
+
+    @patch.dict('os.environ', {}, clear=True)
+    def test_basic_guide_works_without_provider_and_is_labelled(self):
+        client = self.make_client(lambda req: self.fail('guide must not call Gemini'))
+        for question in ('who is python', 'what is python', 'how do i play codebreak'):
+            response = client.post('/ask', json={'question': question})
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json()['source'], 'built_in')
+            self.assertTrue(response.json()['answer'].startswith('Built-in guide: '))
+        # The guide must not bypass validation or become an arbitrary answer.
+        self.assertEqual(client.post('/ask', json={'question': 'what is python', 'context': {'secret': 'x'}}).status_code, 422)
+        self.assertEqual(client.post('/ask', json={'question': 'solve my complete challenge'}).status_code, 503)

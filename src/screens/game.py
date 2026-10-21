@@ -3083,6 +3083,9 @@ def game_screen(screen, slot_num=None, save_state=None):
 
                 if action == "read_sign":
                     message = near_interactable["interaction_message"]
+                elif near_interactable.get("searched"):
+                    object_name = action.removeprefix("search_").replace("_", " ") or "object"
+                    message = near_interactable.get("interaction_message") or f"The {object_name} is empty."
                 elif action == "search_chest" and near_interactable.get("interaction_message"):
                     message = near_interactable["interaction_message"]
                 elif topic_id:

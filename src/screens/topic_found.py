@@ -1,4 +1,5 @@
 import pygame
+from src.data.topics import get_topic
 from src.ui.text_layout import fit_text, draw_text_block
 from src.systems.audio import handle_music_shortcut
 
@@ -65,11 +66,8 @@ class TopicFoundScreen:
         # control_flow   -> Control Flow
         #
         # Later this should come from topics.py instead.
-        self.topic_name = (
-            topic_id
-            .replace("_", " ")
-            .title()
-        )
+        topic = get_topic(topic_id) or {}
+        self.topic_name = topic.get("title") or topic_id.replace("_", " ").title()
 
         # -------------------------------------------------
         # Popup geometry

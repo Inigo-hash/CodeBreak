@@ -81,7 +81,7 @@ class TextLayoutTests(unittest.TestCase):
                 rows,*_ = menu.compute_menu_layout(*size,len(menu.MM_LABELS),menu.MM_LABELS)
                 menu._draw_mang_tahimik_tip(screen,0)
             self.assertEqual(len(screen.text),2)
-            self.assertEqual(tutor.menu_tutor_rect(screen).left,14)
+            self.assertEqual(tutor.menu_tutor_rect(screen).bottomright,(size[0]-14,size[1]-14))
             self.assertFalse(any(tutor.menu_tutor_rect(screen).colliderect(row) for row in rows))
             for text,rect in screen.text:
                 self.assertTrue(screen.get_rect().contains(rect),text)
@@ -119,12 +119,12 @@ class TextLayoutTests(unittest.TestCase):
             self.assertTrue(all(rect.contains(text_rect) for _,text_rect in screen.text))
             self.assertFalse(screen.text[0][1].colliderect(screen.text[1][1]))
 
-    def test_chat_is_larger_and_anchored_to_bottom_left(self):
+    def test_chat_is_larger_and_anchored_to_bottom_right(self):
         from src.screens.mang_tahimik import tutor_chat_rect
         for size in ((640,480),(1024,768),(1920,1080),(2560,1080)):
             screen = pygame.Surface(size)
             panel = tutor_chat_rect(screen)
-            self.assertEqual(panel.bottomleft,(14,size[1]-14))
+            self.assertEqual(panel.bottomright,(size[0]-14,size[1]-14))
             self.assertTrue(screen.get_rect().contains(panel))
         self.assertEqual(tutor_chat_rect(pygame.Surface((1920,1080))).width,1100)
 

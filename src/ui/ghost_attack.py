@@ -12,8 +12,10 @@ def ghost_attack_pose(enemy, zoom, camera_x, camera_y):
               round(enemy.rect.bottom * zoom - camera_y - 58))
     # A steady wind-up grows into a flash at the combat system's 52% hit time.
     strength = .25 + .75 * max(0.0, 1 - abs(progress - .52) / .52)
-    angle = {"east": 0, "south": math.pi / 2,
-             "west": math.pi, "north": -math.pi / 2}[enemy.facing]
+    direction = getattr(enemy, 'attack_direction', None)
+    angle = (math.atan2(direction[1], direction[0]) if direction and any(direction)
+             else {"east": 0, "south": math.pi / 2,
+                   "west": math.pi, "north": -math.pi / 2}[enemy.facing])
     return center, progress, strength, angle, max(24, round(enemy.attack_range * zoom))
 
 

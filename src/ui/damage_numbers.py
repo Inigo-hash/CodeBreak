@@ -8,10 +8,12 @@ class DamageNumbers:
         self.hits = []
         self.color = color
 
-    def apply_damage(self, target, position, amount):
+    def apply_damage(self, target, position, amount, source=None):
         """Show actual HP lost, excluding dodges and invulnerable hits."""
         before = target.hp
-        if not target.take_damage(amount):
+        accepted = (target.take_damage(amount) if source is None
+                    else target.take_damage(amount, source=source))
+        if not accepted:
             return False
         self.add(position, before - target.hp)
         return True

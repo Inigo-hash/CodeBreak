@@ -814,9 +814,10 @@ def tutorial_screen(screen, play_music=True, show_loading=False,
                      if other is not training_enemy and other.active]
                     + practice_collision_rects,
                     SCREEN_WIDTH, SCREEN_HEIGHT,
+                    navigation_rects=practice_collision_rects,
                 )
                 if incoming_damage and player_damage_numbers.apply_damage(
-                        player_combat, player_rect.center, incoming_damage):
+                        player_combat, player_rect.center, incoming_damage, source=training_enemy):
                     combat_audio.play(
                         "player_death" if player_combat.hp == 0 else "player_hurt"
                     )

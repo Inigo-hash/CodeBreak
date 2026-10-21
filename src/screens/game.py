@@ -606,13 +606,9 @@ def game_screen(screen, slot_num=None, save_state=None):
     # Restore topic discovery/handled state
     # ---------------------------------------------------------
 
-    handled_topic_ids = set(
-        gameplay_state["topics_discovered"]
-    )
-
-    handled_topic_ids.update(
-        saved_topic_ids
-    )
+    # Seeing a discovery dialog does not collect its lesson. A cancelled
+    # dialog or unfinished challenge must remain available after a reload.
+    handled_topic_ids = set(saved_topic_ids)
 
     handled_topic_ids.update(
         gameplay_state["topics_completed"]
@@ -787,36 +783,10 @@ def game_screen(screen, slot_num=None, save_state=None):
         # -----------------------------------------------------
 
         if editor.solved:
-
-            first_completion = (
-                challenge_id
-                not in save_challenges_passed
+            candidate = complete_topic_challenge(
+                build_save_state(), stage, topic_id, challenge_id,
             )
-
-            if first_completion:
-
-                save_challenges_passed.append(
-                    challenge_id
-                )
-
-            if (
-                topic_id
-                not in gameplay_state["topics_completed"]
-            ):
-
-                gameplay_state[
-                    "topics_completed"
-                ].append(
-                    topic_id
-                )
-
-            stage_progress.sync_objectives(
-                stage,
-                save_challenges_passed
-            )
-
-            if slot_num is not None:
-                save_manager.save_slot(slot_num, build_save_state())
+            accept_mastery_snapshot(candidate)
 
         return "solved" if editor.solved else "editor_closed"
 
@@ -1577,6 +1547,7 @@ def game_screen(screen, slot_num=None, save_state=None):
     # early still has a value for the HUD to read.
     warmed_by_torch = False
     death_animation_complete = False
+    failed_coding_attempt = None
     near_interactable = None
     near_stage_exit = False
     room_passages = [
@@ -2400,7 +2371,9 @@ def game_screen(screen, slot_num=None, save_state=None):
             # F4 bypass means enemies deal no damage.
             if incoming_damage and not developer_mode.enabled:
                 if player_damage_numbers.apply_damage(
-                        player_combat, player_rect.center, incoming_damage):
+                        player_combat, player_rect.center, incoming_damage, source=enemy):
+                    if player_combat.hp == 0:
+                        failed_coding_attempt = None
                     combat_audio.play(
                         "player_death"
                         if player_combat.hp == 0
@@ -2474,7 +2447,7 @@ def game_screen(screen, slot_num=None, save_state=None):
         # --- Trap encounters ---
         # F4 bypass means traps, like enemies, deal no damage - same
         # rule already applied to combat above.
-        if not developer_mode.enabled:
+        if not developer_mode.enabled and player_combat.hp > 0:
             for trap in traps:
 
                 if stage_progress.has_opened_interactable(trap.trap_id):
@@ -2513,8 +2486,13 @@ def game_screen(screen, slot_num=None, save_state=None):
                 if (
                     not trap_solved
                     and player_damage_numbers.apply_damage(
-                        player_combat, player_rect.center, trap.damage)
+                        player_combat, player_rect.center, trap.damage, source=trap)
                 ):
+                    if player_combat.hp == 0:
+                        failed_coding_attempt = (
+                            (trap_challenge, '\n'.join(trap_editor.text_buffer.lines))
+                            if trap_challenge is not None else None
+                        )
                     combat_audio.play(
                         "player_death"
                         if player_combat.hp == 0
@@ -2662,10 +2640,21 @@ def game_screen(screen, slot_num=None, save_state=None):
                 # return to the menu or quit, just as boss recovery saves.
                 if slot_num is not None:
                     save_manager.save_slot(slot_num, build_save_state())
-                result = game_over_screen(screen, background=screen.copy())
+                coding_attempt = failed_coding_attempt
+                failed_coding_attempt = None
+                result = game_over_screen(
+                    screen, background=screen.copy(),
+                    failed_snippet=coding_attempt[1] if coding_attempt is not None else None,
+                )
                 if result == "main_menu":
                     pygame.mixer.music.stop()
                     return "main_menu"
+                if result == "review" and coding_attempt is not None:
+                    review_editor = CodeEditor(
+                        screen, coding_attempt[0], screen.copy(), mode="practice",
+                    )
+                    review_editor.text_buffer.lines = coding_attempt[1].split('\n')
+                    review_editor.run()
 
         encounter_music.update(
             dt,
@@ -2723,7 +2712,15 @@ def game_screen(screen, slot_num=None, save_state=None):
                     topic_id = near_interactable.get('topic_id')
                     action = near_interactable.get('actions', '')
                     was_opened = stage_progress.has_opened_interactable(near_interactable['interaction_id'])
-                    was_searched = near_interactable.get("searched", False)
+                    topic = get_topic(topic_id) if topic_id else None
+                    lesson_available = bool(
+                        topic_id and (not near_interactable['topic_handled']
+                                      or (topic or {}).get('challenge_ids'))
+                    )
+                    was_searched = bool(
+                        (near_interactable.get("searched", False) or was_opened)
+                        and not lesson_available
+                    )
 
                     if was_searched:
                         topic_id = None
@@ -2731,40 +2728,6 @@ def game_screen(screen, slot_num=None, save_state=None):
                         near_interactable["interaction_message"] = f"The {object_name} is empty."
                     else:
                         near_interactable["searched"] = True
-
-                    topic = get_topic(topic_id) if topic_id else None
-                    challenge_id = (topic or {}).get("challenge_id")
-                    coding_unlocked = (
-                        not challenge_id
-                        or challenge_id in save_challenges_passed
-                    )
-
-                    if was_searched:
-                        # A searched object is consumed: never grant another
-                        # topic or chest reward from the same map object.
-                        pass
-                    elif action in ('search_chest', 'search_crate') and not topic_id:
-                        near_interactable["interaction_message"] = "The chest is empty."
-                    elif action in ('search_chest', 'search_crate') and coding_unlocked:
-                        entity = near_interactable.get("entity")
-                        interaction_id = near_interactable.get("interaction_id")
-                        if (entity is not None
-                                and stage_progress.open_interactable(interaction_id)):
-                            (gameplay_state["bonus_time"], message,
-                             _changed) = entity.open(
-                                gameplay_state["bonus_time"]
-                            )
-                            near_interactable["interaction_message"] = message
-                        elif entity is not None and not near_interactable.get(
-                            "interaction_message"
-                        ):
-                            near_interactable["interaction_message"] = (
-                                "This chest has already been opened."
-                            )
-                    elif action in ('search_chest', 'search_crate'):
-                        near_interactable["interaction_message"] = (
-                            "Solve this cache's coding challenge to unlock it."
-                        )
 
                     if (
                         not was_searched
@@ -2881,9 +2844,36 @@ def game_screen(screen, slot_num=None, save_state=None):
                     # The action string ("search_vase") is the join between
                     # the Tiled object and items.py.
                     searched = action.startswith('search_')
-                    newly_opened = searched and stage_progress.open_interactable(near_interactable['interaction_id'])
+                    if searched:
+                        entity = near_interactable.get('entity')
+                        if entity is not None and not was_searched:
+                            challenges = (topic or {}).get('challenge_ids') or (
+                                ((topic or {}).get('challenge_id'),) if topic else ()
+                            )
+                            coding_unlocked = all(
+                                cid in save_challenges_passed for cid in challenges
+                            )
+                            if not topic_id and not near_interactable.get('independent_search'):
+                                # Untagged scenery stays empty; only an
+                                # explicitly authored independent cache pays.
+                                near_interactable['interaction_message'] = 'The chest is empty.'
+                                stage_progress.open_interactable(near_interactable['interaction_id'])
+                            elif not coding_unlocked:
+                                near_interactable['interaction_message'] = (
+                                    "Solve this cache's coding challenge to unlock it."
+                                )
+                            elif stage_progress.open_interactable(near_interactable['interaction_id']):
+                                (gameplay_state['bonus_time'], message,
+                                 _changed) = entity.open(gameplay_state['bonus_time'])
+                                near_interactable['interaction_message'] = message
+                        elif entity is None:
+                            stage_progress.open_interactable(near_interactable['interaction_id'])
                     if searched and near_interactable.get('interaction_message') == '':
-                        near_interactable['interaction_message'] = 'You searched the table. Lists keep supplies in order.'
+                        object_name = action.removeprefix('search_').replace('_', ' ')
+                        near_interactable['interaction_message'] = (
+                            f"You found the {topic['title']} lesson."
+                            if topic else f'The {object_name} is empty.'
+                        )
                     if stage_progress.discover_by_action(
                         near_interactable.get('actions', '')
                     ):

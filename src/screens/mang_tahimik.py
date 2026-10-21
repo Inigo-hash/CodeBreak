@@ -22,13 +22,12 @@ def _scaled_helper_portrait(size):
 
 
 def tutor_helper_rect(screen, editor_panel=None):
+    """Use the same bottom-right anchor on every screen."""
     w, h = screen.get_size()
     if editor_panel is not None:
-        side_width = w - editor_panel.right - 24
-        if side_width >= 180:
-            return pygame.Rect(editor_panel.right + 12, editor_panel.bottom - 110, min(230, side_width), 100)
-        return pygame.Rect(editor_panel.right - 214, editor_panel.bottom - 60, 198, 44)
-    rect = pygame.Rect(0, 0, min(320, round(w * .29)), 108)
+        rect = pygame.Rect(0, 0, min(230, round(w * .29)), 44)
+    else:
+        rect = pygame.Rect(0, 0, min(320, round(w * .29)), 108)
     rect.bottomright = (w - 14, h - 14)
     return rect
 
@@ -41,17 +40,13 @@ def tutor_minimap_rect(screen):
 
 
 def menu_tutor_rect(screen):
-    rect = tutor_helper_rect(screen)
-    rect.width = min(320, round(screen.get_width() * .24))
-    rect.left = 14
-    rect.bottom = screen.get_height() - 104
-    return rect
+    return tutor_helper_rect(screen)
 
 
 def tutor_chat_rect(screen):
     w, h = screen.get_size()
     rect = pygame.Rect(0, 0, min(1100, w - 28), min(1000, h - 28))
-    rect.bottomleft = (14, h - 14)
+    rect.bottomright = (w - 14, h - 14)
     return rect
 
 

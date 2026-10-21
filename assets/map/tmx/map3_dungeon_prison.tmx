@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="40" height="40" tilewidth="16" tileheight="16" infinite="0" nextlayerid="13" nextobjectid="200">
+<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="40" height="40" tilewidth="16" tileheight="16" infinite="0" nextlayerid="14" nextobjectid="204">
  <tileset firstgid="1" source="../tsx/mainlevbuild.tsx"/>
  <tileset firstgid="1703" source="../tsx/Inside_B.tsx"/>
  <tileset firstgid="2727" source="../tsx/Knowledge temple.tsx"/>
@@ -535,5 +535,42 @@
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 </data>
  </layer>
- <objectgroup id="13" name="Castle lessons"/>
+ <objectgroup id="13" name="Castle lessons">
+  <object id="200" name="For loops terminal" x="64" y="176" width="24" height="24">
+   <properties>
+    <property name="types" value="interactive"/>
+    <property name="actions" value="read_topic"/>
+    <property name="topic_id" value="castle_for_loops"/>
+    <property name="terminal_visual" type="bool" value="true"/>
+    <property name="persistent_id" value="castle_dungeon_for_loops_terminal"/>
+   </properties>
+  </object>
+  <object id="201" name="While loops terminal" x="272" y="176" width="24" height="24">
+   <properties>
+    <property name="types" value="interactive"/>
+    <property name="actions" value="read_topic"/>
+    <property name="topic_id" value="castle_while_loops"/>
+    <property name="terminal_visual" type="bool" value="true"/>
+    <property name="persistent_id" value="castle_dungeon_while_loops_terminal"/>
+   </properties>
+  </object>
+  <object id="202" name="Nested loops terminal" x="64" y="464" width="24" height="24">
+   <properties>
+    <property name="types" value="interactive"/>
+    <property name="actions" value="read_topic"/>
+    <property name="topic_id" value="castle_nested_loops"/>
+    <property name="terminal_visual" type="bool" value="true"/>
+    <property name="persistent_id" value="castle_dungeon_nested_loops_terminal"/>
+   </properties>
+  </object>
+  <object id="203" name="Break and continue terminal" x="208" y="464" width="24" height="24">
+   <properties>
+    <property name="types" value="interactive"/>
+    <property name="actions" value="read_topic"/>
+    <property name="topic_id" value="castle_loop_control"/>
+    <property name="terminal_visual" type="bool" value="true"/>
+    <property name="persistent_id" value="castle_dungeon_loop_control_terminal"/>
+   </properties>
+  </object>
+ </objectgroup>
 </map>

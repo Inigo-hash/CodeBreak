@@ -13,7 +13,7 @@ from src.ui.theme import UI_COLORS, body_font, title_font
 
 ACTIONS = (
     ('retry', 'RETRY', 'Return to the adventure', 'ENTER'),
-    ('review', 'REVIEW', 'Regroup for another attempt', 'R'),
+    ('review', 'REVIEW CODE', 'Reopen your failed coding attempt', 'R'),
     ('main_menu', 'MAIN MENU', 'Return to the main menu', 'M'),
 )
 
@@ -37,7 +37,7 @@ def _build_blood_vignette(width, height):
     return pygame.transform.smoothscale(small, (width, height))
 
 
-def _game_over_layout(size):
+def _game_over_layout(size, show_review=False):
     width, height = size
     panel = pygame.Rect(0, 0, min(740, width - 32), min(790, height - 32))
     panel.center = (width // 2, height // 2)
@@ -48,6 +48,8 @@ def _game_over_layout(size):
         return pygame.Rect(content.x, panel.y + round(panel.h * top),
                            content.w, round(panel.h * (bottom - top)))
 
+    actions = tuple(action for action in ACTIONS if show_review or action[0] != 'review')
+    button_top, step, button_height = (.619, .101, .086) if show_review else (.651, .127, .105)
     return {
         'panel': panel,
         'overline': slot(.045, .078),
@@ -55,8 +57,9 @@ def _game_over_layout(size):
         'title': slot(.254, .352),
         'subtitle': slot(.365, .412),
         'tip': slot(.447, .574),
-        'buttons': [slot(.619 + index * .101, .705 + index * .101)
-                    for index in range(3)],
+        'actions': actions,
+        'buttons': [slot(button_top + index * step, button_top + index * step + button_height)
+                    for index in range(len(actions))],
         'footer': slot(.939, .974),
     }
 
@@ -113,7 +116,7 @@ def _draw_emblem(screen, rect):
 def _build_buttons(layout):
     """Cache button artwork; only the chosen hover state changes per frame."""
     result = []
-    for index, ((action, label, description, key), rect) in enumerate(zip(ACTIONS, layout['buttons'])):
+    for index, ((action, label, description, key), rect) in enumerate(zip(layout['actions'], layout['buttons'])):
         states = []
         for selected in (False, True):
             panel = pygame.Surface(rect.size, pygame.SRCALPHA)
@@ -190,7 +193,8 @@ def game_over_screen(screen, background=None, failed_snippet=None):
     background = screen.copy() if background is None else background
     backdrop = _make_blurred_backdrop(background, width, height)
     vignette = _build_blood_vignette(width, height)
-    layout = _game_over_layout((width, height))
+    show_review = failed_snippet is not None
+    layout = _game_over_layout((width, height), show_review=show_review)
     card = _build_card(layout['panel'])
     buttons = _build_buttons(layout)
     focused = 0
@@ -222,7 +226,7 @@ def game_over_screen(screen, background=None, failed_snippet=None):
                     return buttons[focused]['key']
                 elif event.key == pygame.K_ESCAPE:
                     return 'retry'
-                elif event.key == pygame.K_r:
+                elif show_review and event.key == pygame.K_r:
                     return 'review'
                 elif event.key == pygame.K_m:
                     return 'main_menu'

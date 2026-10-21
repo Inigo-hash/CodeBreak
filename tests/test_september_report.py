@@ -52,12 +52,34 @@ class SeptemberReportTests(unittest.TestCase):
         self.assertTrue(all(i["interaction_message"] for i in signs))
         self.assertTrue(any(i["rect"].collidepoint(1558, 1878) for i in signs))
 
-    def test_every_chest_and_barrel_is_linked_to_a_real_lesson(self):
+    def test_authored_lessons_reference_real_required_topics(self):
+        from src.data.stages import get_stage
         from src.data.topics import TOPICS
-        caches = [i for i in load_interactables(self.map)
-                  if i["actions"] in ("search_chest", "search_barrel")]
-        self.assertGreater(len(caches), 2)
-        self.assertTrue(all(i["topic_id"] in TOPICS for i in caches))
+        from src.systems.stage_gate import required_topic_ids
+
+        lessons = [i for i in load_interactables(self.map) if i["topic_id"]]
+        self.assertEqual(len(lessons), 9)
+        self.assertTrue(all(i["topic_id"] in TOPICS for i in lessons))
+        self.assertEqual(
+            {TOPICS[i["topic_id"]]["challenge_id"] for i in lessons},
+            set(required_topic_ids(get_stage("island"))),
+        )
+
+    def test_untagged_searches_do_not_borrow_a_nearby_lesson(self):
+        # Empty props are deliberate map content. Proximity must not turn
+        # them into duplicate lessons or award a chest reward.
+        objects = [
+            SimpleNamespace(id=1, x=0, y=0, width=32, height=32,
+                            properties={"actions": "search_barrel",
+                                        "topic_id": "python_syntax_basics"}),
+            SimpleNamespace(id=2, x=32, y=0, width=32, height=32,
+                            properties={"actions": "search_barrel"}),
+            SimpleNamespace(id=3, x=64, y=0, width=32, height=32,
+                            properties={"actions": "search_chest"}),
+        ]
+        items = load_interactables(SimpleNamespace(visible_layers=[objects]))
+        self.assertEqual([i["topic_id"] for i in items],
+                         ["python_syntax_basics", None, None])
 
     def test_spawn_rejects_a_pocket_but_accepts_an_open_route(self):
         body = pygame.Rect(90, 90, 20, 20)

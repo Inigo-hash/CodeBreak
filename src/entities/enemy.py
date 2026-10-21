@@ -66,6 +66,7 @@ class Enemy:
         self.action_timer = 0.0
         self.attack_cooldown = 0.0
         self.attack_connected = False
+        self.attack_direction = None
         self.attack_animation = "attack"
         self.attack_count = 0
         self.attack_range = self.stats.attack_range * self.combat_scale
@@ -299,6 +300,7 @@ class Enemy:
                             self.rect, player_rect, self.facing,
                             reach=self.attack_range,
                             width=self.attack_width,
+                            direction=self.attack_direction,
                         )):
                     damage = round(
                         self.stats.attack_damage * self.attack_damage_multiplier
@@ -363,6 +365,10 @@ class Enemy:
                 self.stats.attack_cooldown * self.attack_cooldown_multiplier
             )
             self.attack_connected = False
+            # The artwork uses cardinal facings, while a player can stand
+            # anywhere around the enemy. Save the exact wind-up direction
+            # so diagonal targets can be hit and sideways dodges still work.
+            self.attack_direction = direction
             self.just_started_attack = True
         elif self.state == "chase":
             self.state = "chase"
@@ -590,6 +596,7 @@ class Enemy:
         self.attack_cooldown = 0
         self.attack_count = 0
         self.attack_animation = "attack"
+        self.attack_direction = None
         self.stuck_time = 0.0
         self.detour_time = 0.0
         self.return_path.clear()

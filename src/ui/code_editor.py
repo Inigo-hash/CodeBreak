@@ -158,7 +158,8 @@ class CodeEditor:
             screen,
             challenge,
             self.text_buffer,
-            background
+            background,
+            tutor_footer=not self.is_assessment_mode and not self.is_trap_mode,
         )
 
         # Reference to the Output Panel

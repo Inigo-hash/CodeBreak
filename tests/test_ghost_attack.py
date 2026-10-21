@@ -1,4 +1,5 @@
 """Attack lighting follows combat timing and stops outside attacks."""
+import math
 import unittest
 from types import SimpleNamespace
 
@@ -27,6 +28,11 @@ class GhostAttackTests(unittest.TestCase):
         for changes in ({'active': False}, {'state': 'idle'}, {'state': 'flinch'},
                         {'state': 'defeated'}, {'enemy_id': 'kapre_usikan'}):
             self.assertIsNone(ghost_attack_pose(self.enemy(**changes), 1, 0, 0))
+
+    def test_light_follows_committed_diagonal_aim(self):
+        direction = (1 / math.sqrt(2), -1 / math.sqrt(2))
+        pose = ghost_attack_pose(self.enemy(attack_direction=direction), 1, 0, 0)
+        self.assertAlmostEqual(pose[3], -math.pi / 4)
 
     def test_light_is_visible_in_every_attack_direction(self):
         for facing in ('north', 'south', 'east', 'west'):

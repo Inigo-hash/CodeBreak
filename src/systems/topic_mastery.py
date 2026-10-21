@@ -1,12 +1,16 @@
 """Build a complete reward snapshot before the existing atomic slot write."""
 from copy import deepcopy
 from src.data.topics import TOPICS, topic_challenge_ids
+from src.systems.stage_gate import migrate_key_count
 
 
 def reconcile_mastery(state, stage):
     result = deepcopy(state)
     bundles = stage.get('completion', {}).get('mastery_bundles', {})
     if not bundles:
+        result['keys'] = migrate_key_count(
+            result.get('keys', 0), stage, result.get('challenges_passed', []),
+        )
         return result
     passed = set(result.get('challenges_passed', []))
     completed = list(result.get('topics_completed', []))

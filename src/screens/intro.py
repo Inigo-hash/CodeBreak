@@ -25,7 +25,7 @@ PAGES = (
         "YOU CAN ALWAYS GET HELP",
         "The menu keeps the two important choices first: Start Game, then How To Play. Question marks explain unfamiliar settings.",
         ("Top right: HELP ? replays this guide; gear opens settings.", "Hover or click a settings ? to see what it does and how to use it.",
-         "Bottom left: click Mang Tahimik to ask about the game or Python.",
+         "Bottom right: click Mang Tahimik to ask about the game or Python.",
          "Press F10 to mute or unmute music; use the settings sliders to adjust volume."),
     ),
 )

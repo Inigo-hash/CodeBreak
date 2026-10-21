@@ -146,6 +146,10 @@ def boss_phase_table(boss_id):
 FACING_VECTORS = {
     "right": (1, 0), "left": (-1, 0),
     "forward": (0, -1), "backward": (0, 1),
+    # Enemy animation folders use compass directions. They must share the
+    # same attack geometry instead of falling back to an eastward swing.
+    "east": (1, 0), "west": (-1, 0),
+    "north": (0, -1), "south": (0, 1),
     "northeast": (0.7071, -0.7071), "northwest": (-0.7071, -0.7071),
     "southeast": (0.7071, 0.7071), "southwest": (-0.7071, 0.7071),
 }
@@ -165,6 +169,7 @@ class PlayerCombat:
         self.attack_cooldown = 0.0
         self.dodge_cooldown = 0.0
         self.invulnerable = 0.0
+        self._hit_cooldowns = {}
         self.heal_delay = 0.0
         self.action_time = 0.0
         self.state = "idle"
@@ -198,6 +203,11 @@ class PlayerCombat:
         self.attack_cooldown = max(0.0, self.attack_cooldown - dt)
         self.dodge_cooldown = max(0.0, self.dodge_cooldown - dt)
         self.invulnerable = max(0.0, self.invulnerable - dt)
+        self._hit_cooldowns = {
+            source: remaining - dt
+            for source, remaining in self._hit_cooldowns.items()
+            if remaining > dt
+        }
         healing_dt = max(0.0, dt - self.heal_delay)
         self.heal_delay = max(0.0, self.heal_delay - dt)
         self.energy = min(float(self.max_energy), self.energy + energy_regen * dt)
@@ -245,9 +255,10 @@ class PlayerCombat:
         self.invulnerable = max(self.invulnerable, PLAYER_DODGE_INVULNERABILITY)
         return True
 
-    def take_damage(self, amount):
+    def take_damage(self, amount, source=None):
         amount = max(0, int(amount or 0))
-        if amount == 0 or self.invulnerable or self.state == "defeated":
+        if (amount == 0 or self.invulnerable or self.state == "defeated"
+                or source in self._hit_cooldowns):
             return False
         self.hp = max(0, self.hp - amount)
         self._hp_regen_pool = 0.0
@@ -260,7 +271,13 @@ class PlayerCombat:
         else:
             self.state = "flinch"
             self.action_time = 0.22
-            self.invulnerable = PLAYER_INVULNERABILITY
+            # One enemy's hit must not shield the player from the rest of
+            # a group. Dodge immunity remains global; hit grace is local
+            # to each attacker. Unattributed damage keeps its old grace.
+            if source is None:
+                self.invulnerable = PLAYER_INVULNERABILITY
+            else:
+                self._hit_cooldowns[source] = PLAYER_INVULNERABILITY
         return True
 
     def heal(self, amount):
@@ -281,6 +298,7 @@ class PlayerCombat:
         self.state = "idle"
         self.action_time = 0
         self.invulnerable = 0
+        self._hit_cooldowns.clear()
         self.heal_delay = 0
         self.attack_cooldown = 0
         self.dodge_cooldown = 0
@@ -313,7 +331,7 @@ def attack_sweep_points(player_rect, facing, reach=PLAYER_ATTACK_REACH,
 
 def attack_connects(attacker_rect, target_rect, facing,
                     reach=PLAYER_ATTACK_REACH, width=PLAYER_ATTACK_WIDTH,
-                    scale=1.0):
+                    scale=1.0, *, direction=None):
     """Whether a target intersects the actual directional attack corridor.
 
     Expanding the target by the corridor width and clipping its centre-line
@@ -321,7 +339,13 @@ def attack_connects(attacker_rect, target_rect, facing,
     Unlike an axis-aligned union, it stays narrow for diagonal attacks.
     """
 
-    dx, dy = FACING_VECTORS.get(facing, (1, 0))
+    # Enemies have four animation facings but can aim between them. A
+    # committed wind-up supplies its original aim instead of redirecting
+    # the strike as the player moves. Other callers retain facing geometry.
+    dx, dy = direction if direction is not None else FACING_VECTORS.get(facing, (1, 0))
+    if direction is not None:
+        length = math.hypot(dx, dy)
+        dx, dy = (dx / length, dy / length) if length else FACING_VECTORS.get(facing, (1, 0))
     reach = max(0.0, float(reach) * scale)
     width = max(1, round(float(width) * scale))
     start = attacker_rect.center

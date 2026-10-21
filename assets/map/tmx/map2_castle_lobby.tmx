@@ -651,7 +651,6 @@
   <object id="2" x="464.545" y="127.091" width="30.7273" height="29.8182">
    <properties>
     <property name="actions" value="search_chest"/>
-    <property name="topic_id" value="iterative_structure_lesson"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>

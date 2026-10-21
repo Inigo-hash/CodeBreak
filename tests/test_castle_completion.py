@@ -85,6 +85,15 @@ class CastleMapTests(unittest.TestCase):
 
     def test_every_topic_terminal_and_throne_exit_are_reachable(self):
         found = set()
+        room_topics = {
+            'lobby': set(),
+            'dining': {'castle_lists'},
+            'library': {'castle_tuples', 'castle_dictionaries'},
+            'dungeon': {'castle_for_loops', 'castle_while_loops',
+                        'castle_nested_loops', 'castle_loop_control'},
+            'throne': {'castle_functions', 'castle_exceptions'},
+        }
+        terminal_ids = set()
         for rid, room in ROOM_STAGES['castle']['rooms'].items():
             tmx = load_pygame(room['map'])
             blockers = game.object_collision_rects(tmx) + [pygame.Rect(x*16,y*16,16,16)
@@ -100,9 +109,19 @@ class CastleMapTests(unittest.TestCase):
                     if point not in seen and bounds.contains(body) and body.collidelist(blockers)<0:
                         seen.add(point); queue.append(point)
             bodies = [pygame.Rect(*point,16,16) for point in seen]
-            for item in game.load_interactables(tmx):
+            interactables = game.load_interactables(tmx)
+            self.assertEqual({item['topic_id'] for item in interactables if item.get('topic_id')},
+                             room_topics[rid], rid)
+            for item in interactables:
                 if item.get('topic_id'):
+                    self.assertNotIn(item['topic_id'], found, (rid, item['topic_id']))
                     found.add(item['topic_id'])
+                    self.assertTrue(item['terminal_visual'], (rid, item['topic_id']))
+                    self.assertNotIn(item['interaction_id'], terminal_ids)
+                    terminal_ids.add(item['interaction_id'])
+                    self.assertTrue(item['interaction_id'].startswith('castle_' + rid + '_'))
+                    self.assertEqual(item['rect'].collidelist(blockers), -1,
+                                     (rid, item['topic_id'], 'terminal is hidden in solid artwork'))
                     self.assertTrue(any(game.nearest_interactable(body,[item],reach=32,blockers=blockers)
                                         for body in bodies), (rid,item['topic_id']))
             if rid == 'throne':

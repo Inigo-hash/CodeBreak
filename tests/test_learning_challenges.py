@@ -9,6 +9,43 @@ from src.learning.sandbox import run_user_code
 
 
 VALID_SOLUTIONS = {
+    'iterative_structure_lesson_for_001': (
+        'def sum_usable_supplies(amounts):\n'
+        '    total = 0\n'
+        '    for amount in amounts:\n'
+        '        if amount > 0:\n            total += amount\n'
+        '    return total'
+    ),
+    'iterative_structure_lesson_nested_001': (
+        'def count_grid_relics(grid):\n'
+        '    count = 0\n'
+        '    for row in grid:\n'
+        '        for value in row:\n'
+        '            if value != 0:\n                count += 1\n'
+        '    return count'
+    ),
+    'iterative_structure_lesson_control_001': (
+        'def accepted_order_total(orders):\n'
+        '    total = 0\n    index = 0\n'
+        '    while index < len(orders):\n'
+        '        value = orders[index]\n        index += 1\n'
+        '        if value is None:\n            break\n'
+        '        if value <= 0:\n            continue\n'
+        '        total += value\n'
+        '    return total'
+    ),
+    'lists_lesson_report_001': (
+        'def list_report(items):\n'
+        '    if not items:\n        return (None, None, 0)\n'
+        '    return (items[0], items[-1], len(items))'
+    ),
+    'lists_lesson_update_001': (
+        'def update_archive(items, added, removed):\n'
+        '    result = list(items)\n    result.append(added)\n'
+        '    if removed in result:\n        result.remove(removed)\n'
+        '    popped = result.pop() if result else None\n'
+        '    return (result, popped)'
+    ),
     'castle_lists_inspect_001': (
         'def describe_items(items):\n'
         '    return (items[0], items[-1], len(items)) if items else (None, None, 0)'

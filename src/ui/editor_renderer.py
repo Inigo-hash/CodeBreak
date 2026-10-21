@@ -56,12 +56,13 @@ class EditorRenderer:
     of the coding environment.
     """
 
-    def __init__(self, screen, challenge, text_buffer, background=None):
+    def __init__(self, screen, challenge, text_buffer, background=None, tutor_footer=False):
 
         self.screen = screen
         self.challenge = challenge
         self.text_buffer = text_buffer
         self.background = background
+        self.tutor_footer = tutor_footer
         self.last_input_time = 0
         self.scroll_offset = 0
 
@@ -153,8 +154,12 @@ class EditorRenderer:
         width = min(width, max(200, screen_width - PANEL_SCREEN_MARGIN))
         height = min(height, max(200, screen_height - PANEL_SCREEN_MARGIN))
 
+        # Keep the screen-anchored tutor clear of the action row, including
+        # on short windows where there is no side gutter for the helper.
+        footer = 72 if self.tutor_footer else 0
+        height = min(height, max(200, screen_height - footer - 14))
         panel_rect = pygame.Rect(0, 0, width, height)
-        panel_rect.center = self.screen.get_rect().center
+        panel_rect.center = (screen_width // 2, (screen_height - footer) // 2)
 
         return panel_rect
 

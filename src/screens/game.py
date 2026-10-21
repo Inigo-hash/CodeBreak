@@ -2926,9 +2926,13 @@ def game_screen(screen, slot_num=None, save_state=None):
             ('prop', p['sort_y'], p)
             for p in visible_props(camera_x, camera_y)
         ]
+        # Topic-bound chests already have authored artwork in the Tiled map.
+        # Keep their gameplay entity for rewards/interactions, but do not draw a
+        # second chest sprite on top of the chest placed by the level designer.
         draw_list.extend(
             ('chest', item['entity'].rect.bottom, item['entity'])
-            for item in interactables if item.get('entity') is not None
+            for item in interactables
+            if item.get('entity') is not None and not item.get('topic_id')
         )
         draw_list.append(('player', player_rect.bottom, None))
         for enemy in enemies:

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="46" height="48" tilewidth="16" tileheight="16" infinite="0" nextlayerid="18" nextobjectid="2">
+<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="46" height="48" tilewidth="16" tileheight="16" infinite="0" nextlayerid="18" nextobjectid="8">
  <tileset firstgid="1" source="../tsx/mainlevbuild.tsx"/>
  <tileset firstgid="1703" source="../tsx/TX Props copy.tsx"/>
  <tileset firstgid="2727" source="../tsx/Outside_B.tsx"/>
@@ -647,7 +647,25 @@
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 </data>
  </layer>
- <objectgroup id="15" name="chests" locked="1"/>
+ <objectgroup id="15" name="chests">
+  <object id="2" x="464.545" y="127.091" width="30.7273" height="29.8182">
+   <properties>
+    <property name="actions" value="search_chest"/>
+    <property name="topic_id" value="iterative_structure_lesson"/>
+    <property name="types" value="interactive"/>
+   </properties>
+  </object>
+  <object id="4" x="659.788" y="416.818" width="25" height="29.9091">
+   <ellipse/>
+  </object>
+  <object id="5" x="531.75" y="544.25" width="25.125" height="30.25">
+   <ellipse/>
+  </object>
+  <object id="6" x="67.0909" y="193.091" width="25.4545" height="28.9091">
+   <ellipse/>
+  </object>
+  <object id="7" x="256.5" y="335" width="31" height="29.625"/>
+ </objectgroup>
  <layer id="17" name="more designs" width="46" height="48" locked="1">
   <data encoding="csv">
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,

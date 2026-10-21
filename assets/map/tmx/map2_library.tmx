@@ -1,27 +1,27 @@
-<?xml version='1.0' encoding='UTF-8'?>
-<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="40" height="40" tilewidth="16" tileheight="16" infinite="0" nextlayerid="13" nextobjectid="200">
- <tileset firstgid="1" source="../tsx/mainlevbuild.tsx" />
- <tileset firstgid="1703" source="../tsx/Knowledge temple.tsx" />
- <tileset firstgid="3103" source="../tsx/Birch Forest-Tileset.tsx" />
- <tileset firstgid="3939" source="../tsx/crypt_ground_01.tsx" />
- <tileset firstgid="4069" source="../tsx/crypt_staircase_01.tsx" />
- <tileset firstgid="4290" source="../tsx/crypt_walls_01.tsx" />
- <tileset firstgid="4537" source="../tsx/decorative.tsx" />
- <tileset firstgid="5561" source="../tsx/Dungeon_A1.tsx" />
- <tileset firstgid="6329" source="../tsx/Dungeon_A5.tsx" />
- <tileset firstgid="6841" source="../tsx/Dungeon_B.tsx" />
- <tileset firstgid="7865" source="../tsx/Enviroment-Forest.tsx" />
- <tileset firstgid="8009" source="../tsx/houses.tsx" />
- <tileset firstgid="12105" source="../tsx/Inside_B.tsx" />
- <tileset firstgid="13129" source="../tsx/Inside_C.tsx" />
- <tileset firstgid="14153" source="../tsx/Outside_B.tsx" />
- <tileset firstgid="15177" source="../tsx/Props-Forest.tsx" />
- <tileset firstgid="15233" source="../tsx/TX Plant.tsx" />
- <tileset firstgid="16257" source="../tsx/TX Props.tsx" />
- <tileset firstgid="17281" source="../tsx/TX Shadow.tsx" />
- <tileset firstgid="18305" source="../tsx/World_B.tsx" />
- <tileset firstgid="19329" source="../tsx/TX Props copy.tsx" />
- <tileset firstgid="20353" source="../tsx/Dungeon_B copy.tsx" />
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="40" height="40" tilewidth="16" tileheight="16" infinite="0" nextlayerid="13" nextobjectid="206">
+ <tileset firstgid="1" source="../tsx/mainlevbuild.tsx"/>
+ <tileset firstgid="1703" source="../tsx/Knowledge temple.tsx"/>
+ <tileset firstgid="3103" source="../tsx/Birch Forest-Tileset.tsx"/>
+ <tileset firstgid="3939" source="../tsx/crypt_ground_01.tsx"/>
+ <tileset firstgid="4069" source="../tsx/crypt_staircase_01.tsx"/>
+ <tileset firstgid="4290" source="../tsx/crypt_walls_01.tsx"/>
+ <tileset firstgid="4537" source="../tsx/decorative.tsx"/>
+ <tileset firstgid="5561" source="../tsx/Dungeon_A1.tsx"/>
+ <tileset firstgid="6329" source="../tsx/Dungeon_A5.tsx"/>
+ <tileset firstgid="6841" source="../tsx/Dungeon_B.tsx"/>
+ <tileset firstgid="7865" source="../tsx/Enviroment-Forest.tsx"/>
+ <tileset firstgid="8009" source="../tsx/houses.tsx"/>
+ <tileset firstgid="12105" source="../tsx/Inside_B.tsx"/>
+ <tileset firstgid="13129" source="../tsx/Inside_C.tsx"/>
+ <tileset firstgid="14153" source="../tsx/Outside_B.tsx"/>
+ <tileset firstgid="15177" source="../tsx/Props-Forest.tsx"/>
+ <tileset firstgid="15233" source="../tsx/TX Plant.tsx"/>
+ <tileset firstgid="16257" source="../tsx/TX Props.tsx"/>
+ <tileset firstgid="17281" source="../tsx/TX Shadow.tsx"/>
+ <tileset firstgid="18305" source="../tsx/World_B.tsx"/>
+ <tileset firstgid="19329" source="../tsx/TX Props copy.tsx"/>
+ <tileset firstgid="20353" source="../tsx/Dungeon_B copy.tsx"/>
  <layer id="5" name="tiles" width="40" height="40" locked="1">
   <data encoding="csv">
 823,824,825,826,823,824,825,826,823,824,825,826,823,824,825,826,823,824,825,826,823,824,825,826,823,824,825,826,823,824,825,826,823,824,825,826,823,824,825,826,
@@ -551,22 +551,45 @@
 </data>
  </layer>
  <objectgroup id="13" name="Castle lessons">
-  <object id="100" name="castle_tuples_terminal" type="interactive" x="320" y="544" width="16" height="16">
+  <object id="200" x="36" y="272.75" width="24.625" height="29.75">
    <properties>
-    <property name="topic_id" value="castle_tuples" />
-    <property name="actions" value="read_topic" />
-    <property name="persistent_id" value="castle_tuples_terminal" />
-    <property name="message" value="Hold E to study tuples" />
-    <property name="terminal_visual" value="true" />
+    <property name="actions" value="search_vase"/>
+    <property name="topic_id" value="lists_lesson"/>
+    <property name="types" value="interactive"/>
+   </properties>
+   <ellipse/>
+  </object>
+  <object id="201" x="260" y="176.75" width="24.375" height="29.25">
+   <properties>
+    <property name="actions" value="search_vase"/>
+    <property name="types" value="interactive"/>
+   </properties>
+   <ellipse/>
+  </object>
+  <object id="202" x="580.182" y="272.727" width="24.7273" height="29.2727">
+   <properties>
+    <property name="actions" value="search_vase"/>
+    <property name="types" value="interactive"/>
+   </properties>
+   <ellipse/>
+  </object>
+  <object id="203" x="579.818" y="368.909" width="24.9091" height="29.2727">
+   <properties>
+    <property name="actions" value="search_vase"/>
+    <property name="types" value="interactive"/>
+   </properties>
+   <ellipse/>
+  </object>
+  <object id="204" x="240" y="382.5" width="31.25" height="30.5">
+   <properties>
+    <property name="actions" value="search_chest"/>
+    <property name="types" value="interactive"/>
    </properties>
   </object>
-  <object id="101" name="castle_dictionaries_terminal" type="interactive" x="256" y="528" width="16" height="16">
+  <object id="205" x="368.125" y="382.625" width="31.5" height="30.25">
    <properties>
-    <property name="topic_id" value="castle_dictionaries" />
-    <property name="actions" value="read_topic" />
-    <property name="persistent_id" value="castle_dictionaries_terminal" />
-    <property name="message" value="Hold E to study dictionaries" />
-    <property name="terminal_visual" value="true" />
+    <property name="actions" value="search_chest"/>
+    <property name="types" value="interactive"/>
    </properties>
   </object>
  </objectgroup>

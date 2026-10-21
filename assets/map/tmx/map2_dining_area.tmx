@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="40" height="40" tilewidth="16" tileheight="16" infinite="0" nextlayerid="9" nextobjectid="4">
- <tileset firstgid="1" source="../tsx/mainlevbuild.tsx" />
- <tileset firstgid="1703" source="../tsx/Inside_B.tsx" />
+ <tileset firstgid="1" source="../tsx/mainlevbuild.tsx"/>
+ <tileset firstgid="1703" source="../tsx/Inside_B.tsx"/>
  <layer id="3" name="floor" width="40" height="40" locked="1">
   <data encoding="csv">
 1485,1486,1487,1488,1485,1486,1487,1488,1485,1486,1487,1488,1485,1486,1487,1488,1485,1486,1487,1488,1485,1486,1487,1488,1485,1486,1487,1488,1485,1486,1487,1488,1485,1486,1487,1488,1485,1486,1487,1488,
@@ -310,34 +310,5 @@
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 </data>
  </layer>
- <objectgroup id="8" name="Dining interactions">
-  <object id="1" name="castle_dining_lists_terminal" type="interactive" x="96" y="480" width="32" height="32">
-   <properties>
-    <property name="topic_id" value="castle_lists" />
-    <property name="actions" value="read_topic" />
-    <property name="message" value="Lists terminal: hold E to study and choose a challenge." />
-    <property name="persistent_id" value="castle_dining_lists_terminal" />
-    <property name="collidable" value="true" type="bool" />
-   </properties>
-  </object>
-  <object id="2" name="castle_dining_table_01" type="interactive" x="128" y="400" width="32" height="32">
-   <properties>
-    <property name="actions" value="search_table" />
-    <property name="independent_search" value="true" type="bool" />
-    <property name="message" value="A tidy table. Supplies can be stored in a list. The Lists terminal is southwest." />
-    <property name="persistent_id" value="castle_dining_table_01" />
-    <property name="collidable" value="true" type="bool" />
-   </properties>
-  </object>
-  <object id="3" name="castle_dining_crate_01" type="interactive" x="496" y="336" width="32" height="32">
-   <properties>
-    <property name="actions" value="search_crate" />
-    <property name="independent_search" value="true" type="bool" />
-    <property name="reward_seconds" value="15" type="int" />
-    <property name="message" value="A supply crate guarded by Duwende. Search once for 15 bonus seconds." />
-    <property name="persistent_id" value="castle_dining_crate_01" />
-    <property name="collidable" value="true" type="bool" />
-   </properties>
-  </object>
- </objectgroup>
+ <objectgroup id="8" name="Dining interactions"/>
 </map>

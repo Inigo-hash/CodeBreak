@@ -1,12 +1,12 @@
-<?xml version='1.0' encoding='UTF-8'?>
+<?xml version="1.0" encoding="UTF-8"?>
 <map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="40" height="40" tilewidth="16" tileheight="16" infinite="0" nextlayerid="13" nextobjectid="200">
- <tileset firstgid="1" source="../tsx/mainlevbuild.tsx" />
- <tileset firstgid="1703" source="../tsx/Inside_B.tsx" />
- <tileset firstgid="2727" source="../tsx/Knowledge temple.tsx" />
- <tileset firstgid="4127" source="../tsx/Dungeon_B copy.tsx" />
- <tileset firstgid="5151" source="../tsx/decorative.tsx" />
- <tileset firstgid="6175" source="../tsx/Dungeon_B.tsx" />
- <tileset firstgid="7199" source="../tsx/TX Props copy.tsx" />
+ <tileset firstgid="1" source="../tsx/mainlevbuild.tsx"/>
+ <tileset firstgid="1703" source="../tsx/Inside_B.tsx"/>
+ <tileset firstgid="2727" source="../tsx/Knowledge temple.tsx"/>
+ <tileset firstgid="4127" source="../tsx/Dungeon_B copy.tsx"/>
+ <tileset firstgid="5151" source="../tsx/decorative.tsx"/>
+ <tileset firstgid="6175" source="../tsx/Dungeon_B.tsx"/>
+ <tileset firstgid="7199" source="../tsx/TX Props copy.tsx"/>
  <layer id="6" name="tiles" width="40" height="40" locked="1">
   <data encoding="csv">
 823,824,825,826,823,824,825,826,823,824,825,826,823,824,825,826,823,824,825,826,823,824,825,826,823,824,825,826,823,824,825,826,823,824,825,826,823,824,825,826,
@@ -535,42 +535,5 @@
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 </data>
  </layer>
- <objectgroup id="13" name="Castle lessons">
-  <object id="100" name="castle_for_loops_terminal" type="interactive" x="144" y="512" width="16" height="16">
-   <properties>
-    <property name="topic_id" value="castle_for_loops" />
-    <property name="actions" value="read_topic" />
-    <property name="persistent_id" value="castle_for_loops_terminal" />
-    <property name="message" value="Hold E to study for loops" />
-    <property name="terminal_visual" value="true" />
-   </properties>
-  </object>
-  <object id="101" name="castle_while_loops_terminal" type="interactive" x="144" y="608" width="16" height="16">
-   <properties>
-    <property name="topic_id" value="castle_while_loops" />
-    <property name="actions" value="read_topic" />
-    <property name="persistent_id" value="castle_while_loops_terminal" />
-    <property name="message" value="Hold E to study while loops" />
-    <property name="terminal_visual" value="true" />
-   </properties>
-  </object>
-  <object id="102" name="castle_nested_loops_terminal" type="interactive" x="144" y="432" width="16" height="16">
-   <properties>
-    <property name="topic_id" value="castle_nested_loops" />
-    <property name="actions" value="read_topic" />
-    <property name="persistent_id" value="castle_nested_loops_terminal" />
-    <property name="message" value="Hold E to study nested loops" />
-    <property name="terminal_visual" value="true" />
-   </properties>
-  </object>
-  <object id="103" name="castle_loop_control_terminal" type="interactive" x="208" y="496" width="16" height="16">
-   <properties>
-    <property name="topic_id" value="castle_loop_control" />
-    <property name="actions" value="read_topic" />
-    <property name="persistent_id" value="castle_loop_control_terminal" />
-    <property name="message" value="Hold E to study loop control" />
-    <property name="terminal_visual" value="true" />
-   </properties>
-  </object>
- </objectgroup>
+ <objectgroup id="13" name="Castle lessons"/>
 </map>

@@ -1,29 +1,29 @@
-<?xml version='1.0' encoding='UTF-8'?>
+<?xml version="1.0" encoding="UTF-8"?>
 <map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="40" height="40" tilewidth="16" tileheight="16" infinite="0" nextlayerid="16" nextobjectid="200">
- <tileset firstgid="1" source="../tsx/mainlevbuild.tsx" />
- <tileset firstgid="1703" source="../tsx/decorative.tsx" />
- <tileset firstgid="2727" source="../tsx/Knowledge temple.tsx" />
- <tileset firstgid="4127" source="../tsx/Inside_B.tsx" />
- <tileset firstgid="5151" source="../tsx/Birch Forest-Tileset.tsx" />
- <tileset firstgid="5987" source="../tsx/crypt_ground_01.tsx" />
- <tileset firstgid="6117" source="../tsx/crypt_staircase_01.tsx" />
- <tileset firstgid="6338" source="../tsx/crypt_walls_01.tsx" />
- <tileset firstgid="6585" source="../tsx/Dungeon_A1.tsx" />
- <tileset firstgid="7353" source="../tsx/Dungeon_A5.tsx" />
- <tileset firstgid="7865" source="../tsx/Dungeon_B copy.tsx" />
- <tileset firstgid="8889" source="../tsx/Dungeon_B.tsx" />
- <tileset firstgid="9913" source="../tsx/Enviroment-Forest.tsx" />
- <tileset firstgid="10057" source="../tsx/houses.tsx" />
- <tileset firstgid="14153" source="../tsx/Inside_B Copy.tsx" />
- <tileset firstgid="15177" source="../tsx/Inside_C.tsx" />
- <tileset firstgid="16201" source="../tsx/mainlevbuild copy.tsx" />
- <tileset firstgid="18731" source="../tsx/Outside_B.tsx" />
- <tileset firstgid="19755" source="../tsx/Props-Forest.tsx" />
- <tileset firstgid="19811" source="../tsx/TX Plant.tsx" />
- <tileset firstgid="20835" source="../tsx/TX Props copy.tsx" />
- <tileset firstgid="21859" source="../tsx/TX Props.tsx" />
- <tileset firstgid="22883" source="../tsx/TX Shadow.tsx" />
- <tileset firstgid="23907" source="../tsx/World_B.tsx" />
+ <tileset firstgid="1" source="../tsx/mainlevbuild.tsx"/>
+ <tileset firstgid="1703" source="../tsx/decorative.tsx"/>
+ <tileset firstgid="2727" source="../tsx/Knowledge temple.tsx"/>
+ <tileset firstgid="4127" source="../tsx/Inside_B.tsx"/>
+ <tileset firstgid="5151" source="../tsx/Birch Forest-Tileset.tsx"/>
+ <tileset firstgid="5987" source="../tsx/crypt_ground_01.tsx"/>
+ <tileset firstgid="6117" source="../tsx/crypt_staircase_01.tsx"/>
+ <tileset firstgid="6338" source="../tsx/crypt_walls_01.tsx"/>
+ <tileset firstgid="6585" source="../tsx/Dungeon_A1.tsx"/>
+ <tileset firstgid="7353" source="../tsx/Dungeon_A5.tsx"/>
+ <tileset firstgid="7865" source="../tsx/Dungeon_B copy.tsx"/>
+ <tileset firstgid="8889" source="../tsx/Dungeon_B.tsx"/>
+ <tileset firstgid="9913" source="../tsx/Enviroment-Forest.tsx"/>
+ <tileset firstgid="10057" source="../tsx/houses.tsx"/>
+ <tileset firstgid="14153" source="../tsx/Inside_B Copy.tsx"/>
+ <tileset firstgid="15177" source="../tsx/Inside_C.tsx"/>
+ <tileset firstgid="16201" source="../tsx/mainlevbuild copy.tsx"/>
+ <tileset firstgid="18731" source="../tsx/Outside_B.tsx"/>
+ <tileset firstgid="19755" source="../tsx/Props-Forest.tsx"/>
+ <tileset firstgid="19811" source="../tsx/TX Plant.tsx"/>
+ <tileset firstgid="20835" source="../tsx/TX Props copy.tsx"/>
+ <tileset firstgid="21859" source="../tsx/TX Props.tsx"/>
+ <tileset firstgid="22883" source="../tsx/TX Shadow.tsx"/>
+ <tileset firstgid="23907" source="../tsx/World_B.tsx"/>
  <layer id="2" name="tiles" width="40" height="40" locked="1">
   <data encoding="csv">
 1481,1482,1483,1484,1481,1482,1483,1484,1481,1482,1483,1484,1481,1482,1483,1484,1481,1482,1483,1484,1481,1482,1483,1484,1481,1482,1483,1484,1481,1482,1483,1484,1481,1482,1483,1484,1481,1482,1483,1484,
@@ -596,24 +596,5 @@
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 </data>
  </layer>
- <objectgroup id="16" name="Castle lessons">
-  <object id="100" name="castle_functions_terminal" type="interactive" x="320" y="480" width="16" height="16">
-   <properties>
-    <property name="topic_id" value="castle_functions" />
-    <property name="actions" value="read_topic" />
-    <property name="persistent_id" value="castle_functions_terminal" />
-    <property name="message" value="Hold E to study functions" />
-    <property name="terminal_visual" value="true" />
-   </properties>
-  </object>
-  <object id="101" name="castle_exceptions_terminal" type="interactive" x="320" y="592" width="16" height="16">
-   <properties>
-    <property name="topic_id" value="castle_exceptions" />
-    <property name="actions" value="read_topic" />
-    <property name="persistent_id" value="castle_exceptions_terminal" />
-    <property name="message" value="Hold E to study exceptions" />
-    <property name="terminal_visual" value="true" />
-   </properties>
-  </object>
- </objectgroup>
+ <objectgroup id="16" name="Castle lessons"/>
 </map>

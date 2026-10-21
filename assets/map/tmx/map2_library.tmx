@@ -584,13 +584,13 @@
    <properties>
     <property name="actions" value="search_chest"/>
     <property name="types" value="interactive"/>
-   </properties>
+       <property name="topic_id" value="iterative_structure_lesson"/>\n   </properties>
   </object>
   <object id="205" x="368.125" y="382.625" width="31.5" height="30.25">
    <properties>
     <property name="actions" value="search_chest"/>
     <property name="types" value="interactive"/>
-   </properties>
+       <property name="topic_id" value="iterative_structure_lesson"/>\n   </properties>
   </object>
  </objectgroup>
 </map>

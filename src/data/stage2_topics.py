@@ -19,7 +19,7 @@ ITERATIVE_STRUCTURE_TOPIC = {
     "id": "iterative_structure_lesson",
     "title": "Iterative Structures (Loops)",
     "difficulty": "Intermediate",
-    "requirements": [],
+    "requirements": ["control_flow_lesson"],
     "challenge_id": ITERATIVE_CHALLENGE_IDS[0],
     "challenge_ids": ITERATIVE_CHALLENGE_IDS,
     "lesson": """ITERATIVE STRUCTURES (LOOPS) — INTERMEDIATE
@@ -54,7 +54,7 @@ LISTS_STAGE2_TOPIC = {
     "id": "lists_lesson",
     "title": "Lists",
     "difficulty": "Intermediate",
-    "requirements": [],
+    "requirements": ["control_flow_lesson"],
     "challenge_id": LISTS_CHALLENGE_IDS[0],
     "challenge_ids": LISTS_CHALLENGE_IDS,
     "lesson": """LISTS — INTERMEDIATE

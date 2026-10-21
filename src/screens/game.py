@@ -550,8 +550,6 @@ def game_screen(screen, slot_num=None, save_state=None):
     pause_button_font = title_font(24)
     INSPECT_TIME = 2.0  # seconds to hold E
 
-    # --- Gameplay HUD (top-left live counters) ---
-    profile_name = "The Pathfinder" if gameplay_state['character_id'] == 'woman' else "Bobiles the explorer the great"
     # --- Inventory system ---
     # One PlayerInventory object holds every item the player owns. The Toolbar
     # (bottom-centre hotbar) and the B-key bag screen both read from it, so
@@ -2106,7 +2104,6 @@ def game_screen(screen, slot_num=None, save_state=None):
                         profile_screen(
                             screen,
                             background=background_snapshot,
-                            name=profile_name,
                             hp=player_combat.hp, max_hp=player_combat.max_hp,
                             pp=int(player_combat.energy),
                             max_pp=player_combat.max_energy,

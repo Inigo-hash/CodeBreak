@@ -114,7 +114,7 @@ def run(output, size, font_size, selected=None):
         obj.draw()
     add('settings', settings)
     add('settings-help', lambda: settings('font_size'))
-    add('profile', lambda: profile_screen(screen,name='Bobiles the explorer the great'), True)
+    add('profile', lambda: profile_screen(screen), True)
     add('character-select', lambda: open_character_select(screen), True)
     add('atlas', lambda: draw_stage_select(screen,state,selected=1))
     for tab in ('manual','enemies','items','objectives'):

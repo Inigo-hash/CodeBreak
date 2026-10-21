@@ -88,8 +88,9 @@ class CharacterSelectionTests(unittest.TestCase):
             height = max(f.get_bounding_rect(min_alpha=8).height for key, frames in character.scaled.items()
                          if key.startswith('idle_') for f in frames)
             player_height = height * player_scale / 2
-            self.assertGreaterEqual(player_height, 180)
-            for enemy, proportion in zip(enemies, (.75, 1.15, 1.35)):
+            self.assertGreaterEqual(player_height, 110)
+            self.assertLessEqual(player_height, 120)
+            for enemy, proportion in zip(enemies, (.55, 1.15, 1.35)):
                 tallest = max(f.get_bounding_rect(min_alpha=8).height
                               for frames in enemy.frames['walking'].values() for f in frames)
                 self.assertAlmostEqual(tallest*scales[enemy.enemy_id], player_height*proportion)

@@ -17,3 +17,7 @@ CHARACTERS = {
 
 def character_id(value):
     return value if isinstance(value, str) and value in CHARACTERS else 'man'
+
+
+def character_title(value):
+    return CHARACTERS[character_id(value)]['title']

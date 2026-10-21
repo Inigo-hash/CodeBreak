@@ -28,19 +28,22 @@ def tutor_helper_rect(screen, editor_panel=None):
         if side_width >= 180:
             return pygame.Rect(editor_panel.right + 12, editor_panel.bottom - 110, min(230, side_width), 100)
         return pygame.Rect(editor_panel.right - 214, editor_panel.bottom - 60, 198, 44)
-    return pygame.Rect(14, h - 122, min(320, round(w * .29)), 108)
+    rect = pygame.Rect(0, 0, min(320, round(w * .29)), 108)
+    rect.bottomright = (w - 14, h - 14)
+    return rect
 
 
 def tutor_minimap_rect(screen):
-    """Stack the map above the tutor instead of covering either control."""
+    """Keep the map in the left column, clear of the toolbar."""
     w, h = screen.get_size()
     size = max(200, min(300, int(h * .30)))
-    return pygame.Rect(14, tutor_helper_rect(screen).top - 12 - size, size, size)
+    return pygame.Rect(14, h - 14 - size, size, size)
 
 
 def menu_tutor_rect(screen):
     rect = tutor_helper_rect(screen)
     rect.width = min(320, round(screen.get_width() * .24))
+    rect.left = 14
     rect.bottom = screen.get_height() - 104
     return rect
 

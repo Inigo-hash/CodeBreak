@@ -37,13 +37,13 @@ def paginate_dialogue(lines, font, width, rows=3):
 
 def tutorial_sprite_scales(character, enemies, screen_height):
     """Fit readable silhouettes to the tutorial canvas using one scale per actor."""
-    target = max(100, min(190, round(screen_height * .17)))
+    target = max(72, min(120, round(screen_height * .11)))
     player_height = max(frame.get_bounding_rect(min_alpha=8).height
                         for key, frames in character.scaled.items()
                         if key.startswith('idle_') for frame in frames)
     # Player sprites are authored at 2x; Enemy.draw_frames scales directly.
     player_scale = target * 2 / max(1, player_height)
-    proportions = {'tiyanak_sinta': .75, 'manananggal': 1.15, 'tikbalang': 1.35}
+    proportions = {'tiyanak_sinta': .55, 'manananggal': 1.15, 'tikbalang': 1.35}
     enemy_scales = {}
     for enemy in enemies:
         height = max(frame.get_bounding_rect(min_alpha=8).height

@@ -21,6 +21,7 @@ full-looking empty bar.
 """
 
 import pygame
+from src.data.characters import character_title
 from src.ui.text_layout import fit_text
 import sys
 from src.systems.audio import handle_music_shortcut
@@ -37,9 +38,11 @@ from src.ui.gameplay_hud import (
 from src.ui.theme import UI_COLORS, body_font, draw_button, title_font
 
 
-def profile_screen(screen, background=None, name="Bobiles the explorer the great",
+def profile_screen(screen, background=None, name=None,
                     hp=100, max_hp=100, pp=100, max_pp=100, hearts=5, character_id='man'):
     SCREEN_W, SCREEN_H = screen.get_size()
+    if name is None:
+        name = character_title(character_id)
     clock = pygame.time.Clock()
 
     if background is None:

@@ -2,6 +2,7 @@
 
 import math
 import pygame
+from src.data.characters import character_title
 from src.ui.text_layout import fit_text
 
 from src.systems.stage_gate import required_key_count
@@ -445,7 +446,8 @@ class GameplayHUD:
         # One gutter sized for the longer of the two labels, so the HP and
         # ENERGY fills start on the same x instead of stepping.
         label_width = self._stat_label_width()
-        self.screen.blit(fit_text(self.bold, "BOBILES THE EXPLORER", NAME_GOLD, (bar_width, 28)),
+        name = character_title(self.state.get('character_id', 'man'))
+        self.screen.blit(fit_text(self.bold, name, NAME_GOLD, (bar_width, 28)),
                          (text_left, self.profile_rect.top + 20))
         self.draw_hearts(text_left, self.profile_rect.top + 50)
         self.draw_hp_bar(text_left, self.profile_rect.top + 88, bar_width,

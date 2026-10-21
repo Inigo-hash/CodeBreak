@@ -90,7 +90,7 @@ PRACTICE_BUTTON = (
     None,
 )
 
-PRACTICE_GAP = 18
+PRACTICE_GAP = 42
 
 
 # Per-tab materials. Wood for the two tabs about the player's own kit,
@@ -351,6 +351,16 @@ class StagePanel:
         # both hover states of every button, rendered up front, plus a tab id
         # -> clickable rect so hit-testing is a lookup.
         self._sprites = _load_rail_sprites()
+        # Short displays need smaller stage plaques to leave room for the
+        # learning tools and the tutor card at the bottom right.
+        if self._sprites and screen.get_height() < 900:
+            scale = screen.get_height() / 900
+            self._sprites = {
+                tab: pygame.transform.smoothscale(
+                    art, (round(art.get_width() * scale),
+                          round(art.get_height() * scale)))
+                for tab, art in self._sprites.items()
+            }
         self._plaques = {}
         self.button_rects = {}
 
@@ -418,7 +428,7 @@ class StagePanel:
 
         self.button_rects[practice_tab] = rect
         if learning_progress:
-            extra_height = max(24, min(36, (screen.get_height() - rect.bottom - 22) // 2))
+            extra_height = max(24, min(36, (screen.get_height() - rect.bottom - 148) // 2))
             for index, tab in enumerate(("progress", "topic_guidance")):
                 extra = pygame.Rect(rect.left, rect.bottom + 6 + index * (extra_height + 6),
                                     rect.width, extra_height)
@@ -430,7 +440,8 @@ class StagePanel:
         if self._learning_sprites:
             tabs = ('practice', 'progress', 'topic_guidance') if learning_progress else ('practice',)
             top = self.button_rects['practice'].top
-            height = max(28, min(64, (screen.get_height()-top-20-(len(tabs)-1)*8)//len(tabs)))
+            # The tutor occupies the bottom 122 pixels; leave a gap above it.
+            height = max(28, min(64, (screen.get_height()-top-136-(len(tabs)-1)*8)//len(tabs)))
             for index, tab in enumerate(tabs):
                 self.button_rects[tab] = pygame.Rect(rect.left, top+index*(height+8), rect.width, height)
 
@@ -463,6 +474,15 @@ class StagePanel:
         """Draw the rail. Call after the world and HUD."""
 
         self._draw_rail(mouse_pos)
+        # Separate stage information from the three learning tools.
+        objectives = self.button_rects['objectives']
+        practice = self.button_rects['practice']
+        divider_y = (objectives.bottom + practice.top) // 2
+        pygame.draw.line(self.screen, ACCENT_DIM,
+                         (practice.left + 8, divider_y),
+                         (practice.right - 8, divider_y), 2)
+        pygame.draw.circle(self.screen, ACCENT,
+                           (practice.centerx, divider_y), 3)
         if self._learning_sprites:
             entries = [('practice', 'CODE PRACTICE', '')]
             if self.learning_progress:

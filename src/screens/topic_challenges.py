@@ -32,7 +32,8 @@ def open_topic_challenges(screen, topic, passed):
             draw_button(screen, rect, label, font,
                         hovered=rect.collidepoint(pygame.mouse.get_pos()),
                         tier=TIER_PRIMARY if cid == next_required else TIER_SECONDARY)
-        note = 'Pass both to master this topic. Replays earn no rewards. Esc: return'
+        required_count = len(rows)
+        note = f'Pass all {required_count} challenges to master this topic. Replays earn no rewards. Esc: return'
         rendered = fit_text(body_font(16), note, UI_COLORS['text_dim'], (panel.w - 48, 28))
         screen.blit(rendered, (panel.x + 24, panel.bottom - 40))
         pygame.display.flip()

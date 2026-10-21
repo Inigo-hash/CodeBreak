@@ -1,5 +1,7 @@
 #challenge_manager.py
 import ast
+from src.learning.validators.iterative_structure_validator import IterativeStructureValidator
+from src.learning.validators.lists_validator import ListsValidator
 from src.learning.sandbox import run_function_tests
 from src.learning.validators.structure_validator import missing_construct
 from src.learning.validators.integrated_final_validator import IntegratedFinalValidator
@@ -57,6 +59,10 @@ class ChallengeManager:
 
             "stage1_final":
                 Stage1FinalValidator(),
+
+            "iterative_structure": IterativeStructureValidator(),
+
+            "lists": ListsValidator(),
         }
 
     def validate_runtime(
@@ -89,6 +95,23 @@ class ChallengeManager:
         variables=None,
         output=None,
     ):
+
+        if challenge.get('type') in ('iterative_structure', 'lists'):
+            try:
+                tree = ast.parse(code)
+            except SyntaxError as error:
+                return False, f'Syntax error on line {error.lineno}: {error.msg}'
+            target = next((node for node in tree.body if isinstance(node, ast.FunctionDef)
+                           and node.name == challenge['function_name']), None)
+            if target is None:
+                return False, f"Define the required function {challenge['function_name']}."
+            passed, feedback = self.validators[challenge['type']].validate(challenge, target)
+            if not passed:
+                return False, feedback
+            return run_function_tests(
+                code, challenge['function_name'], challenge['function_cases'],
+                challenge.get('timeout', 3.0), challenge.get('preserve_args', False)
+            )
 
         if challenge.get('type') == 'function':
             try:

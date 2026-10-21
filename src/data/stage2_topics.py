@@ -54,7 +54,7 @@ LISTS_STAGE2_TOPIC = {
     "id": "lists_lesson",
     "title": "Lists",
     "difficulty": "Intermediate",
-    "requirements": ["control_flow_lesson"],
+    "requirements": ["iterative_structure_lesson"],
     "challenge_id": LISTS_CHALLENGE_IDS[0],
     "challenge_ids": LISTS_CHALLENGE_IDS,
     "lesson": """LISTS — INTERMEDIATE

@@ -569,14 +569,5 @@
     <property name="terminal_visual" value="true" />
    </properties>
   </object>
-  <object id="102" name="Castle Library Vase" type="interactive" x="48" y="240" width="16" height="16">
-   <properties>
-    <property name="actions" value="search_vase" />
-    <property name="topic_id" value="lists_lesson" />
-    <property name="types" value="interactive" />
-    <property name="persistent_id" value="castle_library_vase" />
-    <property name="message" value="Hold E to study lists" />
-   </properties>
-  </object>
  </objectgroup>
 </map>

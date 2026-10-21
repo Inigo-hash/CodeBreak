@@ -1006,3 +1006,9 @@ the first matching value; pop() removes and returns an item. Check before
 indexing or popping when the list may be empty.
 """,
 }
+
+
+# Stage 2 topics use their own lesson/challenge definitions and validators.
+from src.data.stage2_topics import ITERATIVE_STRUCTURE_TOPIC, LISTS_STAGE2_TOPIC
+TOPICS["iterative_structure_lesson"] = ITERATIVE_STRUCTURE_TOPIC
+TOPICS["lists_lesson"] = LISTS_STAGE2_TOPIC

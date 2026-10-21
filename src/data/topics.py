@@ -934,3 +934,9 @@ def get_topic(topic_id):
     """
 
     return TOPICS.get(topic_id)
+
+
+# Stage 2 topics use their own lesson/challenge definitions and validators.
+from src.data.stage2_topics import ITERATIVE_STRUCTURE_TOPIC, LISTS_STAGE2_TOPIC
+TOPICS["iterative_structure_lesson"] = ITERATIVE_STRUCTURE_TOPIC
+TOPICS["lists_lesson"] = LISTS_STAGE2_TOPIC

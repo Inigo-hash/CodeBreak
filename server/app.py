@@ -19,7 +19,7 @@ RETRYABLE_STATUS = frozenset((502, 503, 504))
 MAX_PROVIDER_ATTEMPTS = 2
 PROVIDER_DEADLINE = 55
 PROVIDER_ATTEMPT_TIMEOUT = 20
-TUTOR_REVISION = 'conversation-recovery-20261024'
+TUTOR_REVISION = 'conversation-recovery-20261024-2'
 
 
 class Turn(BaseModel):

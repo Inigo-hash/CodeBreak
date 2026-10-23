@@ -39,11 +39,12 @@ def built_in_answer(question):
     if text in ('how do i save', 'how to save the game'):
         return GUIDE_LABEL + 'Press Escape to pause, then choose Save Game. Use the same save slot when you continue your adventure.'
     if text in ('how to cheat', 'how do i cheat', 'are there cheats', 'cheat codes'):
-        from src.config import DEBUG_MODE
-        testing = (' In this development build, F4 toggles developer exploration. '
-                   'It does not count as completing lessons or the stage.' if DEBUG_MODE else '')
+        # This module also runs on the relay, which has no Pygame display.
+        # A server cannot know whether a downloaded game's debug keys are on.
         return GUIDE_LABEL + ('For normal progress, solve the required challenges to earn keys. '
-                              'I can give hints if you tell me which lesson is difficult.' + testing)
+                              'I can give hints if you tell me which lesson is difficult. '
+                              'In testing builds with developer controls enabled, F4 toggles '
+                              'developer exploration. It does not count as completing lessons or the stage.')
     return None
 
 

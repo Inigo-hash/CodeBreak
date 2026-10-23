@@ -91,7 +91,7 @@ class ServerTests(unittest.TestCase):
         client = self.make_client(lambda req: self.fail('called without key'))
         for path in ('/', '/health'):
             self.assertEqual(client.get(path).json(), {'status':'ok'})
-            self.assertEqual(client.get(path).headers['x-tutor-revision'], 'conversation-recovery-20261024')
+            self.assertEqual(client.get(path).headers['x-tutor-revision'], 'conversation-recovery-20261024-2')
             response = client.head(path)
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.content, b'')
@@ -441,6 +441,17 @@ class ServerTests(unittest.TestCase):
         # The guide must not bypass validation or become an arbitrary answer.
         self.assertEqual(client.post('/ask', json={'question': 'what is python', 'context': {'secret': 'x'}}).status_code, 422)
         self.assertEqual(client.post('/ask', json={'question': 'solve my complete challenge'}).status_code, 503)
+
+    @patch.dict('os.environ', {}, clear=True)
+    def test_screenshot_answer_requires_no_graphics_or_desktop_configuration(self):
+        import sys
+        client = self.make_client(lambda req: self.fail('saved answer reached provider'))
+        with patch.dict(sys.modules, {'pygame': None, 'src.config': None}):
+            response = client.post('/ask', json={'question': 'how to cheat'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['source'], 'built_in')
+        self.assertIn('with developer controls enabled', response.json()['answer'])
+        self.assertNotIn('wait', response.json()['answer'].lower())
 
     @patch.dict('os.environ', {'GEMINI_API_KEY': 'test-secret'}, clear=True)
     def test_current_primary_uses_minimal_thinking_and_marks_generated_reply(self):

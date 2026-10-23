@@ -10,98 +10,41 @@ from src.learning.sandbox import run_user_code
 
 VALID_SOLUTIONS = {
     'iterative_structure_lesson_for_001': (
-        'def sum_usable_supplies(amounts):\n'
-        '    total = 0\n'
-        '    for amount in amounts:\n'
-        '        if amount > 0:\n            total += amount\n'
+        'def sum_training_points(limit):\\n'
+        '    total = 0\\n'
+        '    for number in range(1, limit + 1):\\n'
+        '        total += number\\n'
         '    return total'
     ),
     'iterative_structure_lesson_nested_001': (
-        'def count_grid_relics(grid):\n'
-        '    count = 0\n'
-        '    for row in grid:\n'
-        '        for value in row:\n'
-        '            if value != 0:\n                count += 1\n'
+        'def count_training_tiles(rows, columns):\\n'
+        '    count = 0\\n'
+        '    for row in range(rows):\\n'
+        '        for column in range(columns):\\n'
+        '            count += 1\\n'
         '    return count'
     ),
     'iterative_structure_lesson_control_001': (
-        'def accepted_order_total(orders):\n'
-        '    total = 0\n    index = 0\n'
-        '    while index < len(orders):\n'
-        '        value = orders[index]\n        index += 1\n'
-        '        if value is None:\n            break\n'
-        '        if value <= 0:\n            continue\n'
-        '        total += value\n'
-        '    return total'
+        'def count_launch_numbers(start):\\n'
+        '    count = 0\\n'
+        '    number = start\\n'
+        '    while number > 0:\\n'
+        '        count += 1\\n'
+        '        number -= 1\\n'
+        '    return count'
     ),
     'lists_lesson_report_001': (
-        'def list_report(items):\n'
-        '    if not items:\n        return (None, None, 0)\n'
-        '    return (items[0], items[-1], len(items))'
+        'def list_report(items):\\n'
+        '    if not items:\\n'
+        '        return (None, 0)\\n'
+        '    return (items[0], len(items))'
     ),
     'lists_lesson_update_001': (
-        'def update_archive(items, added, removed):\n'
-        '    result = list(items)\n    result.append(added)\n'
-        '    if removed in result:\n        result.remove(removed)\n'
-        '    popped = result.pop() if result else None\n'
-        '    return (result, popped)'
+        'def add_inventory_item(items, new_item):\\n'
+        '    result = list(items)\\n'
+        '    result.append(new_item)\\n'
+        '    return result'
     ),
-    'castle_lists_inspect_001': (
-        'def describe_items(items):\n'
-        '    return (items[0], items[-1], len(items)) if items else (None, None, 0)'
-    ),
-    'castle_lists_update_001': (
-        'def update_items(items, added, removed):\n'
-        '    result = list(items)\n    result.append(added)\n'
-        '    if removed in result:\n        result.remove(removed)\n'
-        '    popped = result.pop() if result else None\n'
-        '    return (result, popped)'
-    ),
-    "stage1_final_001": (
-        'name = input("Enter explorer name: ")\n'
-        'score_text = input("Enter score: ")\n'
-        'score = int(score_text)\nscore += 10\n'
-        'if score >= 90:\n    rank = "Gold"\n'
-        'elif score >= 75:\n    rank = "Silver"\n'
-        'else:\n    rank = "Bronze"\n'
-        'message = f"{name} - {rank}"\n'
-        'final_message = message.upper()\nprint(final_message)'
-    ),
-    "variables_001": "age = 18",
-    "print_001": 'print("Hello, World!")',
-    "python_syntax_basics_001": 'print("Hello, Explorer!")',
-    "data_types_001": (
-        'age = 18\nheight = 1.75\nname = "Alex"\nis_ready = True'
-    ),
-    "type_casting_001": 'age_text = "18"\nage = int(age_text)',
-    "input_lesson_001": 'name = input("Enter your name: ")',
-    "formatted_output_001": (
-        'name = "Alex"\nprint(f"Welcome, {name}!")'
-    ),
-    "operators_lesson_001": (
-        "score = 5\n"
-        "score += 3\n"
-        "passed = score >= 8"
-    ),
-
-    "strings_lesson_001": (
-        'game_name = "CodeBreak"\n'
-        'message = "Welcome to\\n" + game_name\n'
-        'result = message.upper()'
-    ),
-
-    "control_flow_lesson_001": (
-        "score = 85\n"
-        "has_key = True\n"
-        "if score >= 90:\n"
-        '    rank = "Gold"\n'
-        "elif score >= 75:\n"
-        '    rank = "Silver"\n'
-        "else:\n"
-        '    rank = "Bronze"\n'
-        "can_enter = has_key and score >= 75"
-    ),
-}
 
 
 from castle_solutions import CASTLE_SOLUTIONS

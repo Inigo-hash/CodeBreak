@@ -101,6 +101,23 @@ class BossTriggerTests(unittest.TestCase):
         self.assertFalse(trigger.update(self.zone, (rect.centerx, rect.bottom + 100)))
         self.assertTrue(trigger.update(self.zone, inside))
 
+    def test_accepted_retreat_rearms_doorway_for_immediate_reentry(self):
+        trigger = BossEntranceTrigger()
+        rect = self.zone["rect"]
+        inside = (rect.centerx, rect.bottom - 1)
+        outside = (rect.centerx, rect.bottom + 1)
+        self.assertTrue(trigger.update(self.zone, inside))
+        self.assertFalse(trigger.update(self.zone, outside))
+        # Execute the actual gameplay cleanup so a missing reset regresses.
+        source = Path("src/screens/game.py").read_text(encoding="utf-8")
+        start = source.index("                boss_enemy = None", source.index("if leaving_active_boss:"))
+        end = source.index("        if (boss_id and entrance_approached", start)
+        import textwrap
+        scope = {"boss_entrance_trigger": trigger}
+        exec(textwrap.dedent(source[start:end]), {}, scope)
+        self.assertTrue(trigger.update(self.zone, inside))
+        self.assertFalse(trigger.update(self.zone, inside))
+
     def test_walking_from_side_label_zone_to_doorway_still_triggers(self):
         trigger = BossEntranceTrigger()
         rect = self.zone["rect"]

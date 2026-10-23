@@ -1,4 +1,4 @@
-pygame>=2.6.1
+pygame-ce>=2.5.8
 # Used by src/entities/player.py for per-pixel alpha work, and by
 # tools/prepare_rail_buttons.py when regenerating button art.
 numpy>=2.0

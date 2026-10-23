@@ -2300,6 +2300,9 @@ def game_screen(screen, slot_num=None, save_state=None):
                 boss_phase_effect_timer = 0.0
                 previous_boss_zone = None
                 boss_is_active = False
+                # Leaving an accepted fight is a new doorway approach even
+                # when the player turns back before clearing the corridor.
+                boss_entrance_trigger.armed = True
         if (boss_id and entrance_approached and current_boss_zone is not None
                 and not boss_defeated and not boss_is_active
                 and (boss_access.unlocked or debug_boss_access

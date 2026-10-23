@@ -5,12 +5,14 @@ CHARACTERS = {
         'description': 'A wandering adventurer ready to explore forgotten paths. Face folklore creatures and unlock new routes through Python.',
         'short_description': 'Explore forgotten paths.\nLearn Python as you fight.',
         'preview': 'assets/images/frames/main_character/idle/no_sword/idle_backward/frame_1.png',
+        'portrait': 'assets/images/portraits/explorer_man.webp',
     },
     'woman': {
         'title': 'FEMALE EXPLORER', 'label': 'WOMAN',
         'description': 'A determined adventurer setting out into the unknown. Explore the castle, master coding challenges, and forge your own path.',
         'short_description': 'Brave the unknown.\nSolve puzzles and explore.',
         'preview': 'assets/images/frames/girl_main_character/walking/south/frame_0.png',
+        'portrait': 'assets/images/portraits/explorer_woman.webp',
     },
 }
 

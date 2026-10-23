@@ -31,11 +31,40 @@ from src.ui.gameplay_hud import (
     draw_framed_portrait,
     draw_heart_row,
     draw_profile_frame,
-    draw_stat_bar,
+    draw_resource_meter,
     load_hud_icons,
     load_portrait,
 )
 from src.ui.theme import UI_COLORS, body_font, draw_button, title_font
+
+
+def profile_layout(size, title_height=40, name_height=38, stat_height=16):
+    """One portrait and separate measured text rows, including at 640x480."""
+    width, height = size
+    pad, gap = 24, 24
+    panel_width = min(640, width-32)
+    portrait_size = min(200, round(panel_width*.32))
+    lives_height = max(24, stat_height)
+    meter_height = stat_height+14
+    column_height = name_height+8+lives_height+16+meter_height*2+12
+    body_height = max(portrait_size, column_height)
+    panel = pygame.Rect(0, 0, panel_width,
+                        pad+title_height+16+body_height+20+42+pad)
+    panel.center = (width//2, height//2)
+    title = pygame.Rect(panel.x+pad, panel.y+pad, panel.width-pad*2, title_height)
+    top = title.bottom+16
+    portrait = pygame.Rect(panel.x+pad, top+(body_height-portrait_size)//2,
+                           portrait_size, portrait_size)
+    left = portrait.right+gap
+    col_width = panel.right-pad-left
+    name = pygame.Rect(left, top+(body_height-column_height)//2, col_width, name_height)
+    lives = pygame.Rect(left, name.bottom+8, col_width, lives_height)
+    health = pygame.Rect(left, lives.bottom+16, col_width, meter_height)
+    energy = pygame.Rect(left, health.bottom+12, col_width, meter_height)
+    back = pygame.Rect(0, 0, 150, 42)
+    back.midbottom = (panel.centerx, panel.bottom-pad)
+    return dict(panel=panel, title=title, portrait=portrait, name=name, lives=lives,
+                health=health, energy=energy, back=back)
 
 
 def profile_screen(screen, background=None, name=None,
@@ -56,59 +85,17 @@ def profile_screen(screen, background=None, name=None,
     portrait = load_portrait(character_id)
     icons = load_hud_icons()
 
-    # --- Layout -------------------------------------------------------------
-    # Sized around its content, like the HUD card it grows out of: portrait on
-    # the left, name / hearts / bars stacked to the right of it.
-    PAD = 30
-    PORTRAIT_SIZE = 190
-    PORTRAIT_GAP = 26
-    ROW_GAP = 24
-    HEART_SIZE = 30
-    BACK_HEIGHT = 42
-
-    panel_width = max(520, min(620, int(SCREEN_W * 0.55)))
-    col_offset = PAD + PORTRAIT_SIZE + PORTRAIT_GAP
-    col_width = panel_width - PAD - col_offset
-
-    # Both bars share a gutter wide enough for the longer of the two labels,
-    # so their fills start on the same x.
-    # Measured against the digit form, not "-- / --": now that energy shows
-    # real numbers, "ENERGY 100 / 100" is the widest label either bar draws.
-    bar_label_width = max(font_bar.size("HP 000 / 000")[0],
-                          font_bar.size("ENERGY 000 / 000")[0]) + 14
-
-    title_surface = font_title.render("PROFILE", True, UI_COLORS["gold"])
-    name_surface = font_name.render(name.upper(), True, NAME_GOLD)
-    # The name is the one piece that can outgrow its column, so shrink it
-    # until it fits rather than letting it run under the panel edge.
-    name_size = 24
-    while name_surface.get_width() > col_width and name_size > 12:
-        name_size -= 1
-        name_surface = title_font(name_size).render(name.upper(), True, NAME_GOLD)
-    name_surface = fit_text(title_font(name_size), name.upper(), NAME_GOLD,
-                            (col_width, name_surface.get_height()))
-
-    bar_height = font_bar.get_height()
-    column_height = (name_surface.get_height() + ROW_GAP + HEART_SIZE
-                     + ROW_GAP + bar_height + ROW_GAP + bar_height)
-    body_height = max(PORTRAIT_SIZE, column_height)
-
-    pr = pygame.Rect(0, 0, panel_width,
-                     PAD + font_title.get_height() + 22 + body_height
-                     + 28 + BACK_HEIGHT + PAD)
-    pr.center = (SCREEN_W // 2, SCREEN_H // 2)
-
-    title_pos_y = pr.top + PAD
-    body_top = title_pos_y + font_title.get_height() + 22
-
-    portrait_rect = pygame.Rect(pr.left + PAD, 0, PORTRAIT_SIZE, PORTRAIT_SIZE)
-    portrait_rect.top = body_top + (body_height - PORTRAIT_SIZE) // 2
-
-    col_x = pr.left + col_offset
-    col_top = body_top + (body_height - column_height) // 2
-
-    back_r = pygame.Rect(0, 0, 150, BACK_HEIGHT)
-    back_r.midbottom = (pr.centerx, pr.bottom - PAD)
+    layout = profile_layout(screen.get_size(), font_title.get_height(),
+                            font_name.get_height(), font_bar.get_height())
+    pr, back_r = layout['panel'], layout['back']
+    title_surface = fit_text(font_title, 'EXPLORER PROFILE', UI_COLORS['gold'], layout['title'].size)
+    name_surface = fit_text(font_name, name.title(), NAME_GOLD, layout['name'].size)
+    # The snapshot never changes while this modal is open.
+    small = pygame.transform.smoothscale(background, (SCREEN_W//8, SCREEN_H//8))
+    blurred = pygame.transform.smoothscale(small, (SCREEN_W, SCREEN_H))
+    overlay = pygame.Surface((SCREEN_W, SCREEN_H), pygame.SRCALPHA)
+    overlay.fill((0, 0, 0, 120))
+    blurred.blit(overlay, (0, 0))
 
     running = True
     while running:
@@ -127,37 +114,27 @@ def profile_screen(screen, background=None, name=None,
                     running = False
 
         # ---- Blurred backdrop ----
-        small = pygame.transform.smoothscale(background, (SCREEN_W // 8, SCREEN_H // 8))
-        blurred = pygame.transform.smoothscale(small, (SCREEN_W, SCREEN_H))
         screen.blit(blurred, (0, 0))
-
-        overlay = pygame.Surface((SCREEN_W, SCREEN_H), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 120))
-        screen.blit(overlay, (0, 0))
 
         # ---- Panel: the HUD card's own frame, at full size ----
         draw_profile_frame(screen, pr)
 
         screen.blit(title_surface,
-                    (pr.centerx - title_surface.get_width() // 2, title_pos_y))
+                    title_surface.get_rect(midtop=(pr.centerx, layout['title'].y)))
 
-        draw_framed_portrait(screen, portrait, portrait_rect)
+        draw_framed_portrait(screen, portrait, layout['portrait'])
 
         # ---- Name, hearts, bars ----
-        y = col_top
-        screen.blit(name_surface, (col_x, y))
-
-        y += name_surface.get_height() + ROW_GAP
-        draw_heart_row(screen, icons, col_x, y, hearts,
-                       size=HEART_SIZE, gap=HEART_SIZE + 5)
-
-        y += HEART_SIZE + ROW_GAP
-        draw_stat_bar(screen, font_bar, col_x, y, col_width, "HP", hp, max_hp,
-                      label_width=bar_label_width)
-
-        y += bar_height + ROW_GAP
-        draw_stat_bar(screen, font_bar, col_x, y, col_width, "ENERGY", pp, max_pp,
-                      fill_color=UI_COLORS["gold"], label_width=bar_label_width)
+        screen.blit(name_surface, layout['name'])
+        lives = layout['lives']
+        lives_label = fit_text(font_bar, 'LIVES', UI_COLORS['text_dim'], (50, lives.height))
+        screen.blit(lives_label, lives)
+        heart_size = min(24, max(12, (lives.width-70)//5))
+        draw_heart_row(screen, icons, lives.x+58, lives.y, hearts,
+                       size=heart_size, gap=heart_size+3)
+        draw_resource_meter(screen, font_bar, layout['health'], 'HEALTH', hp, max_hp)
+        draw_resource_meter(screen, font_bar, layout['energy'], 'ENERGY', pp, max_pp,
+                            fill_color=UI_COLORS['gold'])
 
         # ---- Back button ----
         mouse_pos = pygame.mouse.get_pos()

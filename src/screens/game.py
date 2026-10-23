@@ -67,6 +67,7 @@ from src.data.practice_templates import (
 from src.data.enemies import get_enemy
 from src.screens.topic_lesson import open_topic_lesson
 from src.systems.enemy_spawns import resolve_encounter_spawns
+from src.systems.enemy_alerts import alert_camp
 from src.systems.encounter_progress import newly_cleared_encounter_ids
 from src.systems.topic_mastery import reconcile_mastery, complete_topic_challenge
 from src.screens.topic_challenges import open_topic_challenges
@@ -2429,6 +2430,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                     )
                     hp_before = enemy.hp
                     if enemy.receive_damage(applied_damage):
+                        alert_camp(enemy, enemies, collision_rects)
                         damage_numbers.add(enemy.rect.center, hp_before - enemy.hp)
                         combat_audio.play("sword_hit")
                         combat_audio.play(

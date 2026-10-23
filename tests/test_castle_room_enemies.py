@@ -77,6 +77,29 @@ class CastleRoomEnemyTests(unittest.TestCase):
                         self.assertTrue(enemy.chase_bounds.contains(enemy.rect))
                         self.assertEqual(enemy.rect.collidelist(blockers), -1)
 
+    def test_throne_kapres_join_ghost_combat_on_the_real_map(self):
+        from src.systems.enemy_alerts import alert_camp
+        room, bounds, blockers, seen, spawns = self.rooms['throne']
+        self.assertTrue(any(y >= 38*16 and 18*16 <= x <= 21*16 for x, y in seen))
+        for camp in {s['encounter_id'] for s in spawns}:
+            enemies = [Enemy(self.screen, bounds.w, bounds.h, *s['position'],
+                enemy_id=s['enemy_id'], zone_rect=s['zone_rect'], group_id=camp,
+                detection_range=s['detection_range'], chase_range=s['chase_range'],
+                disengage_range=s['disengage_range'], combat_scale=.4, combat_tier=2)
+                for s in spawns if s['encounter_id'] == camp]
+            ghost, kapre = enemies
+            player = pygame.Rect(ghost.rect.centerx-8, ghost.rect.bottom+8, 16, 16)
+            ghost.receive_damage(10)
+            alert_camp(ghost, enemies, blockers)
+            self.assertEqual(kapre.state, 'alert')
+            start = kapre.rect.center
+            for _ in range(60):
+                kapre.update(.05, player, blockers+[player, ghost.rect],
+                             bounds.w, bounds.h, navigation_rects=blockers)
+                self.assertEqual(kapre.rect.collidelist(blockers), -1)
+            self.assertNotEqual(kapre.rect.center, start)
+            self.assertEqual(kapre.state, 'attack')
+
     def test_stage_two_roster_and_kapre_two_attack_sequences(self):
         from src.data.stages import get_stage
         self.assertEqual(set(get_stage('castle')['enemies']),

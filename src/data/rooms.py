@@ -35,7 +35,7 @@ ROOM_STAGES = {
             'throne': {
                 'name': 'Throne Room', 'map': 'assets/map/tmx/map2_throne_room.tmx',
                 'spawn': (20, 33), 'arrivals': {'entry': (20, 33)},
-                'routes': [{'id': 'lobby', 'rect': (17.5, 32, 5, 4), 'target': 'lobby', 'arrival': 'throne', 'label': 'Go back to Castle Lobby'}],
+                'routes': [{'id': 'lobby', 'rect': (18, 38, 4, 2), 'target': 'lobby', 'arrival': 'throne', 'label': 'Go back to Castle Lobby'}],
             },
             'library': {
                 'name': 'Library', 'map': 'assets/map/tmx/map2_library.tmx',

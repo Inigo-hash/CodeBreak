@@ -39,7 +39,7 @@ def castle_room_encounters(room_id, width=40, height=40):
             'require_path': False, 'enemies': (
                 ('duwende_mandurug', 'kapre_usikan') if room_id in ('lobby', 'dining', 'dungeon')
                 else ('white_lady', 'kapre_usikan')),
-            'detection_range': 80, 'chase_range': 120, 'disengage_range': 112,
+            'detection_range': 144, 'chase_range': 240, 'disengage_range': 208,
             'return_tolerance': 6,
         })
     # Retain the original Dining camp's authored formation and saved IDs.

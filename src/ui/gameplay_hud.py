@@ -496,14 +496,14 @@ class GameplayHUD:
                          (rect.left + 42, rect.top + 7))
 
     def draw_interaction_prompt(self, prompt, width, height):
-        text = render_text(self.bold, prompt if prompt.startswith("[B]") else f"[E] {prompt}", TEXT)
+        label = prompt if prompt.startswith(("[B]", "Hold E")) else f"[E] {prompt}"
+        text = render_text(self.bold, label, TEXT)
         rect = text.get_rect()
         rect.inflate_ip(34, 20)
         rect.width = min(rect.width, width - 40)
         # Leave room for the equipped-item label above the hotbar.
         rect.midbottom = (width // 2, height - 126)
         self._panel(rect, emphasized=True)
-        label = prompt if prompt.startswith("[B]") else f"[E] {prompt}"
         fitted = fit_text(self.bold, label, TEXT, (rect.width - 34, rect.height - 20))
         self.screen.blit(fitted, fitted.get_rect(center=rect.center))
 

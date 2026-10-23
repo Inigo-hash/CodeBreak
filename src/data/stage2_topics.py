@@ -22,32 +22,55 @@ ITERATIVE_STRUCTURE_TOPIC = {
     "requirements": ["control_flow_lesson"],
     "challenge_id": ITERATIVE_CHALLENGE_IDS[0],
     "challenge_ids": ITERATIVE_CHALLENGE_IDS,
-    "lesson": """ITERATIVE STRUCTURES (LOOPS) — INTERMEDIATE
+    "lesson": """ITERATIVE STRUCTURES (LOOPS) — BEGINNER
 
-Loops repeat work without duplicating code. For each problem, implement the
-named function and RETURN the requested result. Do not print the answer.
-The checker calls your function with several inputs, including edge cases.
+Loops repeat code so you do not need to write the same instruction many times.
+These examples use Stage 1 skills: variables, numbers, operators, and if.
 
-FOR LOOPS AND ACCUMULATORS
-Use for to visit each item in a sequence. Initialize the accumulator before
-the loop. An empty sequence should return the correct starting value.
+FOR LOOPS: repeat over a range.
+    for number in range(1, 4):
+        print(number)  # prints 1, 2, 3
+The ending value of range is not included.
 
-NESTED LOOPS
-The inner loop runs once for each item in the current outer-loop item. For a
-grid represented as a list of rows, process every value in every row. Rows may
-be empty, and negative values still count as values.
+ACCUMULATORS: set a total before the loop and update it inside.
+    total = 0
+    for number in range(1, 5):
+        total = total + number
+    print(total)  # 10
 
-WHILE, BREAK, AND CONTINUE
-A while loop repeats while its condition is true. Update the loop state so it
-can finish. break exits the nearest loop; continue skips only the current
-iteration. Check a stop marker before adding it to the result.
+WHILE LOOPS: repeat while a condition is True. Update the counter.
+    number = 3
+    while number > 0:
+        print(number)
+        number = number - 1
 
-INTERMEDIATE CHECKLIST
-- Handle empty input and empty rows.
-- Put accumulator updates at the correct indentation level.
-- Preserve the supplied input collections.
-- Do not confuse skipping an item with ending the loop.
-""",
+NESTED LOOPS: an inner loop completes for each outer-loop repetition.
+    for row in range(2):
+        for column in range(3):
+            print("*", end="")
+        print()
+This prints two rows of three stars.
+
+BREAK: immediately ends the nearest loop.
+    for number in range(1, 6):
+        if number == 4:
+            break
+        print(number)  # 1, 2, 3
+
+CONTINUE: skips the current repetition and moves to the next.
+    for number in range(1, 6):
+        if number % 2 == 0:
+            continue
+        print(number)  # 1, 3, 5
+
+COMMON MISTAKES
+- Set totals before the loop.
+- Keep indentation consistent.
+- range(1, 4) stops before 4.
+- Change the counter in a while loop.
+- break ends the loop; continue skips one repetition.
+Run the examples to see their output.""",
+}""",
 }
 
 LISTS_STAGE2_TOPIC = {
@@ -57,91 +80,105 @@ LISTS_STAGE2_TOPIC = {
     "requirements": ["iterative_structure_lesson"],
     "challenge_id": LISTS_CHALLENGE_IDS[0],
     "challenge_ids": LISTS_CHALLENGE_IDS,
-    "lesson": """LISTS — INTERMEDIATE
+    "lesson": """LISTS — BEGINNER
 
-Lists are ordered, mutable collections. Indexing starts at zero, and negative
-indices count from the end. An empty list has no first or last element, so
-check it before indexing.
+A list stores multiple values in order. Lists can be changed after creation.
 
-MUTATION AND RETURN VALUES
-append(value) changes the list and returns None. remove(value) removes only
-the first matching value and raises ValueError if the value is absent. pop()
-removes and returns the final item; it raises IndexError if the list is empty.
+CREATING A LIST
+    inventory = ["sword", "key", "potion"]
+    empty_inventory = []
 
-SAFE COLLECTION PROCESSING
-Copy a supplied list with list(items) when the task asks you to modify a copy.
-Duplicates are meaningful: remove() removes one matching occurrence, not all.
-Follow the exact requested operation order and return the specified tuple.
+ACCESSING ITEMS: indexes start at 0; negative indexes count from the end.
+    inventory = ["sword", "key", "potion"]
+    print(inventory[0])   # sword
+    print(inventory[-1])  # potion
+Check the list is not empty before indexing.
 
-INTERMEDIATE CHECKLIST
-- Handle empty lists, duplicates, and missing values.
-- Preserve the caller's original list.
-- Distinguish a popped value from the remaining list.
-- Return data rather than printing it.
-""",
+FINDING LENGTH
+    inventory = ["sword", "key", "potion"]
+    print(len(inventory))  # 3
+
+ADDING WITH append(): adds one item to the end.
+    inventory = ["sword", "key"]
+    inventory.append("shield")
+    print(inventory)  # ['sword', 'key', 'shield']
+
+REMOVING WITH remove(): removes the first matching value.
+    inventory = ["key", "potion", "key"]
+    if "key" in inventory:
+        inventory.remove("key")
+    print(inventory)  # ['potion', 'key']
+Check membership if the value might be missing.
+
+REMOVING AND GETTING WITH pop(): removes and returns the last item.
+    inventory = ["sword", "potion"]
+    item = inventory.pop()
+    print(item)       # potion
+    print(inventory)  # ['sword']
+Only call pop() when the list is not empty.
+
+LOOPING THROUGH A LIST
+    inventory = ["sword", "key", "potion"]
+    for item in inventory:
+        print(item)
+
+COPYING A LIST: make a copy before changing it if the original must stay same.
+    original = ["sword", "key"]
+    updated = list(original)
+    updated.append("shield")
+    print(original)  # ['sword', 'key']
+    print(updated)   # ['sword', 'key', 'shield']
+
+REMEMBER
+- items[0] is the first item; items[-1] is the last.
+- len(items) counts items.
+- append(), remove(), and pop() change a list.
+- remove() removes one match; pop() returns the removed item.
+- Check for empty lists or missing values when needed.
+- Returning a value is different from printing it.""",
+}""",
 }
 
 ITERATIVE_CHALLENGES = {
     ITERATIVE_CHALLENGE_IDS[0]: {
         "id": ITERATIVE_CHALLENGE_IDS[0],
-        "title": "Audit the Supply Shipment",
-        "difficulty": "Intermediate",
+        "title": "Add the Training Points",
+        "difficulty": "Beginner",
         "type": "iterative_structure",
-        "function_name": "sum_usable_supplies",
+        "function_name": "sum_training_points",
         "learning_constructs": ["for"],
-        "problem": "Write sum_usable_supplies(amounts). Return the sum of all positive integer amounts. Ignore zero and negative amounts. Return 0 for an empty list. Example: [4, 0, -3, 7] returns 11. Do not change amounts.",
-        "objective": "Use a for loop and an accumulator to sum only positive amounts.",
-        "starter_code": "def sum_usable_supplies(amounts):\n    # Start a total before the loop.\n    # Add only positive amounts, then return the total.\n    pass",
-        "hints": ["Initialize total to 0 before the loop.", "Visit each amount with for.", "Only add an amount when it is greater than zero.", "Return total after the loop."],
-        "function_cases": [
-            {"args": [[]], "expected": 0},
-            {"args": [[4, 0, -3, 7]], "expected": 11},
-            {"args": [[-8, -1, 0]], "expected": 0},
-            {"args": [[5, 5, 2]], "expected": 12},
-            {"args": [[1]], "expected": 1},
-        ],
-        "preserve_args": True,
-    },
+        "problem": "Write sum_training_points(limit). Return the sum of whole numbers from 1 through limit. If limit is 0 or negative, return 0. Example: sum_training_points(4) returns 10.",
+        "objective": "Use range(), a for loop, and a running total.",
+        "starter_code": "def sum_training_points(limit):\\n    total = 0\\n    # Loop from 1 through limit and add each number.\\n    # Return total.\\n    pass",
+        "hints": ["Start with total = 0.", "Use range(1, limit + 1).", "Add each number to total inside the loop.", "Return total after the loop."],
+        "function_cases": [{"args": [0], "expected": 0}, {"args": [-3], "expected": 0}, {"args": [1], "expected": 1}, {"args": [4], "expected": 10}, {"args": [5], "expected": 15}]
+
     ITERATIVE_CHALLENGE_IDS[1]: {
         "id": ITERATIVE_CHALLENGE_IDS[1],
-        "title": "Count Relics Across the Grid",
-        "difficulty": "Intermediate",
+        "title": "Build the Training Grid",
+        "difficulty": "Beginner",
         "type": "iterative_structure",
-        "function_name": "count_grid_relics",
+        "function_name": "count_training_tiles",
         "learning_constructs": ["nested_for"],
-        "problem": "Write count_grid_relics(grid). grid is a list of rows. Return how many values across all rows are nonzero. Empty grids and empty rows are allowed. Example: [[1, 0], [], [-2, 3]] returns 3. Do not change grid.",
-        "objective": "Use nested for loops to inspect every cell and count nonzero values.",
-        "starter_code": "def count_grid_relics(grid):\n    # Visit each row, then each value in that row.\n    # Count nonzero values and return the count.\n    pass",
-        "hints": ["Initialize count before both loops.", "The outer loop visits rows; the inner loop visits values.", "Increment only when a value is not zero.", "Return count after both loops finish."],
-        "function_cases": [
-            {"args": [[]], "expected": 0},
-            {"args": [[[], []]], "expected": 0},
-            {"args": [[[1, 0], [], [-2, 3]]], "expected": 3},
-            {"args": [[[0, 0], [0]]], "expected": 0},
-            {"args": [[[4, -4, 2]]], "expected": 3},
-        ],
-        "preserve_args": True,
-    },
+        "problem": "Write count_training_tiles(rows, columns). Return the number of tiles in a grid with these dimensions. If either number is 0 or negative, return 0. Example: count_training_tiles(2, 3) returns 6. Use nested loops, not multiplication.",
+        "objective": "Use one for loop inside another to count each grid tile.",
+        "starter_code": "def count_training_tiles(rows, columns):\\n    count = 0\\n    # Loop through each row and each column.\\n    # Add 1 for each tile, then return count.\\n    pass",
+        "hints": ["Set count = 0 before either loop.", "Use range(rows) for the outer loop.", "Inside it, use range(columns).", "Add 1 inside the inner loop."],
+        "function_cases": [{"args": [0, 3], "expected": 0}, {"args": [2, 0], "expected": 0}, {"args": [1, 1], "expected": 1}, {"args": [2, 3], "expected": 6}, {"args": [3, 2], "expected": 6}]
+
     ITERATIVE_CHALLENGE_IDS[2]: {
         "id": ITERATIVE_CHALLENGE_IDS[2],
-        "title": "Process Orders Until Cancelled",
-        "difficulty": "Intermediate",
+        "title": "Count Down to Launch",
+        "difficulty": "Beginner",
         "type": "iterative_structure",
-        "function_name": "accepted_order_total",
-        "learning_constructs": ["while", "break", "continue"],
-        "problem": "Write accepted_order_total(orders). Process values from left to right. Stop immediately at the first value None. Skip zero and negative values. Return the sum of positive values before the stop marker. If None is first or orders is empty, return 0. Example: [5, 0, 3, None, 9] returns 8.",
-        "objective": "Use while, continue to skip nonpositive values, and break at the None stop marker.",
-        "starter_code": "def accepted_order_total(orders):\n    # Track the current index and total.\n    # Break at None; continue past nonpositive values.\n    pass",
-        "hints": ["Use an index and a while condition that checks the list length.", "Read the current value before changing the index.", "If the value is None, break before adding it.", "For zero or negative values, advance the index before continue."],
-        "function_cases": [
-            {"args": [[]], "expected": 0},
-            {"args": [[None, 4]], "expected": 0},
-            {"args": [[5, 0, 3, None, 9]], "expected": 8},
-            {"args": [[-2, 6, -1, 4]], "expected": 10},
-            {"args": [[1, 2, 3]], "expected": 6},
-        ],
-        "preserve_args": True,
-    },
+        "function_name": "count_launch_numbers",
+        "learning_constructs": ["while"],
+        "problem": "Write count_launch_numbers(start). Return how many positive whole numbers are counted down from start to 1. If start is 0 or negative, return 0. Example: count_launch_numbers(3) returns 3. Use a while loop.",
+        "objective": "Use a while loop and update the counter so the loop eventually stops.",
+        "starter_code": "def count_launch_numbers(start):\\n    count = 0\\n    number = start\\n    # While number is positive, count it and subtract 1.\\n    pass",
+        "hints": ["Use while number > 0.", "Increase count by 1 during each repetition.", "Decrease number by 1 during each repetition.", "Return count after the loop."],
+        "function_cases": [{"args": [0], "expected": 0}, {"args": [-2], "expected": 0}, {"args": [1], "expected": 1}, {"args": [3], "expected": 3}, {"args": [5], "expected": 5}]
+
 }
 
 LISTS_STAGE2_CHALLENGES = {
@@ -167,23 +204,16 @@ LISTS_STAGE2_CHALLENGES = {
     },
     LISTS_CHALLENGE_IDS[1]: {
         "id": LISTS_CHALLENGE_IDS[1],
-        "title": "Update the Archive Inventory",
-        "difficulty": "Intermediate",
+        "title": "Add an Item to the Inventory",
+        "difficulty": "Beginner",
         "type": "lists",
-        "function_name": "update_archive",
-        "required_list_operations": ["append", "remove", "pop"],
-        "problem": "Write update_archive(items, added, removed). Copy items, append added, remove the first occurrence of removed only if it exists, then pop the last item if the copy is nonempty. Return (remaining_items, popped_item). Use None for popped_item only when the copy is empty before pop. Leave items unchanged. Example: (['map', 'key'], 'scroll', 'map') returns (['key'], 'scroll').",
-        "objective": "Copy a list, append, conditionally remove one matching value, and pop safely in the required order.",
-        "starter_code": "def update_archive(items, added, removed):\n    # Work on a copy, not items.\n    # Follow the operation order in the instructions.\n    # Return (remaining_items, popped_item).\n    pass",
-        "hints": ["Make a copy with list(items).", "Append added before checking for removed.", "Check membership before remove() so a missing value is safe.", "Set popped_item to None, then pop only if the copied list is nonempty."],
-        "function_cases": [
-            {"args": [[], "key", "missing"], "expected": ([], "key")},
-            {"args": [[], "key", "key"], "expected": ([], None)},
-            {"args": [["map", "key"], "scroll", "map"], "expected": (["key"], "scroll")},
-            {"args": [["key"], "scroll", "missing"], "expected": (["key"], "scroll")},
-            {"args": [["key", "map", "key"], "scroll", "key"], "expected": (["map", "key"], "scroll")},
-            {"args": [["map", "key"], "scroll", "scroll"], "expected": (["map"], "key")},
-        ],
-        "preserve_args": True,
-    },
+        "function_name": "add_inventory_item",
+        "required_list_operations": ["append"],
+        "problem": "Write add_inventory_item(items, new_item). Make a copy of items, add new_item to the end of the copy, and return the copy. Do not change items. Example: add_inventory_item(['key'], 'potion') returns ['key', 'potion'].",
+        "objective": "Copy a list, use append(), and return the updated copy.",
+        "starter_code": "def add_inventory_item(items, new_item):\\n    # Make a copy with list(items).\\n    # Append new_item to the copy.\\n    # Return the copy, leaving items unchanged.\\n    pass",
+        "hints": ["Create result = list(items).", "Use result.append(new_item).", "Return result.", "Do not append directly to items."],
+        "function_cases": [{"args": [[], "key"], "expected": ["key"]}, {"args": [["key"], "potion"], "expected": ["key", "potion"]}, {"args": [["key", "map"], "shield"], "expected": ["key", "map", "shield"]}],
+        "preserve_args": True
+
 }

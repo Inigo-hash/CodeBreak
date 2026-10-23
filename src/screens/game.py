@@ -737,6 +737,11 @@ def game_screen(screen, slot_num=None, save_state=None):
                 challenge = get_challenge(challenge_id)
                 editor = CodeEditor(screen, challenge, screen.copy(), mode='practice' if replay else 'challenge')
                 editor.run()
+                # Exiting an unsolved challenge should leave the topic flow
+                # entirely, returning control to the caller (e.g. inventory)
+                # instead of reopening the challenge-selection list.
+                if not editor.solved:
+                    return 'editor_closed'
                 if editor.solved and not replay:
                     candidate = complete_topic_challenge(build_save_state(), stage, topic_id, challenge_id)
                     progress = StageProgress.from_dict(candidate['stage_progress'])

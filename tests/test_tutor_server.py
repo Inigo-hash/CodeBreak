@@ -84,7 +84,7 @@ class ServerTests(unittest.TestCase):
         client = self.make_client(lambda req: self.fail('called without key'))
         for path in ('/', '/health'):
             self.assertEqual(client.get(path).json(), {'status':'ok'})
-            self.assertEqual(client.get(path).headers['x-tutor-revision'], 'timeout-failover-guide-20261021')
+            self.assertEqual(client.get(path).headers['x-tutor-revision'], 'defence-backup-20261023')
             response = client.head(path)
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.content, b'')
@@ -147,8 +147,8 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()['answer'], 'Use WASD to move.')
         self.assertEqual(len(calls), 2)
-        self.assertIn('/gemini-2.5-flash-lite:generateContent', str(calls[0].url))
-        self.assertIn('/gemini-3.1-flash-lite:generateContent', str(calls[1].url))
+        self.assertIn('/gemini-3.1-flash-lite:generateContent', str(calls[0].url))
+        self.assertIn('/gemini-2.5-flash-lite:generateContent', str(calls[1].url))
         wait.assert_awaited_once_with(1)
         self.assertEqual(client.post('/ask', json={'question': 'again?'}).status_code, 429)
         self.assertEqual(len(calls), 2)
@@ -235,7 +235,7 @@ class ServerTests(unittest.TestCase):
             calls.append(req)
             if len(calls) == 1:
                 return httpx.Response(404)
-            self.assertIn('/gemini-3.1-flash-lite:generateContent', str(req.url))
+            self.assertIn('/gemini-2.5-flash-lite:generateContent', str(req.url))
             return httpx.Response(200, json={'candidates':[{'content':{'parts':[{'text':'Use WASD.'}]}}]})
         client = self.make_client(handler)
         from unittest.mock import AsyncMock
@@ -363,3 +363,25 @@ class ServerTests(unittest.TestCase):
         # The guide must not bypass validation or become an arbitrary answer.
         self.assertEqual(client.post('/ask', json={'question': 'what is python', 'context': {'secret': 'x'}}).status_code, 422)
         self.assertEqual(client.post('/ask', json={'question': 'solve my complete challenge'}).status_code, 503)
+
+    @patch.dict('os.environ', {'GEMINI_API_KEY': 'test-secret'}, clear=True)
+    def test_current_primary_uses_minimal_thinking_and_marks_generated_reply(self):
+        calls = []
+        def handler(req):
+            calls.append(req)
+            self.assertIn('/gemini-3.1-flash-lite:generateContent', str(req.url))
+            body = json.loads(req.content)
+            self.assertEqual(body['generationConfig']['thinkingConfig'], {'thinkingLevel':'minimal'})
+            return httpx.Response(200,json={'candidates':[{'content':{'parts':[{'text':'A generated hint.'}]}}]})
+        response = self.make_client(handler).post('/ask',json={'question':'why does this expression fail?'})
+        self.assertEqual(response.headers['x-tutor-source'],'live_ai')
+        self.assertEqual(response.headers['x-tutor-route'],'primary')
+        self.assertEqual(len(calls),1)
+
+    @patch.dict('os.environ', {'GEMINI_API_KEY':'test-secret','GEMINI_MODEL':'custom-model','GEMINI_FALLBACK_MODEL':''}, clear=True)
+    def test_custom_model_and_disabled_backup_are_preserved(self):
+        def handler(req):
+            self.assertIn('/custom-model:generateContent',str(req.url))
+            self.assertNotIn('thinkingConfig',json.loads(req.content)['generationConfig'])
+            return httpx.Response(200,json={'candidates':[{'content':{'parts':[{'text':'hint'}]}}]})
+        self.assertEqual(self.make_client(handler).post('/ask',json={'question':'help'}).status_code,200)

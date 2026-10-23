@@ -40,13 +40,13 @@ class TutorTests(unittest.TestCase):
                         HTTPError('url', 401, 'secret', {}, None), URLError('secret')):
             with patch('src.systems.ai_tutor.request.urlopen', side_effect=failure):
                 with self.assertRaises(TutorError) as caught:
-                    ask_mang_tahimik('loops?')
+                    ask_mang_tahimik('inspect this unusual program')
                 self.assertNotIn('secret', str(caught.exception))
         response = MagicMock()
         response.__enter__.return_value.read.return_value = b'{}'
         with patch('src.systems.ai_tutor.request.urlopen', return_value=response):
             with self.assertRaises(TutorError):
-                ask_mang_tahimik('loops?')
+                ask_mang_tahimik('inspect this unusual program')
 
     def test_pending_is_nonblocking_and_history_updates_on_poll(self):
         entered, release = threading.Event(), threading.Event()
@@ -80,7 +80,7 @@ class TutorTests(unittest.TestCase):
                     {'code': code, 'error': 'secret-key-value'}).encode()))
                 with patch('src.systems.ai_tutor.request.urlopen', side_effect=failure):
                     with self.assertRaises(TutorError) as caught:
-                        ask_mang_tahimik('how to play?')
+                        ask_mang_tahimik('inspect this unusual program')
                 self.assertIn(fragment, str(caught.exception))
                 self.assertNotIn('secret', str(caught.exception))
 

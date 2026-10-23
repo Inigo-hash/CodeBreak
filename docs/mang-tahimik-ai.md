@@ -30,7 +30,7 @@ copies of the game: pull/rebuild/distribute the new version.
 
 Keep your Google AI Studio project on its Free Tier if you want free usage.
 A Gemini app subscription does not configure this API project. The configured
-model is gemini-2.5-flash-lite; availability/quotas depend on your Google account.
+model is gemini-3.1-flash-lite; availability/quotas depend on your Google account.
 Change GEMINI_MODEL on Render if necessary, using a text generateContent model
 available on your free project. No live key was used in automated tests.
 
@@ -47,15 +47,14 @@ Clients send an in-memory random token, with no saved player/device identity.
 Older clients without that token use only the global provider caps, so a
 whole school is not incorrectly treated as one player. Failed provider
 calls count toward the budget, including the single automatic retry for HTTP
-502/503/504. That retry uses `GEMINI_FALLBACK_MODEL` (default `gemini-3.1-flash-lite`
-when the primary is `gemini-2.5-flash-lite`) so one overloaded model does not
-block both attempts. Set it to an empty string to retry the primary instead;
-custom primary models have no implicit backup. A missing model (404) or
-model-specific quota (429) also
-tries the distinct backup once. The previous blueprint's `gemini-2.5-flash`
-backup is migrated to `gemini-3.1-flash-lite` when paired with the default
-primary, including existing Render environments. Both models must be available
-to the server's Google project. Retries consume the same attempt caps, keep the same concurrency
+502/503/504. The shipped pair now tries `gemini-3.1-flash-lite` first and
+`gemini-2.5-flash-lite` second, using the same two model IDs already configured
+by the prior release. Existing legacy pairs are promoted to this order without
+requiring an environment edit. `GEMINI_FALLBACK_MODEL` can explicitly override
+the backup; an empty string retries the primary instead. Custom primary models
+outside this known pair have no implicit backup. A missing model (404) or
+model-specific quota (429) can try the distinct backup once. Both models must
+be available to the server's Google project. Retries consume the same attempt caps, keep the same concurrency
 slot, and stop if the budget is exhausted. Quota, authentication, and model
 errors are not retried against the same model. A provider retry consumes
 global minute/day budget, but does not consume another question allowance.
@@ -163,3 +162,44 @@ To verify the deployed server, `/health` should return header
 open-ended debugging question to test live Gemini separately; a successful guide
 answer alone does not prove Gemini has recovered. Never publish API keys in logs
 or game files.
+
+## Defence backup and rehearsal (2026-10-23)
+
+The desktop includes `src/data/tutor_knowledge.py`: reference material for Python
+syntax, variables, types, input/output, formatting, operators, strings,
+collections, loops, functions, errors and testing. Retrieval also uses current
+stage, room, control, enemy and player-rule records for game questions.
+Reworded English/Taglish questions use phrase matching; this is reference
+retrieval, not model training or a local language model. Arbitrary code is not
+executed and hidden tests/full challenge solutions are not included.
+
+Exact FAQs still answer immediately. Other questions try the online AI first.
+If no reply arrives after eight seconds, the chat shows a labelled reference
+(or admits that no saved answer is known) while the real request continues.
+A later generated answer is labelled `Live AI:`. On network, quota or server
+failure, supported questions use local reference help. Unknown questions get
+an honest limitation plus suggested topics, never an invented answer. Offline
+mode can repeat a relevant reference for simple follow-ups; it cannot generate
+a novel example or debug unseen code. Topic context does not reveal player progress.
+
+For a fully disconnected rehearsal, set `CODEBREAK_TUTOR_MODE=offline` before
+launching. The default mode continues to prefer live AI for flexible questions.
+No API key is needed in the game.
+
+```bash
+python tools/check_tutor.py --offline
+python tools/check_tutor.py --live
+```
+
+The live check deliberately uses an open-ended question and rejects reference
+answers as proof of AI health. Run it before a defence, then open the actual
+game, test a reworded lesson question, disconnect internet and test again.
+Pull the latest game code before rehearsing; server deployment alone cannot
+update a downloaded desktop game. Free hosting and external AI availability
+remain outside the game's control.
+
+The server now exposes `X-Tutor-Source: live_ai` and `X-Tutor-Route: primary` or
+`backup` on generated replies, and health revision `defence-backup-20261023`.
+These diagnostics reveal no keys, player data or raw provider errors. Gemini
+3.1 Flash-Lite uses explicit minimal thinking for these brief explanations.
+The primary migration adds no extra attempt and does not bypass usage limits.

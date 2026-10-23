@@ -8,7 +8,7 @@ import uuid
 from queue import Queue, Empty
 from urllib import request, error
 
-from src.systems.tutor_guide import built_in_answer
+from src.systems.tutor_guide import built_in_answer, offline_answer, unavailable_help
 
 MAX_QUESTION = 1000
 CLIENT_ID = uuid.uuid4().hex
@@ -25,6 +25,18 @@ def ask_mang_tahimik(question, context=None, history=()):
     guide = built_in_answer(question)
     if guide:
         return guide
+    if os.environ.get('CODEBREAK_TUTOR_MODE', '').strip().lower() == 'offline':
+        return offline_answer(question, context, history) or unavailable_help()
+    try:
+        return _ask_online(question, context, history)
+    except TutorError as exc:
+        backup = offline_answer(question, context, history)
+        if backup:
+            return backup
+        raise TutorError(str(exc) + '\n' + unavailable_help()) from None
+
+
+def _ask_online(question, context=None, history=()):
     from urllib.parse import urlparse
     from pathlib import Path
     endpoint = os.environ.get('CODEBREAK_TUTOR_URL', '').strip()
@@ -113,6 +125,8 @@ class TutorSession:
         self.pending = False
         self.last_sent = float('-inf')
         self.results = Queue()
+        self._backup = None
+        self._backup_shown = False
 
     def submit(self, question, context=None):
         question = question.strip()
@@ -123,6 +137,8 @@ class TutorSession:
         self.pending = True
         self.last_sent = time.monotonic()
         history = [dict(item) for item in self.history[-8:]]
+        self._backup = offline_answer(question, context, history) or unavailable_help()
+        self._backup_shown = False
         def work():
             try:
                 answer = self.ask(question, context, history)
@@ -138,10 +154,21 @@ class TutorSession:
         try:
             question, answer, success = self.results.get_nowait()
         except Empty:
+            # A slow host must not leave the defence demo blank. Keep the
+            # real request running and identify the provisional source.
+            if (self.pending and self._backup and not self._backup_shown
+                    and time.monotonic() - self.last_sent >= 8):
+                self._backup_shown = True
+                return self._backup + '\n\nThe online AI is still connecting.'
             return None
         self.pending = False
         if success:
             self.history.extend([{'role': 'user', 'content': question},
                                  {'role': 'assistant', 'content': answer}])
             self.history = self.history[-8:]
+        if self._backup_shown:
+            if answer == self._backup:
+                return None  # The reference was already shown while waiting.
+            if success:
+                return 'Live AI: ' + answer
         return answer

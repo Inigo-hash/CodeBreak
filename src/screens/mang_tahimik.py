@@ -238,7 +238,7 @@ class MangTahimikChat:
             for i, line in enumerate(lines):
                 self.screen.blit(self.font.render(line, True, UI_COLORS['text']), (x + 12, y + 12 + (i + 1) * line_h))
             if not lines:
-                label = self.font.render('Thinking', True, UI_COLORS['text_dim'])
+                label = self.font.render('Online AI', True, UI_COLORS['text_dim'])
                 self.screen.blit(label, (x + 12, y + 12 + line_h))
                 for i in range(3):
                     active = (pygame.time.get_ticks() // 300) % 3 == i
@@ -286,7 +286,7 @@ class MangTahimikChat:
             pygame.draw.line(self.screen, UI_COLORS['gold_bright'], (caret_x, caret_y),
                              (caret_x, caret_y + self.font.get_height()), 2)
         self.screen.set_clip(old_clip)
-        status = 'Thinking... | Esc: return' if self.session.pending else 'Enter: ask | Esc: return | Ctrl+A/C/V/X/Z: edit'
+        status = 'Connecting to online AI... | Esc: return' if self.session.pending else 'Enter: ask | Esc: return | Ctrl+A/C/V/X/Z: edit'
         self.screen.blit(self.font.render(status, True, UI_COLORS['text_dim']), (panel.x + 20, panel.bottom - 38))
 
     def run(self):

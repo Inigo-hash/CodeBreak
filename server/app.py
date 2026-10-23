@@ -19,7 +19,7 @@ RETRYABLE_STATUS = frozenset((502, 503, 504))
 MAX_PROVIDER_ATTEMPTS = 2
 PROVIDER_DEADLINE = 55
 PROVIDER_ATTEMPT_TIMEOUT = 20
-TUTOR_REVISION = 'timeout-failover-guide-20261021'
+TUTOR_REVISION = 'defence-backup-20261023'
 
 
 class Turn(BaseModel):
@@ -129,13 +129,18 @@ def create_app():
         if guide:
             return {'answer': guide, 'source': 'built_in'}
         key = os.environ.get('GEMINI_API_KEY', '').strip()
-        model = os.environ.get('GEMINI_MODEL', 'gemini-2.5-flash-lite').strip()
+        model = os.environ.get('GEMINI_MODEL', 'gemini-3.1-flash-lite').strip()
         fallback = os.environ.get('GEMINI_FALLBACK_MODEL',
+                                  'gemini-2.5-flash-lite' if model == 'gemini-3.1-flash-lite' else
                                   'gemini-3.1-flash-lite' if model == 'gemini-2.5-flash-lite' else '').strip()
         # Upgrade the backup shipped by the previous blueprint, including
         # existing Render environment values that a code deploy cannot reset.
         if model == 'gemini-2.5-flash-lite' and fallback == 'gemini-2.5-flash':
             fallback = 'gemini-3.1-flash-lite'
+        # Promote the current member of the shipped legacy pair. Preserve
+        # custom models, disabled fallbacks, budgets and the same two slots.
+        if model == 'gemini-2.5-flash-lite' and fallback == 'gemini-3.1-flash-lite':
+            model, fallback = fallback, model
         if (not key or not re.fullmatch(r'[a-zA-Z0-9._-]+', model)
                 or (fallback and not re.fullmatch(r'[a-zA-Z0-9._-]+', fallback))):
             return JSONResponse({'error': 'The tutor is not configured.',
@@ -177,11 +182,17 @@ def create_app():
                         # A timed-out primary must not skip the backup slot.
                         # Bound each attempt so the backup still has time left.
                         failure = None
+                        attempt_payload = dict(payload)
+                        if attempt_model == 'gemini-3.1-flash-lite':
+                            attempt_payload['generationConfig'] = {
+                                **payload['generationConfig'],
+                                'thinkingConfig': {'thinkingLevel': 'minimal'},
+                            }
                         try:
                             async with asyncio.timeout(PROVIDER_ATTEMPT_TIMEOUT):
                                 response = await app.state.http.post(
                                     'https://generativelanguage.googleapis.com/v1beta/models/' + attempt_model + ':generateContent',
-                                    headers={'x-goog-api-key': key}, json=payload)
+                                    headers={'x-goog-api-key': key}, json=attempt_payload)
                         except (httpx.HTTPError, TimeoutError) as exc:
                             if attempt + 1 == MAX_PROVIDER_ATTEMPTS:
                                 raise
@@ -207,7 +218,10 @@ def create_app():
                                    if isinstance(p.get('text'), str) and not p.get('thought'))
                 if not answer.strip():
                     raise ValueError('No answer')
-                return {'answer': answer.strip()[:4000]}
+                return JSONResponse({'answer': answer.strip()[:4000]}, headers={
+                    'X-Tutor-Source': 'live_ai',
+                    'X-Tutor-Route': 'backup' if attempt else 'primary',
+                })
             except (httpx.TimeoutException, TimeoutError):
                 return JSONResponse({'error': 'The AI service took too long. Please try again.',
                                      'code': 'gemini_timeout'}, status_code=503)

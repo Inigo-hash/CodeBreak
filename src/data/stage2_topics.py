@@ -70,7 +70,6 @@ COMMON MISTAKES
 - Change the counter in a while loop.
 - break ends the loop; continue skips one repetition.
 Run the examples to see their output.""",
-}""",
 }
 
 LISTS_STAGE2_TOPIC = {
@@ -136,7 +135,6 @@ REMEMBER
 - remove() removes one match; pop() returns the removed item.
 - Check for empty lists or missing values when needed.
 - Returning a value is different from printing it.""",
-}""",
 }
 
 ITERATIVE_CHALLENGES = {

@@ -61,6 +61,8 @@ def offline_answer(question, context=None, history=()):
     text = _normalize(question)
     if not text:
         return None
+    if any(_has_phrase(text, phrase) for phrase in ('saved game', 'save game', 'resume game', 'continue game', 'continue my game')):
+        return GUIDE_LABEL + 'To resume, open Start Game, select Continue Game, then choose your existing save slot. Use its password. During play, Escape opens the pause menu; choose Save Game before leaving.'
     if re.search(r'\b(solve|solution|answer|finish|complete)\b', text) and re.search(r'\b(challenge|assessment|castle_\w+|stage1_\w+)\b', text):
         return GUIDE_LABEL + ('I can give hints, not a complete challenge solution. Check the required inputs, operation order and returned value. Try an empty input and one normal input, then use the lesson’s progressive hints for your next step.')
     from src.data.tutor_knowledge import PYTHON_HELP

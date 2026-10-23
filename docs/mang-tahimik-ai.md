@@ -203,3 +203,7 @@ The server now exposes `X-Tutor-Source: live_ai` and `X-Tutor-Route: primary` or
 These diagnostics reveal no keys, player data or raw provider errors. Gemini
 3.1 Flash-Lite uses explicit minimal thinking for these brief explanations.
 The primary migration adds no extra attempt and does not bypass usage limits.
+
+### Slow-request controls (23 October 2026)
+
+Choose **Use guide** or press **Ctrl+G** to stop waiting and keep using saved reference help. The existing HTTP call can finish in the background, but its late reply is discarded. Until it finishes, new questions in that chat use the guide rather than launching additional requests. Normal live requests resume on subsequent questions after that worker finishes. The connecting indicator belongs to the live interface and disappears when the pending turn ends. **Back / Escape** closes chat; **Page Up / Page Down** scroll history.

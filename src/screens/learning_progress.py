@@ -105,7 +105,7 @@ def draw_learning_progress(screen, stage, state, topics_only=False, scroll=0, ba
         thumb_height = max(24, round(content.height*content.height/total))
         thumb = pygame.Rect(track.x, track.y+round((track.h-thumb_height)*scroll/limit), 4, thumb_height)
         pygame.draw.rect(screen, UI_COLORS['gold'], thumb, border_radius=2)
-    footer = 'Scroll / Up / Down for more' if limit else 'ESC to return to gameplay'
+    footer = 'Up/Down: scroll | Tab: switch view | Esc: return'
     footer_surface = fit_text(small, footer, UI_COLORS['text_dim'], (back.left-x-20, 28))
     screen.blit(footer_surface, footer_surface.get_rect(midleft=(x,back.centery)))
     return limit, switch, back
@@ -125,6 +125,8 @@ def open_learning_progress(screen, stage, state, topics_only=False, background=N
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     return
+                if event.key == pygame.K_TAB:
+                    topics_only = not topics_only; scroll = 0
                 if event.key in (pygame.K_DOWN, pygame.K_PAGEDOWN): scroll += 80
                 if event.key in (pygame.K_UP, pygame.K_PAGEUP): scroll -= 80
             if event.type == pygame.MOUSEWHEEL: scroll -= event.y * 55

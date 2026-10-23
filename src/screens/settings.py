@@ -172,8 +172,8 @@ class SettingsPanel:
         if event.key == pygame.K_ESCAPE:
             self.close()
             return True
-        if event.key in (pygame.K_UP, pygame.K_DOWN):
-            step = -1 if event.key == pygame.K_UP else 1
+        if event.key in (pygame.K_UP, pygame.K_DOWN, pygame.K_TAB):
+            step = -1 if event.key == pygame.K_UP or (event.key == pygame.K_TAB and getattr(event, 'mod', 0) & pygame.KMOD_SHIFT) else 1
             self.focus = (self.focus + step) % len(ROWS)
             self.keyboard_focus = True
             return True

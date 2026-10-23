@@ -102,6 +102,7 @@ class MangTahimikChat:
         shade.fill((8, 12, 20, 65))
         self.background.blit(shade, (0, 0))
         self.messages = [('Mang Tahimik', 'May tanong ka tungkol sa CodeBreak o Python? Ask me about healing, equipment, controls, stages, or coding hints.')]
+        self.feedback = ''
         self.question = ''
         self.cursor = 0
         self.anchor = 0
@@ -141,7 +142,11 @@ class MangTahimikChat:
         self.cursor = min(self.cursor, len(self.question))
         self.anchor = min(self.anchor, len(self.question))
         start, end = sorted((self.cursor, self.anchor))
-        if ctrl and event.key == pygame.K_a:
+        if ctrl and event.key == pygame.K_g:
+            self.use_guide()
+        elif event.key in (pygame.K_PAGEUP, pygame.K_PAGEDOWN):
+            self.scroll = max(0, min(self.max_scroll, self.scroll + (160 if event.key == pygame.K_PAGEUP else -160)))
+        elif ctrl and event.key == pygame.K_a:
             self.anchor, self.cursor = 0, len(self.question)
         elif ctrl and event.key in (pygame.K_c, pygame.K_x, pygame.K_v):
             try:
@@ -191,8 +196,18 @@ class MangTahimikChat:
             fraction = max(0, min(1, (y - self.scroll_track.y - self.drag_scroll) / travel))
             self.scroll = (1 - fraction) * self.max_scroll
 
+    def use_guide(self):
+        answer = self.session.use_guide()
+        if answer is not None:
+            if not self.messages or self.messages[-1] != ('Mang Tahimik', answer):
+                self.messages.append(('Mang Tahimik', answer))
+            self.messages = self.messages[-20:]
+            self.feedback = 'Saved guide ready. You can ask another question.'
+            self.scroll = 0
+
     def submit(self):
         if self.session.submit(self.question, self.context):
+            self.feedback = ''
             self.messages.append(('You', self.question.strip()))
             self.messages = self.messages[-20:]
             self.question = ''
@@ -202,6 +217,11 @@ class MangTahimikChat:
             self.scroll = 0
             self.caret_reset = pygame.time.get_ticks()
 
+        else:
+            self.feedback = ('Use guide to stop waiting, or wait for the AI.' if self.session.pending else
+                             'Type a question first.' if not self.question.strip() else
+                             'Please wait a moment, then send again.')
+
     def draw(self):
         w, h = self.screen.get_size()
         panel = tutor_chat_rect(self.screen)
@@ -210,8 +230,18 @@ class MangTahimikChat:
         pygame.draw.rect(self.screen, UI_COLORS['gold'], panel, 2, border_radius=10)
         if self.portrait:
             self.screen.blit(self.portrait, (panel.x + 16, panel.y + 12))
-        self.screen.blit(self.heading.render('Mang Tahimik', True, UI_COLORS['gold']), (panel.x + 82, panel.y + 20))
-        view = pygame.Rect(panel.x + 20, panel.y + 78, panel.w - 60, panel.h - 210)
+        self.back_rect = pygame.Rect(panel.right - 104, panel.y + 16, 88, 42)
+        self.guide_rect = pygame.Rect(panel.right - 234, panel.y + 16, 122, 42)
+        title_width = (self.guide_rect.left if self.session.pending else self.back_rect.left) - panel.x - 90
+        title = fit_text(self.heading, 'Mang Tahimik', UI_COLORS['gold'], (title_width, 38))
+        self.screen.blit(title, (panel.x + 82, panel.y + 20))
+        for rect, label in [(self.back_rect, 'Back [Esc]')] + ([(self.guide_rect, 'Use guide')] if self.session.pending else []):
+            pygame.draw.rect(self.screen, UI_COLORS['button_fill_hover'] if rect.collidepoint(pygame.mouse.get_pos()) else UI_COLORS['button_fill'], rect, border_radius=6)
+            pygame.draw.rect(self.screen, UI_COLORS['gold'], rect, 1, border_radius=6)
+            text = fit_text(self.font, label, UI_COLORS['text'], (rect.w - 12, rect.h - 12))
+            self.screen.blit(text, text.get_rect(center=rect.center))
+        entry_height = max(66, 2 * (self.font.get_linesize() + 3) + 14)
+        view = pygame.Rect(panel.x + 20, panel.y + 78, panel.w - 60, panel.h - 160 - entry_height)
         cards = []
         line_h = self.font.get_linesize() + 3
         for name, message in self.messages:
@@ -252,12 +282,13 @@ class MangTahimikChat:
         self.scroll_thumb = pygame.Rect(self.scroll_track.x, thumb_y, 10, thumb_h)
         pygame.draw.rect(self.screen, UI_COLORS['modal_inner'], self.scroll_track, border_radius=5)
         pygame.draw.rect(self.screen, UI_COLORS['gold'] if max_scroll else UI_COLORS['modal_frame'], self.scroll_thumb, border_radius=5)
-        entry = pygame.Rect(panel.x + 20, panel.bottom - 116, panel.w - 124, 66)
-        self.send_rect = pygame.Rect(entry.right + 8, entry.y, 76, 66)
+        entry_height = max(66, 2 * line_h + 14)
+        entry = pygame.Rect(panel.x + 20, panel.bottom - 70 - entry_height, panel.w - 124, entry_height)
+        self.send_rect = pygame.Rect(entry.right + 8, entry.y, 76, entry.h)
         pygame.draw.rect(self.screen, UI_COLORS['modal_inner'], entry, border_radius=5)
         pygame.draw.rect(self.screen, UI_COLORS['gold'], entry, 1, border_radius=5)
         pygame.draw.rect(self.screen, UI_COLORS['button_fill'], self.send_rect, border_radius=5)
-        self.screen.blit(self.font.render('...' if self.session.pending else 'Ask', True,
+        self.screen.blit(self.font.render('Wait' if self.session.pending else 'Ask', True,
                                          UI_COLORS['text_dim'] if self.session.pending else UI_COLORS['gold']), (self.send_rect.x + 16, self.send_rect.y + 20))
         old_clip = self.screen.get_clip()
         self.screen.set_clip(entry.inflate(-12, -8))
@@ -286,8 +317,13 @@ class MangTahimikChat:
             pygame.draw.line(self.screen, UI_COLORS['gold_bright'], (caret_x, caret_y),
                              (caret_x, caret_y + self.font.get_height()), 2)
         self.screen.set_clip(old_clip)
-        status = 'Connecting to online AI... | Esc: return' if self.session.pending else 'Enter: ask | Esc: return | Ctrl+A/C/V/X/Z: edit'
-        self.screen.blit(self.font.render(status, True, UI_COLORS['text_dim']), (panel.x + 20, panel.bottom - 38))
+        status = ('Online AI connecting | Ctrl+G: use saved guide' if self.session.pending else
+                  self.feedback or 'Enter: ask | PgUp/PgDn: history | Esc: return')
+        status_text = fit_text(self.font, status, UI_COLORS['text_dim'], (panel.w - 40, 22))
+        self.screen.blit(status_text, (panel.x + 20, panel.bottom - 52))
+        counter = fit_text(self.font, f'{len(self.question)}/{MAX_QUESTION} characters | Ctrl+A/C/V/X/Z: edit',
+                           UI_COLORS['text_dim'], (panel.w - 40, 18))
+        self.screen.blit(counter, (panel.x + 20, panel.bottom - 28))
 
     def run(self):
         clock = pygame.time.Clock()
@@ -310,7 +346,11 @@ class MangTahimikChat:
                     elif event.type == pygame.MOUSEWHEEL:
                         self.scroll += event.y * 60
                     elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                        if self.scroll_track.collidepoint(event.pos) and self.max_scroll:
+                        if self.back_rect.collidepoint(event.pos):
+                            return
+                        elif self.session.pending and self.guide_rect.collidepoint(event.pos):
+                            self.use_guide()
+                        elif self.scroll_track.collidepoint(event.pos) and self.max_scroll:
                             self.drag_scroll = event.pos[1] - self.scroll_thumb.y if self.scroll_thumb.collidepoint(event.pos) else self.scroll_thumb.h // 2
                             self.drag_scroll_to(event.pos[1])
                         elif self.send_rect.collidepoint(event.pos):

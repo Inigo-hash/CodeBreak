@@ -125,6 +125,8 @@ class TutorSession:
         self.pending = False
         self.last_sent = float('-inf')
         self.results = Queue()
+        self._worker = None
+        self._question = None
         self._backup = None
         self._backup_shown = False
 
@@ -139,16 +141,34 @@ class TutorSession:
         history = [dict(item) for item in self.history[-8:]]
         self._backup = offline_answer(question, context, history) or unavailable_help()
         self._backup_shown = False
+        self._question = question
+        # A detached network call may finish, but cannot overwrite a new turn.
+        results = self.results
+        if self._worker is not None and self._worker.is_alive():
+            results.put((question, self._backup, True))
+            return True
         def work():
             try:
                 answer = self.ask(question, context, history)
-                self.results.put((question, answer, True))
+                results.put((question, answer, True))
             except TutorError as exc:
-                self.results.put((question, str(exc), False))
+                results.put((question, str(exc), False))
             except Exception:
-                self.results.put((question, 'Something went wrong. Please try again.', False))
-        threading.Thread(target=work, daemon=True).start()
+                results.put((question, 'Something went wrong. Please try again.', False))
+        self._worker = threading.Thread(target=work, daemon=True)
+        self._worker.start()
         return True
+
+    def use_guide(self):
+        """Stop waiting without starting another simultaneous network worker."""
+        if not self.pending:
+            return None
+        self.pending = False
+        self.results = Queue()
+        self.history.extend([{'role': 'user', 'content': self._question},
+                             {'role': 'assistant', 'content': self._backup}])
+        self.history = self.history[-8:]
+        return self._backup
 
     def poll(self):
         try:
@@ -159,7 +179,7 @@ class TutorSession:
             if (self.pending and self._backup and not self._backup_shown
                     and time.monotonic() - self.last_sent >= 8):
                 self._backup_shown = True
-                return self._backup + '\n\nThe online AI is still connecting.'
+                return self._backup
             return None
         self.pending = False
         if success:
@@ -170,5 +190,6 @@ class TutorSession:
             if answer == self._backup:
                 return None  # The reference was already shown while waiting.
             if success:
-                return 'Live AI: ' + answer
+                if not answer.startswith(('Built-in guide:', 'Offline guide:')):
+                    return 'Live AI: ' + answer
         return answer

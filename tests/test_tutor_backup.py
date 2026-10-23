@@ -113,7 +113,7 @@ class ClientFailoverTests(unittest.TestCase):
         with patch('src.systems.ai_tutor.time.monotonic', return_value=107):
             self.assertIsNone(session.poll())
         with patch('src.systems.ai_tutor.time.monotonic', return_value=108):
-            self.assertIn('online AI is still connecting', session.poll())
+            self.assertEqual(session.poll(), session._backup)
             self.assertIsNone(session.poll())
         self.assertTrue(session.pending)
         session.results.put(('explain while loops', 'Here is the live explanation.', True))
@@ -130,3 +130,36 @@ class ClientFailoverTests(unittest.TestCase):
         self.assertIsNone(session.poll())
         self.assertFalse(session.pending)
         self.assertEqual(len(session.history),2)
+
+
+class RecoveryTests(unittest.TestCase):
+    def test_saved_game_intent_is_not_python_continue(self):
+        answer = offline_answer('how do i continue my saved game')
+        self.assertIn('save slot', answer)
+        self.assertNotIn('enclosing loop', answer)
+
+    def test_detached_result_cannot_overwrite_new_question(self):
+        import threading
+        started, release, finished = threading.Event(), threading.Event(), threading.Event()
+        def slow(*args):
+            started.set()
+            release.wait(2)
+            finished.set()
+            return 'late generated answer'
+        session = TutorSession(slow)
+        try:
+            self.assertTrue(session.submit('explain while loops'))
+            self.assertTrue(started.wait(1))
+            answer = session.use_guide()
+            self.assertTrue(answer.startswith('Built-in guide:'))
+            self.assertFalse(session.pending)
+            session.last_sent = float('-inf')
+            self.assertTrue(session.submit('explain dictionaries'))
+            self.assertIn('dictionary', session.poll())
+            self.assertFalse(session.pending)
+        finally:
+            release.set()
+            session._worker.join(2)
+        self.assertTrue(finished.is_set())
+        self.assertIsNone(session.poll())
+        self.assertNotIn('late generated answer', str(session.history))

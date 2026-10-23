@@ -243,6 +243,8 @@ class TopicLessonScreen:
 
                         self.show_confirmation = False
 
+                    if event.type == pygame.KEYDOWN and event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                        return 'challenge'
                     continue
 
                 # -----------------------------------------
@@ -254,6 +256,17 @@ class TopicLessonScreen:
                     if event.key == pygame.K_ESCAPE:
 
                         return "close"
+                    if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                        self.show_confirmation = True
+                    if event.key in (pygame.K_UP, pygame.K_DOWN, pygame.K_PAGEUP, pygame.K_PAGEDOWN, pygame.K_HOME, pygame.K_END):
+                        step = max(1, self.lesson_rect.h // self.line_height - 1) if event.key in (pygame.K_PAGEUP, pygame.K_PAGEDOWN) else 3
+                        if event.key == pygame.K_HOME:
+                            self.scroll_offset = 0
+                        elif event.key == pygame.K_END:
+                            self.scroll_offset = self.max_scroll()
+                        else:
+                            self.scroll_offset += -step if event.key in (pygame.K_UP, pygame.K_PAGEUP) else step
+                        self.scroll_offset = max(0, min(self.scroll_offset, self.max_scroll()))
 
                 if event.type == pygame.MOUSEWHEEL:
 
@@ -409,6 +422,19 @@ class TopicLessonScreen:
             y += self.line_height
 
         self.screen.set_clip(old_clip)
+        # Show that the lesson continues below the viewport, even before scrolling.
+        limit = self.max_scroll()
+        if limit:
+            track = pygame.Rect(self.lesson_rect.right - 8, self.lesson_rect.top + 8,
+                                4, self.lesson_rect.h - 16)
+            pygame.draw.rect(self.screen, FRAME, track, border_radius=2)
+            visible = max(1, self.lesson_rect.h // self.line_height)
+            thumb_h = max(24, int(track.h * visible / (visible + limit)))
+            thumb = pygame.Rect(track.x, track.y + int((track.h - thumb_h) * self.scroll_offset / limit), 4, thumb_h)
+            pygame.draw.rect(self.screen, ACCENT, thumb, border_radius=2)
+        hint = fit_text(self.difficulty_font, 'Up/Down: scroll | Esc: back', TEXT_DIM,
+                        (max(1, self.challenge_button.left - self.panel_rect.left - 48), 28))
+        self.screen.blit(hint, hint.get_rect(midleft=(self.panel_rect.left + 30, self.challenge_button.centery)))
 
         # -----------------------------------------
         # Start challenge button
@@ -416,7 +442,7 @@ class TopicLessonScreen:
 
         self.draw_button(
             self.challenge_button,
-            "START CHALLENGE",
+            "START CHALLENGE [Enter]",
             mouse_pos,
             ACCENT
         )
@@ -476,14 +502,14 @@ class TopicLessonScreen:
 
         self.draw_button(
             self.yes_button,
-            "START CHALLENGE",
+            "START CHALLENGE [Enter]",
             mouse_pos,
             SUCCESS
         )
 
         self.draw_button(
             self.no_button,
-            "KEEP READING",
+            "KEEP READING [Esc]",
             mouse_pos,
             DANGER
         )

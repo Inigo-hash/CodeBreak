@@ -184,24 +184,17 @@ ITERATIVE_CHALLENGES = {
 LISTS_STAGE2_CHALLENGES = {
     LISTS_CHALLENGE_IDS[0]: {
         "id": LISTS_CHALLENGE_IDS[0],
-        "title": "Report the Archive List",
-        "difficulty": "Intermediate",
+        "title": "Read the Inventory",
+        "difficulty": "Beginner",
         "type": "lists",
         "function_name": "list_report",
         "required_list_operations": ["len"],
-        "problem": "Write list_report(items). Return (first, last, count). If items is empty, return (None, None, 0). Do not modify items. Example: ['ink', 'paper', 'ink'] returns ('ink', 'ink', 3).",
-        "objective": "Safely report both endpoints and the list length.",
-        "starter_code": "def list_report(items):\n    # Handle an empty list before indexing.\n    # Return (first, last, count).\n    pass",
-        "hints": ["Check if not items before using an index.", "For a nonempty list, use items[0] and items[-1].", "Use len(items) for count.", "Return a tuple containing all three values."],
-        "function_cases": [
-            {"args": [[]], "expected": (None, None, 0)},
-            {"args": [["seal"]], "expected": ("seal", "seal", 1)},
-            {"args": [["ink", "paper", "ink"]], "expected": ("ink", "ink", 3)},
-            {"args": [[0, False, 0]], "expected": (0, 0, 3)},
-            {"args": [[""]], "expected": ("", "", 1)},
-        ],
-        "preserve_args": True,
-    },
+        "problem": "Write list_report(items). Return (first, count). If items is empty, return (None, 0). Do not modify items. Example: list_report(['key', 'potion']) returns ('key', 2).",
+        "objective": "Check for an empty list, then use index 0 and len().",
+        "starter_code": "def list_report(items):\\n    # If items is empty, return (None, 0).\\n    # Otherwise return the first item and list length.\\n    pass",
+        "hints": ["Check if not items before indexing.", "Use items[0] for the first item.", "Use len(items) for the count.", "Return both values in a tuple."],
+        "function_cases": [{"args": [[]], "expected": (None, 0)}, {"args": [["key"]], "expected": ("key", 1)}, {"args": [["key", "potion"]], "expected": ("key", 2)}, {"args": [[1, 2, 3]], "expected": (1, 3)}],
+        "preserve_args": True
     LISTS_CHALLENGE_IDS[1]: {
         "id": LISTS_CHALLENGE_IDS[1],
         "title": "Add an Item to the Inventory",

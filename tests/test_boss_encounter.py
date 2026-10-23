@@ -124,6 +124,30 @@ class BossTriggerTests(unittest.TestCase):
         self.assertFalse(trigger.update(self.zone, (rect.left + 1, rect.centery)))
         self.assertTrue(trigger.update(self.zone, (rect.centerx, rect.bottom - 1)))
 
+    def test_authored_castle_door_excludes_terrace_and_side_approaches(self):
+        world = self.world
+        import xml.etree.ElementTree as ET
+        root = ET.parse(world["map"]).getroot()
+        width = int(root.get("width")) * int(root.get("tilewidth"))
+        height = int(root.get("height")) * int(root.get("tileheight"))
+        authored = next(z for z in world["zones"] if z.get("is_boss_zone"))
+        def pixels(values):
+            return pygame.Rect(*(round(v * extent) for v, extent in
+                                 zip(values, (width, height, width, height))))
+        zone = dict(authored, rect=pixels(authored["rect"]),
+                    entrance_rect=pixels(authored["entrance_rect"]))
+        entrance = zone["entrance_rect"]
+        trigger = BossEntranceTrigger()
+        for point in ((zone["rect"].centerx, zone["rect"].bottom - 1),
+                      (entrance.left - 1, entrance.centery),
+                      (entrance.right, entrance.centery),
+                      (entrance.centerx, entrance.bottom)):
+            self.assertFalse(trigger.update(zone, point))
+        self.assertTrue(trigger.update(zone, entrance.center))
+        marker = pixels(self.stage["completion"]["exit_rect"])
+        self.assertEqual(marker.centerx, entrance.centerx)
+        self.assertEqual(marker.bottom, entrance.centery)
+
     def test_boss_has_distinct_record_stats_body_and_assets(self):
         self.assertEqual(self.boss_id, "corrupted_core_kapre")
         self.assertIn(self.boss_id, self.stage["enemies"])

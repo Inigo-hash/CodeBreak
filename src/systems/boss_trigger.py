@@ -11,7 +11,14 @@ def boss_zone_at(zone_records, point):
 
 
 def boss_main_entrance_rect(zone):
-    """The centered south doorway, rather than the whole label zone."""
+    """Use the authored castle threshold when supplied."""
+    if zone and zone.get("entrance_rect") is not None:
+        return zone["entrance_rect"].copy()
+    return boss_arena_exit_rect(zone)
+
+
+def boss_arena_exit_rect(zone):
+    """The south terrace passage used when retreating from the arena."""
     if not zone or not zone.get("is_boss_zone"):
         return None
     rect = zone["rect"]
@@ -27,6 +34,11 @@ def boss_main_entrance_rect(zone):
 
 def boss_main_entrance_at(zone, point):
     entrance = boss_main_entrance_rect(zone)
+    return entrance is not None and entrance.collidepoint(point)
+
+
+def boss_arena_exit_at(zone, point):
+    entrance = boss_arena_exit_rect(zone)
     return entrance is not None and entrance.collidepoint(point)
 
 

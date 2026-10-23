@@ -30,6 +30,8 @@ ISLAND_ZONES = [
             0.200000
         ),
         "is_boss_zone": True,
+        # Walkable threshold of the castle arch, in map fractions.
+        "entrance_rect": (1680/3008, 720/2560, 48/3008, 32/2560),
         # Movement covers the full terrace, independently of its entry label.
         "movement_rect": (0.367021, 0.187500, 0.388298, 0.256250),
     },

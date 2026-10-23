@@ -49,9 +49,9 @@ class Stage1EndingRegressions(unittest.TestCase):
             width = int(root.get("width")) * int(root.get("tilewidth"))
             height = int(root.get("height")) * int(root.get("tileheight"))
             zone = next(zone for zone in world["zones"] if zone.get("is_boss_zone"))
-            x, y, w, h = zone["rect"]
+            x, y, w, h = zone["entrance_rect"]
             state["map_layout_version"] = world["map_layout_version"]
-            state["map_position"] = [round((x + w / 2) * width), round((y + h) * height) - 40]
+            state["map_position"] = [round((x + w / 2) * width), round((y + h / 2) * height) - 8]
 
         def get_events():
             live = gameplay_locals()

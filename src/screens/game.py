@@ -86,7 +86,7 @@ from src.screens.boss_encounter import (
 )
 from src.screens.tutorial import tutorial_screen
 from src.systems.boss_trigger import (
-    BossEntranceTrigger, boss_main_entrance_at, boss_zone_at, required_boss_id,
+    BossEntranceTrigger, boss_arena_exit_at, boss_main_entrance_at, boss_zone_at, required_boss_id,
 )
 from src.systems.stage_gate import (
     evaluate_boss_access,
@@ -941,6 +941,12 @@ def game_screen(screen, slot_num=None, save_state=None):
             "name": zone["name"],
             "is_boss_zone": zone.get("is_boss_zone", False),
             "movement_rect": zone.get("movement_rect"),
+            "entrance_rect": (
+                pygame.Rect(*(round(value * extent) for value, extent in zip(
+                    zone["entrance_rect"],
+                    (map_width, map_height, map_width, map_height),
+                ))) if zone.get("entrance_rect") else None
+            ),
             "rect": pygame.Rect(
                 frac_x * map_width,
                 frac_y * map_height,
@@ -2271,7 +2277,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             and not developer_mode.enabled
             and previous_boss_zone is not None
             and current_boss_zone is None
-            and boss_main_entrance_at(
+            and boss_arena_exit_at(
                 previous_boss_zone, player_rect.center
             )
         )

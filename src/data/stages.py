@@ -214,9 +214,8 @@ STAGES = {
             "required_boss": "corrupted_core_kapre",
             "required_final_challenge": "stage1_final_001",
             "exit_name": "Corrupted Core Gate",
-            # Trigger from the walkable foot of the south arch. The old
-            # rectangle was inside a sealed decorative building.
-            "exit_rect": (0.544255, 0.287500, 0.023830, 0.018750),
+            # Outline the castle arch; interaction range reaches its walkable foot.
+            "exit_rect": (1680/3008, 672/2560, 48/3008, 64/2560),
             # Nine beginner lessons award one key each. Keeping rewards
             # authored here makes save migration deterministic.
             "topic_key_rewards": {

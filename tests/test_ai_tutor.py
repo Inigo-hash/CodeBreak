@@ -3,7 +3,7 @@ import threading
 import unittest
 from unittest.mock import patch, MagicMock
 from urllib.error import HTTPError, URLError
-from src.systems.ai_tutor import ask_mang_tahimik, TutorError, TutorSession
+from src.systems.ai_tutor import ask_mang_tahimik, _ask_online, TutorError, TutorSession
 
 
 class TutorTests(unittest.TestCase):
@@ -36,8 +36,7 @@ class TutorTests(unittest.TestCase):
 
     @patch.dict('os.environ', {'CODEBREAK_TUTOR_URL': 'https://tutor.example/ask'})
     def test_safe_errors_and_malformed_response(self):
-        for failure in (HTTPError('url', 429, 'secret', {}, None),
-                        HTTPError('url', 401, 'secret', {}, None), URLError('secret')):
+        for failure in (HTTPError('url', 401, 'secret', {}, None), URLError('secret')):
             with patch('src.systems.ai_tutor.request.urlopen', side_effect=failure):
                 with self.assertRaises(TutorError) as caught:
                     ask_mang_tahimik('inspect this unusual program')
@@ -66,7 +65,8 @@ class TutorTests(unittest.TestCase):
         self.assertEqual(session.poll(), 'hint')
         self.assertFalse(session.pending)
         self.assertEqual(len(session.history), 2)
-        self.assertFalse(session.submit('too soon'))
+        self.assertTrue(session.submit('next question'))
+        session.results.get(timeout=2)
 
     @patch.dict('os.environ', {'CODEBREAK_TUTOR_URL': 'https://tutor.example/ask'})
     def test_safe_provider_error_codes_explain_the_cause(self):
@@ -93,20 +93,23 @@ class TutorTests(unittest.TestCase):
             failure = HTTPError('url', 429, 'secret', {}, BytesIO(json.dumps({'code': code}).encode()))
             with patch('src.systems.ai_tutor.request.urlopen', side_effect=failure):
                 with self.assertRaises(TutorError) as caught:
-                    ask_mang_tahimik('help')
+                    _ask_online('help')
             self.assertIn(fragment, str(caught.exception))
 
     @patch.dict('os.environ', {'CODEBREAK_TUTOR_URL':'https://tutor.example/ask'})
-    def test_limits_explain_wait_and_daily_reset(self):
+    def test_older_server_limits_return_saved_help_without_a_countdown(self):
         from io import BytesIO
-        for code,wait,fragment in (('tutor_session_limit',23,'23 seconds'),
-                                   ('tutor_minute_limit',8,'8 seconds'),
-                                   ('tutor_session_limit',-1,'60 seconds'),
-                                   ('tutor_daily_limit',8000,'8:00 AM')):
+        for code,wait in (('tutor_session_limit',18), ('tutor_minute_limit',8),
+                          ('tutor_session_limit',-1), ('tutor_daily_limit',8000)):
             failure=HTTPError('url',429,'secret',{},BytesIO(json.dumps({'code':code,'retry_after':wait}).encode()))
             with patch('src.systems.ai_tutor.request.urlopen',side_effect=failure):
-                with self.assertRaises(TutorError) as caught:ask_mang_tahimik('help')
-            self.assertIn(fragment,str(caught.exception))
+                answer = ask_mang_tahimik('help')
+            self.assertTrue(answer.startswith('Offline guide:'))
+            self.assertNotIn('wait', answer.lower())
+            self.assertNotIn('seconds', answer)
+            self.assertNotIn('secret', answer)
+            if code == 'tutor_daily_limit':
+                self.assertIn('daily budget', answer)
 
     @patch.dict('os.environ', {'CODEBREAK_TUTOR_URL': 'https://tutor.example/ask'})
     def test_unknown_html_and_invalid_codes_use_safe_fallback(self):

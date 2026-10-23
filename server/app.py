@@ -12,14 +12,14 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 from server.tutor_prompt import SYSTEM_PROMPT
-from src.systems.tutor_guide import built_in_answer
+from src.systems.tutor_guide import built_in_answer, limited_answer
 
 MAX_BODY = 40000
 RETRYABLE_STATUS = frozenset((502, 503, 504))
 MAX_PROVIDER_ATTEMPTS = 2
 PROVIDER_DEADLINE = 55
 PROVIDER_ATTEMPT_TIMEOUT = 20
-TUTOR_REVISION = 'defence-backup-20261023'
+TUTOR_REVISION = 'conversation-recovery-20261024'
 
 
 class Turn(BaseModel):
@@ -37,8 +37,8 @@ class Question(BaseModel):
 
 
 class Limits:
-    """Atomic global/minute/day + IP minute limits; restarts reset counters."""
-    def __init__(self, per_ip=3, per_minute=8, per_day=100):
+    """Atomic provider budgets and optional session cap; restarts reset counters."""
+    def __init__(self, per_ip=0, per_minute=8, per_day=100):
         self.per_ip, self.per_minute, self.per_day = per_ip, per_minute, per_day
         self.recent = deque()
         self.questions = deque()
@@ -64,7 +64,7 @@ class Limits:
             if len(self.recent) >= self.per_minute:
                 return False, 'tutor_minute_limit', max(1, int(self.recent[0][0] + 60 - now) + 1)
             own = [when for when, identity in self.questions if identity == client]
-            if not retry and len(own) >= self.per_ip:
+            if self.per_ip and not retry and len(own) >= self.per_ip:
                 return False, 'tutor_session_limit', max(1, int(own[0] + 60 - now) + 1)
             self.recent.append((now, client))
             if not retry:
@@ -80,8 +80,22 @@ def positive_setting(name, default):
     return value
 
 
+def session_limit_setting():
+    # Existing Render services retain the old blueprint's value of 3 even
+    # after a code deploy. Migrate that shipped default; retain custom caps.
+    configured = os.environ.get('TUTOR_SESSION_PER_MINUTE')
+    if configured is None:
+        configured = os.environ.get('TUTOR_IP_PER_MINUTE', '0')
+        if configured == '3':
+            configured = '0'
+    value = int(configured)
+    if value < 0:
+        raise ValueError('TUTOR_SESSION_PER_MINUTE must be nonnegative')
+    return value
+
+
 def create_app():
-    limits = Limits(positive_setting('TUTOR_IP_PER_MINUTE', 3),
+    limits = Limits(session_limit_setting(),
                     positive_setting('TUTOR_GLOBAL_PER_MINUTE', 8),
                     positive_setting('TUTOR_GLOBAL_PER_DAY', 100))
     busy = asyncio.Semaphore(2)
@@ -118,6 +132,15 @@ def create_app():
         # Host liveness only; deliberately reveals no settings or secrets.
         return JSONResponse({'status': 'ok'}, headers={'X-Tutor-Revision': TUTOR_REVISION})
 
+    def saved_help(question, reason, retry_after):
+        # A completed, labelled reference reply works in older game clients
+        # too. Provider calls remain blocked; only saved knowledge is served.
+        history = [turn.model_dump() for turn in question.history]
+        return JSONResponse({
+            'answer': limited_answer(question.question, question.context, history, reason=reason),
+            'source': 'offline_guide', 'code': reason, 'retry_after': retry_after,
+        }, headers={'X-Tutor-Source': 'offline_guide', 'X-Tutor-Reason': reason})
+
     @app.post('/ask')
     async def ask(question: Question, request: Request):
         if not question.question.strip():
@@ -151,16 +174,13 @@ def create_app():
         # still apply even if a caller creates new tokens. Never trust XFF.
         identity = 'session:' + question.client_id if question.client_id else 'peer:' + ip
         if busy.locked():
-            return JSONResponse({'error': 'The tutor is busy.', 'code': 'tutor_busy'}, status_code=429,
-                                headers={'Retry-After': '30'})
+            return saved_help(question, 'tutor_busy', 5)
         async with busy:
             # Older game builds have no session token; only shared provider
             # caps apply rather than putting a whole lab into one player bucket.
             allowed, limit_code, wait = await limits.reserve(identity, retry=question.client_id is None)
             if not allowed:
-                return JSONResponse({'error': 'Tutor usage limit reached.', 'code': limit_code,
-                                     'retry_after': wait}, status_code=429,
-                                    headers={'Retry-After': str(wait)})
+                return saved_help(question, limit_code, wait)
             contents = [{'role': 'model' if t.role == 'assistant' else 'user',
                          'parts': [{'text': t.content}]} for t in question.history]
             import json
@@ -208,8 +228,7 @@ def create_app():
                                 raise failure
                             break  # Return the last error without exceeding caps.
                 if response.status_code == 429:
-                    return JSONResponse({'error': 'Gemini quota reached.', 'code': 'gemini_quota'}, status_code=429,
-                                        headers={'Retry-After': '60'})
+                    return saved_help(question, 'gemini_quota', 60)
                 if response.status_code != 200:
                     return JSONResponse({'error': 'The tutor is temporarily unavailable.',
                                          'code': 'gemini_http_' + str(response.status_code)}, status_code=503)

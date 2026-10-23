@@ -41,8 +41,11 @@ is shipped in the game. The server owns the prompt and model settings, caps
 questions at 1000 characters, history at 8 turns of 4000 characters, request
 bodies at 40000 bytes, and responses at 600 output tokens / 4000 characters.
 It allows 2 concurrent Gemini calls. Default attempt caps are 8/minute globally,
-100/day globally (UTC), and 3 questions/minute per anonymous game process.
-The legacy `TUTOR_IP_PER_MINUTE` setting now controls this session allowance.
+100/day globally (UTC). There is no additional per-player minute cap by default:
+`TUTOR_SESSION_PER_MINUTE=0`. A positive value enables an optional session cap.
+The old blueprint's `TUTOR_IP_PER_MINUTE=3` is migrated to the new default
+when the new setting is absent, including on existing Render installations.
+Other custom legacy caps are retained; an explicit new setting takes priority.
 Clients send an in-memory random token, with no saved player/device identity.
 Older clients without that token use only the global provider caps, so a
 whole school is not incorrectly treated as one player. Failed provider
@@ -59,6 +62,16 @@ slot, and stop if the budget is exhausted. Quota, authentication, and model
 errors are not retried against the same model. A provider retry consumes
 global minute/day budget, but does not consume another question allowance.
 The entire provider operation is bounded to 55 seconds.
+
+When concurrency, a budget, or provider quota prevents a live call, `/ask`
+returns labelled saved help instead of a countdown error. The response includes
+`source=offline_guide`, `X-Tutor-Source`, a reason code and retry metadata for
+diagnostics. Known topics receive a reference answer; unknown questions get an
+honest explanation of the saved guide's scope. No limit is bypassed and no
+extra provider request is made to obtain saved help. Earlier desktop versions
+can display this successful reply too. New clients also handle older servers'
+HTTP 429 responses this way and allow the next question immediately once the
+previous reply finishes; pending requests still prevent duplicate sends.
 
 Run exactly ONE worker and ONE instance: the counters are process-local and
 reset on restart. They are conservative prototype protections, not durable

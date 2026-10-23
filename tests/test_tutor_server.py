@@ -10,6 +10,13 @@ from src.data.challenges import CHALLENGES
 
 
 class ServerTests(unittest.TestCase):
+    def assert_saved_reply(self, response, reason):
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['code'], reason)
+        self.assertEqual(response.headers['x-tutor-source'], 'offline_guide')
+        self.assertTrue(response.json()['answer'].startswith(('Built-in guide:', 'Offline guide:')))
+        self.assertNotIn('wait', response.json()['answer'].lower())
+
     def test_game_facts_explain_real_healing_and_current_controls(self):
         from src.data.player_rules import PLAYER_TORCH_HP_REGEN, PLAYER_TORCH_HEAL_DELAY
         facts = game_knowledge()
@@ -76,7 +83,7 @@ class ServerTests(unittest.TestCase):
         first = client.post('/ask', json={'question':'variables?'})
         self.assertEqual(first.status_code, 503)
         self.assertNotIn('test-secret', first.text)
-        self.assertEqual(client.post('/ask', json={'question':'again?'}).status_code, 429)
+        self.assert_saved_reply(client.post('/ask', json={'question':'again?'}), 'tutor_daily_limit')
         self.assertEqual(len(calls), 1)
 
     @patch.dict('os.environ', {}, clear=True)
@@ -84,7 +91,7 @@ class ServerTests(unittest.TestCase):
         client = self.make_client(lambda req: self.fail('called without key'))
         for path in ('/', '/health'):
             self.assertEqual(client.get(path).json(), {'status':'ok'})
-            self.assertEqual(client.get(path).headers['x-tutor-revision'], 'defence-backup-20261023')
+            self.assertEqual(client.get(path).headers['x-tutor-revision'], 'conversation-recovery-20261024')
             response = client.head(path)
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.content, b'')
@@ -95,7 +102,10 @@ class ServerTests(unittest.TestCase):
         for reply in (httpx.Response(429), httpx.Response(200, json={})):
             client = self.make_client(lambda req: reply)
             result = client.post('/ask', json={'question':'help'})
-            self.assertIn(result.status_code, (429, 503))
+            if reply.status_code == 429:
+                self.assert_saved_reply(result, 'gemini_quota')
+            else:
+                self.assertEqual(result.status_code, 503)
             self.assertNotIn('test-secret', result.text)
 
     def test_game_knowledge_excludes_challenge_answers_and_map_internals(self):
@@ -120,6 +130,73 @@ class ServerTests(unittest.TestCase):
             self.assertTrue(await limits.allow('c', 162))
             self.assertFalse(await limits.allow('d', 230))
             self.assertTrue(await limits.allow('a', 86401))
+        asyncio.run(check())
+
+    @patch.dict('os.environ', {'GEMINI_API_KEY': 'test-secret', 'TUTOR_IP_PER_MINUTE': '3'}, clear=True)
+    def test_existing_render_default_allows_followups_until_shared_budget(self):
+        calls = []
+        def handler(req):
+            calls.append(req)
+            return httpx.Response(200, json={'candidates': [{'content': {'parts': [{'text': 'live hint'}]}}]})
+        client = self.make_client(handler)
+        for _ in range(8):
+            response = client.post('/ask', json={'question': 'explain for loops', 'client_id': 'a'*32})
+            self.assertEqual(response.json()['answer'], 'live hint')
+            self.assertEqual(response.headers['x-tutor-source'], 'live_ai')
+        # The ninth question still gets help, without a ninth provider call.
+        response = client.post('/ask', json={'question': 'explain for loops', 'client_id': 'a'*32})
+        self.assert_saved_reply(response, 'tutor_minute_limit')
+        self.assertIn('range', response.json()['answer'])
+        self.assertEqual(len(calls), 8)
+
+    def test_explicit_session_setting_overrides_legacy_migration(self):
+        from server.app import session_limit_setting
+        for settings, expected in (({}, 0), ({'TUTOR_IP_PER_MINUTE': '3'}, 0),
+                ({'TUTOR_IP_PER_MINUTE': '1'}, 1),
+                ({'TUTOR_IP_PER_MINUTE': '3', 'TUTOR_SESSION_PER_MINUTE': '3'}, 3),
+                ({'TUTOR_IP_PER_MINUTE': '1', 'TUTOR_SESSION_PER_MINUTE': '0'}, 0)):
+            with self.subTest(settings=settings), patch.dict('os.environ', settings, clear=True):
+                self.assertEqual(session_limit_setting(), expected)
+
+    @patch.dict('os.environ', {'GEMINI_API_KEY': 'test-secret', 'TUTOR_GLOBAL_PER_DAY': '1'}, clear=True)
+    def test_daily_budget_still_serves_saved_knowledge_for_legacy_clients(self):
+        calls = []
+        def handler(req):
+            calls.append(req)
+            return httpx.Response(200, json={'candidates': [{'content': {'parts': [{'text': 'live hint'}]}}]})
+        client = self.make_client(handler)
+        client.post('/ask', json={'question': 'inspect my program'})
+        reply = client.post('/ask', json={'question': 'explain while loops'})
+        self.assert_saved_reply(reply, 'tutor_daily_limit')
+        self.assertIn('eventually', reply.json()['answer'])
+        self.assertEqual(len(calls), 1)
+
+    @patch.dict('os.environ', {'GEMINI_API_KEY': 'test-secret'}, clear=True)
+    def test_two_inflight_calls_give_third_player_saved_help_without_queueing(self):
+        async def check():
+            app = create_app()
+            both_started, release = asyncio.Event(), asyncio.Event()
+            calls = []
+            async def handler(req):
+                calls.append(req)
+                if len(calls) == 2:
+                    both_started.set()
+                await release.wait()
+                return httpx.Response(200, json={'candidates': [{'content': {'parts': [{'text': 'live hint'}]}}]})
+            async with app.router.lifespan_context(app), httpx.AsyncClient(
+                    transport=httpx.MockTransport(handler)) as provider:
+                app.state.http = provider
+                async with httpx.AsyncClient(transport=httpx.ASGITransport(app), base_url='http://test') as client:
+                    jobs = [asyncio.create_task(client.post('/ask', json={'question': 'help'})) for _ in range(2)]
+                    try:
+                        await asyncio.wait_for(both_started.wait(), timeout=2)
+                        reply = await asyncio.wait_for(client.post('/ask', json={'question': 'explain lists'}), timeout=2)
+                        self.assert_saved_reply(reply, 'tutor_busy')
+                        self.assertIn('list', reply.json()['answer'].lower())
+                        self.assertEqual(len(calls), 2)
+                    finally:
+                        release.set()
+                        await asyncio.gather(*jobs)
         asyncio.run(check())
 
     def test_dining_facts_are_authored_without_function_answers(self):
@@ -150,7 +227,7 @@ class ServerTests(unittest.TestCase):
         self.assertIn('/gemini-3.1-flash-lite:generateContent', str(calls[0].url))
         self.assertIn('/gemini-2.5-flash-lite:generateContent', str(calls[1].url))
         wait.assert_awaited_once_with(1)
-        self.assertEqual(client.post('/ask', json={'question': 'again?'}).status_code, 429)
+        self.assert_saved_reply(client.post('/ask', json={'question': 'again?'}), 'tutor_daily_limit')
         self.assertEqual(len(calls), 2)
 
     @patch.dict('os.environ', {'GEMINI_API_KEY': 'test-secret'}, clear=True)
@@ -179,7 +256,10 @@ class ServerTests(unittest.TestCase):
                 client = self.make_client(handler)
                 response = client.post('/ask', json={'question': 'help'})
                 self.assertEqual(len(calls), 1)
-                self.assertEqual(response.status_code, 429 if status == 429 else 503)
+                if status == 429:
+                    self.assert_saved_reply(response, 'gemini_quota')
+                else:
+                    self.assertEqual(response.status_code, 503)
                 self.assertNotIn('test-secret', response.text)
 
     @patch.dict('os.environ', {'GEMINI_API_KEY': 'test-secret', 'TUTOR_GLOBAL_PER_DAY': '1'}, clear=True)
@@ -255,9 +335,8 @@ class ServerTests(unittest.TestCase):
             return client.post('/ask',json={'question':'help','client_id':identity * 32})
         self.assertEqual(ask('a').status_code,200)
         limited = ask('a')
-        self.assertEqual(limited.status_code,429)
-        self.assertEqual(limited.json()['code'],'tutor_session_limit')
-        self.assertTrue(1 <= int(limited.headers['retry-after']) <= 60)
+        self.assert_saved_reply(limited, 'tutor_session_limit')
+        self.assertTrue(1 <= limited.json()['retry_after'] <= 60)
         self.assertEqual(ask('b').status_code,200)
         self.assertEqual(len(calls),2)
 
@@ -297,8 +376,7 @@ class ServerTests(unittest.TestCase):
         client = self.make_client(lambda req:httpx.Response(500))
         self.assertEqual(client.post('/ask',json={'question':'help','client_id':'a'*32}).status_code,503)
         response = client.post('/ask',json={'question':'help','client_id':'b'*32})
-        self.assertEqual(response.status_code,429)
-        self.assertEqual(response.json()['code'],'tutor_minute_limit')
+        self.assert_saved_reply(response, 'tutor_minute_limit')
 
     @patch.dict('os.environ', {'GEMINI_API_KEY':'test-secret','TUTOR_IP_PER_MINUTE':'1'}, clear=True)
     def test_legacy_clients_share_global_budget_without_single_peer_bucket(self):

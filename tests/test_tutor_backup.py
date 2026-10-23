@@ -72,6 +72,30 @@ class OfflineKnowledgeTests(unittest.TestCase):
 
 class ClientFailoverTests(unittest.TestCase):
     @patch.dict('os.environ', {'CODEBREAK_TUTOR_URL':'https://tutor.example/ask'})
+    def test_legacy_limit_uses_requested_topic_and_keeps_followup_context(self):
+        failure = HTTPError('url', 429, 'private', {}, BytesIO(
+            b'{"code":"tutor_session_limit","retry_after":18}'))
+        with patch('src.systems.ai_tutor.request.urlopen', side_effect=failure) as send:
+            answer = ask_mang_tahimik('can you explain more?', history=[
+                {'role': 'user', 'content': 'explain while loops'},
+                {'role': 'assistant', 'content': 'private invented answer'}])
+        self.assertIn('eventually', answer)
+        self.assertNotIn('18 seconds', answer)
+        self.assertNotIn('private', answer)
+        send.assert_called_once()
+
+    def test_finished_reply_accepts_next_question_at_the_same_clock_time(self):
+        session = TutorSession(lambda *args: 'live hint')
+        with patch('src.systems.ai_tutor.time.monotonic', return_value=100):
+            for question in ('first question', 'second question', 'third question', 'fourth question'):
+                self.assertTrue(session.submit(question))
+                result = session.results.get(timeout=2)
+                session._worker.join(2)
+                session.results.put(result)
+                self.assertEqual(session.poll(), 'live hint')
+        self.assertEqual(len(session.history), 8)
+
+    @patch.dict('os.environ', {'CODEBREAK_TUTOR_URL':'https://tutor.example/ask'})
     def test_broad_questions_try_live_ai_first(self):
         response = MagicMock()
         response.__enter__.return_value.read.return_value = json.dumps({'answer':'A live explanation.'}).encode()

@@ -38,6 +38,12 @@ def built_in_answer(question):
         return GUIDE_LABEL + ' '.join(CONTROL_NOTES[:2])
     if text in ('how do i save', 'how to save the game'):
         return GUIDE_LABEL + 'Press Escape to pause, then choose Save Game. Use the same save slot when you continue your adventure.'
+    if text in ('how to cheat', 'how do i cheat', 'are there cheats', 'cheat codes'):
+        from src.config import DEBUG_MODE
+        testing = (' In this development build, F4 toggles developer exploration. '
+                   'It does not count as completing lessons or the stage.' if DEBUG_MODE else '')
+        return GUIDE_LABEL + ('For normal progress, solve the required challenges to earn keys. '
+                              'I can give hints if you tell me which lesson is difficult.' + testing)
     return None
 
 
@@ -103,6 +109,18 @@ def unavailable_help():
     return ('Offline guide: I do not have a reliable saved answer for that question. '
             'I can still help with CodeBreak controls, healing, stages and Python lessons. '
             'Try: ' + '; '.join(SUGGESTED_QUESTIONS[:4]) + '.')
+
+
+def limited_answer(question, context=None, history=(), *, reason=None):
+    """Keep answering from references when live capacity is exhausted."""
+    answer = offline_answer(question, context, history)
+    if answer:
+        return answer
+    status = ('The live AI has used its daily budget.' if reason == 'tutor_daily_limit'
+              else 'The live AI is busy right now.')
+    return ('Offline guide: ' + status + ' I can still help with saved Python explanations '
+            'and CodeBreak rules. I do not have a reliable saved answer for that question. '
+            'Ask about a lesson, controls, healing, or stage objectives.')
 
 
 def _game_reference(text, context):

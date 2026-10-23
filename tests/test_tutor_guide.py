@@ -5,6 +5,16 @@ from src.systems.ai_tutor import ask_mang_tahimik, TutorError, TutorSession
 
 
 class TutorGuideTests(unittest.TestCase):
+    def test_screenshot_cheat_question_gets_an_immediate_authored_answer(self):
+        with patch('src.systems.ai_tutor.request.urlopen') as send, patch('src.config.DEBUG_MODE', True):
+            answer = ask_mang_tahimik('how to cheat')
+            self.assertIn('F4', answer)
+            self.assertIn('does not count as completing', answer)
+            self.assertNotIn('wait', answer.lower())
+            send.assert_not_called()
+        with patch('src.config.DEBUG_MODE', False):
+            self.assertNotIn('F4', built_in_answer('how to cheat'))
+
     def test_screenshot_question_and_normalization(self):
         for question in ('who is python', 'WHAT IS PYTHON?', '  what   is python! ', 'ano ang python'):
             self.assertIn('Python is a programming language', built_in_answer(question))

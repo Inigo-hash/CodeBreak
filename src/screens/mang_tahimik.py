@@ -220,7 +220,7 @@ class MangTahimikChat:
         else:
             self.feedback = ('Use guide to stop waiting, or wait for the AI.' if self.session.pending else
                              'Type a question first.' if not self.question.strip() else
-                             'Please wait a moment, then send again.')
+                             'Keep your question under 1000 characters.')
 
     def draw(self):
         w, h = self.screen.get_size()

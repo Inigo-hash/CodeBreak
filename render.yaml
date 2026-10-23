@@ -13,8 +13,8 @@ services:
         value: gemini-3.1-flash-lite
       - key: GEMINI_FALLBACK_MODEL
         value: gemini-2.5-flash-lite
-      - key: TUTOR_IP_PER_MINUTE
-        value: "3"
+      - key: TUTOR_SESSION_PER_MINUTE
+        value: "0"
       - key: TUTOR_GLOBAL_PER_MINUTE
         value: "8"
       - key: TUTOR_GLOBAL_PER_DAY

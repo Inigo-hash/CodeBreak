@@ -195,6 +195,7 @@ LISTS_STAGE2_CHALLENGES = {
         "hints": ["Check if not items before indexing.", "Use items[0] for the first item.", "Use len(items) for the count.", "Return both values in a tuple."],
         "function_cases": [{"args": [[]], "expected": (None, 0)}, {"args": [["key"]], "expected": ("key", 1)}, {"args": [["key", "potion"]], "expected": ("key", 2)}, {"args": [[1, 2, 3]], "expected": (1, 3)}],
         "preserve_args": True
+    },
     LISTS_CHALLENGE_IDS[1]: {
         "id": LISTS_CHALLENGE_IDS[1],
         "title": "Add an Item to the Inventory",
@@ -208,5 +209,5 @@ LISTS_STAGE2_CHALLENGES = {
         "hints": ["Create result = list(items).", "Use result.append(new_item).", "Return result.", "Do not append directly to items."],
         "function_cases": [{"args": [[], "key"], "expected": ["key"]}, {"args": [["key"], "potion"], "expected": ["key", "potion"]}, {"args": [["key", "map"], "shield"], "expected": ["key", "map", "shield"]}],
         "preserve_args": True
-
+    },
 }

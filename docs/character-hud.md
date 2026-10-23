@@ -1,53 +1,49 @@
-# Explorer portraits and character HUD
+# Explorer HUD: pixel-art revision
 
-The top-left HUD now uses a compact ink-blue card, a dedicated portrait for each
-explorer, labelled lives, and health/energy values above full-width bars. The
-stage card aligns to it; bonus time sits with stage progress. Both cards use
-measured text rows and keep clear of the minimap at supported small sizes.
-Clicking the character card opens the matching expanded profile.
+The active character UI uses pixel-art-style portraits, warm charcoal plates
+with clipped corners and thin bronze edges, and compact HP/energy gauges with
+values inside their tracks. Lives sit below the gauges. The portrait no longer
+has a separate PROFILE caption; its chevron still opens the expanded profile.
+Stage progress uses a smaller heading and groups its bonus time with the stage.
 
-## Artwork
+## Artwork and integration
 
-Created with the built-in image-generation tool (not the CLI). These are
-generated illustrations with an ink-and-gouache aesthetic, not a claim of
-human-painted provenance. The male portrait keeps the salakot, khaki travel
-clothes and red scarf; the female portrait is a dedicated illustration rather
-than an enlarged walking-sprite crop. Both use the same matte pigment palette
-and a simple teal backdrop. The original framed asset and walking sprites
-are retained.
+The two portraits were created with the built-in image-generation tool, not
+the CLI. They are generated pixel-art-style illustrations, not a claim of
+human-pixelled artwork. Both retain the salakot/travel clothing or dark hair,
+red scarf and backpack details associated with the existing explorers.
 
-Project assets:
+Active project files:
 
-- `assets/images/portraits/explorer_man.webp`
-- `assets/images/portraits/explorer_woman.webp`
+- `assets/images/portraits/explorer_man_pixel.webp`
+- `assets/images/portraits/explorer_woman_pixel.webp`
 
-Each source is 1254 x 1254 pixels. The project copies are WebP quality 90
-encodings (about 180 KB each), with composition unchanged. UI scaling keeps
-aspect ratio and caches the fitted tiles; portraits are not resized on every
-frame. `src/data/characters.py` selects the image by saved character ID.
+The original 1254 x 1254 outputs were encoded as WebP quality 95 for the game.
+No composition or character edits were made during encoding. The renderer
+uses nearest-neighbor scaling and caches portrait tiles. The preceding
+painted portraits remain in the repository but are not selected by character
+data. Walking sprites, character IDs, saves and gameplay rules are unchanged.
 
 ## Generation prompts
 
 ### Male explorer
 
-Use case: stylized-concept. Asset type: square portrait illustration for the small top-left character HUD in CodeBreak, a Philippine folklore adventure RPG. Style: expressive ink-and-gouache illustration on subtly textured paper, like a carefully drawn illustrated travel journal. Visible imperfect brush edges, economical dark ink lines, flat matte pigment shapes, natural facial asymmetry and ordinary human features. Gentle and aesthetically refined. No glossy rendering, no faux pixel grid, no photorealism, no 3D, no cinematic bloom, no hyper-detailed AI fantasy treatment, no anime doll eyes. Composition: single head-and-shoulders portrait with a large readable face, nearly front-facing with a slight turn to the viewer's right, relaxed attentive expression. Full top of head and any headwear visible with a small margin; shoulders cropped at lower edge. Simple full-bleed muted midnight teal painted backdrop. Warm tan skin, dark umber ink, muted ochre clothing, warm terracotta red scarf. Strong silhouette and legible face when reduced to 96 pixels. Square image, artwork only, no ornamental frame, no UI, no text, no watermark, no symbols. Subject: one young adult Filipino male explorer with short tousled black hair, brown eyes, a modest woven salakot straw hat, simple worn khaki travel shirt and backpack straps. Hat has a broad simple curved silhouette but must not cover his eyes. Friendly thoughtful expression, lightly sun-weathered skin. Hand-painted character portrait, not a character sheet.
+Use case: stylized-concept. Asset: a square character bust portrait for the tiny HUD of a 2D pixel-art Philippine folklore adventure game. Make authentic, deliberately simplified 16-bit RPG pixel art, as if hand-pixeled on a 96 by 96 grid and enlarged with nearest-neighbor. Every edge is a staircase of clean square pixels. Use small, coherent pixel clusters and only about 24 flat colors. Two or three shading steps per material, no intermediate soft shading. A strong, appealing face and crisp silhouette are crucial. Absolutely no photographic facial details, no brush or paper texture, no painterly rendering, no smooth gradients, no anti-aliased contours, no realistic skin, no 3D, no cinematic light, no pseudo-pixelated photograph. Head and upper chest fully visible, straight posture, slight three-quarter turn toward the viewer's right. A small restrained smile and natural modest eyes; avoid large anime eyes. Adult Filipino explorer with warm brown skin. Clean flat dark charcoal-brown background. No frame, no border, no text, no symbols, no watermark. Keep the entire head and any hat inside the square, with generous 8% clearance above the head and both sides. Use muted tan, umber, dull terracotta and warm cream; simple shapes suited to the small pixel game sprites. One male explorer in his early twenties, short slightly messy dark hair, simple woven salakot hat, tan travel shirt, dull red neck scarf and dark backpack straps. Hat is a simple recognizable form, without thousands of woven details. Pixel faces should feel like a charming original game character, not a model or celebrity.
 
 ### Female explorer
 
-Use case: stylized-concept. Asset type: square portrait illustration for the small top-left character HUD in CodeBreak, a Philippine folklore adventure RPG. Style: expressive ink-and-gouache illustration on subtly textured paper, like a carefully drawn illustrated travel journal. Visible imperfect brush edges, economical dark ink lines, flat matte pigment shapes, natural facial asymmetry and ordinary human features. Gentle and aesthetically refined. No glossy rendering, no faux pixel grid, no photorealism, no 3D, no cinematic bloom, no hyper-detailed AI fantasy treatment, no anime doll eyes. Composition: single head-and-shoulders portrait with a large readable face, nearly front-facing with a slight turn to the viewer's right, relaxed attentive expression. Full top of head and any headwear visible with a small margin; shoulders cropped at lower edge. Simple full-bleed muted midnight teal painted backdrop. Warm tan skin, dark umber ink, muted ochre clothing, warm terracotta red scarf. Strong silhouette and legible face when reduced to 96 pixels. Square image, artwork only, no ornamental frame, no UI, no text, no watermark, no symbols. Subject: one young adult Filipino female explorer with dark brown shoulder-length slightly wavy hair, a few loose strands, brown eyes, a practical sleeveless khaki travel top, backpack straps and a small terracotta scarf at the neck. No hat. Friendly quietly confident expression, lightly sun-weathered skin. Practical adventurer, natural proportions, no glamour makeup. Hand-painted character portrait, not a character sheet.
+Use case: stylized-concept. Asset: a square character bust portrait for the tiny HUD of a 2D pixel-art Philippine folklore adventure game. Make authentic, deliberately simplified 16-bit RPG pixel art, as if hand-pixeled on a 96 by 96 grid and enlarged with nearest-neighbor. Every edge is a staircase of clean square pixels. Use small, coherent pixel clusters and only about 24 flat colors. Two or three shading steps per material, no intermediate soft shading. A strong, appealing face and crisp silhouette are crucial. Absolutely no photographic facial details, no brush or paper texture, no painterly rendering, no smooth gradients, no anti-aliased contours, no realistic skin, no 3D, no cinematic light, no pseudo-pixelated photograph. Head and upper chest fully visible, straight posture, slight three-quarter turn toward the viewer's right. A small restrained smile and natural modest eyes; avoid large anime eyes. Adult Filipino explorer with warm brown skin. Clean flat dark charcoal-brown background. No frame, no border, no text, no symbols, no watermark. Keep the entire head and any hat inside the square, with generous 8% clearance above the head and both sides. Use muted tan, umber, dull terracotta and warm cream; simple shapes suited to the small pixel game sprites. One female explorer in her early twenties, dark brown shoulder-length hair partly tied behind her head, simple tan sleeveless travel shirt, dull red neck scarf and dark backpack straps. No hat or makeup. Pixel faces should feel like a charming original game character, not a model or celebrity.
 
 ## Verification
 
-34 tests pass across `test_character_hud.py`, `test_character_selection.py`,
-`test_room_combat_regressions.py`, `test_text_layout_regressions.py` and
-`test_hci_navigation.py`, each in its own process. Coverage includes both
-portraits, legacy character IDs, cached images, 640x480 through 2560x1440,
-small, normal and large text, text bounds, minimap clearance, clamped/unknown stats,
-healing/energy highlights, keyboard/mouse dismissal and character persistence.
+34 tests pass across character HUD, selection, room combat regressions, text
+layout and HCI navigation, with each module run in a separate process. Layout
+coverage spans 640x480 through 2560x1440 and font sizes 12, 20 and 28. Checks
+cover rendered text bounds, separate resource/life rows, minimap clearance,
+unknown and clamped stats, healing/energy highlights and portrait caches.
 
-`python tools/check_character_hud.py` captures actual Pygame gameplay in the
-Castle for both characters and opens each profile by clicking its real HUD
-card. It uses in-memory fixtures and no save slot. Four frames were visually
-inspected; no full campaign playthrough was performed for this UI change.
-The committed gameplay preview is `docs/character-hud-preview.png`.
-
+`python tools/check_character_hud.py --output-dir /tmp/character-hud-v2`
+captures actual Castle gameplay for both explorers, then opens each expanded
+profile using the real card click. No save slot is used. Four captured frames
+were inspected. `docs/character-hud-preview.png` is the updated gameplay view.
+A full campaign playthrough was not performed for this visual revision.

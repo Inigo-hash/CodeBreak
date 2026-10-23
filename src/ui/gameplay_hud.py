@@ -131,7 +131,7 @@ def _load_portrait_asset(identity):
 
 
 def draw_profile_frame(surface, rect, emphasized=False):
-    """Quiet ink-blue card, shared by the HUD and expanded profile."""
+    """A compact cut-corner game plate, shared with the expanded profile."""
     surface.blit(_profile_frame(rect.size, emphasized), rect)
 
 
@@ -139,15 +139,14 @@ def draw_profile_frame(surface, rect, emphasized=False):
 def _profile_frame(size, emphasized):
     panel = pygame.Surface(size, pygame.SRCALPHA)
     local = panel.get_rect()
-    pygame.draw.rect(panel, (11, 20, 28, 246), local, border_radius=9)
-    pygame.draw.rect(panel, (55, 65, 68), local, 1, border_radius=9)
-    rim = UI_COLORS['blue'] if emphasized else UI_COLORS['bronze']
-    pygame.draw.line(panel, rim, (12, 1), (local.width-13, 1), 2)
-    pygame.draw.rect(panel, (26, 38, 45), local.inflate(-8, -8), 1, border_radius=6)
-    # Short engraved corners keep the folklore palette without a heavy frame.
-    for x, sign in ((7, 1), (local.width-8, -1)):
-        pygame.draw.line(panel, rim, (x, 8), (x+sign*9, 8))
-        pygame.draw.line(panel, rim, (x, 8), (x, 17))
+    w, h = local.size
+    shape = [(0, 5), (5, 0), (w-6, 0), (w-1, 5),
+             (w-1, h-6), (w-6, h-1), (5, h-1), (0, h-6)]
+    rim = UI_COLORS['gold'] if emphasized else (125, 105, 72)
+    pygame.draw.polygon(panel, (22, 22, 23, 248), shape)
+    pygame.draw.polygon(panel, rim, shape, 1)
+    pygame.draw.line(panel, (62, 56, 44), (7, 3), (w-8, 3))
+    pygame.draw.line(panel, (8, 9, 10), (7, h-4), (w-8, h-4))
     return panel
 
 
@@ -265,21 +264,19 @@ def draw_framed_portrait(surface, portrait, rect):
 def _portrait_tile(portrait, size):
     width, height = size
     scale = max(width / portrait.get_width(), height / portrait.get_height())
-    image = pygame.transform.smoothscale(portrait, (
+    image = pygame.transform.scale(portrait, (
         max(width, round(portrait.get_width()*scale)),
         max(height, round(portrait.get_height()*scale))))
     tile = pygame.Surface(size, pygame.SRCALPHA)
     tile.blit(image, image.get_rect(center=tile.get_rect().center))
-    mask = pygame.Surface(size, pygame.SRCALPHA)
-    pygame.draw.rect(mask, (255, 255, 255), mask.get_rect(), border_radius=6)
-    tile.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
-    pygame.draw.rect(tile, UI_COLORS['bronze'], tile.get_rect(), 1, border_radius=6)
+    pygame.draw.rect(tile, (38, 32, 25), tile.get_rect(), 3)
+    pygame.draw.rect(tile, (151, 123, 78), tile.get_rect().inflate(-2, -2), 1)
     return tile
 
 
 @lru_cache(maxsize=16)
 def _heart_tiles(icon, size):
-    heart = pygame.transform.smoothscale(icon, (size, size))
+    heart = pygame.transform.scale(icon, (size, size))
     empty = heart.copy()
     empty.fill((70, 76, 86, 180), special_flags=pygame.BLEND_RGBA_MULT)
     return heart, empty
@@ -325,43 +322,47 @@ def character_card_layout(size, name_height=26, label_height=14):
     """Reserve real text rows before positioning portrait and resource bars."""
     width, height = size
     margin = max(10, round(min(width, height)*.016))
-    card_width = min(420, max(310, round(width*.35)), width-margin*2)
+    card_width = min(384, max(310, round(width*.32)), width-margin*2)
     name_height = max(22, name_height)
     life_height = max(16, label_height)
-    meter_height = label_height+14
-    portrait_size = min(104, max(76, round(card_width*.25)))
-    card_height = max(24+name_height+4+life_height+8+meter_height*2+8,
-                      portrait_size+36)
+    meter_height = max(20, label_height+6)
+    portrait_size = 96 if card_width >= 360 else 80
+    card_height = max(24+name_height+4+life_height+8+meter_height*2+6,
+                      portrait_size+20)
     card = pygame.Rect(margin, margin, card_width, card_height)
-    portrait = pygame.Rect(card.x+12, card.y+12, portrait_size, portrait_size)
-    left, right = portrait.right+14, card.right-14
+    portrait = pygame.Rect(card.x+10, card.centery-portrait_size//2, portrait_size, portrait_size)
+    left, right = portrait.right+12, card.right-12
     name = pygame.Rect(left, card.y+12, right-left-18, name_height)
-    lives = pygame.Rect(left, name.bottom+4, right-left, life_height)
-    health = pygame.Rect(left, lives.bottom+8, right-left, meter_height)
-    energy = pygame.Rect(left, health.bottom+8, right-left, meter_height)
+    health = pygame.Rect(left, name.bottom+4, right-left, meter_height)
+    energy = pygame.Rect(left, health.bottom+6, right-left, meter_height)
+    lives = pygame.Rect(left, energy.bottom+8, right-left, life_height)
     return card, portrait, name, lives, health, energy
 
 
 def draw_resource_meter(surface, font, rect, label, current, maximum,
                         fill_color=CRIMSON, emphasized=False):
-    """Aligned values above a full-width track keep narrow cards readable."""
+    """Classic labelled gauges with values inside the track, never over art."""
     known = current is not None and maximum is not None and maximum > 0
     amount = max(0, min(current, maximum)) if known else 0
     ratio = amount/maximum if known else 0
     value = f'{round(amount)} / {round(maximum)}' if known else '-- / --'
-    label_height = rect.height-14
-    label_surface = fit_text(font, label, DIM, (rect.width*.48, label_height))
-    number = fit_text(font, value, TEXT if known else DIM, (rect.width*.48, label_height))
-    surface.blit(label_surface, (rect.x, rect.y))
-    surface.blit(number, number.get_rect(topright=(rect.right, rect.y)))
-    bar = pygame.Rect(rect.x, rect.bottom-9, rect.width, 8)
-    pygame.draw.rect(surface, (38, 48, 55), bar, border_radius=3)
-    fill = bar.inflate(-2, -2)
+    gutter = min(max(font.size('ENERGY')[0], font.size(label)[0])+9, rect.width//2)
+    label_surface = fit_text(font, label, DIM, (gutter-7, rect.height))
+    surface.blit(label_surface, label_surface.get_rect(midleft=(rect.x, rect.centery)))
+    bar = pygame.Rect(rect.x+gutter, rect.y+1, rect.width-gutter, rect.height-2)
+    pygame.draw.rect(surface, (8, 10, 12), bar)
+    fill = bar.inflate(-4, -4)
     fill.width = round(fill.width*ratio)
     if fill.width:
-        pygame.draw.rect(surface, fill_color, fill, border_radius=2)
+        pygame.draw.rect(surface, fill_color, fill)
     pygame.draw.rect(surface, (212, 107, 98) if emphasized else (67, 78, 82),
-                     bar, 1, border_radius=3)
+                     bar, 1)
+    number = fit_text(font, value, TEXT if known else DIM, (bar.width-8, bar.height-4))
+    number_rect = number.get_rect(center=bar.center)
+    shadow = number.copy()
+    shadow.fill((0, 0, 0, 255), special_flags=pygame.BLEND_RGBA_MULT)
+    surface.blit(shadow, number_rect.move(1, 1))
+    surface.blit(number, number_rect)
     return bar
 
 
@@ -378,6 +379,7 @@ class GameplayHUD:
         self.font = body_font(15)
         self.bold = title_font(17)
         self.small = body_font(13, bold=True)
+        self.stage_heading = title_font(14)
         self.icons = self._load_icons()
         self.portrait = self._load_portrait()
         self.profile_rect = pygame.Rect(0, 0, 0, 0)
@@ -386,8 +388,8 @@ class GameplayHUD:
     def _progress_icons(self):
         if self._scaled_progress_icons is None:
             self._scaled_progress_icons = (
-                pygame.transform.smoothscale(self.icons[1], (21, 21)),
-                pygame.transform.smoothscale(self.icons[2], (21, 21)),
+                pygame.transform.scale(self.icons[1], (21, 21)),
+                pygame.transform.scale(self.icons[2], (21, 21)),
             )
         return self._scaled_progress_icons
 
@@ -407,9 +409,9 @@ class GameplayHUD:
         self.profile_rect = parts[0]
         # Everything stacks in one left-hand column under the profile card so
         # the panels read as a single group instead of floating apart.
-        secondary_height = self.small.get_height()+4 if height >= 640 else 0
+        secondary_height = self.small.get_height()+2 if height >= 640 else 0
         progress_rect = pygame.Rect(margin, self.profile_rect.bottom+8, self.profile_rect.width,
-                                    20+self.bold.get_height()+max(24, self.font.get_height())
+                                    18+self.stage_heading.get_height()+max(24, self.font.get_height())
                                     +secondary_height)
 
         self.draw_character_profile(current_hp, max_hp, in_combat,
@@ -435,21 +437,19 @@ class GameplayHUD:
         _, portrait_rect, name_rect, lives, health, energy = character_card_layout(
             self.screen.get_size(), self.bold.get_height(), self.small.get_height())
         draw_framed_portrait(self.screen, self.portrait, portrait_rect)
-        name = character_title(self.state.get('character_id', 'man')).title()
+        name = character_title(self.state.get('character_id', 'man'))
         title = fit_text(self.bold, name, NAME_GOLD, name_rect.size)
         self.screen.blit(title, name_rect)
         # The card opens a real profile screen; the chevron makes that visible.
         cx, cy = self.profile_rect.right-18, name_rect.centery
         pygame.draw.lines(self.screen, GOLD, False, [(cx-3, cy-4), (cx+1, cy), (cx-3, cy+4)], 2)
-        hint = fit_text(self.small, 'PROFILE', DIM, (portrait_rect.width, 13))
-        self.screen.blit(hint, hint.get_rect(midtop=(portrait_rect.centerx, portrait_rect.bottom+7)))
         label_width = max(36, self.small.size('LIVES')[0]+8)
         label = fit_text(self.small, 'LIVES', DIM, (label_width-8, lives.height))
         self.screen.blit(label, lives)
         heart_size = min(17, lives.height, max(10, (lives.width-label_width-12)//5))
         draw_heart_row(self.screen, self.icons, lives.x+label_width, lives.y,
                        self.state.get('hearts', 0), size=heart_size, gap=heart_size+3)
-        draw_resource_meter(self.screen, self.small, health, 'HEALTH', current_hp, max_hp,
+        draw_resource_meter(self.screen, self.small, health, 'HP', current_hp, max_hp,
                             HEAL_GREEN if hp_healing else CRIMSON,
                             emphasized=in_combat or bool(max_hp and current_hp is not None
                                                        and current_hp/max_hp <= LOW_HP_THRESHOLD))
@@ -488,22 +488,22 @@ class GameplayHUD:
         stage_name = self.stage.get("name", "Unknown Stage").upper()
         subtitle = self.stage.get("subtitle", "")
         self._profile_panel(rect)
-        header = pygame.Rect(rect.x+12, rect.y+9, rect.width-24, self.bold.get_height())
-        title = fit_text(self.bold, stage_name, NAME_GOLD, (header.width-106, header.height))
+        header = pygame.Rect(rect.x+12, rect.y+8, rect.width-24, self.stage_heading.get_height())
+        title = fit_text(self.stage_heading, stage_name, NAME_GOLD, (header.width-106, header.height))
         self.screen.blit(title, header)
         # Bonus time belongs to stage progress; a third floating card hid map.
         value = max(0, round(float(bonus_time or 0)))
-        label = fit_text(self.small, f'+{value}s', BLUE, (78, header.height))
+        label = fit_text(self.small, f'+{value}s', NAME_GOLD, (78, header.height))
         self.screen.blit(label, label.get_rect(midright=(header.right, header.centery)))
         clock_x = header.right-max(38, label.get_width())-14
         pygame.draw.circle(self.screen, GOLD, (clock_x, header.centery), 6, 1)
         pygame.draw.line(self.screen, TEXT, (clock_x, header.centery), (clock_x, header.centery-4))
         pygame.draw.line(self.screen, TEXT, (clock_x, header.centery), (clock_x+3, header.centery+1))
-        row_y = header.bottom+4
+        row_y = header.bottom+2
         if self.screen.get_height() >= 640:
             sub = fit_text(self.small, subtitle, DIM, (header.width, self.small.get_height()))
             self.screen.blit(sub, (header.x, row_y))
-            row_y += self.small.get_height()+4
+            row_y += self.small.get_height()+2
 
         # Scaled once and kept: these two never change size, and rescaling
         # them per frame was pure repeat work.

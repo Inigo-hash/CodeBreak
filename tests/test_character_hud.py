@@ -105,14 +105,20 @@ class CharacterHudTests(unittest.TestCase):
         screen = pygame.Surface((1280, 720))
         hud = GameplayHUD(screen, {'hearts': 5}, get_stage('island'))
         _portrait_tile.cache_clear()
+        bars = []
+        def record_meter(*args, **kwargs):
+            bar = draw_resource_meter(*args, **kwargs)
+            bars.append(bar)
+            return bar
         for _ in range(2):
-            hud.draw(current_hp=40, max_hp=100, current_energy=30, max_energy=100,
-                     hp_healing=True, energy_boosted=True)
+            with patch('src.ui.gameplay_hud.draw_resource_meter', side_effect=record_meter):
+                hud.draw(current_hp=40, max_hp=100, current_energy=30, max_energy=100,
+                         hp_healing=True, energy_boosted=True)
         self.assertEqual(_portrait_tile.cache_info().misses, 1)
         self.assertGreaterEqual(_portrait_tile.cache_info().hits, 1)
-        _, _, _, _, health, energy = character_card_layout(screen.get_size(), hud.bold.get_height(), hud.small.get_height())
-        self.assertEqual(screen.get_at((health.x+4, health.bottom-5))[:3], HEAL_GREEN)
-        self.assertEqual(screen.get_at((energy.x+4, energy.bottom-5))[:3], TORCH_AMBER)
+        health, energy = bars[-2:]
+        self.assertEqual(screen.get_at((health.x+4, health.y+3))[:3], HEAL_GREEN)
+        self.assertEqual(screen.get_at((energy.x+4, energy.y+3))[:3], TORCH_AMBER)
 
     def test_expanded_profile_fits_and_closes_with_keyboard_or_mouse(self):
         for size in ((640, 480), (1280, 720), (1920, 1080)):

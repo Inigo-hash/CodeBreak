@@ -42,10 +42,10 @@ def profile_layout(size, title_height=40, name_height=38, stat_height=16):
     """One portrait and separate measured text rows, including at 640x480."""
     width, height = size
     pad, gap = 24, 24
-    panel_width = min(640, width-32)
-    portrait_size = min(200, round(panel_width*.32))
+    panel_width = min(600, width-32)
+    portrait_size = min(192, round(panel_width*.32))
     lives_height = max(24, stat_height)
-    meter_height = stat_height+14
+    meter_height = max(24, stat_height+6)
     column_height = name_height+8+lives_height+16+meter_height*2+12
     body_height = max(portrait_size, column_height)
     panel = pygame.Rect(0, 0, panel_width,
@@ -89,7 +89,7 @@ def profile_screen(screen, background=None, name=None,
                             font_name.get_height(), font_bar.get_height())
     pr, back_r = layout['panel'], layout['back']
     title_surface = fit_text(font_title, 'EXPLORER PROFILE', UI_COLORS['gold'], layout['title'].size)
-    name_surface = fit_text(font_name, name.title(), NAME_GOLD, layout['name'].size)
+    name_surface = fit_text(font_name, name.upper(), NAME_GOLD, layout['name'].size)
     # The snapshot never changes while this modal is open.
     small = pygame.transform.smoothscale(background, (SCREEN_W//8, SCREEN_H//8))
     blurred = pygame.transform.smoothscale(small, (SCREEN_W, SCREEN_H))

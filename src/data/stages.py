@@ -65,6 +65,7 @@ from src.data.challenges import CHALLENGES
 from src.data.controls import WORLD_CONTROLS
 from src.data.encounters import BEGINNER_PATH_GIDS, BEGINNER_STAGE_ENCOUNTERS
 from src.data.zones import CASTLE_ZONES, ISLAND_ZONES
+from src.data.combat_difficulty import STAGE_COMBAT_TIERS
 from src.data.castle_lists import LIST_CHALLENGE_IDS
 from src.data.castle_curriculum import CASTLE_CHALLENGE_IDS, CASTLE_BUNDLES, CASTLE_TOPIC_ORDER
 from src.data.castle_assessments import CASTLE_FINAL_ID, CASTLE_ASSESSMENT_IDS
@@ -356,6 +357,7 @@ STAGES = {
         "world": {
 
             "map": "assets/map/tmx/map2_castle_lobby.tmx",
+            "combat_tier": 2,
 
             **STAGE_MUSIC["castle"],
 
@@ -407,6 +409,9 @@ STAGES = {
             "tips": [
                 "Door arrivals and the Lists terminal are safe. "
                 "Read the lesson before approaching the guards.",
+                "Castle enemies are tougher and recover faster than Island enemies. "
+                "An exclamation warning marks a committed attack: a sword hit will not interrupt it. "
+                "Dodge sideways with Shift, then strike during recovery. A lethal hit still stops an attack.",
             ],
         },
 
@@ -480,6 +485,7 @@ def stage_world(stage):
     world = dict(WORLD_DEFAULTS)
     world.update(STAGE_MUSIC.get(stage.get("id"), {}))
     world.update(stage.get("world", {}))
+    world.setdefault("combat_tier", STAGE_COMBAT_TIERS.get(stage.get("id"), 1))
     return world
 
 

@@ -1334,7 +1334,7 @@ def game_screen(screen, slot_num=None, save_state=None):
               chase_range=spawn["chase_range"],
               disengage_range=spawn["disengage_range"],
               return_tolerance=spawn["return_tolerance"],
-              combat_scale=1 / ZOOM)
+              combat_scale=1 / ZOOM, combat_tier=world["combat_tier"])
         for spawn in enemy_spawns
     ]
 
@@ -1424,7 +1424,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             chase_range=boss_spawn["chase_range"],
             disengage_range=boss_spawn["disengage_range"],
             return_tolerance=boss_spawn["return_tolerance"],
-            combat_scale=1 / ZOOM,
+            combat_scale=1 / ZOOM, combat_tier=world["combat_tier"], is_boss=True,
         )
         boss.phase_thresholds_triggered = set()
         if boss_zone.get("movement_rect"):
@@ -1518,7 +1518,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                 chase_range=spawn["chase_range"],
                 disengage_range=spawn["disengage_range"],
                 return_tolerance=spawn["return_tolerance"],
-                combat_scale=1 / ZOOM,
+                combat_scale=1 / ZOOM, combat_tier=world["combat_tier"],
             ))
 
     def trigger_boss_phase(threshold):

@@ -69,7 +69,7 @@ class CastleRoomEnemyTests(unittest.TestCase):
             for spawn in spawns:
                 with self.subTest(room=name, camp=spawn['encounter_id']):
                     enemy = Enemy(self.screen, bounds.w, bounds.h, *spawn['position'],
-                        enemy_id=spawn['enemy_id'], zone_rect=spawn['zone_rect'])
+                        enemy_id=spawn['enemy_id'], zone_rect=spawn['zone_rect'], combat_tier=2)
                     player = pygame.Rect(round(room['spawn'][0]*16), round(room['spawn'][1]*16), 16, 16)
                     enemy.state = 'chase'
                     for _ in range(40):

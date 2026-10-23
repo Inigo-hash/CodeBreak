@@ -1,8 +1,9 @@
 """Shared combat rules and geometry; rendering stays with the entities/HUD."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import math
 import pygame
+from src.data.combat_difficulty import COMBAT_PROFILES
 from src.data.player_rules import (
     PLAYER_MAX_HP, PLAYER_MAX_ENERGY, PLAYER_DODGE_ENERGY_COST,
     PLAYER_ENERGY_REGEN, PLAYER_TORCH_ENERGY_REGEN,
@@ -84,6 +85,22 @@ ENEMY_STATS = {
         1000, 18, 1.10, 144, 260, 180, 520, 640, 220, 6, 1.10, 0.66, 45
     ),
 }
+
+def enemy_stats_for_tier(enemy_id, combat_tier=1, *, is_boss=False):
+    """Resolve immutable per-instance stats; beginner and tutorial stay exact."""
+    profile = COMBAT_PROFILES[combat_tier]
+    base = ENEMY_STATS[enemy_id]
+    if combat_tier == 1:
+        return base
+    return replace(
+        base,
+        max_hp=round(base.max_hp * profile['boss_hp' if is_boss else 'hp']),
+        attack_damage=round(base.attack_damage * profile['damage']),
+        movement_speed=base.movement_speed * profile['speed'],
+        # Recovery must remain after the full, unchanged visible attack.
+        attack_cooldown=max(base.attack_duration + .16, base.attack_cooldown * profile['cooldown']),
+    )
+
 
 # Feet-level combat bodies, deliberately smaller than the rendered artwork.
 # These drive movement collision and sword hurtbox overlap, not sprite bounds.

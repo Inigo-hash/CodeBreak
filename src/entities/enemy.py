@@ -3,9 +3,10 @@ import heapq
 import math
 
 import pygame
+from src.data.combat_difficulty import COMBAT_PROFILES
 
 from src.systems.combat import (
-    ENEMY_BODY_SIZES, ENEMY_STATS, attack_connects, attack_path_blocked,
+    ENEMY_BODY_SIZES, enemy_stats_for_tier, attack_connects, attack_path_blocked,
     move_rect, normalized_toward,
 )
 
@@ -40,11 +41,14 @@ class Enemy:
                  detection_range=None, chase_range=None, zone_rect=None,
                  zone_name="Wilderness", group_id="ungrouped",
                  disengage_range=None, return_tolerance=None,
-                 combat_scale=1.0):
+                 combat_scale=1.0, combat_tier=1, is_boss=False):
         self.screen = screen
         self.enemy_id = enemy_id
         self.group_id = group_id
-        self.stats = ENEMY_STATS[enemy_id]
+        self.combat_tier = combat_tier
+        self.is_boss = is_boss
+        self.stats = enemy_stats_for_tier(enemy_id, combat_tier, is_boss=is_boss)
+        self.committed_attacks = COMBAT_PROFILES[combat_tier]['committed_attacks']
         self.combat_scale = max(0.01, float(combat_scale))
         self.spawn = (
             world_x if world_x is not None else map_width // 2 - 100,
@@ -576,6 +580,10 @@ class Enemy:
         if not self.active or self.state == "defeated":
             return False
         self.hp = max(0, self.hp - max(0, amount))
+        # Later-stage strikes keep their telegraphed direction and timing
+        # when hit. Damage still lands; a lethal hit always stops the strike.
+        if self.hp > 0 and self.state == "attack" and self.committed_attacks:
+            return True
         self.current = 0
         if self.hp == 0:
             self.state = "defeated"
@@ -650,3 +658,12 @@ class Enemy:
             fill.width = round(bar.width * self.hp / self.stats.max_hp)
             pygame.draw.rect(self.screen, (185, 42, 48), fill)
             pygame.draw.rect(self.screen, (90, 94, 110), bar, 1)
+            if (self.committed_attacks and self.state == "attack"
+                    and self.action_timer > self.stats.attack_duration * .48):
+                # A shape plus exclamation mark explains a committed wind-up
+                # without depending on colour or an additional art asset.
+                x, y = round(bar.centerx), round(bar.y - 12)
+                pygame.draw.polygon(self.screen, (255, 210, 105),
+                                    ((x, y - 9), (x - 9, y + 7), (x + 9, y + 7)))
+                pygame.draw.line(self.screen, (26, 19, 6), (x, y - 4), (x, y + 1), 2)
+                pygame.draw.circle(self.screen, (26, 19, 6), (x, y + 4), 1)

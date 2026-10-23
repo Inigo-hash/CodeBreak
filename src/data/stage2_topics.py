@@ -152,7 +152,7 @@ ITERATIVE_CHALLENGES = {
         "starter_code": "def sum_training_points(limit):\\n    total = 0\\n    # Loop from 1 through limit and add each number.\\n    # Return total.\\n    pass",
         "hints": ["Start with total = 0.", "Use range(1, limit + 1).", "Add each number to total inside the loop.", "Return total after the loop."],
         "function_cases": [{"args": [0], "expected": 0}, {"args": [-3], "expected": 0}, {"args": [1], "expected": 1}, {"args": [4], "expected": 10}, {"args": [5], "expected": 15}]
-
+    },
     ITERATIVE_CHALLENGE_IDS[1]: {
         "id": ITERATIVE_CHALLENGE_IDS[1],
         "title": "Build the Training Grid",
@@ -165,7 +165,7 @@ ITERATIVE_CHALLENGES = {
         "starter_code": "def count_training_tiles(rows, columns):\\n    count = 0\\n    # Loop through each row and each column.\\n    # Add 1 for each tile, then return count.\\n    pass",
         "hints": ["Set count = 0 before either loop.", "Use range(rows) for the outer loop.", "Inside it, use range(columns).", "Add 1 inside the inner loop."],
         "function_cases": [{"args": [0, 3], "expected": 0}, {"args": [2, 0], "expected": 0}, {"args": [1, 1], "expected": 1}, {"args": [2, 3], "expected": 6}, {"args": [3, 2], "expected": 6}]
-
+    },
     ITERATIVE_CHALLENGE_IDS[2]: {
         "id": ITERATIVE_CHALLENGE_IDS[2],
         "title": "Count Down to Launch",
@@ -178,7 +178,7 @@ ITERATIVE_CHALLENGES = {
         "starter_code": "def count_launch_numbers(start):\\n    count = 0\\n    number = start\\n    # While number is positive, count it and subtract 1.\\n    pass",
         "hints": ["Use while number > 0.", "Increase count by 1 during each repetition.", "Decrease number by 1 during each repetition.", "Return count after the loop."],
         "function_cases": [{"args": [0], "expected": 0}, {"args": [-2], "expected": 0}, {"args": [1], "expected": 1}, {"args": [3], "expected": 3}, {"args": [5], "expected": 5}]
-
+    },
 }
 
 LISTS_STAGE2_CHALLENGES = {

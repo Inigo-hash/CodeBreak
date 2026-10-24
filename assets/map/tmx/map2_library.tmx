@@ -555,6 +555,7 @@
    <properties>
     <property name="actions" value="search_vase"/>
     <property name="types" value="interactive"/>
+    <property name="topic_id" value="lists_lesson"/>
    </properties>
    <ellipse/>
   </object>

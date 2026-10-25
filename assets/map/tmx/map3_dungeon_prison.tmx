@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="40" height="40" tilewidth="16" tileheight="16" infinite="0" nextlayerid="14" nextobjectid="204">
+<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="40" height="40" tilewidth="16" tileheight="16" infinite="0" nextlayerid="14" nextobjectid="212">
  <tileset firstgid="1" source="../tsx/mainlevbuild.tsx"/>
  <tileset firstgid="1703" source="../tsx/Inside_B.tsx"/>
  <tileset firstgid="2727" source="../tsx/Knowledge temple.tsx"/>
@@ -535,5 +535,52 @@
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 </data>
  </layer>
- <objectgroup id="13" name="Castle lessons"/>
+ <objectgroup id="13" name="Castle lessons">
+  <object id="204" x="128.273" y="174.636" width="31.7273" height="30.1818">
+   <properties>
+    <property name="actions" value="search_chest"/>
+    <property name="topic_id" value="functions_lesson"/>
+    <property name="types" value="interactive"/>
+   </properties>
+  </object>
+  <object id="205" x="496.5" y="222.75" width="31.375" height="30.125">
+   <properties>
+    <property name="actions" value="search_chest"/>
+    <property name="topic_id" value="tuples_lesson"/>
+    <property name="types" value="interactive"/>
+   </properties>
+  </object>
+  <object id="206" x="223.909" y="174.636" width="32.2727" height="30.1818">
+   <properties>
+    <property name="actions" value="search_chest"/>
+    <property name="types" value="interactive"/>
+   </properties>
+  </object>
+  <object id="207" x="224.091" y="414.455" width="31.5455" height="30.5455">
+   <properties>
+    <property name="actions" value="search_chest"/>
+    <property name="types" value="interactive"/>
+   </properties>
+  </object>
+  <object id="208" x="323.091" y="304.364" width="26.1818" height="31.4545">
+   <properties>
+    <property name="actions" value="search_vase"/>
+    <property name="types" value="interactive"/>
+   </properties>
+   <ellipse/>
+  </object>
+  <object id="209" x="387.636" y="304.182" width="25.4545" height="30.1818">
+   <properties>
+    <property name="actions" value="search_vase"/>
+    <property name="types" value="interactive"/>
+   </properties>
+   <ellipse/>
+  </object>
+  <object id="210" x="607.818" y="414.455" width="32.2727" height="30.5455">
+   <properties>
+    <property name="actions" value="search_chest"/>
+    <property name="types" value="interactive"/>
+   </properties>
+  </object>
+ </objectgroup>
 </map>

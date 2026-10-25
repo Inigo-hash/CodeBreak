@@ -840,7 +840,7 @@
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 </data>
  </layer>
- <objectgroup id="11" name="Object Layer 2">
+ <objectgroup id="11" name="Object Layer 2" locked="1">
   <object id="1551" gid="1373" x="1399.91" y="1810.78" width="16" height="16"/>
   <object id="1552" gid="1374" x="1415.82" y="1810.75" width="16" height="16"/>
   <object id="1553" gid="1405" x="1400.09" y="1826.56" width="16" height="16"/>
@@ -1858,7 +1858,7 @@
   <object id="2869" gid="1469" x="1658" y="1540.73" width="16" height="16"/>
   <object id="2870" gid="1470" x="1674" y="1540.51" width="16" height="16"/>
  </objectgroup>
- <objectgroup id="7" name="Object Layer 1">
+ <objectgroup id="7" name="Object Layer 1" locked="1">
   <object id="22" x="834" y="1969.67" width="27.3334" height="28.3333">
    <properties>
     <property name="actions" value="search_barrel"/>

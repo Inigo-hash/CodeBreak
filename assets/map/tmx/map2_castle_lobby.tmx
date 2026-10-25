@@ -651,20 +651,37 @@
   <object id="2" x="464.545" y="127.091" width="30.7273" height="29.8182">
    <properties>
     <property name="actions" value="search_chest"/>
-    <property name="types" value="interactive"/>
     <property name="topic_id" value="iterative_structure_lesson"/>
+    <property name="types" value="interactive"/>
    </properties>
   </object>
   <object id="4" x="659.788" y="416.818" width="25" height="29.9091">
+   <properties>
+    <property name="actions" value="search_vase"/>
+    <property name="types" value="interactive"/>
+   </properties>
    <ellipse/>
   </object>
   <object id="5" x="531.75" y="544.25" width="25.125" height="30.25">
+   <properties>
+    <property name="actions" value="search_vase"/>
+    <property name="types" value="interactive"/>
+   </properties>
    <ellipse/>
   </object>
   <object id="6" x="67.0909" y="193.091" width="25.4545" height="28.9091">
+   <properties>
+    <property name="actions" value="search_vase"/>
+    <property name="types" value="interactive"/>
+   </properties>
    <ellipse/>
   </object>
-  <object id="7" x="256.5" y="335" width="31" height="29.625"/>
+  <object id="7" x="256.5" y="335" width="31" height="29.625">
+   <properties>
+    <property name="actions" value="search_chest"/>
+    <property name="types" value="interactive"/>
+   </properties>
+  </object>
  </objectgroup>
  <layer id="17" name="more designs" width="46" height="48" locked="1">
   <data encoding="csv">

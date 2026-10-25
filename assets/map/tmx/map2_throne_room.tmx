@@ -596,24 +596,5 @@
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 </data>
  </layer>
- <objectgroup id="16" name="Castle lessons">
-  <object id="200" name="Functions terminal" x="224" y="400" width="24" height="24">
-   <properties>
-    <property name="types" value="interactive"/>
-    <property name="actions" value="read_topic"/>
-    <property name="topic_id" value="castle_functions"/>
-    <property name="terminal_visual" type="bool" value="true"/>
-    <property name="persistent_id" value="castle_throne_functions_terminal"/>
-   </properties>
-  </object>
-  <object id="201" name="Error handling terminal" x="400" y="400" width="24" height="24">
-   <properties>
-    <property name="types" value="interactive"/>
-    <property name="actions" value="read_topic"/>
-    <property name="topic_id" value="castle_exceptions"/>
-    <property name="terminal_visual" type="bool" value="true"/>
-    <property name="persistent_id" value="castle_throne_exceptions_terminal"/>
-   </properties>
-  </object>
- </objectgroup>
+ <objectgroup id="16" name="Castle lessons"/>
 </map>

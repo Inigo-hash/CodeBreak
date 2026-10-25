@@ -310,32 +310,5 @@
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 </data>
  </layer>
- <objectgroup id="8" name="Dining interactions">
-  <object id="1" name="Lists terminal" x="96" y="464" width="32" height="32">
-   <properties>
-    <property name="types" value="interactive"/>
-    <property name="actions" value="read_topic"/>
-    <property name="topic_id" value="castle_lists"/>
-    <property name="terminal_visual" type="bool" value="true"/>
-    <property name="persistent_id" value="castle_dining_lists_terminal"/>
-   </properties>
-  </object>
-  <object id="2" name="Dining crate" x="496" y="336" width="32" height="32">
-   <properties>
-    <property name="types" value="interactive"/>
-    <property name="actions" value="search_crate"/>
-    <property name="independent_search" type="bool" value="true"/>
-    <property name="reward_seconds" type="int" value="15"/>
-    <property name="persistent_id" value="castle_dining_crate_01"/>
-   </properties>
-  </object>
-  <object id="3" name="Dining table" x="128" y="400" width="32" height="32">
-   <properties>
-    <property name="types" value="interactive"/>
-    <property name="actions" value="search_table"/>
-    <property name="independent_search" type="bool" value="true"/>
-    <property name="persistent_id" value="castle_dining_table_01"/>
-   </properties>
-  </object>
- </objectgroup>
+ <objectgroup id="8" name="Dining interactions"/>
 </map>

@@ -554,8 +554,8 @@
   <object id="200" x="36" y="272.75" width="24.625" height="29.75">
    <properties>
     <property name="actions" value="search_vase"/>
-    <property name="types" value="interactive"/>
     <property name="topic_id" value="lists_lesson"/>
+    <property name="types" value="interactive"/>
    </properties>
    <ellipse/>
   </object>
@@ -583,29 +583,13 @@
   <object id="204" x="240" y="382.5" width="31.25" height="30.5">
    <properties>
     <property name="actions" value="search_chest"/>
-    <property name="types" value="interactive"/>   </properties>
+    <property name="types" value="interactive"/>
+   </properties>
   </object>
   <object id="205" x="368.125" y="382.625" width="31.5" height="30.25">
    <properties>
     <property name="actions" value="search_chest"/>
-    <property name="types" value="interactive"/>   </properties>
-  </object>
-  <object id="206" name="Tuples terminal" x="224" y="464" width="24" height="24">
-   <properties>
     <property name="types" value="interactive"/>
-    <property name="actions" value="read_topic"/>
-    <property name="topic_id" value="castle_tuples"/>
-    <property name="terminal_visual" type="bool" value="true"/>
-    <property name="persistent_id" value="castle_library_tuples_terminal"/>
-   </properties>
-  </object>
-  <object id="207" name="Dictionaries terminal" x="400" y="464" width="24" height="24">
-   <properties>
-    <property name="types" value="interactive"/>
-    <property name="actions" value="read_topic"/>
-    <property name="topic_id" value="castle_dictionaries"/>
-    <property name="terminal_visual" type="bool" value="true"/>
-    <property name="persistent_id" value="castle_library_dictionaries_terminal"/>
    </properties>
   </object>
  </objectgroup>

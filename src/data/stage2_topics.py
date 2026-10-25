@@ -299,7 +299,7 @@ FUNCTIONS_CHALLENGES = {
         "function_name": "greet_explorer",
         "problem": "Write greet_explorer(name). Return the text \"Hello, \" followed by name. Example: greet_explorer(\"Alex\") returns \"Hello, Alex\".",
         "objective": "Define a function with one parameter and return a string.",
-        "starter_code": "def greet_explorer(name):\\n    # Return a greeting that includes name.\\n    pass",
+        "starter_code": "def greet_explorer(name):\n    # Return a greeting that includes name.\n    pass",
         "hints": ["The parameter name contains the text to greet.", "Join strings with +.", "Return the result instead of printing it."],
         "function_cases": [{"args": ["Alex"], "expected": "Hello, Alex"}, {"args": ["Sam"], "expected": "Hello, Sam"}, {"args": [""], "expected": "Hello, "}]
     },
@@ -311,7 +311,7 @@ FUNCTIONS_CHALLENGES = {
         "function_name": "add_supplies",
         "problem": "Write add_supplies(first, second). Return the sum of the two numbers. Example: add_supplies(3, 4) returns 7.",
         "objective": "Use two parameters and return their sum.",
-        "starter_code": "def add_supplies(first, second):\\n    # Add the two values and return the result.\\n    pass",
+        "starter_code": "def add_supplies(first, second):\n    # Add the two values and return the result.\n    pass",
         "hints": ["The values are provided through first and second.", "Use the + operator.", "Return first + second."],
         "function_cases": [{"args": [0, 0], "expected": 0}, {"args": [3, 4], "expected": 7}, {"args": [-2, 5], "expected": 3}]
     }
@@ -326,9 +326,9 @@ TUPLES_CHALLENGES = {
         "function_name": "make_coordinates",
         "problem": "Write make_coordinates(x, y). Return both values together as a tuple (x, y). Example: make_coordinates(3, 7) returns (3, 7).",
         "objective": "Return two related values together in a tuple.",
-        "starter_code": "def make_coordinates(x, y):\\n    # Return x and y together as a tuple.\\n    pass",
+        "starter_code": "def make_coordinates(x, y):\n    # Return x and y together as a tuple.\n    pass",
         "hints": ["Tuples use parentheses.", "Put x first and y second.", "Return (x, y)."],
-        "function_cases": [{"args": [0, 0], "expected": [0, 0]}, {"args": [3, 7], "expected": [3, 7]}, {"args": [-1, 4], "expected": [-1, 4]}]
+        "function_cases": [{"args": [0, 0], "expected": (0, 0)}, {"args": [3, 7], "expected": (3, 7)}, {"args": [-1, 4], "expected": (-1, 4)}]
     },
     TUPLES_CHALLENGE_IDS[1]: {
         "id": TUPLES_CHALLENGE_IDS[1],
@@ -338,7 +338,7 @@ TUPLES_CHALLENGES = {
         "function_name": "get_x_coordinate",
         "problem": "Write get_x_coordinate(point). The point is a two-item tuple. Return its first value. Example: get_x_coordinate((8, 2)) returns 8.",
         "objective": "Read a tuple item using index 0.",
-        "starter_code": "def get_x_coordinate(point):\\n    # Return the first item in point.\\n    pass",
+        "starter_code": "def get_x_coordinate(point):\n    # Return the first item in point.\n    pass",
         "hints": ["Tuple indexes start at 0.", "Use point[0].", "Return that value."],
         "function_cases": [{"args": [[0, 0]], "expected": 0}, {"args": [[8, 2]], "expected": 8}, {"args": [[-3, 9]], "expected": -3}]
     }
@@ -354,7 +354,7 @@ ERROR_HANDLING_CHALLENGES = {
         "function_name": "safe_number",
         "problem": "Write safe_number(text). Try converting text to an integer. Return the number if it works, or None if a ValueError happens. Example: safe_number(\"12\") returns 12 and safe_number(\"oops\") returns None.",
         "objective": "Use try/except ValueError to handle invalid number text.",
-        "starter_code": "def safe_number(text):\\n    try:\\n        # Try converting text to an integer.\\n        pass\\n    except ValueError:\\n        # Return None if conversion fails.\\n        pass",
+        "starter_code": "def safe_number(text):\n    try:\n        # Try converting text to an integer.\n        pass\n    except ValueError:\n        # Return None if conversion fails.\n        pass",
         "hints": ["Put int(text) inside try.", "Return the converted number inside try.", "In except ValueError, return None."],
         "function_cases": [{"args": ["12"], "expected": 12}, {"args": ["0"], "expected": 0}, {"args": ["oops"], "expected": None}, {"args": [""], "expected": None}]
     },
@@ -367,7 +367,7 @@ ERROR_HANDLING_CHALLENGES = {
         "function_name": "safe_divide",
         "problem": "Write safe_divide(first, second). Return first / second. If second is 0, catch ZeroDivisionError and return None. Example: safe_divide(8, 2) returns 4.0 and safe_divide(8, 0) returns None.",
         "objective": "Handle division by zero with try/except.",
-        "starter_code": "def safe_divide(first, second):\\n    try:\\n        # Return first divided by second.\\n        pass\\n    except ZeroDivisionError:\\n        # Return None when second is zero.\\n        pass",
+        "starter_code": "def safe_divide(first, second):\n    try:\n        # Return first divided by second.\n        pass\n    except ZeroDivisionError:\n        # Return None when second is zero.\n        pass",
         "hints": ["Put first / second inside try.", "Return the division result.", "Catch ZeroDivisionError and return None."],
         "function_cases": [{"args": [8, 2], "expected": 4.0}, {"args": [9, 3], "expected": 3.0}, {"args": [8, 0], "expected": None}, {"args": [-6, 2], "expected": -3.0}]
     }
@@ -383,7 +383,7 @@ ITERATIVE_CHALLENGES = {
         "learning_constructs": ["for"],
         "problem": "Write sum_training_points(limit). Return the sum of whole numbers from 1 through limit. If limit is 0 or negative, return 0. Example: sum_training_points(4) returns 10.",
         "objective": "Use range(), a for loop, and a running total.",
-        "starter_code": "def sum_training_points(limit):\\n    total = 0\\n    # Loop from 1 through limit and add each number.\\n    # Return total.\\n    pass",
+        "starter_code": "def sum_training_points(limit):\n    total = 0\n    # Loop from 1 through limit and add each number.\n    # Return total.\n    pass",
         "hints": ["Start with total = 0.", "Use range(1, limit + 1).", "Add each number to total inside the loop.", "Return total after the loop."],
         "function_cases": [{"args": [0], "expected": 0}, {"args": [-3], "expected": 0}, {"args": [1], "expected": 1}, {"args": [4], "expected": 10}, {"args": [5], "expected": 15}]
     },
@@ -396,7 +396,7 @@ ITERATIVE_CHALLENGES = {
         "learning_constructs": ["nested_for"],
         "problem": "Write count_training_tiles(rows, columns). Return the number of tiles in a grid with these dimensions. If either number is 0 or negative, return 0. Example: count_training_tiles(2, 3) returns 6. Use nested loops, not multiplication.",
         "objective": "Use one for loop inside another to count each grid tile.",
-        "starter_code": "def count_training_tiles(rows, columns):\\n    count = 0\\n    # Loop through each row and each column.\\n    # Add 1 for each tile, then return count.\\n    pass",
+        "starter_code": "def count_training_tiles(rows, columns):\n    count = 0\n    # Loop through each row and each column.\n    # Add 1 for each tile, then return count.\n    pass",
         "hints": ["Set count = 0 before either loop.", "Use range(rows) for the outer loop.", "Inside it, use range(columns).", "Add 1 inside the inner loop."],
         "function_cases": [{"args": [0, 3], "expected": 0}, {"args": [2, 0], "expected": 0}, {"args": [1, 1], "expected": 1}, {"args": [2, 3], "expected": 6}, {"args": [3, 2], "expected": 6}]
     },
@@ -409,7 +409,7 @@ ITERATIVE_CHALLENGES = {
         "learning_constructs": ["while"],
         "problem": "Write count_launch_numbers(start). Return how many positive whole numbers are counted down from start to 1. If start is 0 or negative, return 0. Example: count_launch_numbers(3) returns 3. Use a while loop.",
         "objective": "Use a while loop and update the counter so the loop eventually stops.",
-        "starter_code": "def count_launch_numbers(start):\\n    count = 0\\n    number = start\\n    # While number is positive, count it and subtract 1.\\n    pass",
+        "starter_code": "def count_launch_numbers(start):\n    count = 0\n    number = start\n    # While number is positive, count it and subtract 1.\n    pass",
         "hints": ["Use while number > 0.", "Increase count by 1 during each repetition.", "Decrease number by 1 during each repetition.", "Return count after the loop."],
         "function_cases": [{"args": [0], "expected": 0}, {"args": [-2], "expected": 0}, {"args": [1], "expected": 1}, {"args": [3], "expected": 3}, {"args": [5], "expected": 5}]
     },
@@ -425,7 +425,7 @@ LISTS_STAGE2_CHALLENGES = {
         "required_list_operations": ["len"],
         "problem": "Write list_report(items). Return (first, count). If items is empty, return (None, 0). Do not modify items. Example: list_report(['key', 'potion']) returns ('key', 2).",
         "objective": "Check for an empty list, then use index 0 and len().",
-        "starter_code": "def list_report(items):\\n    # If items is empty, return (None, 0).\\n    # Otherwise return the first item and list length.\\n    pass",
+        "starter_code": "def list_report(items):\n    # If items is empty, return (None, 0).\n    # Otherwise return the first item and list length.\n    pass",
         "hints": ["Check if not items before indexing.", "Use items[0] for the first item.", "Use len(items) for the count.", "Return both values in a tuple."],
         "function_cases": [{"args": [[]], "expected": (None, 0)}, {"args": [["key"]], "expected": ("key", 1)}, {"args": [["key", "potion"]], "expected": ("key", 2)}, {"args": [[1, 2, 3]], "expected": (1, 3)}],
         "preserve_args": True
@@ -439,7 +439,7 @@ LISTS_STAGE2_CHALLENGES = {
         "required_list_operations": ["append"],
         "problem": "Write add_inventory_item(items, new_item). Make a copy of items, add new_item to the end of the copy, and return the copy. Do not change items. Example: add_inventory_item(['key'], 'potion') returns ['key', 'potion'].",
         "objective": "Copy a list, use append(), and return the updated copy.",
-        "starter_code": "def add_inventory_item(items, new_item):\\n    # Make a copy with list(items).\\n    # Append new_item to the copy.\\n    # Return the copy, leaving items unchanged.\\n    pass",
+        "starter_code": "def add_inventory_item(items, new_item):\n    # Make a copy with list(items).\n    # Append new_item to the copy.\n    # Return the copy, leaving items unchanged.\n    pass",
         "hints": ["Create result = list(items).", "Use result.append(new_item).", "Return result.", "Do not append directly to items."],
         "function_cases": [{"args": [[], "key"], "expected": ["key"]}, {"args": [["key"], "potion"], "expected": ["key", "potion"]}, {"args": [["key", "map"], "shield"], "expected": ["key", "map", "shield"]}],
         "preserve_args": True

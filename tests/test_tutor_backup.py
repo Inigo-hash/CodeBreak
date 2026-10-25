@@ -165,11 +165,15 @@ class RecoveryTests(unittest.TestCase):
     def test_detached_result_cannot_overwrite_new_question(self):
         import threading
         started, release, finished = threading.Event(), threading.Event(), threading.Event()
-        def slow(*args):
-            started.set()
-            release.wait(2)
-            finished.set()
-            return 'late generated answer'
+        calls = []
+        def slow(question, context, history):
+            calls.append((question, context, history))
+            if len(calls) == 1:
+                started.set()
+                release.wait(2)
+                finished.set()
+                return 'late generated answer'
+            return 'A live dictionary explanation.'
         session = TutorSession(slow)
         try:
             self.assertTrue(session.submit('explain while loops'))
@@ -178,12 +182,85 @@ class RecoveryTests(unittest.TestCase):
             self.assertTrue(answer.startswith('Built-in guide:'))
             self.assertFalse(session.pending)
             session.last_sent = float('-inf')
-            self.assertTrue(session.submit('explain dictionaries'))
-            self.assertIn('dictionary', session.poll())
-            self.assertFalse(session.pending)
+            self.assertTrue(session.submit('explain dictionaries', {'stage': 'castle'}))
+            self.assertIsNone(session.poll())
+            self.assertTrue(session.pending)
+            self.assertIn('Reconnecting', session.waiting_status)
         finally:
             release.set()
             session._worker.join(2)
         self.assertTrue(finished.is_set())
+        self.assertEqual(session.poll(), 'A live dictionary explanation.')
+        self.assertFalse(session.pending)
         self.assertIsNone(session.poll())
         self.assertNotIn('late generated answer', str(session.history))
+        self.assertEqual([call[0] for call in calls], ['explain while loops', 'explain dictionaries'])
+        self.assertEqual(calls[1][1], {'stage': 'castle'})
+        self.assertEqual(calls[1][2][-1]['content'], answer)
+
+    def test_basic_question_is_immediate_while_detached_network_is_running(self):
+        import threading
+        started, release = threading.Event(), threading.Event()
+        def slow(*args):
+            started.set()
+            release.wait(2)
+            return 'late answer'
+        session = TutorSession(slow)
+        try:
+            session.submit('please explain loops')
+            self.assertTrue(started.wait(1))
+            session.use_guide()
+            self.assertTrue(session.submit('what is codebreak'))
+            self.assertIn('desktop game', session.poll())
+            self.assertFalse(session.pending)
+        finally:
+            release.set()
+            session._worker.join(2)
+        self.assertIsNone(session.poll())
+
+    def test_abandoned_queued_question_is_not_sent_and_latest_still_gets_live(self):
+        import threading
+        started, release = threading.Event(), threading.Event()
+        calls = []
+        def slow(question, *args):
+            calls.append(question)
+            if len(calls) == 1:
+                started.set()
+                release.wait(2)
+            return 'live ' + question
+        session = TutorSession(slow)
+        try:
+            session.submit('explain loops')
+            self.assertTrue(started.wait(1))
+            session.use_guide()
+            session.submit('explain dictionaries')
+            session.use_guide()
+            session.submit('explain tuples')
+        finally:
+            release.set()
+            session._worker.join(2)
+        self.assertEqual(session.poll(), 'live explain tuples')
+        self.assertEqual(calls, ['explain loops', 'explain tuples'])
+
+    def test_never_finishing_request_releases_chat_at_deadline(self):
+        from src.systems.ai_tutor import MAX_PENDING_SECONDS
+        import threading
+        started, release = threading.Event(), threading.Event()
+        def stuck(*args):
+            started.set()
+            release.wait(2)
+            return 'late answer'
+        session = TutorSession(stuck)
+        try:
+            with patch('src.systems.ai_tutor.time.monotonic', return_value=100):
+                session.submit('explain while loops')
+            self.assertTrue(started.wait(1))
+            with patch('src.systems.ai_tutor.time.monotonic', return_value=100 + MAX_PENDING_SECONDS):
+                self.assertIn('Built-in guide:', session.poll())
+            self.assertFalse(session.pending)
+            self.assertTrue(session.submit('what is a list'))
+            self.assertIn('ordered collection', session.poll())
+        finally:
+            release.set()
+            session._worker.join(2)
+        self.assertIsNone(session.poll())

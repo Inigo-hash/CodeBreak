@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from src.systems.ai_tutor import ask_mang_tahimik, TutorError
+from src.systems.ai_tutor import ask_mang_tahimik, _ask_online, TutorError
 from src.data.tutor_knowledge import PYTHON_HELP
 
 
@@ -27,10 +27,8 @@ def main():
                     return 1
             print(f'PASS: {len(questions)} offline reference checks; no server or API key required.')
         else:
-            answer = ask_mang_tahimik('Explain the difference between append() and pop() with one unrelated Python example.')
-            if answer.startswith(('Built-in guide:', 'Offline guide:')):
-                print('LIVE AI NOT VERIFIED: a local reference was used instead. The offline backup is working.')
-                return 1
+            answer = _ask_online('Explain the difference between append() and pop() with one unrelated Python example.',
+                                 require_live=True)
             print('LIVE REPLY RECEIVED:\n' + answer)
         return 0
     except TutorError as exc:

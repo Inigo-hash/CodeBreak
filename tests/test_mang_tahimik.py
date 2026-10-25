@@ -54,6 +54,32 @@ class ChatTests(unittest.TestCase):
         chat.question = 'x' * 1000
         chat.draw()
 
+    def test_reopening_chat_keeps_history_and_the_pending_reply(self):
+        import threading
+        entered, release = threading.Event(), threading.Event()
+        def ask(*args):
+            entered.set()
+            release.wait(2)
+            return 'A live follow-up.'
+        session = TutorSession(ask)
+        session.history = [{'role': 'user', 'content': 'previous question'},
+                           {'role': 'assistant', 'content': 'previous answer'}]
+        try:
+            first = MangTahimikChat(self.screen, session=session)
+            first.question = 'give another example'
+            first.submit()
+            self.assertTrue(entered.wait(1))
+            reopened = MangTahimikChat(self.screen, session=session)
+            self.assertIn(('You', 'previous question'), reopened.messages)
+            self.assertIn(('Mang Tahimik', 'previous answer'), reopened.messages)
+            self.assertEqual(reopened.messages[-1], ('You', 'give another example'))
+            self.assertTrue(reopened.session.pending)
+            reopened.draw()
+        finally:
+            release.set()
+            session._worker.join(2)
+        self.assertEqual(reopened.session.poll(), 'A live follow-up.')
+
     def test_selection_replace_undo_redo_and_navigation(self):
         chat = MangTahimikChat(self.screen)
         def key(code, mod=0):

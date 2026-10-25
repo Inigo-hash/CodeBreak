@@ -1,5 +1,10 @@
 # Mang Tahimik shared Gemini tutor
 
+Current server revision: `live-recovery-20261026`. A health check confirms
+reachability only; run `python tools/check_tutor.py --live` to verify a generated
+answer. That check requires the server's `X-Tutor-Source: live_ai` header and
+rejects both errors and saved reference answers.
+
 The desktop game now calls your online server. Only the server holds the Gemini
 key. Players do not need API keys. Press H in gameplay outside combat, or click
 Mang Tahimik in the menu. Escape returns immediately while network work runs
@@ -30,7 +35,8 @@ copies of the game: pull/rebuild/distribute the new version.
 
 Keep your Google AI Studio project on its Free Tier if you want free usage.
 A Gemini app subscription does not configure this API project. The configured
-model is gemini-3.1-flash-lite; availability/quotas depend on your Google account.
+model is gemini-3.5-flash-lite, backed by gemini-3.1-flash-lite;
+availability/quotas depend on your Google account.
 Change GEMINI_MODEL on Render if necessary, using a text generateContent model
 available on your free project. No live key was used in automated tests.
 
@@ -50,13 +56,15 @@ Clients send an in-memory random token, with no saved player/device identity.
 Older clients without that token use only the global provider caps, so a
 whole school is not incorrectly treated as one player. Failed provider
 calls count toward the budget, including the single automatic retry for HTTP
-502/503/504. The shipped pair now tries `gemini-3.1-flash-lite` first and
-`gemini-2.5-flash-lite` second, using the same two model IDs already configured
-by the prior release. Existing legacy pairs are promoted to this order without
-requiring an environment edit. `GEMINI_FALLBACK_MODEL` can explicitly override
+502/503/504. The shipped pair now tries `gemini-3.5-flash-lite` first and
+`gemini-3.1-flash-lite` second. The previous 2.5 fallback returned HTTP 404 during
+live verification. The exact pairs shipped by earlier blueprints are migrated
+to the current pair, including values retained by existing Render services.
+`GEMINI_FALLBACK_MODEL` can explicitly override
 the backup; an empty string retries the primary instead. Custom primary models
 outside this known pair have no implicit backup. A missing model (404) or
-model-specific quota (429) can try the distinct backup once. Both models must
+model-specific quota (429), or an empty/malformed HTTP 200 reply can try the
+backup once. Both models must
 be available to the server's Google project. Retries consume the same attempt caps, keep the same concurrency
 slot, and stop if the budget is exhausted. Quota, authentication, and model
 errors are not retried against the same model. A provider retry consumes
@@ -82,13 +90,17 @@ For larger/public launches add authenticated players and a durable shared quota
 store; anyone who knows the public endpoint can consume its prototype quota.
 
 Render free services sleep after 15 minutes of inactivity and can take about a
-minute to wake. The game waits up to 75 seconds; if it times out, retry once after
-the server has woken. This may not suit a strict-time classroom demonstration.
+minute to wake. Startup sends one background `/health` request to begin waking
+the host while the player uses the menu. This never calls Gemini and does not
+repeat as a keep-alive. Normal asks have a 75-second socket timeout; the chat
+also releases a pending turn after 90 seconds and offers saved help. Slow
+requests show a reference after eight seconds while the live request continues.
 Free hosting availability and Gemini quotas are not guaranteed.
 
 The server forwards questions, history and stage/room/topic strings to Google.
 Avoid personal data: Google's free-tier content may be used to improve products.
-Chats are not saved by this application. Hosting access logs can record request
+Chats are held in memory for this game session, including when the modal is
+closed/reopened, and are not saved to disk. Hosting access logs can record request
 metadata. The tutor's hint-only behavior is an instruction, not a guarantee;
 evaluate real responses before teaching with it.
 
@@ -96,7 +108,9 @@ evaluate real responses before teaching with it.
 
 ```bash
 pip install -r requirements.txt -r server/requirements.txt
-python -m unittest tests.test_ai_tutor tests.test_mang_tahimik tests.test_tutor_server
+for f in test_ai_tutor.py test_tutor_backup.py test_mang_tahimik.py test_tutor_guide.py test_tutor_server.py; do
+  SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy PYTHONPATH=. python -m unittest discover -s tests -p "$f" || exit 1
+done
 ```
 
 To run the server locally, set GEMINI_API_KEY in the server terminal, then:
@@ -131,8 +145,7 @@ the server's attempts. Deploy the server changes and update the game client to
 use both improvements. Existing Render environment values are unchanged.
 
 The client distinguishes concurrent-player capacity, the relay's shared usage
-limit, and Google's quota. A capacity error asks the player to retry in 30
-seconds rather than incorrectly reporting that the daily quota is exhausted.
+limit, and Google's quota. Capacity and quota limits offer labelled saved help.
 Pushes must finish deploying on Render before the server improvement is live;
 already installed game clients must also be updated for the new error messages.
 
@@ -143,9 +156,9 @@ separates session/minute/day limits and includes precise retry times. The
 daily counter resets at 00:00 UTC (08:00 Philippine time). The health body
 remains a liveness check.
 
-Mang Tahimik's larger helper card is anchored at the bottom left in gameplay
-and the main menu. The minimap stacks above it; the chat opens in a wider,
-bottom-left panel. The entire menu helper card is clickable.
+Mang Tahimik's helper card is anchored at the bottom right in gameplay and
+the main menu. The minimap is at the bottom left; the chat opens on the right.
+The entire menu helper card is clickable.
 
 Reference: https://ai.google.dev/gemini-api/docs/troubleshooting
 
@@ -170,7 +183,7 @@ No built-in guide entry supplies a complete challenge solution.
 
 After pulling the game update, ask `who is python` to verify the local guide.
 To verify the deployed server, `/health` should return header
-`X-Tutor-Revision: timeout-failover-guide-20261021`, and a POST to `/ask` with
+`X-Tutor-Revision: live-recovery-20261026`, and a POST to `/ask` with
 `{"question":"what is python"}` should return `source: built_in`. Use a distinct
 open-ended debugging question to test live Gemini separately; a successful guide
 answer alone does not prove Gemini has recovered. Never publish API keys in logs
@@ -212,11 +225,28 @@ update a downloaded desktop game. Free hosting and external AI availability
 remain outside the game's control.
 
 The server now exposes `X-Tutor-Source: live_ai` and `X-Tutor-Route: primary` or
-`backup` on generated replies, and health revision `defence-backup-20261023`.
+`backup` on generated replies, and health revision `live-recovery-20261026`.
 These diagnostics reveal no keys, player data or raw provider errors. Gemini
-3.1 Flash-Lite uses explicit minimal thinking for these brief explanations.
+Both configured Flash-Lite models use minimal thinking for brief explanations.
 The primary migration adds no extra attempt and does not bypass usage limits.
 
 ### Slow-request controls (23 October 2026)
 
-Choose **Use guide** or press **Ctrl+G** to stop waiting and keep using saved reference help. The existing HTTP call can finish in the background, but its late reply is discarded. Until it finishes, new questions in that chat use the guide rather than launching additional requests. Normal live requests resume on subsequent questions after that worker finishes. The connecting indicator belongs to the live interface and disappears when the pending turn ends. **Back / Escape** closes chat; **Page Up / Page Down** scroll history.
+Choose **Use guide** or press **Ctrl+G** to finish the turn with saved reference
+help. A late network reply cannot overwrite a newer turn. The next open-ended
+question is queued for the same worker and actually sent to the live AI when
+the prior call finishes. Choosing the guide again discards an unsent queued
+question. Exact FAQ answers remain immediate, even during a detached call.
+There is at most one active ask per session and one queued follow-up.
+
+**Back / Escape** closes chat; reopening restores the in-memory conversation,
+pending question and any provisional guide. It does not launch a second worker
+or lose a completed network reply. **Page Up / Page Down** scroll history.
+The pending indicator explains when AI is connecting or taking longer, and
+the 90-second UI deadline releases the input even if a network call hangs.
+
+Model migration references (checked 26 October 2026):
+- https://ai.google.dev/gemini-api/docs/models/gemini-3.5-flash-lite
+- https://ai.google.dev/gemini-api/docs/pricing
+- https://ai.google.dev/gemini-api/docs/deprecations
+- https://ai.google.dev/gemini-api/docs/thinking

@@ -1,10 +1,10 @@
 """Optional, environment-configured Python tutor; never executes model output."""
 import json
 import os
-import socket
 import threading
 import time
 import uuid
+from http.client import HTTPException
 from queue import Queue, Empty
 from urllib import request, error
 
@@ -12,6 +12,11 @@ from src.systems.tutor_guide import built_in_answer, offline_answer, unavailable
 
 MAX_QUESTION = 1000
 CLIENT_ID = uuid.uuid4().hex
+GUIDE_DELAY = 8
+MAX_PENDING_SECONDS = 90
+_warm_lock = threading.Lock()
+_warm_endpoint = None
+_warm_worker = None
 
 
 class TutorError(Exception):
@@ -44,7 +49,7 @@ def ask_mang_tahimik(question, context=None, history=()):
         raise TutorError(str(exc) + '\n' + unavailable_help()) from None
 
 
-def _ask_online(question, context=None, history=()):
+def tutor_endpoint():
     from urllib.parse import urlparse
     from pathlib import Path
     endpoint = os.environ.get('CODEBREAK_TUTOR_URL', '').strip()
@@ -62,6 +67,39 @@ def _ask_online(question, context=None, history=()):
         raise TutorError('The tutor server must use a secure HTTPS connection.')
     if not parsed.hostname or parsed.username or parsed.password:
         raise TutorError('The tutor server address is invalid.')
+    return endpoint
+
+
+def start_tutor_warmup():
+    """Wake the free host once during startup, without a Gemini call or UI wait."""
+    global _warm_endpoint, _warm_worker
+    if os.environ.get('CODEBREAK_TUTOR_MODE', '').strip().lower() == 'offline':
+        return None
+    try:
+        endpoint = tutor_endpoint()
+    except TutorError:
+        return None
+    from urllib.parse import urlparse
+    parsed = urlparse(endpoint)
+    health = parsed._replace(path=parsed.path.rsplit('/', 1)[0] + '/health',
+                             query='', fragment='').geturl()
+    with _warm_lock:
+        if _warm_endpoint == endpoint:
+            return _warm_worker
+        _warm_endpoint = endpoint
+        def work():
+            try:
+                with request.urlopen(health, timeout=60) as response:
+                    response.read(512)
+            except (OSError, ValueError, HTTPException):
+                pass  # An optional warm-up cannot prevent playing offline.
+        _warm_worker = threading.Thread(target=work, daemon=True)
+        _warm_worker.start()
+        return _warm_worker
+
+
+def _ask_online(question, context=None, history=(), *, require_live=False):
+    endpoint = tutor_endpoint()
     safe_context = {k: str(v)[:100] for k, v in (context or {}).items()
                     if k in ('stage', 'room', 'topic')}
     safe_history = [{'role': item['role'], 'content': str(item.get('content', ''))[:4000]}
@@ -74,9 +112,13 @@ def _ask_online(question, context=None, history=()):
     try:
         with request.urlopen(req, timeout=75) as response:
             result = json.loads(response.read(128000))
+            source = response.headers.get('X-Tutor-Source')
         answer = result['answer']
         if not isinstance(answer, str) or not answer.strip():
             raise ValueError('empty answer')
+        if require_live and (source != 'live_ai' or result.get('source') in ('built_in', 'offline_guide')
+                             or answer.startswith(('Built-in guide:', 'Offline guide:'))):
+            raise TutorError('The server returned saved help; live AI was not verified.')
         return answer.strip()[:4000]
     except error.HTTPError as exc:
         # Only display messages we own. Upstream bodies may contain secrets,
@@ -117,7 +159,7 @@ def _ask_online(question, context=None, history=()):
         if exc.code == 429:
             raise TutorLimitError(message, code if isinstance(code, str) else None) from None
         raise TutorError(message) from None
-    except (error.URLError, TimeoutError, socket.timeout):
+    except (OSError, HTTPException):
         raise TutorError('I cannot connect right now. Check the internet and try again.') from None
     except (ValueError, KeyError, IndexError, TypeError):
         raise TutorError('I did not receive a usable answer. Please try again.') from None
@@ -135,6 +177,9 @@ class TutorSession:
         self._question = None
         self._backup = None
         self._backup_shown = False
+        self._job_lock = threading.Lock()
+        self._next_job = None
+        self._running = False
 
     def submit(self, question, context=None):
         question = question.strip()
@@ -146,12 +191,29 @@ class TutorSession:
         self._backup = offline_answer(question, context, history) or unavailable_help()
         self._backup_shown = False
         self._question = question
-        # A detached network call may finish, but cannot overwrite a new turn.
+        # A detached call keeps its old queue. Follow-ups are sent by the
+        # same worker when it finishes, rather than silently becoming offline.
         results = self.results
-        if self._worker is not None and self._worker.is_alive():
-            results.put((question, self._backup, True))
+        guide = built_in_answer(question)
+        if guide:
+            results.put((question, guide, True))
             return True
-        def work():
+        with self._job_lock:
+            self._next_job = (results, question, dict(context or {}), history)
+            if not self._running:
+                self._running = True
+                self._worker = threading.Thread(target=self._work, daemon=True)
+                self._worker.start()
+        return True
+
+    def _work(self):
+        while True:
+            with self._job_lock:
+                job, self._next_job = self._next_job, None
+                if job is None:
+                    self._running = False
+                    return
+            results, question, context, history = job
             try:
                 answer = self.ask(question, context, history)
                 results.put((question, answer, True))
@@ -159,15 +221,37 @@ class TutorSession:
                 results.put((question, str(exc), False))
             except Exception:
                 results.put((question, 'Something went wrong. Please try again.', False))
-        self._worker = threading.Thread(target=work, daemon=True)
-        self._worker.start()
-        return True
+
+    @property
+    def pending_question(self):
+        return self._question if self.pending else None
+
+    @property
+    def visible_history(self):
+        turns = [dict(turn) for turn in self.history]
+        if self.pending:
+            turns.append({'role': 'user', 'content': self._question})
+            if self._backup_shown:
+                turns.append({'role': 'assistant', 'content': self._backup})
+        return turns
+
+    @property
+    def waiting_status(self):
+        with self._job_lock:
+            queued = self._next_job is not None
+        if queued:
+            return 'Reconnecting to AI | Use guide for saved help'
+        if time.monotonic() - self.last_sent >= GUIDE_DELAY:
+            return 'AI is taking longer | Saved help available | Ctrl+G: use guide'
+        return 'Asking Mang Tahimik | Ctrl+G: use saved guide'
 
     def use_guide(self):
         """Stop waiting without starting another simultaneous network worker."""
         if not self.pending:
             return None
         self.pending = False
+        with self._job_lock:
+            self._next_job = None
         self.results = Queue()
         self.history.extend([{'role': 'user', 'content': self._question},
                              {'role': 'assistant', 'content': self._backup}])
@@ -178,10 +262,14 @@ class TutorSession:
         try:
             question, answer, success = self.results.get_nowait()
         except Empty:
+            if self.pending and time.monotonic() - self.last_sent >= MAX_PENDING_SECONDS:
+                already_shown = self._backup_shown
+                guide = self.use_guide()
+                return None if already_shown else guide
             # A slow host must not leave the defence demo blank. Keep the
             # real request running and identify the provisional source.
             if (self.pending and self._backup and not self._backup_shown
-                    and time.monotonic() - self.last_sent >= 8):
+                    and time.monotonic() - self.last_sent >= GUIDE_DELAY):
                 self._backup_shown = True
                 return self._backup
             return None
@@ -197,3 +285,14 @@ class TutorSession:
                 if not answer.startswith(('Built-in guide:', 'Offline guide:')):
                     return 'Live AI: ' + answer
         return answer
+
+
+_shared_session = None
+
+
+def shared_tutor_session():
+    """Keep one conversation and worker when the player closes/reopens chat."""
+    global _shared_session
+    if _shared_session is None:
+        _shared_session = TutorSession()
+    return _shared_session

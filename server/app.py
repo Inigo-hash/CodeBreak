@@ -19,7 +19,46 @@ RETRYABLE_STATUS = frozenset((502, 503, 504))
 MAX_PROVIDER_ATTEMPTS = 2
 PROVIDER_DEADLINE = 55
 PROVIDER_ATTEMPT_TIMEOUT = 20
-TUTOR_REVISION = 'conversation-recovery-20261024-2'
+TUTOR_REVISION = 'live-recovery-20261026'
+DEFAULT_MODEL = 'gemini-3.5-flash-lite'
+DEFAULT_BACKUP = 'gemini-3.1-flash-lite'
+
+
+def configured_models():
+    model = os.environ.get('GEMINI_MODEL', DEFAULT_MODEL).strip()
+    if model == 'gemini-2.5-flash-lite' and 'GEMINI_FALLBACK_MODEL' not in os.environ:
+        return DEFAULT_MODEL, DEFAULT_BACKUP
+    fallback = os.environ.get('GEMINI_FALLBACK_MODEL',
+                              DEFAULT_BACKUP if model == DEFAULT_MODEL else
+                              DEFAULT_MODEL if model in ('gemini-3.1-flash-lite', 'gemini-2.5-flash-lite')
+                              else '').strip()
+    # A deploy does not replace existing Render environment values. Upgrade
+    # the exact pairs shipped by earlier blueprints, including their 404ing
+    # 2.5 backup. Explicit custom models and disabled backups stay deliberate.
+    legacy_pairs = {
+        ('gemini-2.5-flash-lite', 'gemini-2.5-flash'),
+        ('gemini-2.5-flash-lite', 'gemini-3.1-flash-lite'),
+        ('gemini-3.1-flash-lite', 'gemini-2.5-flash-lite'),
+    }
+    if (model, fallback) in legacy_pairs:
+        return DEFAULT_MODEL, DEFAULT_BACKUP
+    return model, fallback
+
+
+def provider_answer(response):
+    """Only a nonempty final text answer completes a provider attempt."""
+    try:
+        parts = response.json()['candidates'][0]['content']['parts']
+        if not isinstance(parts, list):
+            raise ValueError('Invalid parts')
+        answer = '\n'.join(part['text'] for part in parts
+                           if isinstance(part, dict) and isinstance(part.get('text'), str)
+                           and not part.get('thought')).strip()
+        if answer:
+            return answer[:4000]
+    except (ValueError, KeyError, IndexError, TypeError):
+        pass
+    raise ValueError('No usable answer')
 
 
 class Turn(BaseModel):
@@ -152,18 +191,7 @@ def create_app():
         if guide:
             return {'answer': guide, 'source': 'built_in'}
         key = os.environ.get('GEMINI_API_KEY', '').strip()
-        model = os.environ.get('GEMINI_MODEL', 'gemini-3.1-flash-lite').strip()
-        fallback = os.environ.get('GEMINI_FALLBACK_MODEL',
-                                  'gemini-2.5-flash-lite' if model == 'gemini-3.1-flash-lite' else
-                                  'gemini-3.1-flash-lite' if model == 'gemini-2.5-flash-lite' else '').strip()
-        # Upgrade the backup shipped by the previous blueprint, including
-        # existing Render environment values that a code deploy cannot reset.
-        if model == 'gemini-2.5-flash-lite' and fallback == 'gemini-2.5-flash':
-            fallback = 'gemini-3.1-flash-lite'
-        # Promote the current member of the shipped legacy pair. Preserve
-        # custom models, disabled fallbacks, budgets and the same two slots.
-        if model == 'gemini-2.5-flash-lite' and fallback == 'gemini-3.1-flash-lite':
-            model, fallback = fallback, model
+        model, fallback = configured_models()
         if (not key or not re.fullmatch(r'[a-zA-Z0-9._-]+', model)
                 or (fallback and not re.fullmatch(r'[a-zA-Z0-9._-]+', fallback))):
             return JSONResponse({'error': 'The tutor is not configured.',
@@ -203,7 +231,7 @@ def create_app():
                         # Bound each attempt so the backup still has time left.
                         failure = None
                         attempt_payload = dict(payload)
-                        if attempt_model == 'gemini-3.1-flash-lite':
+                        if attempt_model in (DEFAULT_MODEL, DEFAULT_BACKUP):
                             attempt_payload['generationConfig'] = {
                                 **payload['generationConfig'],
                                 'thinkingConfig': {'thinkingLevel': 'minimal'},
@@ -218,10 +246,26 @@ def create_app():
                                 raise
                             failure = exc
                         else:
+                            if response.status_code == 200:
+                                try:
+                                    answer = provider_answer(response)
+                                except ValueError as exc:
+                                    # HTTP 200 with no text used to stop the
+                                    # loop, so the healthy backup was skipped.
+                                    failure = exc
+                                else:
+                                    return JSONResponse({'answer': answer}, headers={
+                                        'X-Tutor-Source': 'live_ai',
+                                        'X-Tutor-Route': 'backup' if attempt else 'primary',
+                                    })
                             alternate_model = response.status_code in (404, 429) and fallback and fallback != model
-                            if ((response.status_code not in RETRYABLE_STATUS and not alternate_model)
-                                    or attempt + 1 == MAX_PROVIDER_ATTEMPTS):
+                            if (failure is None and response.status_code not in RETRYABLE_STATUS
+                                    and not alternate_model):
                                 break
+                        if attempt + 1 == MAX_PROVIDER_ATTEMPTS:
+                            if failure is not None:
+                                raise failure
+                            break
                         await asyncio.sleep(1)
                         if not (await limits.reserve(identity, retry=True))[0]:
                             if failure is not None:
@@ -232,15 +276,7 @@ def create_app():
                 if response.status_code != 200:
                     return JSONResponse({'error': 'The tutor is temporarily unavailable.',
                                          'code': 'gemini_http_' + str(response.status_code)}, status_code=503)
-                result = response.json()
-                answer = '\n'.join(p['text'] for p in result['candidates'][0]['content']['parts']
-                                   if isinstance(p.get('text'), str) and not p.get('thought'))
-                if not answer.strip():
-                    raise ValueError('No answer')
-                return JSONResponse({'answer': answer.strip()[:4000]}, headers={
-                    'X-Tutor-Source': 'live_ai',
-                    'X-Tutor-Route': 'backup' if attempt else 'primary',
-                })
+                raise ValueError('No usable answer')
             except (httpx.TimeoutException, TimeoutError):
                 return JSONResponse({'error': 'The AI service took too long. Please try again.',
                                      'code': 'gemini_timeout'}, status_code=503)

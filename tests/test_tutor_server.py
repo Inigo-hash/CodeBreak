@@ -91,7 +91,7 @@ class ServerTests(unittest.TestCase):
         client = self.make_client(lambda req: self.fail('called without key'))
         for path in ('/', '/health'):
             self.assertEqual(client.get(path).json(), {'status':'ok'})
-            self.assertEqual(client.get(path).headers['x-tutor-revision'], 'conversation-recovery-20261024-2')
+            self.assertEqual(client.get(path).headers['x-tutor-revision'], 'live-recovery-20261026')
             response = client.head(path)
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.content, b'')
@@ -224,8 +224,8 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()['answer'], 'Use WASD to move.')
         self.assertEqual(len(calls), 2)
-        self.assertIn('/gemini-3.1-flash-lite:generateContent', str(calls[0].url))
-        self.assertIn('/gemini-2.5-flash-lite:generateContent', str(calls[1].url))
+        self.assertIn('/gemini-3.5-flash-lite:generateContent', str(calls[0].url))
+        self.assertIn('/gemini-3.1-flash-lite:generateContent', str(calls[1].url))
         wait.assert_awaited_once_with(1)
         self.assert_saved_reply(client.post('/ask', json={'question': 'again?'}), 'tutor_daily_limit')
         self.assertEqual(len(calls), 2)
@@ -315,7 +315,7 @@ class ServerTests(unittest.TestCase):
             calls.append(req)
             if len(calls) == 1:
                 return httpx.Response(404)
-            self.assertIn('/gemini-2.5-flash-lite:generateContent', str(req.url))
+            self.assertIn('/gemini-3.1-flash-lite:generateContent', str(req.url))
             return httpx.Response(200, json={'candidates':[{'content':{'parts':[{'text':'Use WASD.'}]}}]})
         client = self.make_client(handler)
         from unittest.mock import AsyncMock
@@ -458,7 +458,7 @@ class ServerTests(unittest.TestCase):
         calls = []
         def handler(req):
             calls.append(req)
-            self.assertIn('/gemini-3.1-flash-lite:generateContent', str(req.url))
+            self.assertIn('/gemini-3.5-flash-lite:generateContent', str(req.url))
             body = json.loads(req.content)
             self.assertEqual(body['generationConfig']['thinkingConfig'], {'thinkingLevel':'minimal'})
             return httpx.Response(200,json={'candidates':[{'content':{'parts':[{'text':'A generated hint.'}]}}]})
@@ -474,3 +474,46 @@ class ServerTests(unittest.TestCase):
             self.assertNotIn('thinkingConfig',json.loads(req.content)['generationConfig'])
             return httpx.Response(200,json={'candidates':[{'content':{'parts':[{'text':'hint'}]}}]})
         self.assertEqual(self.make_client(handler).post('/ask',json={'question':'help'}).status_code,200)
+
+    def test_existing_blueprints_migrate_both_model_slots_and_keep_custom_choices(self):
+        from server.app import configured_models
+        for pair in (('gemini-3.1-flash-lite', 'gemini-2.5-flash-lite'),
+                     ('gemini-2.5-flash-lite', 'gemini-3.1-flash-lite'),
+                     ('gemini-2.5-flash-lite', 'gemini-2.5-flash')):
+            with self.subTest(pair=pair), patch.dict('os.environ', {
+                    'GEMINI_MODEL': pair[0], 'GEMINI_FALLBACK_MODEL': pair[1]}, clear=True):
+                self.assertEqual(configured_models(), ('gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'))
+        for pair in (('gemini-3.1-flash-lite', ''), ('custom-model', 'custom-backup')):
+            with self.subTest(pair=pair), patch.dict('os.environ', {
+                    'GEMINI_MODEL': pair[0], 'GEMINI_FALLBACK_MODEL': pair[1]}, clear=True):
+                self.assertEqual(configured_models(), pair)
+
+    @patch.dict('os.environ', {'GEMINI_API_KEY': 'test-secret'}, clear=True)
+    def test_empty_or_malformed_primary_reply_can_recover_through_backup(self):
+        from unittest.mock import AsyncMock
+        for bad in ({}, {'candidates': []}, {'candidates': [{'content': {'parts': [{'thought': True, 'text': 'private'}]}}]},
+                    {'candidates': [{'content': {'parts': [None, {'text': '  '}]}}]}):
+            calls = []
+            def handler(req):
+                calls.append(req)
+                return httpx.Response(200, json=bad if len(calls) == 1 else {
+                    'candidates': [{'content': {'parts': [{'text': 'A recovered live hint.'}]}}]})
+            with self.subTest(bad=bad), patch('server.app.asyncio.sleep', new_callable=AsyncMock):
+                response = self.make_client(handler).post('/ask', json={'question': 'help'})
+            self.assertEqual(response.json(), {'answer': 'A recovered live hint.'})
+            self.assertEqual(response.headers['x-tutor-source'], 'live_ai')
+            self.assertEqual(response.headers['x-tutor-route'], 'backup')
+            self.assertEqual(len(calls), 2)
+
+    @patch.dict('os.environ', {'GEMINI_API_KEY': 'test-secret', 'TUTOR_GLOBAL_PER_DAY': '1'}, clear=True)
+    def test_invalid_reply_recovery_cannot_bypass_attempt_budget(self):
+        calls = []
+        def handler(req):
+            calls.append(req)
+            return httpx.Response(200, json={})
+        from unittest.mock import AsyncMock
+        with patch('server.app.asyncio.sleep', new_callable=AsyncMock):
+            response = self.make_client(handler).post('/ask', json={'question': 'help'})
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json()['code'], 'gemini_invalid_reply')
+        self.assertEqual(len(calls), 1)

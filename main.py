@@ -2,6 +2,7 @@ import pygame  # pyright: ignore[reportMissingImports]
 import sys
 from src.screens.main_menu import main_menu
 from src.settings_state import load_settings
+from src.systems.ai_tutor import start_tutor_warmup
 
 # Initialize Pygame
 pygame.init()
@@ -12,11 +13,10 @@ def main():
     # music, so a returning player gets the volume, theme, text speed and
     # text size they chose last time rather than the defaults.
     load_settings()
+    start_tutor_warmup()
 
     # Start with main menu
     main_menu()
 
 if __name__ == "__main__":
     main()
-
-        

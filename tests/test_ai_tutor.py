@@ -134,3 +134,58 @@ class TutorTests(unittest.TestCase):
         self.assertIn('temporarily busy', session.poll())
         self.assertFalse(session.pending)
         self.assertEqual(session.history, [])
+
+    @patch.dict('os.environ', {'CODEBREAK_TUTOR_URL': 'https://tutor.example/ask'}, clear=True)
+    def test_live_probe_requires_provider_source_not_a_successful_saved_reply(self):
+        response = MagicMock()
+        response.__enter__.return_value = response
+        response.read.return_value = b'{"answer":"A generated explanation."}'
+        response.headers = {}
+        with patch('src.systems.ai_tutor.request.urlopen', return_value=response):
+            with self.assertRaisesRegex(TutorError, 'live AI was not verified'):
+                _ask_online('explain append and pop', require_live=True)
+            response.headers = {'X-Tutor-Source': 'offline_guide'}
+            with self.assertRaises(TutorError):
+                _ask_online('explain append and pop', require_live=True)
+            response.headers = {'X-Tutor-Source': 'live_ai'}
+            self.assertEqual(_ask_online('explain append and pop', require_live=True), 'A generated explanation.')
+
+    @patch.dict('os.environ', {'CODEBREAK_TUTOR_URL': 'https://tutor.example/ask'}, clear=True)
+    def test_connection_dropped_mid_reply_uses_saved_help(self):
+        from http.client import IncompleteRead, RemoteDisconnected
+        for failure in (IncompleteRead(b'private'), RemoteDisconnected('private')):
+            with self.subTest(failure=type(failure)), patch('src.systems.ai_tutor.request.urlopen', side_effect=failure):
+                answer = ask_mang_tahimik('please explain while loops')
+                self.assertIn('Built-in guide:', answer)
+                self.assertNotIn('private', answer)
+
+
+class WarmupTests(unittest.TestCase):
+    @patch.dict('os.environ', {'CODEBREAK_TUTOR_URL': 'https://tutor.example/ask'}, clear=True)
+    def test_warmup_is_once_in_background_and_never_spends_a_provider_call(self):
+        from src.systems.ai_tutor import start_tutor_warmup
+        entered, release = threading.Event(), threading.Event()
+        response = MagicMock()
+        def wake(url, **kwargs):
+            self.assertEqual(url, 'https://tutor.example/health')
+            entered.set()
+            release.wait(2)
+            return response
+        with patch('src.systems.ai_tutor._warm_endpoint', None), patch('src.systems.ai_tutor.request.urlopen', side_effect=wake) as send:
+            worker = start_tutor_warmup()
+            try:
+                self.assertTrue(entered.wait(1))
+                self.assertTrue(worker.is_alive())
+                self.assertIs(start_tutor_warmup(), worker)
+            finally:
+                release.set()
+                worker.join(2)
+            send.assert_called_once()
+            response.__enter__.return_value.read.assert_called_once_with(512)
+
+    def test_warmup_skips_offline_and_invalid_configuration(self):
+        from src.systems.ai_tutor import start_tutor_warmup
+        for env in ({'CODEBREAK_TUTOR_MODE': 'offline'}, {'CODEBREAK_TUTOR_URL': 'http://unsafe.example/ask'}):
+            with patch.dict('os.environ', env, clear=True), patch('src.systems.ai_tutor.request.urlopen') as send:
+                self.assertIsNone(start_tutor_warmup())
+                send.assert_not_called()

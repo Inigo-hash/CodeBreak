@@ -2,7 +2,7 @@
 import re
 from functools import lru_cache
 import pygame
-from src.systems.ai_tutor import MAX_QUESTION, TutorSession
+from src.systems.ai_tutor import MAX_QUESTION, TutorSession, shared_tutor_session
 from src.ui.theme import body_font, title_font, UI_COLORS
 from src.ui.text_layout import fit_text
 
@@ -102,6 +102,8 @@ class MangTahimikChat:
         shade.fill((8, 12, 20, 65))
         self.background.blit(shade, (0, 0))
         self.messages = [('Mang Tahimik', 'May tanong ka tungkol sa CodeBreak o Python? Ask me about healing, equipment, controls, stages, or coding hints.')]
+        self.messages.extend(('You' if turn['role'] == 'user' else 'Mang Tahimik', turn['content'])
+                             for turn in self.session.visible_history)
         self.feedback = ''
         self.question = ''
         self.cursor = 0
@@ -268,7 +270,7 @@ class MangTahimikChat:
             for i, line in enumerate(lines):
                 self.screen.blit(self.font.render(line, True, UI_COLORS['text']), (x + 12, y + 12 + (i + 1) * line_h))
             if not lines:
-                label = self.font.render('Online AI', True, UI_COLORS['text_dim'])
+                label = self.font.render('Asking AI', True, UI_COLORS['text_dim'])
                 self.screen.blit(label, (x + 12, y + 12 + line_h))
                 for i in range(3):
                     active = (pygame.time.get_ticks() // 300) % 3 == i
@@ -317,7 +319,7 @@ class MangTahimikChat:
             pygame.draw.line(self.screen, UI_COLORS['gold_bright'], (caret_x, caret_y),
                              (caret_x, caret_y + self.font.get_height()), 2)
         self.screen.set_clip(old_clip)
-        status = ('Online AI connecting | Ctrl+G: use saved guide' if self.session.pending else
+        status = (self.session.waiting_status if self.session.pending else
                   self.feedback or 'Enter: ask | PgUp/PgDn: history | Esc: return')
         status_text = fit_text(self.font, status, UI_COLORS['text_dim'], (panel.w - 40, 22))
         self.screen.blit(status_text, (panel.x + 20, panel.bottom - 52))
@@ -370,4 +372,4 @@ class MangTahimikChat:
 
 
 def open_mang_tahimik(screen, context=None):
-    MangTahimikChat(screen, context).run()
+    MangTahimikChat(screen, context, session=shared_tutor_session()).run()

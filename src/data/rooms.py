@@ -48,7 +48,7 @@ ROOM_STAGES = {
                 'spawn': (9, 35), 'arrivals': {'entry': (9, 35), 'east_entry': (25, 35)},
                 'routes': [
                     {'id': 'lobby', 'rect': (7, 34, 5, 3), 'target': 'lobby', 'arrival': 'dungeon', 'label': 'Go back to Castle Lobby'},
-                    {'id': 'lobby_east', 'rect': (29, 34, 5, 3), 'target': 'lobby', 'arrival': 'dungeon_east', 'label': 'Go back to Castle Lobby'},
+                    {'id': 'lobby_east', 'rect': (23, 34, 5, 3), 'target': 'lobby', 'arrival': 'dungeon_east', 'label': 'Go back to Castle Lobby'},
                 ],
             },
         },

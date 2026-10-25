@@ -45,6 +45,37 @@ VALID_SOLUTIONS = {
         '    result.append(new_item)\\n'
         '    return result'
     ),
+    'functions_lesson_greet_001': (
+        'def greet_explorer(name):\\n'
+        '    return "Hello, " + name'
+    ),
+    'functions_lesson_total_001': (
+        'def add_supplies(first, second):\\n'
+        '    return first + second'
+    ),
+    'tuples_lesson_coordinates_001': (
+        'def make_coordinates(x, y):\\n'
+        '    return (x, y)'
+    ),
+    'tuples_lesson_distance_001': (
+        'def get_x_coordinate(point):\\n'
+        '    return point[0]'
+    ),
+    'error_handling_lesson_safe_int_001': (
+        'def safe_number(text):\\n'
+        '    try:\\n'
+        '        return int(text)\\n'
+        '    except ValueError:\\n'
+        '        return None'
+    ),
+    'error_handling_lesson_safe_divide_001': (
+        'def safe_divide(first, second):\\n'
+        '    try:\\n'
+        '        return first / second\\n'
+        '    except ZeroDivisionError:\\n'
+        '        return None'
+    ),
+}
 
 
 from castle_solutions import CASTLE_SOLUTIONS

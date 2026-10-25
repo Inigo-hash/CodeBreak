@@ -137,6 +137,242 @@ REMEMBER
 - Returning a value is different from printing it.""",
 }
 
+
+FUNCTIONS_CHALLENGE_IDS = (
+    "functions_lesson_greet_001",
+    "functions_lesson_total_001",
+)
+TUPLES_CHALLENGE_IDS = (
+    "tuples_lesson_coordinates_001",
+    "tuples_lesson_distance_001",
+)
+ERROR_HANDLING_CHALLENGE_IDS = (
+    "error_handling_lesson_safe_int_001",
+    "error_handling_lesson_safe_divide_001",
+)
+
+FUNCTIONS_TOPIC = {
+    "id": "functions_lesson",
+    "title": "Functions",
+    "difficulty": "Beginner",
+    "requirements": ["lists_lesson"],
+    "challenge_id": FUNCTIONS_CHALLENGE_IDS[0],
+    "challenge_ids": FUNCTIONS_CHALLENGE_IDS,
+    "lesson": """FUNCTIONS — BEGINNER
+
+A function is a named block of code you can call when you need it.
+Use def to define a function. Indent its body.
+
+1. DEFINE AND CALL A FUNCTION
+    def greet():
+        print("Hello!")
+
+    greet()  # prints Hello!
+
+2. PARAMETERS: give a function information to use.
+    def greet_person(name):
+        print("Hello, " + name)
+
+    greet_person("Alex")  # prints Hello, Alex
+
+3. RETURN VALUES: send a result back to the code that called the function.
+    def add(a, b):
+        return a + b
+
+    result = add(3, 4)
+    print(result)  # 7
+
+4. PARAMETERS CAN BE NUMBERS OR TEXT
+    def double(number):
+        return number * 2
+
+    print(double(5))  # 10
+
+5. RETURN VS PRINT
+- print() displays something on screen.
+- return gives a value back so other code can use it.
+- Code after return in that function does not run.
+
+COMMON MISTAKES
+- Remember the colon after the def line.
+- Indent the function body.
+- Use parentheses when calling a function.
+- Return a value when the task asks for a result.""",
+}
+
+TUPLES_TOPIC = {
+    "id": "tuples_lesson",
+    "title": "Tuples",
+    "difficulty": "Beginner",
+    "requirements": ["functions_lesson"],
+    "challenge_id": TUPLES_CHALLENGE_IDS[0],
+    "challenge_ids": TUPLES_CHALLENGE_IDS,
+    "lesson": """TUPLES — BEGINNER
+
+A tuple stores multiple values in order. Unlike a list, a tuple cannot be changed after it is created.
+
+1. CREATE A TUPLE
+    coordinates = (10, 20)
+    point = ("north", 5)
+
+2. ACCESS ITEMS: indexes start at 0.
+    coordinates = (10, 20)
+    print(coordinates[0])  # 10
+    print(coordinates[1])  # 20
+
+3. UNPACK A TUPLE: assign its values to separate variables.
+    coordinates = (10, 20)
+    x, y = coordinates
+    print(x)  # 10
+    print(y)  # 20
+
+4. RETURN A TUPLE FROM A FUNCTION
+    def make_point(x, y):
+        return (x, y)
+
+    point = make_point(3, 7)
+    print(point)  # (3, 7)
+
+5. ONE-ITEM TUPLES need a comma.
+    single_value = (5,)
+
+REMEMBER
+- Tuples keep their order.
+- Use parentheses to create a tuple.
+- Indexing starts at 0.
+- You can read tuple items, but cannot assign a new value to an index.
+- A function can return several related values in one tuple.""",
+}
+
+ERROR_HANDLING_TOPIC = {
+    "id": "error_handling_lesson",
+    "title": "Error Handling",
+    "difficulty": "Beginner",
+    "requirements": ["tuples_lesson"],
+    "challenge_id": ERROR_HANDLING_CHALLENGE_IDS[0],
+    "challenge_ids": ERROR_HANDLING_CHALLENGE_IDS,
+    "lesson": """ERROR HANDLING — BEGINNER
+
+An error can happen while a program runs. try/except lets the program respond instead of stopping unexpectedly.
+
+1. HANDLE INVALID NUMBER INPUT
+    text = "12"
+    try:
+        number = int(text)
+        print(number)
+    except ValueError:
+        print("Please enter a whole number")
+
+2. TRY RUNS CODE THAT MAY FAIL
+Put the risky operation inside the try block.
+
+    text = "hello"
+    try:
+        number = int(text)
+    except ValueError:
+        number = 0
+    print(number)  # 0
+
+3. HANDLE DIVISION BY ZERO
+    try:
+        answer = 10 / 0
+    except ZeroDivisionError:
+        answer = None
+    print(answer)  # None
+
+4. KEEP EXCEPTIONS SPECIFIC
+- ValueError can happen when text cannot be converted to a number.
+- ZeroDivisionError happens when dividing by zero.
+- Put except after the matching try block.
+- Indent the code inside try and except.
+
+REMEMBER
+Handle only errors you expect. A useful except block gives the program a clear fallback result.""",
+}
+
+FUNCTIONS_CHALLENGES = {
+    FUNCTIONS_CHALLENGE_IDS[0]: {
+        "id": FUNCTIONS_CHALLENGE_IDS[0],
+        "title": "Greet the Explorer",
+        "difficulty": "Beginner",
+        "type": "function",
+        "function_name": "greet_explorer",
+        "problem": "Write greet_explorer(name). Return the text \"Hello, \" followed by name. Example: greet_explorer(\"Alex\") returns \"Hello, Alex\".",
+        "objective": "Define a function with one parameter and return a string.",
+        "starter_code": "def greet_explorer(name):\\n    # Return a greeting that includes name.\\n    pass",
+        "hints": ["The parameter name contains the text to greet.", "Join strings with +.", "Return the result instead of printing it."],
+        "function_cases": [{"args": ["Alex"], "expected": "Hello, Alex"}, {"args": ["Sam"], "expected": "Hello, Sam"}, {"args": [""], "expected": "Hello, "}]
+    },
+    FUNCTIONS_CHALLENGE_IDS[1]: {
+        "id": FUNCTIONS_CHALLENGE_IDS[1],
+        "title": "Add Two Supplies",
+        "difficulty": "Beginner",
+        "type": "function",
+        "function_name": "add_supplies",
+        "problem": "Write add_supplies(first, second). Return the sum of the two numbers. Example: add_supplies(3, 4) returns 7.",
+        "objective": "Use two parameters and return their sum.",
+        "starter_code": "def add_supplies(first, second):\\n    # Add the two values and return the result.\\n    pass",
+        "hints": ["The values are provided through first and second.", "Use the + operator.", "Return first + second."],
+        "function_cases": [{"args": [0, 0], "expected": 0}, {"args": [3, 4], "expected": 7}, {"args": [-2, 5], "expected": 3}]
+    }
+}
+
+TUPLES_CHALLENGES = {
+    TUPLES_CHALLENGE_IDS[0]: {
+        "id": TUPLES_CHALLENGE_IDS[0],
+        "title": "Pack a Coordinate",
+        "difficulty": "Beginner",
+        "type": "function",
+        "function_name": "make_coordinates",
+        "problem": "Write make_coordinates(x, y). Return both values together as a tuple (x, y). Example: make_coordinates(3, 7) returns (3, 7).",
+        "objective": "Return two related values together in a tuple.",
+        "starter_code": "def make_coordinates(x, y):\\n    # Return x and y together as a tuple.\\n    pass",
+        "hints": ["Tuples use parentheses.", "Put x first and y second.", "Return (x, y)."],
+        "function_cases": [{"args": [0, 0], "expected": [0, 0]}, {"args": [3, 7], "expected": [3, 7]}, {"args": [-1, 4], "expected": [-1, 4]}]
+    },
+    TUPLES_CHALLENGE_IDS[1]: {
+        "id": TUPLES_CHALLENGE_IDS[1],
+        "title": "Read a Coordinate",
+        "difficulty": "Beginner",
+        "type": "function",
+        "function_name": "get_x_coordinate",
+        "problem": "Write get_x_coordinate(point). The point is a two-item tuple. Return its first value. Example: get_x_coordinate((8, 2)) returns 8.",
+        "objective": "Read a tuple item using index 0.",
+        "starter_code": "def get_x_coordinate(point):\\n    # Return the first item in point.\\n    pass",
+        "hints": ["Tuple indexes start at 0.", "Use point[0].", "Return that value."],
+        "function_cases": [{"args": [[0, 0]], "expected": 0}, {"args": [[8, 2]], "expected": 8}, {"args": [[-3, 9]], "expected": -3}]
+    }
+}
+
+ERROR_HANDLING_CHALLENGES = {
+    ERROR_HANDLING_CHALLENGE_IDS[0]: {
+        "id": ERROR_HANDLING_CHALLENGE_IDS[0],
+        "title": "Read a Safe Number",
+        "difficulty": "Beginner",
+        "type": "function",
+        "learning_construct": "exceptions",
+        "function_name": "safe_number",
+        "problem": "Write safe_number(text). Try converting text to an integer. Return the number if it works, or None if a ValueError happens. Example: safe_number(\"12\") returns 12 and safe_number(\"oops\") returns None.",
+        "objective": "Use try/except ValueError to handle invalid number text.",
+        "starter_code": "def safe_number(text):\\n    try:\\n        # Try converting text to an integer.\\n        pass\\n    except ValueError:\\n        # Return None if conversion fails.\\n        pass",
+        "hints": ["Put int(text) inside try.", "Return the converted number inside try.", "In except ValueError, return None."],
+        "function_cases": [{"args": ["12"], "expected": 12}, {"args": ["0"], "expected": 0}, {"args": ["oops"], "expected": None}, {"args": [""], "expected": None}]
+    },
+    ERROR_HANDLING_CHALLENGE_IDS[1]: {
+        "id": ERROR_HANDLING_CHALLENGE_IDS[1],
+        "title": "Divide Safely",
+        "difficulty": "Beginner",
+        "type": "function",
+        "learning_construct": "exceptions",
+        "function_name": "safe_divide",
+        "problem": "Write safe_divide(first, second). Return first / second. If second is 0, catch ZeroDivisionError and return None. Example: safe_divide(8, 2) returns 4.0 and safe_divide(8, 0) returns None.",
+        "objective": "Handle division by zero with try/except.",
+        "starter_code": "def safe_divide(first, second):\\n    try:\\n        # Return first divided by second.\\n        pass\\n    except ZeroDivisionError:\\n        # Return None when second is zero.\\n        pass",
+        "hints": ["Put first / second inside try.", "Return the division result.", "Catch ZeroDivisionError and return None."],
+        "function_cases": [{"args": [8, 2], "expected": 4.0}, {"args": [9, 3], "expected": 3.0}, {"args": [8, 0], "expected": None}, {"args": [-6, 2], "expected": -3.0}]
+    }
+}
+
 ITERATIVE_CHALLENGES = {
     ITERATIVE_CHALLENGE_IDS[0]: {
         "id": ITERATIVE_CHALLENGE_IDS[0],

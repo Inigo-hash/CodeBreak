@@ -24,8 +24,9 @@ ROOM_STAGES = {
                     {'id': 'throne', 'rect': (20, 9, 7, 3), 'target': 'throne', 'arrival': 'entry', 'label': 'Enter Throne Room'},
                     {'id': 'library', 'rect': (36, 13, 5, 3), 'target': 'library', 'arrival': 'entry', 'label': 'Enter Library'},
                     {'id': 'dungeon', 'rect': (5, 35, 5, 3), 'target': 'dungeon', 'arrival': 'entry', 'label': 'Enter Dungeon Prison'},
+                    {'id': 'dungeon_east', 'rect': (36, 35, 5, 3), 'target': 'dungeon', 'arrival': 'east_entry', 'label': 'Enter Dungeon Prison'},
                 ],
-                'arrivals': {'dining': (8, 15), 'throne': (23, 11), 'library': (38, 15), 'dungeon': (7, 37)},
+                'arrivals': {'dining': (8, 15), 'throne': (23, 11), 'library': (38, 15), 'dungeon': (7, 37), 'dungeon_east': (38, 37)},
             },
             'dining': {
                 'name': 'Dining Area', 'map': 'assets/map/tmx/map2_dining_area.tmx',
@@ -44,8 +45,11 @@ ROOM_STAGES = {
             },
             'dungeon': {
                 'name': 'Dungeon Prison', 'map': 'assets/map/tmx/map3_dungeon_prison.tmx',
-                'spawn': (9, 35), 'arrivals': {'entry': (9, 35)},
-                'routes': [{'id': 'lobby', 'rect': (7, 34, 5, 3), 'target': 'lobby', 'arrival': 'dungeon', 'label': 'Go back to Castle Lobby'}],
+                'spawn': (9, 35), 'arrivals': {'entry': (9, 35), 'east_entry': (31, 35)},
+                'routes': [
+                    {'id': 'lobby', 'rect': (7, 34, 5, 3), 'target': 'lobby', 'arrival': 'dungeon', 'label': 'Go back to Castle Lobby'},
+                    {'id': 'lobby_east', 'rect': (29, 34, 5, 3), 'target': 'lobby', 'arrival': 'dungeon_east', 'label': 'Go back to Castle Lobby'},
+                ],
             },
         },
     },

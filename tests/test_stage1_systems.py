@@ -71,9 +71,9 @@ class StageScaffoldAndDebugTests(unittest.TestCase):
         castle = get_stage("castle")
         self.assertEqual(castle["id"], "castle")
         self.assertTrue(castle["playable"])
-        from src.data.castle_curriculum import CASTLE_CHALLENGE_IDS
-        self.assertEqual(tuple(castle["manual"]["topics"]), CASTLE_CHALLENGE_IDS)
-        self.assertEqual(len(stage_challenges(castle)), 18)
+        from src.data.castle_progression import CASTLE_MAPPED_CHALLENGES
+        self.assertEqual(tuple(castle["manual"]["topics"]), CASTLE_MAPPED_CHALLENGES)
+        self.assertEqual(len(stage_challenges(castle)), 11)
         self.assertTrue(castle['completion']['content_ready'])
         self.assertEqual(castle['completion']['exit_room'], 'throne')
         self.assertIn('exit_rect', castle['completion'])

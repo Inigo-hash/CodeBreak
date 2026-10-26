@@ -43,18 +43,20 @@ class StageSelectionRules(unittest.TestCase):
         self.assertFalse(stage_unlocked("citadel", state))
         state["completed_stages"].append("castle")
         self.assertTrue(stage_unlocked("citadel", state))
-        self.assertEqual(stage_status("citadel", state), "COMING SOON")
-        self.assertFalse(stage_available("citadel", state))
-        with patch.dict(STAGES, {"citadel": {"id": "citadel", "name": "Citadel", "world": {"map": "future.tmx"}}}):
-            self.assertTrue(stage_available("citadel", state))
-            self.assertEqual(select_stage(state, "citadel")["stage"], "Citadel")
+        self.assertEqual(stage_status("citadel", state), "AVAILABLE")
+        self.assertTrue(stage_available("citadel", state))
+        self.assertEqual(select_stage(state, "citadel")["stage"], "Citadel")
+        with patch.dict(STAGES, {"citadel": {"id": "citadel", "name": "Citadel", "world": {"map": None}}}):
+            self.assertEqual(stage_status('citadel', state), 'COMING SOON')
+            self.assertFalse(stage_available('citadel', state))
 
     def test_developer_bypass_does_not_complete_any_stage_or_enable_missing_map(self):
         state = save_manager.new_game_state()
         selected = select_stage(state, "castle", developer_access=True)
         self.assertEqual(selected["completed_stages"], [])
         self.assertEqual(selected["challenges_passed"], [])
-        self.assertFalse(stage_available("citadel", state, developer_access=True))
+        self.assertTrue(stage_available("citadel", state, developer_access=True))
+        self.assertEqual(select_stage(state,'citadel',True)['completed_stages'], [])
         self.assertNotIn("developer_mode", selected)
 
     def test_old_castle_saves_remain_accessible(self):

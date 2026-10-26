@@ -89,36 +89,40 @@ def invoice_total(quantities, price):
             continue
     return total''',
 'castle_supply_final': '''def build_supply_report(records, minimum):
-    result = {}
+    total = 0
+    count = 0
     for item, raw in records:
         try:
             quantity = int(raw)
-        except (ValueError, TypeError):
+        except ValueError:
             continue
         if quantity >= minimum:
-            result[item] = result.get(item, 0) + quantity
-    return result''',
+            total += quantity
+            count += 1
+    return (total, count)''',
 'castle_rooms_final': '''def audit_rooms(rooms):
-    result = {}
+    result = []
     for room in rooms:
+        total = 0
         for item, raw in room:
             try:
                 quantity = int(raw)
-            except (ValueError, TypeError):
+            except ValueError:
                 continue
             if quantity >= 0:
-                result[item] = result.get(item, 0) + quantity
+                total += quantity
+        result.append(total)
     return result''',
 'castle_manifest_final': '''def read_manifest(records, stop):
-    result = {}
+    result = []
     for item, raw in records:
         if item == stop:
             break
         try:
             quantity = int(raw)
-        except (ValueError, TypeError):
+        except ValueError:
             continue
         if quantity >= 0:
-            result[item] = result.get(item, 0) + quantity
+            result.append((item, quantity))
     return result''',
 }

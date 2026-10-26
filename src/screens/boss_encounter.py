@@ -20,7 +20,7 @@ def open_boss_intro(screen, boss_id, background=None):
     return _boss_modal(
         screen,
         title="BOSS ENCOUNTER",
-        subtitle="AKTAN'S THRONE" if boss_id == "zombie_aktan" else "THE CORRUPTED CORE",
+        subtitle=boss.get('arena', "AKTAN'S THRONE" if boss_id == "zombie_aktan" else "THE CORRUPTED CORE"),
         lines=(
             f"{boss['name']} guards the stage's final path.",
             "E attacks. Shift dodges. Watch the boss health bar.",

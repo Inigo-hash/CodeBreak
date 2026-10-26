@@ -149,6 +149,18 @@ def generate_practice_challenge(template_id):
     from src.data.castle_curriculum import CASTLE_CHALLENGES, castle_practice
     if template_id in CASTLE_CHALLENGES:
         return castle_practice(template_id)
+    from src.data.citadel import CITADEL_CHALLENGES, citadel_practice
+    if template_id in CITADEL_CHALLENGES:
+        return citadel_practice(template_id)
+    from src.data.castle_progression import CASTLE_MAPPED_CHALLENGES
+    if template_id in CASTLE_MAPPED_CHALLENGES:
+        from copy import deepcopy
+        from src.data.challenges import CHALLENGES
+        challenge = deepcopy(CHALLENGES[template_id])
+        challenge.update(id='practice_' + template_id, practice_only=True,
+                         title=challenge['title'] + ' - Practice (no rewards)')
+        challenge['function_cases'].reverse()
+        return challenge
     builder = _TEMPLATE_BUILDERS.get(template_id)
 
     if builder is None:
@@ -1296,3 +1308,7 @@ _TEMPLATE_BUILDERS = {
 from src.data.castle_curriculum import CASTLE_TOPICS
 for _topic_id, _topic in CASTLE_TOPICS.items():
     PRACTICE_TEMPLATE_IDS[_topic_id] = list(_topic['challenge_ids'])
+from src.data.citadel import CITADEL_TOPICS
+from src.data.castle_progression import CASTLE_MAPPED_TOPICS
+for _topic in (*CASTLE_MAPPED_TOPICS, *CITADEL_TOPICS.values()):
+    PRACTICE_TEMPLATE_IDS[_topic['id']] = list(_topic['challenge_ids'])

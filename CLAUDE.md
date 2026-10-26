@@ -112,21 +112,32 @@ Corrupted Core boss and a timed assessment rotation. Searchable props, torch
 healing, room/stage save checkpoints, password-protected slots and inventory
 are implemented. Preserve its existing progression contract.
 
-**Stage 2 (Castle)** has five connected maps, nine intermediate topic groups
-and 18 required function challenges. Dining: Lists; Library: Tuples and
-Dictionaries; Dungeon: For/While/Nested Loops and Break/Continue; Throne:
-Functions and Try/Except. `castle_curriculum.py` owns the new lesson data.
-Two challenges master a topic; five bundles each earn one key exactly once.
-Topic mastery is separate from bundle rewards, so a prerequisite topic can
-unlock the next one before a shared key bundle is complete.
+**Stage 2 (Castle)** keeps its current five mapped topic groups: Iterative
+Structures in Lobby (3 challenges), Lists in Library (2), Functions and Tuples
+in Dungeon (2 each), and Error Handling in Throne (2). Dungeon's separate
+west/east Lobby doors reach its two cell blocks. Dining is optional combat.
+`stage2_topics.py` owns the lessons; `castle_progression.py` connects their
+11 challenges to five one-time mastery keys. The older `castle_curriculum.py`
+and `castle_lists.py` content remains compatible with stored notes. Completed
+equivalent legacy groups migrate to current challenge credit on load.
 
-All five keys and all required challenges unlock Zombie Aktan's Throne arena.
+All five keys and all 11 required challenges unlock Zombie Aktan's Throne arena.
 Boss victory unlocks a three-report timed assessment rotation. Failed or
 interrupted Castle attempts require a solved untimed practice report before
 retaking. Passing records `castle_supply_final` as the completion marker,
 regardless of which rotation variant was used. The exit exists only in
-Throne. Completing Castle saves completion and returns to the menu; Citadel
-has no playable map yet.
+Throne. Completing Castle saves completion and hands off to Citadel.
+
+**Stage 3 (Citadel)** uses `map3_lava_chamber.tmx`, with safe southern arrival,
+four reachable perimeter terminals, one persistent time cache and two optional
+two-member patrols. `citadel.py` owns four advanced topics (comprehensions, sets,
+sorting, search/aggregation), eight function challenges and four one-time keys.
+Molten lava and voids have object collisions; stone bridges remain passable.
+The central Flame Warden is a deliberate Kapre-asset variant with tier-3 stats
+and armor phases. Its arena gates every bridge approach. Victory unlocks the
+restoration assessment; passing then using the northern seal saves campaign
+completion and returns to the menu. Failed/interrupted attempts require practice.
+See `docs/stage3-citadel.md` for verification and learner-playtesting limitations.
 
 Earned `bonus_time` extends final assessment attempts by up to 300 seconds per
 attempt. It is spent and persisted with the started attempt; unspent time

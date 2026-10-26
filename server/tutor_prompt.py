@@ -42,7 +42,7 @@ def game_knowledge():
                 'all_listed_lessons_required': True,
             },
             'rooms': [room['name'] for room in ROOM_STAGES.get(stage['id'], {})
-                      .get('rooms', {}).values()],
+                      .get('rooms', {}).values()] or ([stage['area_name']] if stage.get('area_name') else []),
             'learning_content': [
                 {'topic': topic['title'], 'lesson': topic['lesson'],
                  'challenges': [{'title': CHALLENGES[c]['title'], 'objective': CHALLENGES[c].get('objective', '')}
@@ -91,12 +91,13 @@ def game_knowledge():
             'attack': 'Select the sword before pressing E to attack. Selecting a torch or empty slot puts the sword away.',
             'search': 'Hold E beside a searchable object. During combat, fighting takes priority; clear its guards first.',
             'learning': 'Read the lesson, type code, use Run to test, and Submit to validate. Failed submissions unlock progressive hints.',
-            'castle_lists': 'The Lists terminal is in the southwest Dining Area. Master both Lists challenges for Castle Key 1, once. Practice gives no extra keys.',
+            'castle_lessons': 'Castle has five mapped topics: Iterative Structures in Lobby, Lists in Library, Functions and Tuples in Dungeon, and Error Handling in Throne. Complete all 11 challenges for five keys, then defeat Aktan and pass the final to enter Citadel. Dining is optional combat.',
             'navigation': 'Press I for the stage manual, J for enemies, K for items, O for objectives, M for the local map, and G for the atlas.',
             'settings': 'Press Escape, then Settings. F10 mutes or unmutes music.',
             'saving': 'Use Escape then Save Game. Three password-protected save slots are available; passwords cannot be recovered.',
             'tutor': 'Press H during safe exploration or Ctrl+H inside a normal coding challenge to chat. Mang Tahimik gives hints, not complete challenge answers.',
-            'future_content': 'Stage 3, the Citadel, is a future placeholder. Castle has nine topic groups, five mastery keys, Zombie Aktan and a final assessment. The exit is in the Throne arena; completing Castle returns to the menu. Earned bonus time extends final assessments by up to 300 seconds per attempt. Failed Castle attempts require untimed report practice.',
+            'citadel': 'Stage 3 is playable in the Lava Chamber after Castle. Study Comprehensions southwest, Sets west, Sorting east, and Search and Aggregation southeast. Eight challenges earn four keys once. Defeat the Flame Warden on the central platform, pass the 20-minute restoration final, then press E at the northern seal to complete the campaign. Use stone bridges: molten lava is blocked. Citadel has night mode off and no fixed-torch healing. The boss uses Kapre art and becomes more aggressive below 900 and 450 HP.',
+            'campaign_progression': 'Island leads to Castle, which leads to Citadel. Each stage has its own keys and map progress. Lessons, equipment and unspent bonus time carry over. Earned bonus time extends a final assessment by up to 300 seconds per attempt. Failed Castle/Citadel attempts require untimed practice before retaking. Citadel completion saves the finished campaign and returns to the menu.',
         },
     }
 
@@ -116,7 +117,7 @@ Answer them directly from the GAME FACTS below. For "where to heal", explain
 fixed map torch pools at night and the delay after damage. Distinguish fixed
 torches from the held torch; do not invent healers, shops, potions or locations.
 If the player's stage is unknown, give the Island rule and mention that Castle
-interiors have night mode off by default; ask their stage only if needed.
+and Citadel interiors have night mode off; ask their stage only if needed.
 Do not turn a game question into a Python exercise, attach unrelated sample code,
 or tell the player to focus on Python. Distinguish islands, stages and rooms.
 Never invent locations such as Variable Valley, Loop Lagoon or Function Forest.

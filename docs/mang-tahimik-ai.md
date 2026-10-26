@@ -1,6 +1,6 @@
 # Mang Tahimik shared Gemini tutor
 
-Current server revision: `live-recovery-20261026`. A health check confirms
+Current server revision: `citadel-campaign-20261026`. A health check confirms
 reachability only; run `python tools/check_tutor.py --live` to verify a generated
 answer. That check requires the server's `X-Tutor-Source: live_ai` header and
 rejects both errors and saved reference answers.
@@ -183,7 +183,7 @@ No built-in guide entry supplies a complete challenge solution.
 
 After pulling the game update, ask `who is python` to verify the local guide.
 To verify the deployed server, `/health` should return header
-`X-Tutor-Revision: live-recovery-20261026`, and a POST to `/ask` with
+`X-Tutor-Revision: citadel-campaign-20261026`, and a POST to `/ask` with
 `{"question":"what is python"}` should return `source: built_in`. Use a distinct
 open-ended debugging question to test live Gemini separately; a successful guide
 answer alone does not prove Gemini has recovered. Never publish API keys in logs
@@ -225,7 +225,7 @@ update a downloaded desktop game. Free hosting and external AI availability
 remain outside the game's control.
 
 The server now exposes `X-Tutor-Source: live_ai` and `X-Tutor-Route: primary` or
-`backup` on generated replies, and health revision `live-recovery-20261026`.
+`backup` on generated replies, and health revision `citadel-campaign-20261026`.
 These diagnostics reveal no keys, player data or raw provider errors. Gemini
 Both configured Flash-Lite models use minimal thinking for brief explanations.
 The primary migration adds no extra attempt and does not bypass usage limits.

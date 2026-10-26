@@ -12,6 +12,8 @@ def boss_zone_at(zone_records, point):
 
 def boss_main_entrance_rect(zone):
     """Use the authored castle threshold when supplied."""
+    if zone and zone.get('gate_all_edges'):
+        return zone['rect'].copy()
     if zone and zone.get("entrance_rect") is not None:
         return zone["entrance_rect"].copy()
     return boss_arena_exit_rect(zone)
@@ -21,6 +23,8 @@ def boss_arena_exit_rect(zone):
     """The south terrace passage used when retreating from the arena."""
     if not zone or not zone.get("is_boss_zone"):
         return None
+    if zone.get('gate_all_edges'):
+        return zone['rect'].inflate(64,64)
     rect = zone["rect"]
     corridor_width = max(96, round(rect.width * 0.28))
     corridor_depth = max(64, round(rect.height * 0.18))

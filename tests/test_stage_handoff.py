@@ -66,9 +66,10 @@ class StageOrderTests(unittest.TestCase):
         self.assertTrue(has_playable_next_stage(get_stage("island")))
 
     def test_the_last_authored_stage_ends_the_run(self):
-        castle = get_stage("castle")
-        self.assertIsNone(next_stage(castle))
-        self.assertFalse(has_playable_next_stage(castle))
+        self.assertEqual(next_stage(get_stage('castle'))['id'], 'citadel')
+        citadel = get_stage("citadel")
+        self.assertIsNone(next_stage(citadel))
+        self.assertFalse(has_playable_next_stage(citadel))
 
     def test_an_unknown_next_stage_does_not_restart_the_run_on_stage_one(self):
         # get_stage() falls back to the Island for an id it does not know,

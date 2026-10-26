@@ -1,5 +1,10 @@
 # Castle completion and audit fixes
 
+Historical implementation notes. The current five-topic Castle maps and their
+11 challenges now determine Castle completion; the nine-topic layout below is
+retained for context only. See [Stage 3 and campaign reconciliation](stage3-citadel.md)
+for the current lesson locations, legacy-save migration and Castle-to-Citadel handoff.
+
 Implemented 18 October 2026, from main `a3fa2a8`.
 Debug mode deliberately remains enabled during development.
 

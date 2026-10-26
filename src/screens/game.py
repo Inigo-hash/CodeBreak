@@ -189,6 +189,7 @@ def load_interactables(tmx_data):
                 "actions": action or "",
                 "topic_id": properties.get("topic_id"),
                 "terminal_visual": properties.get("terminal_visual", False),
+                "entity_visual": properties.get("entity_visual", False),
                 "interaction_id": str(properties.get('persistent_id') or getattr(obj, "id", "")),
                 "independent_search": bool(properties.get('independent_search')),
                 "entity": entity,
@@ -947,6 +948,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             "name": zone["name"],
             "is_boss_zone": zone.get("is_boss_zone", False),
             "movement_rect": zone.get("movement_rect"),
+            "gate_all_edges": zone.get('gate_all_edges', False),
             "entrance_rect": (
                 pygame.Rect(*(round(value * extent) for value, extent in zip(
                     zone["entrance_rect"],
@@ -1548,7 +1550,7 @@ def game_screen(screen, slot_num=None, save_state=None):
         boss_enemy.attack_damage_multiplier = aggression
         boss_phase_effect_timer = 1.25
         boss_phase_effect_text = (
-            f"CORE ARMOR BREAKS — {threshold} HP PHASE"
+            f"{boss_phases.get('phase_label', 'CORE ARMOR BREAKS')} — {threshold} HP PHASE"
         )
         boss_phase_effect_world = boss_enemy.rect.center
         play_crumble_sfx("break")
@@ -2250,7 +2252,10 @@ def game_screen(screen, slot_num=None, save_state=None):
         entrance_approached = boss_entrance_trigger.update(
             boss_zone, player_rect.center
         )
-        if entrance_approached:
+        previous_body = player_rect.copy()
+        previous_body.topleft = previous_player_position
+        if entrance_approached and (not boss_zone.get('gate_all_edges')
+                                   or boss_zone_at(zone_pixel_rects, previous_body.center) is None):
             last_safe_position = previous_player_position
         boss_access = evaluate_boss_access(
             stage, gameplay_state["keys"], save_challenges_passed
@@ -2919,6 +2924,8 @@ def game_screen(screen, slot_num=None, save_state=None):
             )
         )
         for terminal in interactables:
+            if terminal.get('entity_visual') and terminal.get('entity') is not None:
+                terminal['entity'].draw(screen,ZOOM,camera_x,camera_y)
             if terminal.get('terminal_visual'):
                 rect = terminal['rect']
                 sprite = terminal_art(round(rect.w * ZOOM),
@@ -3143,12 +3150,13 @@ def game_screen(screen, slot_num=None, save_state=None):
         elif near_interactable and not near_interactable["inspecting"]:
             action = near_interactable.get("actions", "")
             if action == "read_sign":
-                interaction_prompt = "Read Sign"
+                topic = get_topic(near_interactable.get('topic_id'))
+                interaction_prompt = 'Hold E to study ' + topic['title'] if topic else 'Hold E to read sign'
             elif action.startswith("search_"):
                 target = action.removeprefix("search_").replace("_", " ").title()
-                interaction_prompt = f"Search {target}" if target else "Interact"
+                interaction_prompt = f"Hold E to search {target.lower()}" if target else "Hold E to interact"
             else:
-                interaction_prompt = "Interact"
+                interaction_prompt = "Hold E to interact"
 
         if not interaction_prompt and not player_inventory.weapon_equipped:
             interaction_prompt = "[B] Inventory | [1-5] Select sword, torch, or empty slot"

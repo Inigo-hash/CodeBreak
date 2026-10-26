@@ -120,7 +120,16 @@ def describe_items(items):
 
 class MasteryTests(unittest.TestCase):
     def setUp(self):
-        self.stage = get_stage('castle')
+        # Keep regression coverage for the older saved-note curriculum.
+        # Current map/gate integration is exercised in test_citadel.py.
+        from src.data.castle_curriculum import CASTLE_BUNDLES, CASTLE_CHALLENGE_IDS, CASTLE_TOPIC_ORDER
+        self.stage = deepcopy(get_stage('castle'))
+        self.stage['manual']['topics'] = list(CASTLE_CHALLENGE_IDS)
+        self.stage['completion']['mastery_bundles'] = CASTLE_BUNDLES
+        self.stage['completion'].pop('challenge_migrations', None)
+        self.stage['objectives'] = [
+            {'id': tid + '_mastery', 'kind': 'topic', 'target': tid}
+            for tid in CASTLE_TOPIC_ORDER]
         self.state = {'stage': 'Castle', 'keys': 0, 'challenges_passed': [], 'topics_completed': []}
 
     def test_all_challenges_required_in_either_order(self):
@@ -186,7 +195,8 @@ class MasteryTests(unittest.TestCase):
                     save_manager.save_slot(1, candidate)
             self.assertEqual(save_manager.load_slot(1), first)
             save_manager.save_slot(1, candidate)
-            self.assertEqual(save_manager.load_slot(1), candidate)
+            # Loading the completed old note credits its current replacement.
+            self.assertEqual(save_manager.load_slot(1), reconcile_mastery(candidate, get_stage('castle')))
             self.assertEqual(reconcile_mastery(save_manager.load_slot(1), self.stage)['keys'], 1)
 
 
@@ -221,7 +231,10 @@ class DiningMapTests(unittest.TestCase):
 
     def test_player_sized_reachability_and_interaction_line_of_sight(self):
         bodies = [pygame.Rect(x, y, 16, 16) for x, y in self.reachable()]
-        self.assertEqual(len(self.objects), 3)
+        # The current Dining map deliberately has no required lessons;
+        # the five mapped groups live in the other Castle rooms.
+        self.assertEqual(len(self.objects), 0)
+        self.assertGreater(len(bodies), 0)
         for item in self.objects:
             with self.subTest(id=item['interaction_id']):
                 self.assertTrue(any(game.nearest_interactable(body, [item], reach=32, blockers=self.blockers) for body in bodies))
@@ -230,16 +243,15 @@ class DiningMapTests(unittest.TestCase):
     def test_exact_encounter_size_safe_spawn_and_patrol_area(self):
         self.assertEqual(len(self.spawns), 4)
         camp = pygame.Rect(400, 224, 176, 192)
-        terminal = next(item for item in self.objects if item['topic_id'])
+        arrival = pygame.Rect(312,544,16,16)
         for spawn in self.spawns:
             from src.systems.combat import ENEMY_BODY_SIZES
             body = pygame.Rect(0, 0, *ENEMY_BODY_SIZES[spawn['enemy_id']])
             body.center = spawn['position']
             self.assertTrue(pygame.Rect(spawn['zone_rect']).contains(body))
             self.assertEqual(body.collidelist(self.blockers), -1)
-            self.assertGreater(pygame.Vector2(body.center).distance_to(terminal['rect'].center), 140)
+            self.assertGreater(pygame.Vector2(body.center).distance_to(arrival.center), 140)
         self.assertFalse(camp.colliderect(pygame.Rect(312, 544, 16, 16)))
-        self.assertFalse(camp.colliderect(terminal['rect'].inflate(64, 64)))
 
     def test_room_world_isolated_and_searches_independent(self):
         self.assertTrue(all(e['id'].startswith('castle_library_') for e in world_for_room('castle', stage_world(get_stage('castle')), {'room_id': 'library'})['encounters']))
@@ -272,15 +284,15 @@ class DiningMapTests(unittest.TestCase):
         progress.clear_encounter('castle_dining_duwende_01')
         state['stage_progress'] = progress.to_dict()
         lobby = transition_room(state, 'castle', 'lobby')
-        self.assertEqual(aggregate_stage_progress(lobby, get_stage('castle')).objective_counts(get_stage('castle')), (1, 11))
+        self.assertEqual(aggregate_stage_progress(lobby, get_stage('castle')).objective_counts(get_stage('castle')), (1, 7))
         returned = transition_room(lobby, 'castle', 'dining')
         with tempfile.TemporaryDirectory() as tmp, patch.object(save_manager, 'SAVE_DIR', tmp):
             save_manager.save_slot(1, returned)
             restored = save_manager.load_slot(1)
         self.assertEqual(restored['keys'], 1)
-        self.assertEqual(restored['mastery_reward_claims'], ['castle_lists_key_1'])
+        self.assertEqual(restored['mastery_reward_claims'], ['castle_mapped_lists_lesson'])
         self.assertEqual(restored['stage_progress'], state['stage_progress'])
-        self.assertEqual(restored['topics_completed'], ['castle_lists'])
+        self.assertEqual(set(restored['topics_completed']), {'castle_lists','lists_lesson'})
 
 
 class EndFrames(Exception):
@@ -352,35 +364,20 @@ class DiningGameplayTests(unittest.TestCase):
             state = self.run_frames(state, complete_and_clear)
             self.assertEqual(state['keys'], 1)
             self.assertEqual(save_manager.load_slot(1)['keys'], 1)
-            self.assertEqual(state['topics_completed'], ['castle_lists'])
+            self.assertEqual(set(state['topics_completed']), {'castle_lists','lists_lesson'})
             self.assertEqual(set(state['stage_progress']['cleared_encounters']), {'castle_dining_duwende_01', 'castle_dining_north_01'})
             state = transition_room(state, 'castle', 'lobby')
             state = transition_room(state, 'castle', 'dining')
-            # Approach the crate on its west edge, then search through the
-            # real gameplay interaction branch rather than calling Chest.open.
-            state['map_position'] = [480, 336]
-            before_search = state['bonus_time']
-            def finish_search(live):
-                crate = next(i for i in live['interactables'] if i['actions'] == 'search_crate')
-                crate['inspect_progress'] = 1.0
-            state = self.run_frames(state, finish_search, held_e=True)
-            self.assertEqual(state['bonus_time'], before_search + 15)
-            self.assertIn('castle_dining_crate_01', state['stage_progress']['opened_interactables'])
-            save_manager.save_slot(1, state)
-            state = self.run_frames(save_manager.load_slot(1), finish_search, held_e=True)
-            self.assertEqual(state['bonus_time'], before_search + 15)
-            self.assertEqual(state['keys'], 1)
-            self.assertEqual(state['mastery_reward_claims'], ['castle_lists_key_1'])
-            state['map_position'] = [112, 400]
-            def finish_table(live):
-                table = next(i for i in live['interactables'] if i['actions'] == 'search_table')
-                table['inspect_progress'] = 1.0
-            state = self.run_frames(state, finish_table, held_e=True)
-            self.assertIn('castle_dining_table_01', state['stage_progress']['opened_interactables'])
-            save_manager.save_slot(1, state)
-            state = self.run_frames(save_manager.load_slot(1), finish_table, held_e=True)
-            self.assertEqual(state['bonus_time'], before_search + 15)
-            self.assertEqual(state['keys'], 1)
+            # Dining's removed props must not reappear. Camp clears and a
+            # migrated saved Lists note still survive the room round trip.
+            before_reload = state['bonus_time']
+            save_manager.save_slot(1,state)
+            state = self.run_frames(save_manager.load_slot(1))
+            self.assertEqual(state['bonus_time'],before_reload)
+            self.assertEqual(state['keys'],1)
+            self.assertEqual(state['mastery_reward_claims'],['castle_mapped_lists_lesson'])
+            self.assertEqual(set(state['stage_progress']['cleared_encounters']),
+                             {'castle_dining_duwende_01','castle_dining_north_01'})
 
 
 if __name__ == '__main__':

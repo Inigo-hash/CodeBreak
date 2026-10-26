@@ -135,6 +135,18 @@ for _id, _name, _portrait, _description in (
                     'weakness': 'Dodge the committed attack, then strike during recovery.', 'drops': ['Bonus time']}
 
 
+ENEMIES['citadel_flame_warden'] = {
+    'id': 'citadel_flame_warden', 'name': 'Citadel Flame Warden',
+    'family': 'Kapre', 'threat': 'Boss',
+    'arena': 'THE CITADEL REACTOR',
+    'portrait': 'assets/images/frames/kapre_usikan/walking/south/frame_0.png',
+    'description': 'A Kapre guardian empowered by the final reactor. It occupies the central Lava Chamber platform after all four Citadel keys are earned.',
+    'behavior': 'Alternates normal and ultimate directed strikes. Its armor breaks below 900 and 450 HP, increasing aggression.',
+    'weakness': 'Move sideways during the warning, avoid the molten moat and counter during recovery. Committed attacks cannot be interrupted except by a lethal hit.',
+    'drops': ['Reactor seal', 'Bonus time'],
+}
+
+
 def get_enemy(enemy_id):
     """
     Look up one bestiary entry, or None when the id is unknown.

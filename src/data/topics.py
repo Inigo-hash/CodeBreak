@@ -920,6 +920,8 @@ from src.data.castle_lists import LISTS_TOPIC
 TOPICS['castle_lists'] = LISTS_TOPIC
 from src.data.castle_curriculum import CASTLE_TOPICS
 TOPICS.update(CASTLE_TOPICS)
+from src.data.citadel import CITADEL_TOPICS
+TOPICS.update(CITADEL_TOPICS)
 
 
 def topic_challenge_ids(topic):

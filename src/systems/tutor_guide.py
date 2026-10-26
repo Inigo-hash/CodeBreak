@@ -70,7 +70,7 @@ def offline_answer(question, context=None, history=()):
         return None
     if any(_has_phrase(text, phrase) for phrase in ('saved game', 'save game', 'resume game', 'continue game', 'continue my game')):
         return GUIDE_LABEL + 'To resume, open Start Game, select Continue Game, then choose your existing save slot. Use its password. During play, Escape opens the pause menu; choose Save Game before leaving.'
-    if re.search(r'\b(solve|solution|answer|finish|complete)\b', text) and re.search(r'\b(challenge|assessment|castle_\w+|stage1_\w+)\b', text):
+    if re.search(r'\b(solve|solution|answer|finish|complete)\b', text) and re.search(r'\b(challenge|assessment|castle_\w+|citadel_\w+|stage1_\w+)\b', text):
         return GUIDE_LABEL + ('I can give hints, not a complete challenge solution. Check the required inputs, operation order and returned value. Try an empty input and one normal input, then use the lesson’s progressive hints for your next step.')
     from src.data.tutor_knowledge import PYTHON_HELP
     matches = []
@@ -80,7 +80,7 @@ def offline_answer(question, context=None, history=()):
             matches.append((max(lengths), key, answer))
     game_answer = _game_reference(text, context or {})
     game_specific = any(_has_phrase(text, term) for term in
-                        ('heal', 'healing', 'hp', 'energy', 'sword', 'inventory', 'boss', 'stage', 'stage 1', 'stage 2', 'castle', 'island', 'controls'))
+                        ('heal', 'healing', 'hp', 'energy', 'sword', 'inventory', 'boss', 'stage', 'stage 1', 'stage 2', 'stage 3', 'castle', 'citadel', 'island', 'controls'))
     if game_answer and (not matches or game_specific):
         return GUIDE_LABEL + game_answer
     matches.sort(key=lambda item: -item[0])
@@ -135,13 +135,15 @@ def _game_reference(text, context):
         stage = STAGES.get('castle')
     elif mentions('island', 'stage 1'):
         stage = STAGES.get('island')
+    elif mentions('citadel', 'stage 3', 'lava chamber'):
+        stage = STAGES.get('citadel')
     if mentions('heal', 'healing', 'recover hp', 'restore health', 'low health', 'low hp', 'pagaling', 'mag heal'):
         from src.data.player_rules import PLAYER_TORCH_HP_REGEN, PLAYER_TORCH_HEAL_DELAY
         island_rule = (f'On the Island at night, retreat from enemies and stand in a fixed map torch’s light. '
                        f'Living players recover {PLAYER_TORCH_HP_REGEN:g} HP per second after {PLAYER_TORCH_HEAL_DELAY:g} seconds without damage. '
                        'The held hotbar torch lights your way but does not trigger healing. HP is combat health; hearts are lives, and torch healing does not restore lost hearts.')
-        if stage and stage['id'] == 'castle':
-            return 'Castle rooms have night mode off by default, so do not expect fixed-torch healing there. ' + island_rule
+        if stage and stage['id'] in ('castle','citadel'):
+            return stage['name'] + ' interiors have night mode off by default, so do not expect fixed-torch healing there. ' + island_rule
         return island_rule + (' Castle rooms have night mode off by default.' if not stage else '')
     if mentions('energy', 'stamina', 'dodge', 'dash'):
         from src.data.player_rules import PLAYER_DODGE_ENERGY_COST, PLAYER_ENERGY_REGEN
@@ -157,6 +159,8 @@ def _game_reference(text, context):
         return 'Stand beside a searchable object and hold E. Clear its guards first if combat blocks searching. Opened reward props stay consumed in the saved room; replaying a lesson or practice does not farm another mastery key.'
     if mentions('save', 'saving', 'load game', 'password'):
         return 'Pause with Escape and choose Save Game. Continue using the same slot and password. CodeBreak has three password-protected save slots. Keep your password: it cannot be recovered. Save before ending your demonstration.'
+    if stage and stage['id'] == 'citadel' and mentions('unlock', 'enter', 'access', 'start stage') and not mentions('keys', 'boss', 'arena', 'seal'):
+        return 'Complete Castle by earning its five mastery keys, defeating Zombie Aktan and passing its final assessment. Use the Throne exit to enter Citadel, or select Citadel on the atlas after Castle completion has been saved.'
     if mentions('keys', 'key reward', 'mastery', 'unlock', 'progress', 'gate', 'boss', 'finish stage', 'final assessment'):
         stages = [stage] if stage else list(STAGES.values())
         facts = []
@@ -173,8 +177,8 @@ def _game_reference(text, context):
         parts = []
         for item in ([stage] if stage else STAGES.values()):
             rooms = [room['name'] for room in ROOM_STAGES.get(item['id'], {}).get('rooms', {}).values()]
-            parts.append(item['name'] + (': ' + ', '.join(rooms) + '.' if rooms else ': ' + item.get('subtitle', '') + '.'))
-        return ' '.join(parts) + ' Castle rooms are parts of Stage 2, not separate stages. Citadel is future Stage 3 content; I cannot promise an unfinished map is playable.'
+            parts.append(item['name'] + (': ' + ', '.join(rooms) + '.' if rooms else ': ' + item.get('area_name', item.get('subtitle', '')) + '.'))
+        return ' '.join(parts) + ' Castle rooms are parts of Stage 2. Citadel is playable Stage 3: master four topics for four keys, defeat the Flame Warden, pass the restoration assessment and use the northern seal.'
     if mentions('coding', 'lesson', 'lessons', 'terminal', 'challenge', 'challenges', 'run', 'submit', 'hint', 'hints'):
         return 'Read the terminal’s lesson and worked example, then open its coding challenges. Run tests your code; Submit checks completion. Match required names, inputs and returned values or output. Failed submissions reveal progressive hints. Learning a topic can require more than one challenge; practice is for learning, not extra rewards.'
     if mentions('mang tahimik', 'offline', 'online ai', 'backup', 'artificial intelligence', 'ai not responding'):

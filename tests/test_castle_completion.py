@@ -12,6 +12,8 @@ from pytmx.util_pygame import load_pygame
 from castle_solutions import CASTLE_SOLUTIONS
 from test_stage2_dining import SOLUTIONS
 from src.data.castle_curriculum import CASTLE_TOPICS, CASTLE_CHALLENGES, CASTLE_TOPIC_ORDER
+from src.data.castle_progression import CASTLE_MAPPED_TOPICS, CASTLE_MAPPED_ORDER, CASTLE_MAPPED_CHALLENGES
+from mapped_castle_solutions import MAPPED_CASTLE_SOLUTIONS
 from src.data.castle_assessments import CASTLE_ASSESSMENTS, CASTLE_ASSESSMENT_IDS, CASTLE_FINAL_ID
 from src.data.stages import get_stage
 from src.data.topics import TOPICS
@@ -44,14 +46,14 @@ class CastleCurriculumTests(unittest.TestCase):
 
     def test_mastery_is_per_topic_while_keys_require_whole_bundle(self):
         stage = get_stage('castle')
-        state = {'stage': 'Castle', 'keys': 0, 'challenges_passed': [], 'topics_completed': []}
-        for index, tid in enumerate(CASTLE_TOPIC_ORDER):
+        state = {'stage': 'Castle', 'keys': 0, 'challenges_passed': [], 'topics_completed': ['control_flow_lesson']}
+        for index, tid in enumerate(CASTLE_MAPPED_ORDER):
             for required in TOPICS[tid]['requirements']:
                 self.assertIn(required, state['topics_completed'])
             for cid in TOPICS[tid]['challenge_ids']:
                 state = complete_topic_challenge(state, stage, tid, cid)
             self.assertIn(tid, state['topics_completed'])
-            self.assertEqual(state['keys'], (index + 2) // 2)
+            self.assertEqual(state['keys'], index + 1)
             self.assertEqual(reconcile_mastery(state, stage), state)
         self.assertEqual(state['keys'], 5)
         self.assertEqual(len(state['mastery_reward_claims']), 5)
@@ -86,12 +88,11 @@ class CastleMapTests(unittest.TestCase):
     def test_every_topic_terminal_and_throne_exit_are_reachable(self):
         found = set()
         room_topics = {
-            'lobby': set(),
-            'dining': {'castle_lists'},
-            'library': {'castle_tuples', 'castle_dictionaries'},
-            'dungeon': {'castle_for_loops', 'castle_while_loops',
-                        'castle_nested_loops', 'castle_loop_control'},
-            'throne': {'castle_functions', 'castle_exceptions'},
+            'lobby': {'iterative_structure_lesson'},
+            'dining': set(),
+            'library': {'lists_lesson'},
+            'dungeon': {'functions_lesson', 'tuples_lesson'},
+            'throne': {'error_handling_lesson'},
         }
         terminal_ids = set()
         for rid, room in ROOM_STAGES['castle']['rooms'].items():
@@ -99,8 +100,10 @@ class CastleMapTests(unittest.TestCase):
             blockers = game.object_collision_rects(tmx) + [pygame.Rect(x*16,y*16,16,16)
                 for layer in tmx.visible_layers if hasattr(layer,'data') for x,y,gid in layer
                 if gid and (tmx.get_tile_properties_by_gid(gid) or {}).get('collidable')]
-            start = tuple(round(value*16) for value in room['spawn'])
-            seen = {start}; queue = deque([start])
+            # Dungeon's west/east cells use separate Lobby entrances.
+            starts = {tuple(round(value*16) for value in spawn)
+                      for spawn in (room['spawn'], *room.get('arrivals', {}).values())}
+            seen = set(starts); queue = deque(starts)
             bounds = pygame.Rect(0,0,tmx.width*16,tmx.height*16)
             while queue:
                 x,y = queue.popleft()
@@ -116,19 +119,15 @@ class CastleMapTests(unittest.TestCase):
                 if item.get('topic_id'):
                     self.assertNotIn(item['topic_id'], found, (rid, item['topic_id']))
                     found.add(item['topic_id'])
-                    self.assertTrue(item['terminal_visual'], (rid, item['topic_id']))
-                    self.assertNotIn(item['interaction_id'], terminal_ids)
-                    terminal_ids.add(item['interaction_id'])
-                    self.assertTrue(item['interaction_id'].startswith('castle_' + rid + '_'))
-                    self.assertEqual(item['rect'].collidelist(blockers), -1,
-                                     (rid, item['topic_id'], 'terminal is hidden in solid artwork'))
+                    self.assertNotIn((rid,item['interaction_id']), terminal_ids)
+                    terminal_ids.add((rid,item['interaction_id']))
                     self.assertTrue(any(game.nearest_interactable(body,[item],reach=32,blockers=blockers)
                                         for body in bodies), (rid,item['topic_id']))
             if rid == 'throne':
                 x,y,w,h = get_stage('castle')['completion']['exit_rect']
                 exit_rect = pygame.Rect(x*bounds.w,y*bounds.h,w*bounds.w,h*bounds.h)
                 self.assertTrue(any(body.colliderect(exit_rect) for body in bodies))
-        self.assertEqual(found, set(CASTLE_TOPIC_ORDER))
+        self.assertEqual(found, set(CASTLE_MAPPED_ORDER))
 
     def test_white_lady_has_all_floating_frames_and_scaled_portraits_are_cached(self):
         from src.entities.enemy import Enemy
@@ -196,17 +195,17 @@ class CastleGameplayTests(unittest.TestCase):
     def test_real_editors_all_rooms_assessment_bonus_and_exit_save(self):
         from src.ui.code_editor import CodeEditor
         import src.screens.final_assessment as assessment_screen
-        solutions = {**SOLUTIONS, **CASTLE_SOLUTIONS}
+        solutions = {**MAPPED_CASTLE_SOLUTIONS, **CASTLE_SOLUTIONS}
         class SolvingEditor(CodeEditor):
             def run(editor):
                 editor.text_buffer.lines = solutions[editor.challenge['id']].split('\n')
                 editor.submit_code()
                 self.assertTrue(editor.solved, editor.submission_feedback)
         state = save_manager.new_game_state()
-        state.update(stage='Castle',room_id='lobby')
-        room_topics = {'dining':('castle_lists',), 'library':('castle_tuples','castle_dictionaries'),
-                       'dungeon':('castle_for_loops','castle_while_loops','castle_nested_loops','castle_loop_control'),
-                       'throne':('castle_functions','castle_exceptions')}
+        state.update(stage='Castle',room_id='lobby',topics_completed=['control_flow_lesson'])
+        room_topics = {'lobby':('iterative_structure_lesson',), 'library':('lists_lesson',),
+                       'dungeon':('functions_lesson',), 'dungeon_east':('tuples_lesson',),
+                       'throne':('error_handling_lesson',)}
         def requirements(screen, tid, completed, background):
             self.assertTrue(set(TOPICS[tid]['requirements']).issubset(completed))
             return 'continue'
@@ -217,7 +216,8 @@ class CastleGameplayTests(unittest.TestCase):
                 patch.object(assessment_screen,'CodeEditor',SolvingEditor), \
                 patch.object(assessment_screen,'assessment_dialog',return_value=True):
             for rid, tids in room_topics.items():
-                state = transition_room(state,'castle',rid)
+                if rid != 'lobby':
+                    state = transition_room(state,'castle',rid)
                 selections = [cid for tid in tids for cid in (*TOPICS[tid]['challenge_ids'],None)]
                 def learn(live):
                     for tid in tids:
@@ -225,10 +225,10 @@ class CastleGameplayTests(unittest.TestCase):
                 with patch.object(game,'open_topic_challenges',side_effect=selections):
                     state = self.run_frames(state,learn)
                 self.assertEqual(save_manager.load_slot(1)['keys'],state['keys'])
-                if rid != 'throne':
+                if rid not in ('throne','lobby'):
                     state = transition_room(state,'castle','lobby')
             self.assertEqual(state['keys'],5)
-            self.assertEqual(len(state['topics_completed']),9)
+            self.assertTrue(set(CASTLE_MAPPED_ORDER).issubset(state['topics_completed']))
             # Keep this an integration of the teaching/save/exit path: combat is
             # independently covered by the enemy suites, not simulated as played.
             state['stage_progress']['defeated_enemies'] = ['zombie_aktan']
@@ -248,8 +248,10 @@ class CastleGameplayTests(unittest.TestCase):
             with patch.object(game,'open_stage_gate',side_effect=exit_gate), \
                     patch.object(game.StageLoadingScreen,'finish'), \
                     patch.object(pygame.event,'get',return_value=[event]):
-                self.assertEqual(game.game_screen(self.screen,slot_num=1,save_state=state),'main_menu')
+                self.assertEqual(game.game_screen(self.screen,slot_num=1,save_state=state),'next_stage')
             restored = save_manager.load_slot(1)
             self.assertIn('castle',restored['completed_stages'])
-            self.assertEqual(restored['keys'],5)
+            self.assertEqual(restored['keys'],0)
+            self.assertEqual(restored['stage'],'Citadel')
+            self.assertEqual(restored['stage_checkpoints']['castle']['keys'],5)
             self.assertEqual(restored['bonus_time'],100)

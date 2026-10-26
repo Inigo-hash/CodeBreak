@@ -66,10 +66,13 @@ from src.data.controls import WORLD_CONTROLS
 from src.data.encounters import BEGINNER_PATH_GIDS, BEGINNER_STAGE_ENCOUNTERS
 from src.data.zones import CASTLE_ZONES, ISLAND_ZONES
 from src.data.combat_difficulty import STAGE_COMBAT_TIERS
-from src.data.castle_lists import LIST_CHALLENGE_IDS
-from src.data.castle_curriculum import CASTLE_CHALLENGE_IDS, CASTLE_BUNDLES, CASTLE_TOPIC_ORDER
 from src.data.castle_assessments import CASTLE_FINAL_ID, CASTLE_ASSESSMENT_IDS
 from src.data.stage_music import STAGE_MUSIC
+from src.data.citadel import CITADEL_STAGE
+from src.data.castle_progression import (
+    CASTLE_MAPPED_ORDER, CASTLE_MAPPED_CHALLENGES, CASTLE_MAPPED_BUNDLES,
+    CASTLE_CHALLENGE_MIGRATIONS,
+)
 
 
 # Filled in for any stage that leaves a world setting out. A stage with no
@@ -333,7 +336,7 @@ STAGES = {
         ],
     },
 
-    # Stage 2: five room maps share nine topic groups and five mastery keys.
+    # Stage 2 retains the five currently mapped lesson groups.
     "castle": {
 
         "id": "castle",
@@ -344,14 +347,11 @@ STAGES = {
 
         "progress": {
             "enabled": True,
-            "unfinished_content_message": "Available Castle lessons complete. More Castle content is coming later.",
         },
 
         "playable": True,
 
-        # The last authored stage: its gate, once it has one, ends the run
-        # at the main menu the way the Island's used to.
-        "next_stage": None,
+        "next_stage": "citadel",
 
         "world": {
 
@@ -387,14 +387,14 @@ STAGES = {
             "summary":
                 "Past the Corrupted Core's gate the island's corruption "
                 "gives way to stone. The castle has five connected rooms. "
-                "Study Lists in Dining Area, Tuples and Dictionaries in Library, "
-                "Loops in Dungeon, then Functions and Error Handling in Throne. "
-                "Master all nine topic groups for five keys, defeat Aktan, "
-                "and pass the final assessment to leave Castle.",
+                "Study Iterative Structures in Lobby, Lists in Library, "
+                "Functions and Tuples in Dungeon, then Error Handling in Throne. "
+                "Master all five topic groups (eleven challenges) for five keys, "
+                "defeat Aktan, and pass the final assessment to enter Citadel.",
 
             "mechanics": [
-                "Visit the Lists terminal in the southwest Dining Area. Pass "
-                "both challenges to earn Key 1 once; practice grants no keys.",
+                "Follow the mapped lesson order. Pass every challenge in a topic "
+                "to earn its one mastery key once; practice grants no keys. Dining remains an optional combat room.",
                 "Mandurug Duwende, Kapre and White Lady patrol Castle rooms. Zombie Aktan is the final Throne Room boss. "
                 "Clearing camps grants bonus time, not Castle keys. Bonus time extends your next final assessment attempt.",
                 "Everything you learned on the island travels with you. "
@@ -403,7 +403,7 @@ STAGES = {
 
             "controls": WORLD_CONTROLS,
 
-            "topics": list(CASTLE_CHALLENGE_IDS),
+            "topics": list(CASTLE_MAPPED_CHALLENGES),
 
             "tips": [
                 "Door arrivals and the Lists terminal are safe. "
@@ -423,7 +423,7 @@ STAGES = {
             "required_keys": 5,
             "required_boss": "zombie_aktan",
             "exit_name": "Castle Exit",
-            "topic_key_rewards": {challenge_id: 0 for challenge_id in CASTLE_CHALLENGE_IDS},
+            "topic_key_rewards": {challenge_id: 0 for challenge_id in CASTLE_MAPPED_CHALLENGES},
             "encounter_key_reward": 0,
             "content_ready": True,
             "exit_room": "throne",
@@ -431,13 +431,14 @@ STAGES = {
             "required_final_challenge": CASTLE_FINAL_ID,
             "final_assessment_ids": CASTLE_ASSESSMENT_IDS,
             "practice_after_failure": True,
-            "mastery_bundles": CASTLE_BUNDLES,
+            "mastery_bundles": CASTLE_MAPPED_BUNDLES,
+            "challenge_migrations": CASTLE_CHALLENGE_MIGRATIONS,
         },
 
         "objectives": [
             {"id": topic_id + "_mastery", "text": "Master " + topic_id.removeprefix("castle_").replace("_", " ") + ".",
              "kind": "topic", "target": topic_id, "optional": False}
-            for topic_id in CASTLE_TOPIC_ORDER
+            for topic_id in CASTLE_MAPPED_ORDER
         ] + [
             {"id": "castle_aktan", "text": "Defeat Zombie Aktan in the Throne arena.",
              "kind": "defeat", "target": "zombie_aktan", "optional": False},
@@ -446,6 +447,7 @@ STAGES = {
         ],
     },
 
+    'citadel': CITADEL_STAGE,
 }
 
 

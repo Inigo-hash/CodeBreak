@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="40" height="40" tilewidth="16" tileheight="16" infinite="0" nextlayerid="15" nextobjectid="1">
+<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="40" height="40" tilewidth="16" tileheight="16" infinite="0" nextlayerid="16" nextobjectid="53">
  <tileset firstgid="1" source="../tsx/Dungeon_A1.tsx"/>
  <tileset firstgid="769" source="../tsx/Birch Forest-Tileset.tsx"/>
  <tileset firstgid="1605" source="../tsx/crypt_ground_01.tsx"/>
@@ -510,4 +510,291 @@
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 </data>
  </layer>
+<objectgroup id="15" name="Citadel gameplay">
+ <object id="1" name="north_wall" x="0" y="0" width="640" height="184.0">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="2" name="west_boundary" x="0" y="0" width="32" height="640">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="3" name="east_boundary" x="608" y="0" width="32" height="640">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="4" name="southwest_void" x="0" y="560" width="272" height="80">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="5" name="southeast_void" x="368" y="560" width="272" height="80">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="6" name="statue_feet" x="296.0" y="184.0" width="48" height="8.0">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="7" name="lava_6_13" x="208" y="96" width="64" height="16">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="8" name="lava_6_23" x="368" y="96" width="64" height="16">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="9" name="lava_7_13" x="208" y="112" width="64" height="16">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="10" name="lava_7_23" x="368" y="112" width="64" height="16">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="11" name="lava_8_14" x="224" y="128" width="32" height="16">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="12" name="lava_8_24" x="384" y="128" width="32" height="16">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="13" name="lava_9_14" x="224" y="144" width="32" height="16">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="14" name="lava_9_24" x="384" y="144" width="32" height="16">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="15" name="lava_10_14" x="224" y="160" width="32" height="16">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="16" name="lava_10_24" x="384" y="160" width="32" height="16">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="17" name="lava_11_14" x="224" y="176" width="32" height="16">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="18" name="lava_11_24" x="384" y="176" width="32" height="16">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="19" name="lava_12_12" x="192" y="192" width="112" height="16">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="20" name="lava_12_21" x="336" y="192" width="112" height="16">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="21" name="lava_13_12" x="192" y="208" width="112" height="16">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="22" name="lava_13_21" x="336" y="208" width="112" height="16">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="23" name="lava_14_12" x="192" y="224" width="112" height="16">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="24" name="lava_14_21" x="336" y="224" width="112" height="16">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="25" name="lava_15_12" x="192" y="240" width="48" height="16">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="26" name="lava_15_25" x="400" y="240" width="48" height="16">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="27" name="lava_16_12" x="192" y="256" width="48" height="16">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="28" name="lava_16_25" x="400" y="256" width="48" height="16">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="29" name="lava_17_12" x="192" y="272" width="48" height="16">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="30" name="lava_17_25" x="400" y="272" width="48" height="16">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="31" name="lava_18_12" x="192" y="288" width="48" height="16">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="32" name="lava_18_25" x="400" y="288" width="48" height="16">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="33" name="lava_21_12" x="192" y="336" width="48" height="16">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="34" name="lava_21_25" x="400" y="336" width="48" height="16">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="35" name="lava_22_12" x="192" y="352" width="48" height="16">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="36" name="lava_22_25" x="400" y="352" width="48" height="16">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="37" name="lava_23_12" x="192" y="368" width="48" height="16">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="38" name="lava_23_25" x="400" y="368" width="48" height="16">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="39" name="lava_24_12" x="192" y="384" width="48" height="16">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="40" name="lava_24_25" x="400" y="384" width="48" height="16">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="41" name="lava_25_12" x="192" y="400" width="112" height="16">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="42" name="lava_25_21" x="336" y="400" width="112" height="16">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="43" name="lava_26_12" x="192" y="416" width="112" height="16">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="44" name="lava_26_21" x="336" y="416" width="112" height="16">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="45" name="lava_27_12" x="192" y="432" width="112" height="16">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="46" name="lava_27_21" x="336" y="432" width="112" height="16">
+  <properties>
+   <property name="collidable" value="true" type="bool" />
+  </properties>
+ </object>
+ <object id="47" name="Citadel comprehensions" x="80" y="480" width="16" height="16">
+  <properties>
+   <property name="types" value="interactive" />
+   <property name="actions" value="read_sign" />
+   <property name="topic_id" value="citadel_comprehensions" />
+   <property name="terminal_visual" value="true" type="bool" />
+   <property name="persistent_id" value="citadel_terminal_comprehensions" />
+  </properties>
+ </object>
+ <object id="48" name="Citadel sets" x="80" y="320" width="16" height="16">
+  <properties>
+   <property name="types" value="interactive" />
+   <property name="actions" value="read_sign" />
+   <property name="topic_id" value="citadel_sets" />
+   <property name="terminal_visual" value="true" type="bool" />
+   <property name="persistent_id" value="citadel_terminal_sets" />
+  </properties>
+ </object>
+ <object id="49" name="Citadel sorting" x="544" y="320" width="16" height="16">
+  <properties>
+   <property name="types" value="interactive" />
+   <property name="actions" value="read_sign" />
+   <property name="topic_id" value="citadel_sorting" />
+   <property name="terminal_visual" value="true" type="bool" />
+   <property name="persistent_id" value="citadel_terminal_sorting" />
+  </properties>
+ </object>
+ <object id="50" name="Citadel algorithms" x="544" y="480" width="16" height="16">
+  <properties>
+   <property name="types" value="interactive" />
+   <property name="actions" value="read_sign" />
+   <property name="topic_id" value="citadel_algorithms" />
+   <property name="terminal_visual" value="true" type="bool" />
+   <property name="persistent_id" value="citadel_terminal_algorithms" />
+  </properties>
+ </object>
+ <object id="51" name="Citadel supplies" x="336" y="512" width="16" height="16">
+  <properties>
+   <property name="types" value="interactive" />
+   <property name="actions" value="search_crate" />
+   <property name="entity_visual" value="true" type="bool" />
+   <property name="independent_search" value="true" type="bool" />
+   <property name="reward_seconds" value="30" type="int" />
+   <property name="persistent_id" value="citadel_supply_cache" />
+  </properties>
+ </object>
+ <object id="52" name="Citadel arrival guide" x="280.0" y="544" width="16" height="16">
+  <properties>
+   <property name="types" value="interactive" />
+   <property name="actions" value="read_sign" />
+   <property name="terminal_visual" value="true" type="bool" />
+   <property name="message" value="Citadel: study Comprehensions southwest, Sets west, Sorting east, then Search and Aggregation southeast. Earn four keys, defeat the central Flame Warden, pass the final, and use the northern seal. Orange cracked stone is safe; molten lava blocks movement. Save from Escape." />
+   <property name="persistent_id" value="citadel_arrival_guide" />
+  </properties>
+ </object>
+</objectgroup>
 </map>

@@ -50,7 +50,7 @@ class ServerTests(unittest.TestCase):
             self.assertIn('never a complete solution', body['systemInstruction']['parts'][0]['text'])
             prompt = body['systemInstruction']['parts'][0]['text']
             facts = json.loads(prompt.split('GAME FACTS (current authored build, not a promise about future content):\n', 1)[1])
-            self.assertEqual([s['name'] for s in facts['stages']], ['Island', 'Castle'])
+            self.assertEqual([s['name'] for s in facts['stages']], ['Island', 'Castle', 'Citadel'])
             self.assertIn('Answer the actual question first', prompt)
             self.assertEqual(body['generationConfig']['maxOutputTokens'], 600)
             self.assertEqual(body['contents'][0]['role'], 'user')
@@ -91,7 +91,7 @@ class ServerTests(unittest.TestCase):
         client = self.make_client(lambda req: self.fail('called without key'))
         for path in ('/', '/health'):
             self.assertEqual(client.get(path).json(), {'status':'ok'})
-            self.assertEqual(client.get(path).headers['x-tutor-revision'], 'live-recovery-20261026')
+            self.assertEqual(client.get(path).headers['x-tutor-revision'], 'citadel-campaign-20261026')
             response = client.head(path)
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.content, b'')
@@ -116,7 +116,7 @@ class ServerTests(unittest.TestCase):
         serialized = json.dumps(facts)
         self.assertNotIn('secret-test-answer', serialized)
         self.assertNotIn('assets/map/', serialized)
-        self.assertEqual(facts['stage_count'], 2)
+        self.assertEqual(facts['stage_count'], 3)
         self.assertIn('Castle Lobby', facts['stages'][1]['rooms'])
         self.assertTrue(facts['controls'])
 
@@ -203,8 +203,9 @@ class ServerTests(unittest.TestCase):
         facts = game_knowledge()
         castle = next(stage for stage in facts['stages'] if stage['name'] == 'Castle')
         self.assertEqual(castle['gate']['keys_required'], 5)
-        self.assertIn('Dining Area', castle['summary'])
-        self.assertEqual(len(castle['learning_content'][0]['challenges']), 2)
+        self.assertIn('eleven challenges', castle['summary'])
+        self.assertEqual(len(castle['learning_content']), 5)
+        self.assertEqual(sum(len(topic['challenges']) for topic in castle['learning_content']), 11)
         serialized = json.dumps(castle)
         self.assertNotIn('function_cases', serialized)
         self.assertNotIn('starter_code', serialized)

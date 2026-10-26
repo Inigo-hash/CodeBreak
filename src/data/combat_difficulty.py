@@ -1,6 +1,6 @@
 """Campaign combat tuning; profiles do not change reach or attack wind-up.
 
-Citadel is reserved for future content, not a playable-stage declaration.
+Citadel uses the advanced profile for its Lava Chamber patrols and Warden.
 Rewards, body sizes, patrol boundaries and player stats remain independent.
 """
 STAGE_COMBAT_TIERS = {"island": 1, "castle": 2, "citadel": 3}

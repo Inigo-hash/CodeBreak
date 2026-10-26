@@ -50,7 +50,7 @@ class DifficultyTests(unittest.TestCase):
                         self.assertEqual(getattr(stats, field), getattr(base, field))
             self.assertEqual(ENEMY_STATS[species], base)
 
-    def test_tier_survives_every_castle_room_and_future_citadel_is_not_playable(self):
+    def test_tier_survives_every_castle_room_and_playable_citadel(self):
         self.assertEqual(stage_world(STAGES['island'])['combat_tier'], 1)
         for room in ROOM_STAGES['castle']['rooms']:
             world = world_for_room('castle', stage_world(STAGES['castle']), {'room_id': room})
@@ -58,7 +58,7 @@ class DifficultyTests(unittest.TestCase):
         future = stage_world({'id': 'citadel'})
         self.assertEqual(future['combat_tier'], 3)
         self.assertIsNone(future['map'])
-        self.assertNotIn('citadel', STAGES)
+        self.assertEqual(stage_world(STAGES['citadel'])['map'], 'assets/map/tmx/map3_lava_chamber.tmx')
         self.assertEqual(stage_world({'id': 'custom', 'world': {'combat_tier': 2}})['combat_tier'], 2)
 
     def test_actual_instances_have_scaled_hp_damage_and_unchanged_bodies(self):

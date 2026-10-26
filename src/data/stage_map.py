@@ -1,4 +1,4 @@
-"""Atlas landmarks. Citadel is a hook for a future STAGES['citadel'] map."""
+"""Atlas landmarks for the three playable campaign stages."""
 
 STAGE_MAP_NODES = (
     {
@@ -19,9 +19,9 @@ STAGE_MAP_NODES = (
         "region": ((.20, .31), (.44, .26), (.64, .30), (.77, .38),
                    (.77, .60), (.57, .66), (.30, .58), (.18, .44)),
         "glow": (.49, .46, .48, .34),
-        "description": "Explore the castle lobby, dining area, library, dungeon prison and throne room. Study collections, loops, functions and error handling.",
-        "content": "9 topics / 5 keys / Aktan + coding final",
-        "map_note": "Five connected rooms. Earn all mastery keys, defeat Aktan and pass the final assessment. Citadel is a future chapter.",
+        "description": "Explore Castle's five connected rooms. Study loops, lists, functions, tuples and error handling.",
+        "content": "5 topics / 11 challenges / 5 keys / Aktan + final",
+        "map_note": "Earn five mastery keys, defeat Aktan and pass the final assessment to enter Citadel.",
     },
     {
         "id": "citadel", "number": 3, "name": "The Corrupted Citadel",
@@ -30,9 +30,9 @@ STAGE_MAP_NODES = (
         "region": ((.39, .055), (.64, .01), (.87, .025), (.94, .16),
                    (.79, .29), (.66, .30), (.45, .23)),
         "glow": (.67, .15, .48, .28),
-        "description": "Beyond the mountain pass, the corrupted fortress waits. This final chapter is still being built.",
-        "content": "Future chapter",
-        "map_note": "No playable map is connected yet.",
+        "description": "Cross the Lava Chamber's stone bridges. Master comprehensions, sets, sorting and algorithms, then restore the reactor.",
+        "content": "4 topics / 8 challenges / 4 keys / Flame Warden + final",
+        "map_note": "Final playable chapter. Defeat the Warden, pass the restoration assessment and use the northern reactor seal to complete the campaign.",
     },
 )
 

@@ -27,6 +27,7 @@ class ListsValidator:
             if not any(isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
                        and node.func.id == "list" for node in nodes):
                 return False, "Copy the input list with list(items) before modifying it."
-            if not any(isinstance(node, ast.Compare) for node in nodes):
+            if ('remove' in required or challenge.get('require_membership_check')) and not any(
+                    isinstance(node, ast.Compare) for node in nodes):
                 return False, "Check whether the requested value exists before removing it."
         return True, "Required list operations found."

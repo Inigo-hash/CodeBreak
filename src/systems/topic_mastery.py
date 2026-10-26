@@ -13,6 +13,11 @@ def reconcile_mastery(state, stage):
         )
         return result
     passed = set(result.get('challenges_passed', []))
+    for migration in stage.get('completion', {}).get('challenge_migrations', ()):
+        if set(migration['requires']).issubset(passed):
+            passed.update(migration['grants'])
+    result['challenges_passed'] = list(dict.fromkeys(
+        [*result.get('challenges_passed', []), *sorted(passed - set(result.get('challenges_passed', [])))]))
     completed = list(result.get('topics_completed', []))
     claims = set(result.get('mastery_reward_claims') or [])
     for bundle_id, bundle in bundles.items():

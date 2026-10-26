@@ -21,6 +21,7 @@ class Enemy:
         "kapre_usikan": ("walking", "attack", "{direction}.png", 180, (250, 220)),
         "white_lady": ("floating", "white_lady_attack", "{direction}.png", 120, (180, 144)),
         "zombie_aktan": ("walking", "attacking", "{direction}.png", 130, (180, 150)),
+        "citadel_flame_warden": ("walking", "attack", "{direction}.png", 195, (260, 225)),
         "tiyanak_sinta": ("walking", "attacking", "{direction}.png", 40, (72, 50)),
         "manananggal": ("flying", "attacking", "manananggal_{direction}.png", 76, (110, 88)),
         "tikbalang": ("walking", "attacking", "{direction}.png", 88, (124, 98)),
@@ -34,6 +35,7 @@ class Enemy:
     }
     _asset_sources = {
         "corrupted_core_kapre": "kapre_usikan",
+        "citadel_flame_warden": "kapre_usikan",
     }
 
     def __init__(self, screen, map_width, map_height, world_x=None, world_y=None,
@@ -129,7 +131,7 @@ class Enemy:
                 self.enemy_id, self.enemy_id
             )
             paths = {"walking": {}, "attack": {}, "flinch": {}}
-            if self.enemy_id in ("kapre_usikan", "corrupted_core_kapre"):
+            if self._asset_sources.get(self.enemy_id, self.enemy_id) == 'kapre_usikan':
                 paths["ultimate"] = {}
             for direction in ("north", "south", "east", "west"):
                 paths["walking"][direction] = self._numbered_frames(

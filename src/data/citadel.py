@@ -250,8 +250,8 @@ CITADEL_STAGE = {
     'id': 'citadel', 'name': 'Citadel', 'subtitle': 'Stage 3 - Advanced', 'area_name': 'Lava Chamber',
     'next_stage': None, 'playable': True, 'progress': {'enabled': True},
     'world': {
-        'map': 'assets/map/tmx/map3_lava_chamber.tmx', **STAGE_MUSIC['citadel'],
-        'night': False, 'spawn': (19.5/40,36/40), 'zoom': 2.5, 'follow_edges': True,
+        'map': 'assets/map/tmx/map3.tmx', **STAGE_MUSIC['citadel'],
+        'night': False, 'spawn': (71/80,56/80), 'zoom': 2.5, 'follow_edges': True,
         'combat_tier': 3, 'boss_spawn_margin': 8, 'zones': CITADEL_ZONES,
         'encounters': CITADEL_ENCOUNTERS, 'map_layout_version': 1,
     },

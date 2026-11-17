@@ -104,6 +104,7 @@ from src.screens.final_challenge_warning import (
 from src.data.rooms import ROOM_STAGES
 from src.systems.rooms import room_for, world_for_room, transition_room, PassageHold, stage_defeated_enemies, aggregate_stage_progress
 from src.systems.camera import camera_offset
+from src.systems.tile_animations import AnimatedTileRenderer
 from src.screens.trap_alert import open_trap_alert
 
 def boss_sword_damage(current_hp, phase_table):
@@ -843,6 +844,9 @@ def game_screen(screen, slot_num=None, save_state=None):
     # Scale the pre-rendered map once at startup based on ZOOM level (e.g. ZOOM=2 doubles the size)
     # This avoids rescaling every frame which would slow down the game
     map_surface = pygame.transform.scale(raw_map_surface, (round(map_width * ZOOM), round(map_height * ZOOM)))
+    # Tiled animation metadata is loaded by PyTMX, but the pre-rendered map
+    # is static. This renderer updates only cells containing animated tiles.
+    animated_tile_renderer = AnimatedTileRenderer(tmx_data, TILE_SIZE, ZOOM)
     loading.update(70, "Drawing expedition charts...")
 
     # --- Minimap ---
@@ -1627,6 +1631,7 @@ def game_screen(screen, slot_num=None, save_state=None):
 
     while running:
         dt = clock.tick(TARGET_FPS) / 1000.0
+        animated_tile_renderer.update(map_surface, pygame.time.get_ticks())
         autosave_elapsed += dt
         if autosave_elapsed >= 30.0 and slot_num is not None and player_combat.hp > 0:
             save_manager.save_slot(slot_num, build_save_state())

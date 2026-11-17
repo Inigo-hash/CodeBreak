@@ -62,6 +62,8 @@ class TileAnimationTests(unittest.TestCase):
         tmx_map = FakeTmxMap()
         surface = pygame.Surface((32, 16))
         surface.fill((0, 0, 0))
+        # Match the static map render that exists before the first animation tick.
+        surface.blit(tmx_map.get_tile_image_by_gid(20), (0, 0))
         renderer = AnimatedTileRenderer(tmx_map, tile_size=16, zoom=1)
 
         # First update paints the first authored animation frame.

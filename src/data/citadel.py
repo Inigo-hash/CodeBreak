@@ -247,13 +247,13 @@ CITADEL_ENCOUNTERS = tuple({
 ))
 
 CITADEL_STAGE = {
-    'id': 'citadel', 'name': 'Citadel', 'subtitle': 'Stage 3 - Advanced', 'area_name': 'Lava Chamber',
+    'id': 'citadel', 'name': 'Citadel', 'subtitle': 'Stage 3 - Advanced', 'area_name': '',
     'next_stage': None, 'playable': True, 'progress': {'enabled': True},
     'world': {
         'map': 'assets/map/tmx/map3.tmx', **STAGE_MUSIC['citadel'],
         'night': False, 'spawn': (66/80,72/80), 'zoom': 2.5, 'follow_edges': True,
-        'combat_tier': 3, 'boss_spawn_margin': 8, 'zones': CITADEL_ZONES,
-        'encounters': CITADEL_ENCOUNTERS, 'map_layout_version': 1,
+        'combat_tier': 3, 'boss_spawn_margin': 8, 'zones': (),
+        'encounters': (), 'map_layout_version': 1,
     },
     'manual': {
         'summary': 'The Corrupted Citadel is the final chapter. Explore the Lava Chamber perimeter: '
@@ -276,10 +276,10 @@ CITADEL_STAGE = {
                  'Citadel attacks commit to their direction. Dodge sideways, wait for recovery, then counter.',
                  'Lit interiors do not provide fixed-torch healing. Retreat before committing to a fight; a stage handoff refills lives.'],
     },
-    'enemies': ['tikbalang','white_lady','kapre_usikan','citadel_flame_warden'],
+    'enemies': [],
     'items': ['crate','mang_tahimik'],
     'completion': {
-        'content_ready': True, 'required_keys': 4, 'required_boss': 'citadel_flame_warden',
+        'content_ready': True, 'required_keys': 4,
         'required_final_challenge': CITADEL_FINAL_ID, 'final_assessment_ids': (CITADEL_FINAL_ID,),
         'practice_after_failure': True, 'mastery_bundles': CITADEL_BUNDLES,
         'topic_key_rewards': {cid: 0 for cid in CITADEL_CHALLENGE_IDS}, 'encounter_key_reward': 0,
@@ -289,10 +289,6 @@ CITADEL_STAGE = {
         {'id': tid + '_mastery', 'text': 'Master ' + topic['title'] + '.', 'kind': 'topic', 'target': tid, 'optional': False}
         for tid, topic in CITADEL_TOPICS.items()
     ] + [
-        {'id': 'citadel_warden', 'text': 'Defeat the Flame Warden on the reactor platform.', 'kind': 'defeat', 'target': 'citadel_flame_warden', 'optional': False},
         {'id': 'citadel_final', 'text': 'Pass the Citadel restoration assessment.', 'kind': 'challenge', 'target': CITADEL_FINAL_ID, 'optional': False},
-    ] + [
-        {'id': camp['id'], 'text': 'Clear the ' + side + ' patrol for bonus time.', 'kind': 'encounter', 'target': camp['id'], 'optional': True}
-        for side, camp in zip(('west','east'), CITADEL_ENCOUNTERS)
     ],
 }

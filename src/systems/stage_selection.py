@@ -33,6 +33,11 @@ def stage_status(stage_id, state, developer_access=False):
     return "CURRENT" if stage_id == get_stage(state.get("stage"))["id"] else "AVAILABLE"
 
 
+def should_restore_map_position(world, map_position):
+    """Whether this stage should resume its saved player coordinates."""
+    return bool(map_position) and world.get("resume_position", True)
+
+
 def select_stage(state, stage_id, developer_access=False):
     """Switch maps without granting completion or losing the old checkpoint."""
     if not stage_available(stage_id, state, developer_access):

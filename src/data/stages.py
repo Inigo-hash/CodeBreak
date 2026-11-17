@@ -26,6 +26,7 @@ Island's files itself:
                         the Island's night would leave it pitch black.
     spawn               where the player starts, as (x, y) fractions of
                         the map like zone rects and encounter anchors
+    resume_position     whether to restore a saved map position on entry
     zones               the stage's list from zones.py
     encounters          the stage's table from encounters.py
     path_layer          tile layer whose dirt tiles are walkable ground
@@ -84,6 +85,7 @@ WORLD_DEFAULTS = {
     "boss_music": None,
     "night": True,
     "spawn": (0.5, 0.5),
+    "resume_position": True,
     "zones": (),
     "encounters": (),
     "path_layer": None,

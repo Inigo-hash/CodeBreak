@@ -10,7 +10,7 @@ from unittest.mock import patch
 import pygame
 
 from src import display
-from src.data.stages import STAGES, get_stage
+from src.data.stages import STAGES, get_stage, stage_world
 from src.data.stage_map import STAGE_MAP_NODES
 from src.screens.stage_select import (
     ART_SIZE, _original_art, draw_stage_select, hotspot_at, map_to_screen,
@@ -18,7 +18,10 @@ from src.screens.stage_select import (
 )
 from src.systems import save_manager
 from src.systems.stage_handoff import advance_save_state, STAGE_SCOPED_KEYS
-from src.systems.stage_selection import select_stage, stage_available, stage_status, stage_unlocked
+from src.systems.stage_selection import (
+    select_stage, stage_available, stage_status, stage_unlocked,
+    should_restore_map_position,
+)
 
 SIZES = ((1280, 720), (1366, 768), (1920, 1080), (2560, 1440), (1280, 1024), (2560, 1080))
 
@@ -58,6 +61,15 @@ class StageSelectionRules(unittest.TestCase):
         self.assertTrue(stage_available("citadel", state, developer_access=True))
         self.assertEqual(select_stage(state,'citadel',True)['completed_stages'], [])
         self.assertNotIn("developer_mode", selected)
+
+    def test_citadel_always_uses_the_authored_red_x_spawn(self):
+        citadel_world = stage_world(get_stage("citadel"))
+        castle_world = stage_world(get_stage("castle"))
+
+        self.assertEqual(citadel_world["spawn"], (66/80, 72/80))
+        self.assertFalse(should_restore_map_position(citadel_world, [1100, 1200]))
+        self.assertTrue(should_restore_map_position(castle_world, [600, 700]))
+        self.assertFalse(should_restore_map_position(citadel_world, None))
 
     def test_old_castle_saves_remain_accessible(self):
         state = {"stage": "Castle", "keys": 0}

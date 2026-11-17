@@ -31,7 +31,7 @@ from src.screens.practice_topics import open_practice_topics
 from src.screens.code_practice_menu import open_code_practice_menu
 from src.screens.world_map import enemy_is_tracking_player, open_world_map
 from src.screens.stage_select import open_stage_select
-from src.systems.stage_selection import select_stage
+from src.systems.stage_selection import select_stage, should_restore_map_position
 from src.systems import save_manager
 from src.systems.developer_mode import developer_mode
 from src.systems.stage_progress import StageProgress
@@ -403,7 +403,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             "map_position"
         )
 
-        if map_position:
+        if should_restore_map_position(world, map_position):
 
             player_x = float(
                 map_position[0]

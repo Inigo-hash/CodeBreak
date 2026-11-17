@@ -251,7 +251,7 @@ CITADEL_STAGE = {
     'next_stage': None, 'playable': True, 'progress': {'enabled': True},
     'world': {
         'map': 'assets/map/tmx/map3.tmx', **STAGE_MUSIC['citadel'],
-        'night': False, 'spawn': (71/80,56/80), 'zoom': 2.5, 'follow_edges': True,
+        'night': False, 'spawn': (66/80,72/80), 'zoom': 2.5, 'follow_edges': True,
         'combat_tier': 3, 'boss_spawn_margin': 8, 'zones': CITADEL_ZONES,
         'encounters': CITADEL_ENCOUNTERS, 'map_layout_version': 1,
     },

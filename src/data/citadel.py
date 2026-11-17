@@ -19,12 +19,14 @@ CITADEL_STAGE = {
         'map': 'assets/map/tmx/map3.tmx',
         **STAGE_MUSIC['citadel'],
         'night': False,
+        # The red-X arrival point in map3.tmx (player top-left at tile 66, 72).
         'spawn': (66/80, 72/80),
+        'resume_position': False,
         'zoom': 2.5,
         'follow_edges': True,
         'zones': (),
         'encounters': (),
-        'map_layout_version': 1,
+        'map_layout_version': 2,
     },
     'manual': {
         'summary': '',

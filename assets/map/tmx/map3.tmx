@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="120" height="120" tilewidth="16" tileheight="16" infinite="0" nextlayerid="25" nextobjectid="1">
+<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="120" height="120" tilewidth="16" tileheight="16" infinite="0" nextlayerid="26" nextobjectid="21">
  <tileset firstgid="1" source="../tsx/TarPit_Exterior_A.tsx"/>
  <tileset firstgid="1945" source="../tsx/TarPit_Interior_B.tsx"/>
  <tileset firstgid="3889" source="../tsx/TarPit_Animated_C.tsx"/>
@@ -1866,4 +1866,119 @@
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 </data>
  </layer>
+ <objectgroup id="25" name="topics">
+  <object id="1" x="1215.82" y="1360.55" width="32.5455" height="63.0909">
+   <properties>
+    <property name="actions" value="search_skeletons"/>
+    <property name="types" value="interactive"/>
+   </properties>
+  </object>
+  <object id="2" x="1392" y="1296.75" width="32" height="63.25">
+   <properties>
+    <property name="actions" value="search_skeletons"/>
+    <property name="types" value="interactive"/>
+   </properties>
+  </object>
+  <object id="3" x="1536.5" y="592.25" width="30.75" height="32">
+   <properties>
+    <property name="actions" value="search_rubble"/>
+    <property name="topic_id" value="modules_imports_lesson"/>
+    <property name="types" value="interactive"/>
+   </properties>
+  </object>
+  <object id="4" x="352.25" y="608.5" width="31.5" height="30.75">
+   <properties>
+    <property name="actions" value="search_rubble"/>
+    <property name="topic_id" value="file_handling_lesson"/>
+    <property name="types" value="interactive"/>
+   </properties>
+  </object>
+  <object id="5" x="769" y="800" width="31" height="32">
+   <properties>
+    <property name="actions" value="search_hole"/>
+    <property name="types" value="interactive"/>
+   </properties>
+  </object>
+  <object id="8" x="768" y="897" width="32.6667" height="32">
+   <properties>
+    <property name="actions" value="search_hole"/>
+    <property name="types" value="interactive"/>
+   </properties>
+  </object>
+  <object id="9" x="912.333" y="735.667" width="31.3333" height="33">
+   <properties>
+    <property name="actions" value="search_hole"/>
+    <property name="types" value="interactive"/>
+   </properties>
+  </object>
+  <object id="10" x="912" y="848.333" width="28.3333" height="32">
+   <properties>
+    <property name="actions" value="search_hole"/>
+    <property name="types" value="interactive"/>
+   </properties>
+  </object>
+  <object id="11" x="912" y="1008.67" width="28" height="31">
+   <properties>
+    <property name="actions" value="search_hole"/>
+    <property name="topic_id" value="object_oriented_programming_lesson"/>
+    <property name="types" value="interactive"/>
+   </properties>
+  </object>
+  <object id="12" x="703.333" y="997" width="35.3333" height="28">
+   <properties>
+    <property name="actions" value="search_hole"/>
+    <property name="types" value="interactive"/>
+   </properties>
+  </object>
+  <object id="13" x="528.333" y="997.667" width="31.6667" height="27">
+   <properties>
+    <property name="actions" value="search_hole"/>
+    <property name="types" value="interactive"/>
+   </properties>
+  </object>
+  <object id="14" x="496.333" y="784.333" width="29.3333" height="32.6667">
+   <properties>
+    <property name="actions" value="search_hole"/>
+    <property name="topic_id" value="advance_error_handling_lesson"/>
+    <property name="types" value="interactive"/>
+   </properties>
+  </object>
+  <object id="15" x="1410.33" y="817" width="30.6667" height="32">
+   <properties>
+    <property name="actions" value="search_hole"/>
+    <property name="types" value="interactive"/>
+   </properties>
+  </object>
+  <object id="16" x="1343.67" y="901" width="32.6667" height="26.6667">
+   <properties>
+    <property name="actions" value="search_hole"/>
+    <property name="types" value="interactive"/>
+   </properties>
+  </object>
+  <object id="17" x="1185" y="1008" width="31.6667" height="33">
+   <properties>
+    <property name="actions" value="search_hole"/>
+    <property name="types" value="interactive"/>
+   </properties>
+  </object>
+  <object id="18" x="1135.67" y="1092.33" width="32.6667" height="28">
+   <properties>
+    <property name="actions" value="search_hole"/>
+    <property name="types" value="interactive"/>
+   </properties>
+  </object>
+  <object id="19" x="1007.67" y="1093.67" width="32.3333" height="26.6667">
+   <properties>
+    <property name="actions" value="search_hole"/>
+    <property name="types" value="interactive"/>
+   </properties>
+  </object>
+  <object id="20" x="799.667" y="1536.33" width="32" height="31.6667">
+   <properties>
+    <property name="actions" value="search_rubble"/>
+    <property name="topic_id" value="advance_data_structure_lesson"/>
+    <property name="types" value="interactive"/>
+   </properties>
+  </object>
+ </objectgroup>
 </map>

@@ -19,14 +19,15 @@ CITADEL_STAGE = {
         'map': 'assets/map/tmx/map3.tmx',
         **STAGE_MUSIC['citadel'],
         'night': False,
-        # The red-X arrival point in map3.tmx (player top-left at tile 66, 72).
-        'spawn': (66/80, 72/80),
+        # Map 3 expanded from 80x80 to 120x120, adding 20 tiles on each
+        # top/left side. The original red-X spawn therefore moved to tile (86, 92).
+        'spawn': (86/120, 92/120),
         'resume_position': False,
         'zoom': 2.5,
         'follow_edges': True,
         'zones': (),
         'encounters': (),
-        'map_layout_version': 2,
+        'map_layout_version': 3,
     },
     'manual': {
         'summary': '',

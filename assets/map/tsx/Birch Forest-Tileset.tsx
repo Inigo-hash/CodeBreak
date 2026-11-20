@@ -1,6 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<tileset version="1.10" tiledversion="1.12.1" name="Birch Forest-Tileset" tilewidth="16" tileheight="16" tilecount="836" columns="38">
+<tileset version="1.10" tiledversion="1.12.2" name="Birch Forest-Tileset" tilewidth="16" tileheight="16" tilecount="836" columns="38">
  <image source="../tiledsets/Birch Forest-Tileset.png" width="608" height="352"/>
+ <tile id="39">
+  <animation>
+   <frame tileid="39" duration="450"/>
+   <frame tileid="40" duration="450"/>
+   <frame tileid="41" duration="450"/>
+   <frame tileid="42" duration="450"/>
+   <frame tileid="77" duration="450"/>
+   <frame tileid="78" duration="450"/>
+   <frame tileid="79" duration="450"/>
+   <frame tileid="80" duration="450"/>
+   <frame tileid="115" duration="450"/>
+   <frame tileid="116" duration="450"/>
+   <frame tileid="117" duration="450"/>
+   <frame tileid="118" duration="450"/>
+   <frame tileid="153" duration="450"/>
+   <frame tileid="154" duration="450"/>
+   <frame tileid="155" duration="450"/>
+   <frame tileid="156" duration="450"/>
+  </animation>
+ </tile>
  <tile id="228">
   <properties>
    <property name="collidable" type="bool" value="true"/>
@@ -548,5 +568,11 @@
     </properties>
    </object>
   </objectgroup>
+ </tile>
+ <tile id="616">
+  <animation>
+   <frame tileid="616" duration="450"/>
+   <frame tileid="617" duration="450"/>
+  </animation>
  </tile>
 </tileset>

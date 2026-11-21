@@ -949,3 +949,8 @@ TOPICS["error_handling_lesson"] = ERROR_HANDLING_TOPIC
 TOPICS["dictionary_lesson"] = DICTIONARY_TOPIC
 # Existing Stage 2 dining-area Tiled object uses this plural spelling.
 TOPICS["dictionaries_lesson"] = DICTIONARY_TOPIC
+
+
+# Stage 3 advanced curriculum uses the five topic IDs already tagged in map3.tmx.
+from src.data.stage3_topics import CITADEL_TOPICS
+TOPICS.update(CITADEL_TOPICS)

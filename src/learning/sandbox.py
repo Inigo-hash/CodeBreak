@@ -7,12 +7,12 @@ coding challenges.
 This is NOT a general-purpose Python sandbox - it does not attempt
 to defend against a maliciously creative attacker escaping to full
 system access. It exists to give code challenges written for a game
-a reasonably safe execution environment: no filesystem access, no
-imports, no network, and no infinite loops locking up the game.
+a reasonably safe execution environment: no filesystem access, only approved math/json imports, no network, and no
+infinite loops locking up the game.
 
 Responsibilities
 ----------------
-- Reject dangerous code before running it (imports, exec/eval,
+- Reject dangerous code before running it (unapproved imports, exec/eval,
   file access, dunder attribute tricks).
 - Run the remaining code with a restricted set of builtins.
 - Capture everything printed to stdout.
@@ -313,6 +313,7 @@ def run_user_code(
 
 
     sandbox_globals = {
+        "__name__": "__main__",
         "__builtins__": sandbox_builtins
     }
 

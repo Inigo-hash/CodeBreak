@@ -50,6 +50,21 @@ class Stage2FoundationTests(unittest.TestCase):
         self.assertEqual(assessment_ids_for_stage(get_stage('castle')), CASTLE_ASSESSMENT_IDS)
         self.assertIsNone(peek_assessment({}, assessment_ids=()))
 
+    def test_dictionary_lesson_is_registered_for_both_tiled_topic_spellings(self):
+        from src.data.topics import get_topic, topic_challenge_ids
+        from src.data.castle_progression import CASTLE_MAPPED_ORDER, CASTLE_MAPPED_CHALLENGES
+        topic = get_topic("dictionary_lesson")
+        self.assertIsNotNone(topic)
+        self.assertIs(topic, get_topic("dictionaries_lesson"))
+        self.assertEqual(topic["id"], "dictionary_lesson")
+        self.assertEqual(len(topic_challenge_ids(topic)), 2)
+        self.assertEqual(topic_challenge_ids(topic), (
+            "dictionary_lesson_lookup_001", "dictionary_lesson_count_001"
+        ))
+        self.assertIn("dictionary_lesson", CASTLE_MAPPED_ORDER)
+        self.assertTrue(set(topic_challenge_ids(topic)).issubset(set(CASTLE_MAPPED_CHALLENGES)))
+        self.assertEqual(get_stage("castle")["completion"]["required_keys"], 6)
+
     def test_stage2_pool_isolated_and_attempt_records_persist(self):
         authored = {'id': 'stage2_final', 'title': 'Castle Report', 'time_limit': 600}
         stage = {'id': 'castle', 'completion': {'required_final_challenge': 'stage2_final'}}

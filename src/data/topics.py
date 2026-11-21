@@ -939,10 +939,13 @@ def get_topic(topic_id):
 # Stage 2 topics use their own lesson/challenge definitions and validators.
 from src.data.stage2_topics import (
     ITERATIVE_STRUCTURE_TOPIC, LISTS_STAGE2_TOPIC,
-    FUNCTIONS_TOPIC, TUPLES_TOPIC, ERROR_HANDLING_TOPIC,
+    FUNCTIONS_TOPIC, TUPLES_TOPIC, ERROR_HANDLING_TOPIC, DICTIONARY_TOPIC,
 )
 TOPICS["iterative_structure_lesson"] = ITERATIVE_STRUCTURE_TOPIC
 TOPICS["lists_lesson"] = LISTS_STAGE2_TOPIC
 TOPICS["functions_lesson"] = FUNCTIONS_TOPIC
 TOPICS["tuples_lesson"] = TUPLES_TOPIC
 TOPICS["error_handling_lesson"] = ERROR_HANDLING_TOPIC
+TOPICS["dictionary_lesson"] = DICTIONARY_TOPIC
+# Existing Stage 2 dining-area Tiled object uses this plural spelling.
+TOPICS["dictionaries_lesson"] = DICTIONARY_TOPIC

@@ -20,9 +20,22 @@ class Stage3CurriculumTests(unittest.TestCase):
             self.assertIs(TOPICS[topic_id], topic)
             self.assertTrue(set(topic_challenge_ids(topic)).issubset(CHALLENGES))
 
+    def test_topics_are_locked_in_the_authored_sequential_order(self):
+        expected = {
+            "object_oriented_programming_lesson": [],
+            "modules_imports_lesson": ["object_oriented_programming_lesson"],
+            "file_handling_lesson": ["modules_imports_lesson"],
+            "advance_error_handling_lesson": ["file_handling_lesson"],
+            "advance_data_structure_lesson": ["advance_error_handling_lesson"],
+        }
+        self.assertEqual(
+            {topic_id: topic["requirements"] for topic_id, topic in CITADEL_TOPICS.items()},
+            expected,
+        )
+
     def test_problem_counts_match_reference_outline(self):
-        self.assertEqual([len(topic_challenge_ids(CITADEL_TOPICS[tid])) for tid in CITADEL_TOPIC_ORDER], [6, 2, 2, 1, 4])
-        self.assertEqual(len(CITADEL_CHALLENGE_IDS), 15)
+        self.assertEqual([len(topic_challenge_ids(CITADEL_TOPICS[tid])) for tid in CITADEL_TOPIC_ORDER], [6, 2, 2, 1, 3])
+        self.assertEqual(len(CITADEL_CHALLENGE_IDS), 14)
 
     def test_every_stage3_problem_has_a_valid_f7_solution(self):
         manager = ChallengeManager()

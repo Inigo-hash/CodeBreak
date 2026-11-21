@@ -63,6 +63,11 @@ class Stage2FoundationTests(unittest.TestCase):
         ))
         self.assertIn("dictionary_lesson", CASTLE_MAPPED_ORDER)
         self.assertTrue(set(topic_challenge_ids(topic)).issubset(set(CASTLE_MAPPED_CHALLENGES)))
+        from src.data.developer_solutions import DEVELOPER_SOLUTIONS
+        self.assertTrue(
+            set(CASTLE_MAPPED_CHALLENGES).issubset(DEVELOPER_SOLUTIONS),
+            "Every Stage 2 mapped challenge must have an F7 reference solution.",
+        )
         self.assertEqual(get_stage("castle")["completion"]["required_keys"], 6)
 
     def test_stage2_pool_isolated_and_attempt_records_persist(self):

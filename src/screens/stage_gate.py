@@ -30,6 +30,13 @@ def open_stage_gate(screen, status, gate_name="Stage Exit", background=None,
 
     clock = pygame.time.Clock()
     can_exit = status.unlocked or developer_access
+    can_fight_boss = (
+        bool(status.required_boss_id)
+        and not status.boss_defeated
+        and status.keys >= status.required_keys
+        and not status.missing_topic_ids
+        and not developer_access
+    )
     width, height = screen.get_size()
     backdrop = (screen if background is None else background).copy()
 
@@ -64,8 +71,13 @@ def open_stage_gate(screen, status, gate_name="Stage Exit", background=None,
     else:
         title_text = "THE GATE IS SEALED"
         primary_label = "CONTINUE EXPLORING"
-        primary.right = panel.right-26
-        secondary = None
+        primary.right = panel.right - 26
+        secondary = (
+            pygame.Rect(panel.left + 26, panel.bottom - 94, button_width, 44)
+            if can_fight_boss else None
+        )
+        if can_fight_boss:
+            secondary_label = "FIGHT BOSS"
 
     # Both labels now carry a stage name, so neither can be trusted to fit
     # the width a fixed 20px title font used to. Step down until it sits
@@ -86,6 +98,8 @@ def open_stage_gate(screen, status, gate_name="Stage Exit", background=None,
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     return "stay"
+                if can_fight_boss and event.key == pygame.K_f:
+                    return "fight_boss"
                 if event.key in (
                     pygame.K_e, pygame.K_RETURN, pygame.K_KP_ENTER, pygame.K_SPACE
                 ):
@@ -94,7 +108,7 @@ def open_stage_gate(screen, status, gate_name="Stage Exit", background=None,
                 if primary.collidepoint(event.pos):
                     return "exit" if can_exit else "stay"
                 if secondary is not None and secondary.collidepoint(event.pos):
-                    return "stay"
+                    return "fight_boss" if can_fight_boss else "stay"
 
         screen.blit(backdrop, (0, 0))
         shade = pygame.Surface((width, height), pygame.SRCALPHA)
@@ -170,6 +184,15 @@ def open_stage_gate(screen, status, gate_name="Stage Exit", background=None,
             ]
             draw_text_block(screen,'\n'.join(lines),text_font,UI_COLORS['text'],
                             pygame.Rect(panel.x+52,list_y-12,panel.w-104,primary.top-list_y-8),center=True)
+        elif can_fight_boss:
+            lines = [
+                "All keys and required lessons are complete.",
+                "Choose FIGHT BOSS to summon the Kapre in the Corrupted Core.",
+                "The final assessment will unlock after the boss is defeated.",
+            ]
+            draw_text_block(screen, '\n'.join(lines), text_font, UI_COLORS['text'],
+                            pygame.Rect(panel.x + 52, list_y - 12, panel.w - 104,
+                                        primary.top - list_y - 8), center=True)
         elif status.unlocked:
             lines = [
                 f"All {status.required_keys} keys are accounted for."
@@ -230,11 +253,14 @@ def open_stage_gate(screen, status, gate_name="Stage Exit", background=None,
         )
         if secondary is not None:
             draw_button(
-                screen, secondary, "STAY HERE", button_font,
-                hovered=secondary.collidepoint(mouse), tier=TIER_TERTIARY,
+                screen, secondary, secondary_label if can_fight_boss else "STAY HERE",
+                primary_font if can_fight_boss else button_font,
+                hovered=secondary.collidepoint(mouse),
+                tier=TIER_PRIMARY if can_fight_boss else TIER_TERTIARY,
             )
         hint = fit_text(small,
             "E / ENTER = confirm    ESC = stay" if can_exit else
+            "F = fight boss    ESC = close" if can_fight_boss else
             "E / ENTER / ESC = close",
             UI_COLORS["text_dim"], (panel.w-128,20),
         )

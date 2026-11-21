@@ -78,11 +78,17 @@ class DeveloperExplorationTests(unittest.TestCase):
                 sent = True
                 return [pygame.event.Event(pygame.KEYDOWN, key=key) for key in (pygame.K_F4, pygame.K_e)]
             raise AssertionError("The F4 gate transition did not finish on the first gameplay frame")
+        def authorize(_screen):
+            developer_mode.enabled = True
+            return True
+
         with tempfile.TemporaryDirectory() as folder, patch.object(save_manager, "SAVE_DIR", folder), patch.object(
             developer_mode, "enabled", False
-        ), patch.object(game, "DEBUG_MODE", True), patch(
-            "pygame.event.get", side_effect=events
-        ), patch.object(game.StageLoadingScreen, "finish", lambda self: None):
+        ), patch.object(developer_mode, "request_toggle", side_effect=authorize), patch.object(
+            game, "DEBUG_MODE", True
+        ), patch("pygame.event.get", side_effect=events), patch.object(
+            game.StageLoadingScreen, "finish", lambda self: None
+        ):
             result = game.game_screen(self.screen, slot_num=1, save_state=state)
             self.assertEqual(result, "next_stage")
             self.assertTrue(developer_mode.enabled)

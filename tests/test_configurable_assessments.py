@@ -7,10 +7,39 @@ from src.data.final_assessments import ASSESSMENT_IDS, get_final_assessment
 from src.learning.challenge_manager import ChallengeManager
 from src.learning.sandbox import run_user_code
 from src.learning.validators.structure_validator import StructureValidator
+from src.data.developer_solutions import DEVELOPER_SOLUTIONS
 from test_learning_challenges import VALID_SOLUTIONS
 
 
 class ConfigurableAssessmentTests(unittest.TestCase):
+    def test_f7_reference_solution_exists_and_passes_every_island_rotation(self):
+        manager = ChallengeManager()
+        for cid in ASSESSMENT_IDS:
+            challenge = get_final_assessment(cid)
+            code = DEVELOPER_SOLUTIONS.get(cid)
+            with self.subTest(challenge=cid):
+                self.assertIsNotNone(code, f"Missing F7 solution for {cid}")
+                cases = [
+                    {
+                        "input_values": challenge["test_inputs"],
+                        "runtime_expected": challenge["runtime_expected"],
+                        "expected_output_last_line": challenge["expected_output_last_line"],
+                    },
+                    *challenge.get("hidden_tests", []),
+                ]
+                for case in cases:
+                    run = run_user_code(code, input_values=case["input_values"])
+                    self.assertTrue(run["success"], run.get("error"))
+                    evaluated = dict(
+                        challenge,
+                        runtime_expected=case["runtime_expected"],
+                        expected_output_last_line=case["expected_output_last_line"],
+                    )
+                    passed, feedback = manager.validate(
+                        evaluated, code, run["variables"], run["output"]
+                    )
+                    self.assertTrue(passed, feedback)
+
     def test_all_island_assessments_pass_sample_and_hidden_runtime_cases(self):
         specifications = {
             'stage1_supply_final': ('amount * 4 + 6', 46, 26, ('Stocked', 'Ready', 'Low'), 'Supplies'),

@@ -3,6 +3,7 @@
 import unittest
 
 from src.data.challenges import CHALLENGES
+from src.data.developer_solutions import DEVELOPER_SOLUTIONS
 from src.data.practice_templates import generate_practice_challenge
 from src.learning.challenge_manager import ChallengeManager
 from src.learning.sandbox import run_user_code
@@ -86,6 +87,13 @@ from test_stage2_dining import SOLUTIONS as LEGACY_LIST_SOLUTIONS
 VALID_SOLUTIONS.update(ISLAND_SOLUTIONS)
 VALID_SOLUTIONS.update(LEGACY_LIST_SOLUTIONS)
 VALID_SOLUTIONS.update(CITADEL_SOLUTIONS)
+VALID_SOLUTIONS.update({
+    challenge_id: DEVELOPER_SOLUTIONS[challenge_id]
+    for challenge_id in (
+        "dictionary_lesson_lookup_001",
+        "dictionary_lesson_count_001",
+    )
+})
 
 
 class LearningChallengeTests(unittest.TestCase):

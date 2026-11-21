@@ -805,7 +805,7 @@ class CodeEditor:
                 if event.key == pygame.K_F7 and developer_mode.enabled:
                     solution = DEVELOPER_SOLUTIONS.get(self.challenge.get("id"))
                     if solution:
-                        self.text_buffer.lines = solution.split("\\n")
+                        self.text_buffer.lines = solution.split("\n")
                         self.text_buffer.cursor_row = len(self.text_buffer.lines) - 1
                         self.text_buffer.cursor_col = len(self.text_buffer.lines[-1])
                         self.text_buffer.clear_selection()

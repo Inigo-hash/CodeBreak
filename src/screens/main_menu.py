@@ -356,7 +356,11 @@ def _draw_menu_icon(surf: pygame.Surface, kind: str, rect: pygame.Rect, hovered:
         pygame.draw.polygon(surf, BLUE_GLOW,
                             [(arrow_x, iy - 4), (arrow_x + 5, iy), (arrow_x, iy + 4)])
             
-    elif kind == "profile":\n        pygame.draw.circle(surf, (225, 205, 160), (ix, iy - 4), 6)\n        pygame.draw.ellipse(surf, (225, 205, 160), (ix - 11, iy + 3, 22, 13))\n\n    elif kind == "book":
+    elif kind == "profile":
+        pygame.draw.circle(surf, (225, 205, 160), (ix, iy - 4), 6)
+        pygame.draw.ellipse(surf, (225, 205, 160), (ix - 11, iy + 3, 22, 13))
+
+    elif kind == "book":
         # Open book — pages spread wider on hover, text lines fade in once mostly open
         spread = 6 + int(4 * anim)
         left_page = pygame.Rect(ix - spread - 10, iy - 10, spread + 10, 20)
@@ -651,6 +655,14 @@ def main_menu():
             how_to_play_screen(screen)
 
         elif index == 2:
+            from src.screens.certificates import certificate_screen
+            certificate_screen(screen, background=menu_backdrop, allow_download=True)
+
+        elif index == 3:
+            from src.screens.main_menu_profile import main_menu_profile
+            main_menu_profile(screen, background=menu_backdrop)
+
+        elif index == 4:
             pygame.quit()
             sys.exit()
 

@@ -127,7 +127,7 @@ for _id, _name, _portrait, _description in (
     ('white_lady', 'White Lady', 'white_lady_attack/south/frame_0.png',
      'A restless spirit guarding the Castle aisles.'),
     ('zombie_aktan', 'Zombie Aktan', 'zombie_aktan/walking/south/frame_0.png',
-     'The final Castle boss, waiting in the Throne Room. Requires all five Castle keys.'),
+     'The final Castle boss, waiting in the Throne Room. Requires all six Castle keys.'),
 ):
     ENEMIES[_id] = {'id': _id, 'name': _name, 'family': _name, 'threat': 'High',
                     'portrait': 'assets/images/frames/' + _portrait,

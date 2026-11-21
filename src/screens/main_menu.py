@@ -122,7 +122,7 @@ def compute_menu_layout(screen_w, screen_h, count, labels=()):
     caller that omits them keeps the plain screen-share width.
     """
     bw = menu_button_width(screen_w, labels)
-    bh = int(screen_h * 0.075)
+    bh = int(screen_h * 0.09)
     gap = int(screen_h * 0.02)
 
     min_bh = int(_button_font.get_height() * 1.8)

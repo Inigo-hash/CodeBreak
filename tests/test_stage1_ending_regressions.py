@@ -39,7 +39,8 @@ class Stage1EndingRegressions(unittest.TestCase):
         cls.screen = pygame.display.set_mode((1280, 720))
 
     def run_frames(self, state, *, developer=False, debug=True, events=None,
-                   check=None, doorway=True, expect_next=False, assessment_decision=False):
+                   check=None, doorway=True, expect_next=False, assessment_decision=False,
+                   fight_boss=False):
         frames = 0
         saved = None
         state = copy.deepcopy(state)
@@ -81,7 +82,8 @@ class Stage1EndingRegressions(unittest.TestCase):
         ), patch("pygame.display.flip", side_effect=present), patch.object(
             game, "open_boss_intro", return_value="fight"
         ) as intro, patch.object(game, "open_stage_gate", side_effect=lambda screen, status, **kwargs:
-            "exit" if expect_next and status.unlocked else "stay"), patch.object(
+            "fight_boss" if fight_boss else
+            ("exit" if expect_next and status.unlocked else "stay")), patch.object(
             game, "open_boss_result", return_value="continue"
         ) as result, patch.object(game, "open_final_challenge_warning", return_value="later") as warning, patch(
             "src.screens.final_assessment.assessment_dialog", return_value=assessment_decision
@@ -112,6 +114,28 @@ class Stage1EndingRegressions(unittest.TestCase):
                 self.assertEqual(saved["challenges_passed"], state["challenges_passed"])
                 self.assertEqual(saved["completed_stages"], [])
                 self.assertNotIn("developer_mode", saved)
+
+    def test_sealed_exit_fight_boss_action_spawns_kapre_without_doorway_reentry(self):
+        stage = get_stage("island")
+        state = save_manager.new_game_state()
+        state["keys"] = 9
+        state["challenges_passed"] = list(required_topic_ids(stage))
+
+        def events(frame, live):
+            return [pygame.event.Event(pygame.KEYDOWN, key=pygame.K_e)] if frame == 0 else []
+
+        def check(frame, live):
+            if frame >= 1:
+                boss = live["boss_enemy"]
+                self.assertIsNotNone(boss)
+                self.assertEqual(boss.enemy_id, "corrupted_core_kapre")
+                self.assertIn(boss, live["enemies"])
+
+        saved, intros, _, _ = self.run_frames(
+            state, events=events, check=check, fight_boss=True
+        )
+        self.assertEqual(intros, 0)
+        self.assertEqual(saved["active_boss"], "corrupted_core_kapre")
 
     def test_enabling_f4_after_locked_approach_rearms_doorway(self):
         def events(frame, live):
@@ -156,7 +180,7 @@ class Stage1EndingRegressions(unittest.TestCase):
                 self.assertIn(live["boss_id"], checkpoint["stage_progress"]["defeated_enemies"])
         saved, intros, results, warnings = self.run_frames(
             save_manager.new_game_state(), developer=True, check=defeat)
-        self.assertEqual((intros, results, warnings), (1, 1, 0))
+        self.assertEqual((intros, results, warnings), (1, 1, 1))
         boss = get_stage("island")["completion"]["required_boss"]
         self.assertIn(boss, saved["stage_progress"]["defeated_enemies"])
         saved['active_boss'] = boss  # An older/stale marker must not revive a victory.

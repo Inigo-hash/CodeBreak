@@ -90,7 +90,7 @@ def profile_screen(screen, background=None, name=None,
     layout = profile_layout(screen.get_size(), font_title.get_height(),
                             font_name.get_height(), font_bar.get_height())
     pr, back_r = layout['panel'], layout['back']
-    cert_r = layout['certificates']\n    cert_r = layout['certificates']
+    cert_r = layout['certificates']
     title_surface = fit_text(font_title, 'EXPLORER PROFILE', UI_COLORS['gold'], layout['title'].size)
     name_surface = fit_text(font_name, name.upper(), NAME_GOLD, layout['name'].size)
     # The snapshot never changes while this modal is open.

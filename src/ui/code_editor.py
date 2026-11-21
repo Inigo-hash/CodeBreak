@@ -46,6 +46,8 @@ from src.ui.editor_theme import (
 )
 from src.learning.sandbox import run_user_code
 from src.learning.challenge_manager import ChallengeManager
+from src.systems.developer_mode import developer_mode
+from src.data.developer_solutions import DEVELOPER_SOLUTIONS
 
 class CodeEditor:
     """
@@ -796,6 +798,32 @@ class CodeEditor:
             # ==========================================================
 
             if event.type == pygame.KEYDOWN:
+
+                # F7 loads the authored reference solution for the current
+                # challenge. It is available only after password-gated
+                # developer mode has been enabled from gameplay with F4.
+                if event.key == pygame.K_F7 and developer_mode.enabled:
+                    solution = DEVELOPER_SOLUTIONS.get(self.challenge.get("id"))
+                    if solution:
+                        self.text_buffer.lines = solution.split("\\n")
+                        self.text_buffer.cursor_row = len(self.text_buffer.lines) - 1
+                        self.text_buffer.cursor_col = len(self.text_buffer.lines[-1])
+                        self.text_buffer.clear_selection()
+                        self.text_buffer.undo_stack.clear()
+                        self.text_buffer.redo_stack.clear()
+                        self.renderer.ensure_cursor_visible()
+                        self.output_panel.clear()
+                        self.output_panel.add(
+                            "Developer solution loaded. Press RUN, then SUBMIT to complete the challenge.",
+                            SUCCESS_COLOR,
+                        )
+                    else:
+                        self.output_panel.clear()
+                        self.output_panel.add(
+                            "No developer reference solution is available for this challenge.",
+                            ERROR_COLOR,
+                        )
+                    continue
 
                 # ----------------------------------
                 # Escape

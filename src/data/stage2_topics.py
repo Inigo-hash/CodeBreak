@@ -248,7 +248,7 @@ ERROR_HANDLING_TOPIC = {
     "id": "error_handling_lesson",
     "title": "Error Handling",
     "difficulty": "Beginner",
-    "requirements": ["tuples_lesson"],
+    "requirements": ["dictionary_lesson"],
     "challenge_id": ERROR_HANDLING_CHALLENGE_IDS[0],
     "challenge_ids": ERROR_HANDLING_CHALLENGE_IDS,
     "lesson": """ERROR HANDLING — BEGINNER
@@ -459,7 +459,7 @@ DICTIONARY_TOPIC = {
     "id": "dictionary_lesson",
     "title": "Dictionaries",
     "difficulty": "Intermediate",
-    "requirements": ["error_handling_lesson"],
+    "requirements": ["tuples_lesson"],
     "challenge_id": DICTIONARY_CHALLENGE_IDS[0],
     "challenge_ids": DICTIONARY_CHALLENGE_IDS,
     "lesson": """DICTIONARIES — INTERMEDIATE

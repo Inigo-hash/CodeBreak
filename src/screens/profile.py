@@ -63,12 +63,14 @@ def profile_layout(size, title_height=40, name_height=38, stat_height=16):
     energy = pygame.Rect(left, health.bottom+12, col_width, meter_height)
     back = pygame.Rect(0, 0, 150, 42)
     back.midbottom = (panel.centerx, panel.bottom-pad)
+    certs = pygame.Rect(0, 0, 190, 42)
+    certs.midbottom = (panel.centerx, back.top-10)
     return dict(panel=panel, title=title, portrait=portrait, name=name, lives=lives,
-                health=health, energy=energy, back=back)
+                health=health, energy=energy, back=back, certificates=certs)
 
 
 def profile_screen(screen, background=None, name=None,
-                    hp=100, max_hp=100, pp=100, max_pp=100, hearts=5, character_id='man'):
+                    hp=100, max_hp=100, pp=100, max_pp=100, hearts=5, character_id='man', certificates=()):
     SCREEN_W, SCREEN_H = screen.get_size()
     if name is None:
         name = character_title(character_id)
@@ -87,7 +89,8 @@ def profile_screen(screen, background=None, name=None,
 
     layout = profile_layout(screen.get_size(), font_title.get_height(),
                             font_name.get_height(), font_bar.get_height())
-    pr, back_r = layout['panel'], layout['back']\n    cert_r = layout['certificates']
+    pr, back_r = layout['panel'], layout['back']
+    cert_r = layout['certificates']\n    cert_r = layout['certificates']
     title_surface = fit_text(font_title, 'EXPLORER PROFILE', UI_COLORS['gold'], layout['title'].size)
     name_surface = fit_text(font_name, name.upper(), NAME_GOLD, layout['name'].size)
     # The snapshot never changes while this modal is open.
@@ -112,6 +115,9 @@ def profile_screen(screen, background=None, name=None,
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if back_r.collidepoint(event.pos):
                     running = False
+                elif cert_r.collidepoint(event.pos):
+                    from src.screens.certificates import certificate_screen
+                    certificate_screen(screen, background=screen.copy(), allow_download=False, certificates=certificates)
 
         # ---- Blurred backdrop ----
         screen.blit(blurred, (0, 0))
@@ -138,6 +144,8 @@ def profile_screen(screen, background=None, name=None,
 
         # ---- Back button ----
         mouse_pos = pygame.mouse.get_pos()
+        draw_button(screen, cert_r, "CERTIFICATES", font_button,
+                    hovered=cert_r.collidepoint(mouse_pos), enabled=bool(certificates))
         draw_button(screen, back_r, "BACK", font_button,
                     hovered=back_r.collidepoint(mouse_pos))
 

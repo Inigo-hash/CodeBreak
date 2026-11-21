@@ -175,7 +175,7 @@ class MasteryTests(unittest.TestCase):
 
     def test_unfinished_castle_never_unlocks(self):
         state = self.mastered()
-        self.assertEqual(self.stage['completion']['required_keys'], 5)
+        self.assertEqual(self.stage['completion']['required_keys'], 6)
         self.assertFalse(evaluate_stage_gate(self.stage, 5, state['challenges_passed']).unlocked)
         self.assertEqual(get_stage('island')['completion']['required_keys'], 9)
 
@@ -232,7 +232,7 @@ class DiningMapTests(unittest.TestCase):
     def test_player_sized_reachability_and_interaction_line_of_sight(self):
         bodies = [pygame.Rect(x, y, 16, 16) for x, y in self.reachable()]
         # The current Dining map deliberately has no required lessons;
-        # the five mapped groups live in the other Castle rooms.
+        # the other mapped topic groups live in the other Castle rooms.
         self.assertEqual(len(self.objects), 0)
         self.assertGreater(len(bodies), 0)
         for item in self.objects:

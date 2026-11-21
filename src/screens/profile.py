@@ -145,7 +145,7 @@ def profile_screen(screen, background=None, name=None,
         # ---- Back button ----
         mouse_pos = pygame.mouse.get_pos()
         draw_button(screen, cert_r, "CERTIFICATES", font_button,
-                    hovered=cert_r.collidepoint(mouse_pos), enabled=bool(certificates))
+                    hovered=cert_r.collidepoint(mouse_pos))
         draw_button(screen, back_r, "BACK", font_button,
                     hovered=back_r.collidepoint(mouse_pos))
 

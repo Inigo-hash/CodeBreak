@@ -27,6 +27,7 @@ def certificate_screen(screen, slot_num=None, *, allow_download=True, background
     font_title = title_font(28)
     font = body_font(17)
     small = body_font(13)
+    card_rects = []
     running = True
     while running:
         clock.tick(60)
@@ -66,7 +67,7 @@ def certificate_screen(screen, slot_num=None, *, allow_download=True, background
         screen.blit(heading, heading.get_rect(center=(panel.centerx, panel.top + 48)))
         subtitle = small.render("Official achievements issued by CodeBreak", True, UI_COLORS["text_dim"])
         screen.blit(subtitle, subtitle.get_rect(center=(panel.centerx, panel.top + 80)))
-        for index, rect in enumerate(slot_buttons) if certificates is None else []:
+        for index, rect in (enumerate(slot_buttons) if certificates is None else []):
             exists = save_manager.slot_exists(index + 1)
             active = selected_slot == index + 1
             draw_button(screen, rect, f"SAVE SLOT {index + 1}", font, hovered=active, enabled=exists)

@@ -422,7 +422,7 @@ STAGES = {
 
         # The exit is room-local; identical coordinates in other rooms are not gates.
         "completion": {
-            "required_keys": 5,
+            "required_keys": 6,
             "required_boss": "zombie_aktan",
             "exit_name": "Castle Exit",
             "topic_key_rewards": {challenge_id: 0 for challenge_id in CASTLE_MAPPED_CHALLENGES},

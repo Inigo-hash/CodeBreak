@@ -501,6 +501,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             "mastery_reward_claims": gameplay_state['mastery_reward_claims'],
             "final_assessments": assessment_sessions,
             "completed_stages": gameplay_state["completed_stages"],
+            "certificates": list((save_state or {}).get("certificates", [])),
             "map_layout_version": MAP_LAYOUT_VERSION,
             "map_position": [player_x, player_y],
             "stored_topics": player_inventory.get_stored_topic_ids(),
@@ -1933,6 +1934,13 @@ def game_screen(screen, slot_num=None, save_state=None):
                         stage_id = stage.get("id", save_stage.lower())
                         if gate_status.unlocked and stage_id not in gameplay_state["completed_stages"]:
                             gameplay_state["completed_stages"].append(stage_id)
+                        if gate_status.unlocked:
+                            from src.systems.certificates import issue_stage_certificate
+                            award_state = build_save_state()
+                            award_state["completed_stages"] = list(gameplay_state["completed_stages"])
+                            issue_stage_certificate(award_state, stage_id)
+                            if save_state is not None:
+                                save_state["certificates"] = award_state.get("certificates", [])
                         pygame.mixer.music.stop()
                         if hands_over:
                             # Saved before returning, so the slot already

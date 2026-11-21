@@ -91,7 +91,7 @@ def game_knowledge():
             'attack': 'Select the sword before pressing E to attack. Selecting a torch or empty slot puts the sword away.',
             'search': 'Hold E beside a searchable object. During combat, fighting takes priority; clear its guards first.',
             'learning': 'Read the lesson, type code, use Run to test, and Submit to validate. Failed submissions unlock progressive hints.',
-            'castle_lessons': 'Castle has five mapped topics: Iterative Structures in Lobby, Lists in Library, Functions and Tuples in Dungeon, and Error Handling in Throne. Complete all 11 challenges for five keys, then defeat Aktan and pass the final to enter Citadel. Dining is optional combat.',
+            'castle_lessons': 'Castle has six mapped topics: Iterative Structures in Lobby, Lists in Library, Functions and Tuples in Dungeon, and Error Handling plus Dictionaries in Throne. Complete all 13 challenges to earn six mastery keys (one per topic), then defeat Aktan and pass the final to enter Citadel. Dining is optional combat.',
             'navigation': 'Press I for the stage manual, J for enemies, K for items, O for objectives, M for the local map, and G for the atlas.',
             'settings': 'Press Escape, then Settings. F10 mutes or unmutes music.',
             'saving': 'Use Escape then Save Game. Three password-protected save slots are available; passwords cannot be recovered.',

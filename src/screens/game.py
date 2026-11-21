@@ -2125,7 +2125,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                             pp=int(player_combat.energy),
                             max_pp=player_combat.max_energy,
                             hearts=gameplay_state["hearts"],
-                            character_id=gameplay_state['character_id'],
+                            character_id=gameplay_state['character_id'],\n                            certificates=(save_state or {}).get('certificates', []),
                         )
 
             if event.type == pygame.MOUSEBUTTONUP:

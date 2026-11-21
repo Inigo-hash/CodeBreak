@@ -71,7 +71,7 @@ define functions and the main file imports and calls them.
 """
 MODULE_CHALLENGES = {
  MODULE_IDS[0]: _challenge(MODULE_IDS[0],"Use a Module Function","circle_area","radius","Import math and return math.pi * math.pow(radius, 2).","def circle_area(radius):\n    # Import math and calculate the circle area.\n    pass",["Write import math inside the function.","Use math.pi and math.pow().","Return the calculated area."],[([1],3.141592653589793),([2],12.566370614359172),([0],0.0)]),
- MODULE_IDS[1]: _challenge(MODULE_IDS[1],"Import a Helper Function","double_with_math","value","Use 'from math import sqrt' and return the square root of value squared plus 9.","def double_with_math(value):\n    # Import sqrt from math and return the result.\n    pass",["Use from math import sqrt.","Calculate value * value + 9.","Return sqrt of that expression."],[([0],3.0),([4],5.0),([12],13.0)])
+ MODULE_IDS[1]: _challenge(MODULE_IDS[1],"Import a Specific Function","double_with_math","value","Import sqrt directly from the math module, then return the square root of (value squared plus 9).","def double_with_math(value):\n    # Import sqrt directly from math, then return sqrt(value * value + 9).\n    pass",["Write: from math import sqrt.","Calculate value * value + 9 inside the function.","Return sqrt(value * value + 9)."],[([0],3.0),([4],5.0),([12],13.0)])
 }
 
 FILE_LESSON = """

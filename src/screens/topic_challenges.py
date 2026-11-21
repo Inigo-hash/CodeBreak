@@ -1,4 +1,4 @@
-"""Choose required challenges independently; completed ones become practice."""
+""""Choose required challenges independently; completed ones become practice."""
 import pygame
 from src.data.challenges import CHALLENGES
 from src.data.topics import topic_challenge_ids
@@ -10,10 +10,20 @@ def open_topic_challenges(screen, topic, passed):
     background = screen.copy()
     clock = pygame.time.Clock()
     w, h = screen.get_size()
-    panel = pygame.Rect(0, 0, min(680, w - 40), 300)
+    challenge_ids = topic_challenge_ids(topic)
+
+    # Size the modal for its contents so longer topics do not spill into the
+    # mastery note and keyboard hints at the bottom of the panel.
+    panel_height = min(h - 40, max(300, 152 + len(challenge_ids) * 62))
+    panel = pygame.Rect(0, 0, min(680, w - 40), panel_height)
     panel.center = (w // 2, h // 2)
-    rows = [(cid, pygame.Rect(panel.x + 24, panel.y + 84 + i * 66, panel.w - 48, 52))
-            for i, cid in enumerate(topic_challenge_ids(topic))]
+
+    row_gap = 10
+    available_rows_height = max(1, panel.height - 162 - row_gap * max(0, len(challenge_ids) - 1))
+    row_height = max(24, min(52, available_rows_height // max(1, len(challenge_ids))))
+    rows = [(cid, pygame.Rect(panel.x + 24, panel.y + 84 + i * (row_height + row_gap),
+                              panel.w - 48, row_height))
+            for i, cid in enumerate(challenge_ids)]
     focus = next((i for i, (cid, _) in enumerate(rows) if cid not in passed), 0)
     font = body_font(20)
     while True:

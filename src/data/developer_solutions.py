@@ -32,6 +32,8 @@ DEVELOPER_SOLUTIONS = {
     "tuples_lesson_distance_001": "def get_x_coordinate(point):\n    return point[0]",
     "error_handling_lesson_safe_int_001": "def safe_number(text):\n    try:\n        return int(text)\n    except ValueError:\n        return None",
     "error_handling_lesson_safe_divide_001": "def safe_divide(first, second):\n    try:\n        return first / second\n    except ZeroDivisionError:\n        return None",
+    "dictionary_lesson_lookup_001": "def lookup_archive_item(stock, item):\n    return stock.get(item, 0)",
+    "dictionary_lesson_count_001": "def count_archive_items(items):\n    counts = {}\n    for item in items:\n        counts[item] = counts.get(item, 0) + 1\n    return counts",
     # Castle curriculum
     "castle_tuples_inspect_001": "def inspect_record(record):\n    if not record:\n        return (None, None, 0)\n    return (record[0], record[-1], len(record))",
     "castle_tuples_replace_001": "def replace_quantity(record, quantity):\n    return (record[0], quantity)",

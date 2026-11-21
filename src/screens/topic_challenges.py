@@ -1,4 +1,4 @@
-""""Choose required challenges independently; completed ones become practice."""
+"""Choose required challenges independently; completed ones become practice."""
 import pygame
 from src.data.challenges import CHALLENGES
 from src.data.topics import topic_challenge_ids

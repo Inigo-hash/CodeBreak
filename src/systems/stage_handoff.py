@@ -106,6 +106,10 @@ def advance_save_state(save_state, from_stage, to_stage, *, mark_complete=True):
     finished_id = (from_stage or {}).get("id")
     if mark_complete and finished_id and finished_id not in cleared:
         cleared.append(finished_id)
+    if mark_complete and finished_id:
+        state["completed_stages"] = cleared
+        from src.systems.certificates import issue_stage_certificate
+        issue_stage_certificate(state, finished_id)
 
     state.update({
         # Saves have always stored the display name ("Island"), and

@@ -160,7 +160,7 @@ def _game_reference(text, context):
     if mentions('save', 'saving', 'load game', 'password'):
         return 'Pause with Escape and choose Save Game. Continue using the same slot and password. CodeBreak has three password-protected save slots. Keep your password: it cannot be recovered. Save before ending your demonstration.'
     if stage and stage['id'] == 'citadel' and mentions('unlock', 'enter', 'access', 'start stage') and not mentions('keys', 'boss', 'arena', 'seal'):
-        return 'Complete Castle by earning its five mastery keys, defeating Zombie Aktan and passing its final assessment. Use the Throne exit to enter Citadel, or select Citadel on the atlas after Castle completion has been saved.'
+        return 'Complete Castle by earning its six mastery keys, defeating Zombie Aktan and passing its final assessment. Use the Throne exit to enter Citadel, or select Citadel on the atlas after Castle completion has been saved.'
     if mentions('keys', 'key reward', 'mastery', 'unlock', 'progress', 'gate', 'boss', 'finish stage', 'final assessment'):
         stages = [stage] if stage else list(STAGES.values())
         facts = []

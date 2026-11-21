@@ -82,11 +82,14 @@ VALID_SOLUTIONS = {
 from castle_solutions import CASTLE_SOLUTIONS
 VALID_SOLUTIONS.update(CASTLE_SOLUTIONS)
 from island_solutions import ISLAND_SOLUTIONS
-from citadel_solutions import CITADEL_SOLUTIONS
 from test_stage2_dining import SOLUTIONS as LEGACY_LIST_SOLUTIONS
 VALID_SOLUTIONS.update(ISLAND_SOLUTIONS)
 VALID_SOLUTIONS.update(LEGACY_LIST_SOLUTIONS)
-VALID_SOLUTIONS.update(CITADEL_SOLUTIONS)
+from src.data.stage3_topics import CITADEL_CHALLENGE_IDS
+VALID_SOLUTIONS.update({
+    challenge_id: DEVELOPER_SOLUTIONS[challenge_id]
+    for challenge_id in CITADEL_CHALLENGE_IDS
+})
 VALID_SOLUTIONS.update({
     challenge_id: DEVELOPER_SOLUTIONS[challenge_id]
     for challenge_id in (

@@ -232,7 +232,7 @@ def new_game_state() -> dict:
         "topics_completed": [],
         "bonus_time": 0,
         "challenges_passed": [],
-        "completed_stages": [],
+        "completed_stages": [],\n        "certificates": [],
         "map_position": None,
         "stored_topics": [],
         "weapon_obtained": True,

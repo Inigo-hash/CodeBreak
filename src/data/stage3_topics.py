@@ -6,9 +6,9 @@ def _challenge(cid, title, name, params, objective, starter, hints, cases):
             "starter_code": starter, "hints": hints,
             "function_cases": [{"args": a, "expected": e} for a, e in cases]}
 
-def _topic(tid, title, lesson, challenges):
+def _topic(tid, title, lesson, challenges, requirements=()):
     ids = tuple(challenges)
-    return {"id": tid, "title": title, "difficulty": "Advanced", "requirements": [],
+    return {"id": tid, "title": title, "difficulty": "Advanced", "requirements": list(requirements),
             "challenge_id": ids[0], "challenge_ids": ids,
             "lesson": lesson.strip() + "\n\nMASTERY\nComplete every problem in this topic to earn one Stage 3 mastery key. Practice attempts do not award keys."}
 
@@ -18,7 +18,8 @@ MODULE_IDS = ("modules_imports_lesson_math_001", "modules_imports_lesson_helpers
 FILE_IDS = ("file_handling_lesson_text_001", "file_handling_lesson_json_001")
 ERROR_IDS = ("advance_error_handling_lesson_multiple_001",)
 DATA_IDS = tuple(f"advance_data_structure_lesson_{part}_001" for part in
-                 ("nested", "list_comp", "dict_comp", "validation"))
+                 ("nested", "list_comp", "dict_comp"))
+VALIDATION_ID = "advance_data_structure_lesson_validation_001"
 
 OOP_LESSON = """
 CLASSES & OBJECTS: A class is a blueprint; an object is an instance created from it.
@@ -119,25 +120,24 @@ LIST COMPREHENSIONS: [expression for value in values if condition]
 DICTIONARY COMPREHENSIONS: {key: value for item in items if condition}
     positive = {k: v for k, v in stock.items() if v > 0}
 
-CODE VALIDATION: Test cases check expected outputs. Use empty inputs, boundary
-values, and invalid data to verify behavior.
-    assert add(2, 3) == 5
 """
 DATA_CHALLENGES = {
  DATA_IDS[0]: _challenge(DATA_IDS[0],"Read a Nested Stage Record","read_stage_record","stages, stage_name","Find the first stage dictionary with a matching name and return its topics list, or [] if absent.","def read_stage_record(stages, stage_name):\n    # Search the nested list of dictionaries.\n    pass",["Loop over each stage.","Compare stage.get('name') with stage_name.","Return stage.get('topics', []) or [] after the loop."],[([[], "Easy"],[]),([[{"name":"Easy","topics":["variables","if"]}],"Easy"],["variables","if"]),([[{"name":"Hard","topics":["oop"]}],"Easy"],[])]),
  DATA_IDS[1]: _challenge(DATA_IDS[1],"Filter with a List Comprehension","positive_squares","numbers","Return the squares of positive numbers using a list comprehension. Preserve order and duplicates.","def positive_squares(numbers):\n    # Use a list comprehension.\n    pass",["Use number * number as the expression.","Loop with for number in numbers.","Filter with if number > 0."],[([[]],[]),([[0,-2]],[]),([[2,-1,3,2]],[4,9,4])]),
  DATA_IDS[2]: _challenge(DATA_IDS[2],"Build a Dictionary Comprehension","positive_stock","stock","Return a new dictionary containing only pairs with quantity greater than zero. Do not change stock.","def positive_stock(stock):\n    # Use a dictionary comprehension.\n    pass",["Use {key: value for key, value in stock.items() if condition}.","Keep the original key and quantity.","Filter with quantity > 0."],[([{}],{}),([{"key":2,"potion":0,"map":-1}],{"key":2}),([{"a":1,"b":3}],{"a":1,"b":3})]),
- DATA_IDS[3]: _challenge(DATA_IDS[3],"Validate a Calculation","validate_total","values, expected","Return True only when sum(values) equals expected; otherwise return False.","def validate_total(values, expected):\n    # Compare the calculated total with expected.\n    pass",["Calculate sum(values).","Compare it with expected using ==.","Return the comparison result."],[([[2,3],5],True),([[2,3],6],False),([[],0],True)])
+ VALIDATION_ID: _challenge(VALIDATION_ID,"Validate a Calculation","validate_total","values, expected","Return True only when sum(values) equals expected; otherwise return False.","def validate_total(values, expected):\n    # Compare the calculated total with expected.\n    pass",["Calculate sum(values).","Compare it with expected using ==.","Return the comparison result."],[([[2,3],5],True),([[2,3],6],False),([[],0],True)])
 }
 
 CITADEL_TOPICS = {
  "object_oriented_programming_lesson": _topic("object_oriented_programming_lesson","Object-Oriented Programming (OOP)",OOP_LESSON,OOP_CHALLENGES),
- "modules_imports_lesson": _topic("modules_imports_lesson","Modules & Imports",MODULE_LESSON,MODULE_CHALLENGES),
- "file_handling_lesson": _topic("file_handling_lesson","File Handling",FILE_LESSON,FILE_CHALLENGES),
- "advance_error_handling_lesson": _topic("advance_error_handling_lesson","Advanced Error Handling",ERROR_LESSON,ERROR_CHALLENGES),
- "advance_data_structure_lesson": _topic("advance_data_structure_lesson","Advanced Data Structures & Code Validation",DATA_LESSON,DATA_CHALLENGES),
+ "modules_imports_lesson": _topic("modules_imports_lesson","Modules & Imports",MODULE_LESSON,MODULE_CHALLENGES, ("object_oriented_programming_lesson",)),
+ "file_handling_lesson": _topic("file_handling_lesson","File Handling",FILE_LESSON,FILE_CHALLENGES, ("modules_imports_lesson",)),
+ "advance_error_handling_lesson": _topic("advance_error_handling_lesson","Advanced Error Handling",ERROR_LESSON,ERROR_CHALLENGES, ("file_handling_lesson",)),
+ "advance_data_structure_lesson": _topic("advance_data_structure_lesson","Advanced Data Structures",DATA_LESSON,
+     {cid: DATA_CHALLENGES[cid] for cid in DATA_IDS}, ("advance_error_handling_lesson",)),
 }
-CITADEL_CHALLENGES = {**OOP_CHALLENGES, **MODULE_CHALLENGES, **FILE_CHALLENGES, **ERROR_CHALLENGES, **DATA_CHALLENGES}
+CITADEL_CHALLENGES = {**OOP_CHALLENGES, **MODULE_CHALLENGES, **FILE_CHALLENGES,
+                      **ERROR_CHALLENGES, **{cid: DATA_CHALLENGES[cid] for cid in DATA_IDS}}
 CITADEL_TOPIC_ORDER = tuple(CITADEL_TOPICS)
 CITADEL_CHALLENGE_IDS = tuple(CITADEL_CHALLENGES)
 CITADEL_BUNDLES = {tid + "_key": {"topics":[tid], "challenges":topic["challenge_ids"], "keys":1}

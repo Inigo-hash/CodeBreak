@@ -18,12 +18,12 @@ from src.ui.theme import (
     UI_COLORS, draw_button, draw_panel, title_font, ui_font,
 )
 
-MM_ICONS = ["play", "book", "quit"]
-MM_LABELS = ["START GAME", "HOW TO PLAY", "QUIT"]
-MM_SEEDS = [11, 22, 44]
+MM_ICONS = ["play", "book", "chest", "profile", "quit"]
+MM_LABELS = ["START GAME", "HOW TO PLAY", "CERTIFICATES", "PLAYER PROFILE", "QUIT"]
+MM_SEEDS = [11, 22, 33, 44, 55]
 # Start is the hero action, Quit should recede. Four identically weighted
 # rows give the eye nothing to lock onto.
-MM_TIERS = [TIER_PRIMARY, TIER_SECONDARY, TIER_TERTIARY]
+MM_TIERS = [TIER_PRIMARY, TIER_SECONDARY, TIER_SECONDARY, TIER_SECONDARY, TIER_TERTIARY]
 
 
 def render_main_menu_buttons(surface, rects, t=0.0):
@@ -258,7 +258,7 @@ def _stone_texture(surf: pygame.Surface, rect: pygame.Rect, seed: int) -> None:
     lo = tuple(max(0, c - 25) for c in STONE_DARK)
     pygame.draw.line(surf, lo, (rect.left, rect.bottom - 1), rect.bottomright, 1)
     
-_icon_anim = {"play": 0.0, "chest": 0.0, "gear": 0.0, "quit": 0.0, "book": 0.0}
+_icon_anim = {"play": 0.0, "chest": 0.0, "gear": 0.0, "quit": 0.0, "book": 0.0, "profile": 0.0}
 
 
 def _update_icon_anims(hover_map: dict, dt: float, speed: float = 8.0) -> None:
@@ -356,7 +356,7 @@ def _draw_menu_icon(surf: pygame.Surface, kind: str, rect: pygame.Rect, hovered:
         pygame.draw.polygon(surf, BLUE_GLOW,
                             [(arrow_x, iy - 4), (arrow_x + 5, iy), (arrow_x, iy + 4)])
             
-    elif kind == "book":
+    elif kind == "profile":\n        pygame.draw.circle(surf, (225, 205, 160), (ix, iy - 4), 6)\n        pygame.draw.ellipse(surf, (225, 205, 160), (ix - 11, iy + 3, 22, 13))\n\n    elif kind == "book":
         # Open book — pages spread wider on hover, text lines fade in once mostly open
         spread = 6 + int(4 * anim)
         left_page = pygame.Rect(ix - spread - 10, iy - 10, spread + 10, 20)

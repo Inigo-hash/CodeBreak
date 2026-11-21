@@ -390,13 +390,13 @@ STAGES = {
                 "Past the Corrupted Core's gate the island's corruption "
                 "gives way to stone. The castle has five connected rooms. "
                 "Study Iterative Structures in Lobby, Lists in Library, "
-                "Functions and Tuples in Dungeon, then Error Handling in Throne. "
-                "Master all five topic groups (eleven challenges) for five keys, "
+                "Functions and Tuples in Dungeon, then Error Handling and Dictionaries in Throne. "
+                "Master all six topic lessons for six keys, "
                 "defeat Aktan, and pass the final assessment to enter Citadel.",
 
             "mechanics": [
                 "Follow the mapped lesson order. Pass every challenge in a topic "
-                "to earn its one mastery key once; practice grants no keys. Dining remains an optional combat room.",
+                "to earn its one mastery key once; practice grants no keys. All six topic lessons, including Dictionaries, are required. Dining remains an optional combat room.",
                 "Mandurug Duwende, Kapre and White Lady patrol Castle rooms. Zombie Aktan is the final Throne Room boss. "
                 "Clearing camps grants bonus time, not Castle keys. Bonus time extends your next final assessment attempt.",
                 "Everything you learned on the island travels with you. "
@@ -422,7 +422,7 @@ STAGES = {
 
         # The exit is room-local; identical coordinates in other rooms are not gates.
         "completion": {
-            "required_keys": 5,
+            "required_keys": 6,
             "required_boss": "zombie_aktan",
             "exit_name": "Castle Exit",
             "topic_key_rewards": {challenge_id: 0 for challenge_id in CASTLE_MAPPED_CHALLENGES},

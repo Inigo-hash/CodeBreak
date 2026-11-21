@@ -1904,6 +1904,31 @@ def game_screen(screen, slot_num=None, save_state=None):
                         ),
                         developer_access=developer_mode.enabled,
                     )
+                    if gate_decision == "fight_boss":
+                        # The sealed-exit modal is also the explicit boss
+                        # launch point once all nine lesson/key prerequisites
+                        # are satisfied. Do not depend on re-crossing the
+                        # narrow arena doorway trigger from this position.
+                        if boss_id and not boss_defeated and boss_enemy is None:
+                            boss_entry_position = player_rect.topleft
+                            start_boss_music()
+                            boss_enemy = create_boss()
+                            if boss_enemy is not None:
+                                enemies.append(boss_enemy)
+                                stage_progress.discover_enemy(boss_enemy.enemy_id)
+                                stage_progress.sync_objectives(
+                                    stage, save_challenges_passed
+                                )
+                                boss_entrance_trigger.armed = False
+                                previous_boss_zone = boss_zone_at(
+                                    zone_pixel_rects, player_rect.center
+                                )
+                                if slot_num is not None:
+                                    save_manager.save_slot(
+                                        slot_num, build_save_state()
+                                    )
+                        attack_key_ready = False
+                        continue
                     if gate_decision == "exit":
                         stage_id = stage.get("id", save_stage.lower())
                         if gate_status.unlocked and stage_id not in gameplay_state["completed_stages"]:
@@ -2586,6 +2611,9 @@ def game_screen(screen, slot_num=None, save_state=None):
             if final_challenge_id and final_challenge_id not in save_challenges_passed:
 
                 final_challenge_revealed = True
+                open_final_challenge_warning(
+                    screen, background=screen.copy()
+                )
                 run_final_assessment()
 
         if player_combat.hp == 0 and death_animation_complete:

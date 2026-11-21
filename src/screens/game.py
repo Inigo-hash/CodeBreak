@@ -660,6 +660,23 @@ def game_screen(screen, slot_num=None, save_state=None):
             if final_challenge_id and final_challenge_id not in save_challenges_passed:
                 save_challenges_passed.append(final_challenge_id)
             stage_progress.sync_objectives(stage, save_challenges_passed)
+            # The assessment is only offered after topics, keys, and boss are
+            # complete, so passing it completes the stage and awards its medal.
+            stage_id = stage.get("id", save_stage.lower())
+            if stage_id not in gameplay_state["completed_stages"]:
+                gameplay_state["completed_stages"].append(stage_id)
+            award_state = build_save_state()
+            award_state["completed_stages"] = list(gameplay_state["completed_stages"])
+            from src.systems.certificates import issue_stage_certificate
+            certificate = issue_stage_certificate(award_state, stage_id)
+            if certificate:
+                if save_state is not None:
+                    save_state["certificates"] = award_state.get("certificates", [])
+                if slot_num is not None:
+                    save_manager.save_slot(slot_num, award_state)
+                from src.screens.certificates import show_certificate_award
+                show_certificate_award(screen, certificate, stage_name)
+
 
         def consume_bonus(seconds):
             gameplay_state["bonus_time"] = max(0, gameplay_state["bonus_time"] - seconds)

@@ -390,7 +390,7 @@ STAGES = {
                 "Past the Corrupted Core's gate the island's corruption "
                 "gives way to stone. The castle has five connected rooms. "
                 "Study Iterative Structures in Lobby, Lists in Library, "
-                "Functions and Tuples in Dungeon, Error Handling in Throne, and Dictionaries in Dining. "
+                "Functions and Tuples in Dungeon, Dictionaries in Dining, and Error Handling in Throne. "
                 "Master all six topic lessons for six keys, "
                 "defeat Aktan, and pass the final assessment to enter Citadel.",
 

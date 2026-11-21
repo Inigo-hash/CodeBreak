@@ -30,6 +30,7 @@ import sys
 import time
 import contextlib
 import importlib
+import builtins
 from copy import deepcopy
 
 
@@ -120,6 +121,8 @@ def _safe_import(name, globals=None, locals=None, fromlist=(), level=0):
 
 SAFE_BUILTINS = {
     "__import__": _safe_import,
+    "__build_class__": builtins.__build_class__,
+    "property": property,
     "print": print,
     "range": range,
     "len": len,

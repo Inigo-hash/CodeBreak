@@ -445,3 +445,106 @@ LISTS_STAGE2_CHALLENGES = {
         "preserve_args": True
     },
 }
+
+
+# Dictionaries are the sixth mapped Stage 2 lesson. The singular topic id is
+# the canonical id used by new Tiled objects; the plural legacy spelling is
+# also registered at the TOPICS layer for existing maps.
+DICTIONARY_CHALLENGE_IDS = (
+    "dictionary_lesson_lookup_001",
+    "dictionary_lesson_count_001",
+)
+
+DICTIONARY_TOPIC = {
+    "id": "dictionary_lesson",
+    "title": "Dictionaries",
+    "difficulty": "Intermediate",
+    "requirements": ["error_handling_lesson"],
+    "challenge_id": DICTIONARY_CHALLENGE_IDS[0],
+    "challenge_ids": DICTIONARY_CHALLENGE_IDS,
+    "lesson": """DICTIONARIES — INTERMEDIATE
+
+A dictionary stores key-value pairs. Each key identifies one value. Keys are unique.
+
+1. CREATE A DICTIONARY
+    stock = {"apple": 3, "pear": 2}
+    empty_stock = {}
+
+2. READ A VALUE
+    stock = {"apple": 3, "pear": 2}
+    print(stock["apple"])  # 3
+Using [] with a missing key raises KeyError.
+
+3. USE get() FOR A SAFE LOOKUP
+    stock = {"apple": 3}
+    print(stock.get("pear", 0))  # 0
+get(key, default) returns the default only when the key is missing.
+
+4. ADD OR UPDATE A VALUE
+    stock = {"apple": 3}
+    stock["pear"] = 2
+    stock["apple"] = 5
+Assigning a new key adds a pair; assigning an existing key updates its value.
+
+5. CHECK WHETHER A KEY EXISTS
+    if "apple" in stock:
+        print("Apple is recorded")
+
+6. LOOP THROUGH A DICTIONARY
+    for item, quantity in stock.items():
+        print(item, quantity)
+Use .items() when you need both each key and its value.
+
+7. COUNT REPEATED VALUES
+    counts = {}
+    for item in ["key", "potion", "key"]:
+        counts[item] = counts.get(item, 0) + 1
+    # {"key": 2, "potion": 1}
+
+REMEMBER
+- Keys are unique; assigning an existing key replaces its value.
+- get() safely handles missing keys.
+- len(stock) counts key-value pairs.
+- .items() gives key-value pairs for looping.
+- Copy a supplied dictionary with dict(stock) before changing it if the original must stay unchanged.""",
+}
+
+DICTIONARY_CHALLENGES = {
+    DICTIONARY_CHALLENGE_IDS[0]: {
+        "id": DICTIONARY_CHALLENGE_IDS[0],
+        "title": "Look Up an Archive Item",
+        "difficulty": "Intermediate",
+        "type": "function",
+        "function_name": "lookup_archive_item",
+        "problem": "Write lookup_archive_item(stock, item). Return the stored quantity for item, or 0 if the key is missing. Preserve stored zero and negative quantities. Example: lookup_archive_item({\"ink\": 3}, \"paper\") returns 0.",
+        "objective": "Read dictionary values safely with get() or membership checking.",
+        "starter_code": "def lookup_archive_item(stock, item):\n    # Return the quantity, or 0 when item is missing.\n    pass",
+        "hints": ["Use stock.get(item, 0) for a safe lookup.", "Do not use 'or 0' because a stored zero is a real value.", "Return the lookup result."],
+        "function_cases": [
+            {"args": [{}, "ink"], "expected": 0},
+            {"args": [{"ink": 0}, "ink"], "expected": 0},
+            {"args": [{"ink": -2}, "ink"], "expected": -2},
+            {"args": [{"ink": 4}, "paper"], "expected": 0},
+            {"args": [{"ink": 4}, "ink"], "expected": 4},
+        ],
+        "preserve_args": True,
+    },
+    DICTIONARY_CHALLENGE_IDS[1]: {
+        "id": DICTIONARY_CHALLENGE_IDS[1],
+        "title": "Count the Archive Items",
+        "difficulty": "Intermediate",
+        "type": "function",
+        "function_name": "count_archive_items",
+        "problem": "Write count_archive_items(items). Return a dictionary mapping each item to the number of times it appears. An empty list returns {}. Example: count_archive_items([\"ink\", \"paper\", \"ink\"]) returns {\"ink\": 2, \"paper\": 1}.",
+        "objective": "Build a dictionary of occurrence counts using a loop and get().",
+        "starter_code": "def count_archive_items(items):\n    counts = {}\n    # Increase the count for each item.\n    # Return counts.\n    pass",
+        "hints": ["Start with an empty dictionary named counts.", "For each item, use counts.get(item, 0) to read its current count.", "Store the old count plus one back under that key.", "Return counts after the loop."],
+        "function_cases": [
+            {"args": [[]], "expected": {}},
+            {"args": [["ink"]], "expected": {"ink": 1}},
+            {"args": [["ink", "paper", "ink"]], "expected": {"ink": 2, "paper": 1}},
+            {"args": [["", ""]], "expected": {"": 2}},
+        ],
+        "preserve_args": True,
+    },
+}

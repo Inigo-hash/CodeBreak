@@ -678,3 +678,8 @@ def get_challenge(challenge_id):
     """
 
     return CHALLENGES.get(challenge_id)
+
+
+# Stage 3 advanced coding challenges.
+from src.data.stage3_topics import CITADEL_CHALLENGES
+CHALLENGES.update(CITADEL_CHALLENGES)

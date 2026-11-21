@@ -115,3 +115,50 @@ def _export(certificate, state):
     with open(path, "wb") as output:
         output.write(certificate_pdf_bytes(certificate, player_name))
     return f"Saved PDF: {path}"
+
+
+def show_certificate_award(screen, certificate, stage_name='Stage 1'):
+    """Show a celebratory award modal after the final assessment is passed."""
+    width, height = screen.get_size()
+    clock = pygame.time.Clock()
+    shade = pygame.Surface((width, height), pygame.SRCALPHA)
+    shade.fill((5, 7, 12, 205))
+    panel = pygame.Rect(0, 0, min(680, width - 40), min(430, height - 40))
+    panel.center = (width // 2, height // 2)
+    button = pygame.Rect(0, 0, 220, 48)
+    button.midbottom = (panel.centerx, panel.bottom - 28)
+    heading = title_font(30)
+    subheading = title_font(23)
+    body = body_font(17)
+    small = body_font(13)
+    running = True
+    while running:
+        clock.tick(60)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                raise SystemExit
+            if event.type == pygame.KEYDOWN and event.key in (pygame.K_RETURN, pygame.K_KP_ENTER, pygame.K_ESCAPE, pygame.K_SPACE):
+                running = False
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and button.collidepoint(event.pos):
+                running = False
+        screen.blit(shade, (0, 0))
+        pygame.draw.rect(screen, (45, 35, 27), panel, border_radius=16)
+        pygame.draw.rect(screen, (222, 183, 103), panel, 4, border_radius=16)
+        pygame.draw.rect(screen, (71, 54, 37), panel.inflate(-18, -18), 2, border_radius=12)
+        center = (panel.centerx, panel.top + 105)
+        pygame.draw.circle(screen, (128, 83, 27), center, 48)
+        pygame.draw.circle(screen, (238, 199, 112), center, 42, 4)
+        star = subheading.render('*', True, (255, 229, 155))
+        screen.blit(star, star.get_rect(center=center))
+        for value, y, font, color in [
+            ('STAGE COMPLETED!', panel.top + 178, heading, (255, 222, 143)),
+            (f'{stage_name} cleared', panel.top + 220, subheading, (245, 239, 220)),
+            ('CERTIFICATE AWARDED', panel.top + 270, body, (255, 211, 119)),
+            (certificate.get('title', 'CodeBreak Certificate'), panel.top + 300, body, (245, 239, 220)),
+            (certificate.get('achievement', ''), panel.top + 328, small, (218, 203, 174)),
+        ]:
+            rendered = font.render(value, True, color)
+            screen.blit(rendered, rendered.get_rect(center=(panel.centerx, y)))
+        draw_button(screen, button, 'CONTINUE', body, hovered=button.collidepoint(pygame.mouse.get_pos()))
+        pygame.display.flip()

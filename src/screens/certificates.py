@@ -6,7 +6,7 @@ from src.systems.certificates import certificate_pdf_bytes
 from src.ui.theme import UI_COLORS, body_font, draw_button, title_font
 
 
-def certificate_screen(screen, slot_num=None, *, allow_download=True, background=None):
+def certificate_screen(screen, slot_num=None, *, allow_download=True, background=None, certificates=None):
     width, height = screen.get_size()
     clock = pygame.time.Clock()
     selected_slot = slot_num
@@ -31,7 +31,7 @@ def certificate_screen(screen, slot_num=None, *, allow_download=True, background
     while running:
         clock.tick(60)
         state = save_manager.load_slot(selected_slot) if selected_slot else None
-        records = (state or {}).get("certificates", [])
+        records = list(certificates if certificates is not None else (state or {}).get("certificates", []))
         selected = records[selected_index] if records and selected_index < len(records) else None
         for event in pygame.event.get():
             if event.type == pygame.QUIT:

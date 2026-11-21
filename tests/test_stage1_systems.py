@@ -73,7 +73,7 @@ class StageScaffoldAndDebugTests(unittest.TestCase):
         self.assertTrue(castle["playable"])
         from src.data.castle_progression import CASTLE_MAPPED_CHALLENGES
         self.assertEqual(tuple(castle["manual"]["topics"]), CASTLE_MAPPED_CHALLENGES)
-        self.assertEqual(len(stage_challenges(castle)), 11)
+        self.assertEqual(len(stage_challenges(castle)), 13)
         self.assertTrue(castle['completion']['content_ready'])
         self.assertEqual(castle['completion']['exit_room'], 'throne')
         self.assertIn('exit_rect', castle['completion'])

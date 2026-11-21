@@ -62,9 +62,12 @@ def profile_layout(size, title_height=40, name_height=38, stat_height=16):
     health = pygame.Rect(left, lives.bottom+16, col_width, meter_height)
     energy = pygame.Rect(left, health.bottom+12, col_width, meter_height)
     back = pygame.Rect(0, 0, 150, 42)
-    back.midbottom = (panel.centerx, panel.bottom-pad)
     certs = pygame.Rect(0, 0, 190, 42)
-    certs.midbottom = (panel.centerx, back.top-10)
+    button_gap = 12
+    row_width = back.width + button_gap + certs.width
+    row_left = panel.centerx - row_width // 2
+    back.topleft = (row_left, panel.bottom - pad - back.height)
+    certs.midleft = (back.right + button_gap, back.centery)
     return dict(panel=panel, title=title, portrait=portrait, name=name, lives=lives,
                 health=health, energy=energy, back=back, certificates=certs)
 

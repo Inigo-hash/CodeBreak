@@ -55,7 +55,7 @@ class CastleCurriculumTests(unittest.TestCase):
             self.assertIn(tid, state['topics_completed'])
             self.assertEqual(state['keys'], index + 1)
             self.assertEqual(reconcile_mastery(state, stage), state)
-        self.assertEqual(state['keys'], 5)
+        self.assertEqual(state['keys'], 6)
         self.assertEqual(len(state['mastery_reward_claims']), 5)
         self.assertTrue(evaluate_boss_access(stage, 5, state['challenges_passed']).unlocked)
         self.assertFalse(evaluate_stage_gate(stage, 5, state['challenges_passed'], ['zombie_aktan']).unlocked)
@@ -89,7 +89,7 @@ class CastleMapTests(unittest.TestCase):
         found = set()
         room_topics = {
             'lobby': {'iterative_structure_lesson'},
-            'dining': set(),
+            'dining': {'dictionary_lesson'},
             'library': {'lists_lesson'},
             'dungeon': {'functions_lesson', 'tuples_lesson'},
             'throne': {'error_handling_lesson'},
@@ -205,7 +205,7 @@ class CastleGameplayTests(unittest.TestCase):
         state.update(stage='Castle',room_id='lobby',topics_completed=['control_flow_lesson'])
         room_topics = {'lobby':('iterative_structure_lesson',), 'library':('lists_lesson',),
                        'dungeon':('functions_lesson',), 'dungeon_east':('tuples_lesson',),
-                       'throne':('error_handling_lesson',)}
+                       'dining':('dictionary_lesson',), 'throne':('error_handling_lesson',)}
         def requirements(screen, tid, completed, background):
             self.assertTrue(set(TOPICS[tid]['requirements']).issubset(completed))
             return 'continue'
@@ -227,7 +227,7 @@ class CastleGameplayTests(unittest.TestCase):
                 self.assertEqual(save_manager.load_slot(1)['keys'],state['keys'])
                 if rid not in ('throne','lobby'):
                     state = transition_room(state,'castle','lobby')
-            self.assertEqual(state['keys'],5)
+            self.assertEqual(state['keys'],6)
             self.assertTrue(set(CASTLE_MAPPED_ORDER).issubset(state['topics_completed']))
             # Keep this an integration of the teaching/save/exit path: combat is
             # independently covered by the enemy suites, not simulated as played.
@@ -253,5 +253,5 @@ class CastleGameplayTests(unittest.TestCase):
             self.assertIn('castle',restored['completed_stages'])
             self.assertEqual(restored['keys'],0)
             self.assertEqual(restored['stage'],'Citadel')
-            self.assertEqual(restored['stage_checkpoints']['castle']['keys'],5)
+            self.assertEqual(restored['stage_checkpoints']['castle']['keys'],6)
             self.assertEqual(restored['bonus_time'],100)

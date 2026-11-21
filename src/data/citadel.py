@@ -32,7 +32,7 @@ CITADEL_STAGE = {
         "map_layout_version": 3,
     },
     "manual": {
-        "summary": "Study five advanced programming topics in the Citadel. Complete all 15 coding problems to earn five mastery keys.",
+        "summary": "Study five advanced programming topics in the Citadel. Complete all 14 coding problems to earn five mastery keys.",
         "controls": WORLD_CONTROLS,
         "topics": CITADEL_CHALLENGE_IDS,
         "mechanics": [

@@ -30,9 +30,9 @@ STAGE_MAP_NODES = (
         "region": ((.39, .055), (.64, .01), (.87, .025), (.94, .16),
                    (.79, .29), (.66, .30), (.45, .23)),
         "glow": (.67, .15, .48, .28),
-        "description": "Cross the Lava Chamber's stone bridges. Master comprehensions, sets, sorting and algorithms, then restore the reactor.",
-        "content": "4 topics / 8 challenges / 4 keys / Flame Warden + final",
-        "map_note": "Final playable chapter. Defeat the Warden, pass the restoration assessment and use the northern reactor seal to complete the campaign.",
+        "description": "Explore the Corrupted Citadel and study object-oriented programming, modules, file handling, advanced exceptions and data structures.",
+        "content": "5 topics / 15 challenges / 5 mastery keys",
+        "map_note": "Complete all five mapped advanced lessons. The Citadel is currently a learning-only map with no enemies or boss arena.",
     },
 )
 

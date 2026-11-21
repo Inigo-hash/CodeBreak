@@ -19,9 +19,9 @@ STAGE_MAP_NODES = (
         "region": ((.20, .31), (.44, .26), (.64, .30), (.77, .38),
                    (.77, .60), (.57, .66), (.30, .58), (.18, .44)),
         "glow": (.49, .46, .48, .34),
-        "description": "Explore Castle's five connected rooms. Study loops, lists, functions, tuples and error handling.",
-        "content": "5 topics / 11 challenges / 5 keys / Aktan + final",
-        "map_note": "Earn five mastery keys, defeat Aktan and pass the final assessment to enter Citadel.",
+        "description": "Explore Castle's five connected rooms. Study iterative structures, lists, functions, tuples, error handling and dictionaries.",
+        "content": "6 topics / 13 challenges / 6 keys / Aktan + final",
+        "map_note": "Earn six mastery keys, defeat Aktan and pass the final assessment to enter Citadel.",
     },
     {
         "id": "citadel", "number": 3, "name": "The Corrupted Citadel",

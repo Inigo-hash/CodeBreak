@@ -29,6 +29,7 @@ import io
 import sys
 import time
 import contextlib
+import importlib
 from copy import deepcopy
 
 
@@ -61,15 +62,17 @@ class SafetyVisitor(ast.NodeVisitor):
     user's code - it only inspects the syntax tree.
     """
 
+    SAFE_MODULES = {"math", "json"}
+
     def visit_Import(self, node):
-        raise SandboxError(
-            "Import statements aren't allowed in the code editor."
-        )
+        if any(alias.name not in self.SAFE_MODULES for alias in node.names):
+            raise SandboxError("Only the math and json standard-library modules may be imported.")
+        self.generic_visit(node)
 
     def visit_ImportFrom(self, node):
-        raise SandboxError(
-            "Import statements aren't allowed in the code editor."
-        )
+        if node.level or node.module not in self.SAFE_MODULES:
+            raise SandboxError("Only the math and json standard-library modules may be imported.")
+        self.generic_visit(node)
 
     def visit_Name(self, node):
         if node.id in FORBIDDEN_NAMES:
@@ -108,7 +111,15 @@ def check_code_is_safe(code):
 # Only these builtins are reachable from inside user code. Anything
 # not listed here (open, __import__, eval, exec, etc.) simply does
 # not exist as far as the executed code is concerned.
+def _safe_import(name, globals=None, locals=None, fromlist=(), level=0):
+    """Import only explicitly approved, side-effect-limited standard modules."""
+    if level != 0 or name not in {"math", "json"}:
+        raise ImportError("Only the math and json standard-library modules are available.")
+    return importlib.import_module(name)
+
+
 SAFE_BUILTINS = {
+    "__import__": _safe_import,
     "print": print,
     "range": range,
     "len": len,

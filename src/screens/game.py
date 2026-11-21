@@ -1995,8 +1995,9 @@ def game_screen(screen, slot_num=None, save_state=None):
                     )
 
                 elif DEBUG_MODE and event.key == pygame.K_F4 and not paused:
-                    enabled = developer_mode.request_toggle(screen)
-                    if enabled or not developer_mode.enabled:
+                    was_enabled = developer_mode.enabled
+                    developer_mode.request_toggle(screen)
+                    if was_enabled != developer_mode.enabled:
                         boss_entrance_trigger.armed = True
                         engaged = False
                     print(

@@ -343,7 +343,7 @@
   <object id="4" x="303.75" y="336" width="28.25" height="31.75">
    <properties>
     <property name="actions" value="search_papers"/>
-    <property name="topic_id" value="dictionaries_lesson"/>
+    <property name="topic_id" value="dictionary_lesson"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>

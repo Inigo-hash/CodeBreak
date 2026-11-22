@@ -38,6 +38,9 @@ CITADEL_STAGE = {
         # Keep the currently established 23-enemy layout; any later authored
         # patrol entries are intentionally not instantiated.
         "max_enemies": 23,
+        # The arena is compact; leave room for the boss body and its escape
+        # route instead of shrinking the spawn area by four tiles per side.
+        "boss_spawn_margin": 16,
         "encounters": (
             # Six optional patrol camps at the marked circle locations.
             # Anchors are normalized to the 120x120 map, estimated from the

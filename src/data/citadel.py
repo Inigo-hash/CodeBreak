@@ -28,7 +28,59 @@ CITADEL_STAGE = {
         "zoom": 2.5,
         "follow_edges": True,
         "zones": (),
-        "encounters": (),
+        "encounters": (
+            # Six optional patrol camps at the marked circle locations.
+            # Anchors are normalized to the 120x120 map, estimated from the
+            # user's screenshot; collision-safe resolver chooses final positions.
+            {
+                "id": "citadel_patrol_northwest",
+                "anchor": (14/120, 32/120),
+                "zone_size": (320, 280),
+                "spawn_margin": 32,
+                "require_path": False,
+                "enemies": ("zombie_aktan",) * 4,
+            },
+            {
+                "id": "citadel_patrol_west_center",
+                "anchor": (45/120, 38/120),
+                "zone_size": (320, 280),
+                "spawn_margin": 32,
+                "require_path": False,
+                "enemies": ("zombie_aktan", "white_lady") * 2,
+            },
+            {
+                "id": "citadel_patrol_east",
+                "anchor": (94/120, 41/120),
+                "zone_size": (320, 280),
+                "spawn_margin": 32,
+                "require_path": False,
+                "enemies": ("white_lady",) * 4,
+            },
+            {
+                "id": "citadel_patrol_midwest",
+                "anchor": (22/120, 56/120),
+                "zone_size": (320, 280),
+                "spawn_margin": 32,
+                "require_path": False,
+                "enemies": ("white_lady",) * 4,
+            },
+            {
+                "id": "citadel_patrol_mid_south",
+                "anchor": (57/120, 62/120),
+                "zone_size": (320, 280),
+                "spawn_margin": 32,
+                "require_path": False,
+                "enemies": ("zombie_aktan", "white_lady") * 2,
+            },
+            {
+                "id": "citadel_patrol_southwest",
+                "anchor": (15/120, 72/120),
+                "zone_size": (320, 280),
+                "spawn_margin": 32,
+                "require_path": False,
+                "enemies": ("zombie_aktan",) * 4,
+            },
+        ),
         "map_layout_version": 3,
     },
     "manual": {
@@ -47,7 +99,7 @@ CITADEL_STAGE = {
             "Developer mode can load the matching reference solution with F7 while a challenge editor is open.",
         ],
     },
-    "enemies": [],
+    "enemies": ["white_lady", "zombie_aktan"],
     "items": [],
     "completion": {
         "content_ready": True,

@@ -173,19 +173,27 @@ class Stage3CurriculumTests(unittest.TestCase):
         finally:
             pygame.quit()
 
-    def test_citadel_has_its_own_progress_altar_marker(self):
-        from src.screens.game import load_interactables
+    def test_citadel_gate_marker_is_visual_only_and_triggers_by_proximity(self):
+        from src.screens.game import (
+            load_interactables, nearest_interactable, player_near_proximity_marker,
+        )
         tmx = load_pygame(CITADEL_STAGE["world"]["map"])
         markers = [
             item for item in load_interactables(tmx)
-            if item["actions"] == "open_learning_progress"
+            if item["proximity_only"]
         ]
         self.assertEqual(len(markers), 1)
         marker = markers[0]
         self.assertTrue(marker["progress_altar_visual"])
-        self.assertIsNone(marker["topic_id"])
-        self.assertEqual(marker["rect"].size, (16, 16))
+        self.assertEqual(marker["actions"], "")
+        self.assertEqual(marker["rect"].size, (24, 24))
         self.assertEqual(marker["rect"].center, (1067, 486))
+
+        player_near = pygame.Rect(1067, 486, 16, 16)
+        player_far = pygame.Rect(1200, 600, 16, 16)
+        self.assertTrue(player_near_proximity_marker(player_near, marker["rect"]))
+        self.assertFalse(player_near_proximity_marker(player_far, marker["rect"]))
+        self.assertIsNone(nearest_interactable(player_near, [marker]))
 
     def test_citadel_boss_has_a_collision_free_spawn_inside_its_arena(self):
         pygame.init()

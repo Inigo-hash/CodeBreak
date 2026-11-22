@@ -157,3 +157,16 @@ def get_enemy(enemy_id):
     """
 
     return ENEMIES.get(enemy_id)
+
+
+ENEMIES["zombie_lapu_lapu"] = {
+    "id": "zombie_lapu_lapu",
+    "name": "Zombie Lapu-Lapu",
+    "family": "Zombie",
+    "threat": "Boss",
+    "portrait": "assets/images/frames/zombie_lapu-lapu/walking/south/frame_0.png",
+    "description": "The final guardian of the Citadel, waiting at the upper-right arena mark.",
+    "behavior": "A powerful close-range fighter with committed directional sword attacks.",
+    "weakness": "Dodge his committed strikes and counter during recovery.",
+    "drops": ["Citadel seal", "Bonus time"],
+}

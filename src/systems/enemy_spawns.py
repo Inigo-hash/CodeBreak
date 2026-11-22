@@ -231,3 +231,39 @@ def _ring(radius):
                        (-radius, value), (radius, value)))
     # Preserve deterministic placement while dropping corner duplicates.
     return tuple(dict.fromkeys(points))
+
+
+def resolve_boss_spawn_position(enemy_id, desired, zone_rect, map_width,
+                               map_height, collision_rects, path_cells=(),
+                               tile_size=16):
+    """Find a collision-free boss body position inside its authored arena.
+
+    Unlike patrol placement, a required boss must never be silently omitted
+    because the authored anchor or a narrow spawn margin cannot be resolved.
+    Search the whole boss zone in nearest-first order and keep the complete
+    combat body inside the zone and map bounds.
+    """
+    body_size = ENEMY_BODY_SIZES[enemy_id]
+    bounds = pygame.Rect(16, 16, map_width - 32, map_height - 32)
+    area = pygame.Rect(zone_rect).inflate(-body_size[0], -body_size[1])
+    if area.width <= 0 or area.height <= 0:
+        return None
+
+    candidates = []
+    step = max(4, min(8, tile_size // 2))
+    for y in range(area.top, area.bottom + 1, step):
+        for x in range(area.left, area.right + 1, step):
+            candidates.append(((x - desired[0]) ** 2 + (y - desired[1]) ** 2, x, y))
+    candidates.sort()
+
+    for _distance, x, y in candidates:
+        body = pygame.Rect(0, 0, *body_size)
+        body.center = (x, y)
+        if not bounds.contains(body) or not pygame.Rect(zone_rect).contains(body):
+            continue
+        if body.collidelist(collision_rects) != -1:
+            continue
+        if path_cells and not body_is_on_path(body, path_cells, tile_size):
+            continue
+        return body.center
+    return None

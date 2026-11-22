@@ -2453,11 +2453,20 @@ def game_screen(screen, slot_num=None, save_state=None):
                 # Leaving an accepted fight is a new doorway approach even
                 # when the player turns back before clearing the corridor.
                 boss_entrance_trigger.armed = True
+        # Developer Mode can replay a stage boss even when this save already
+        # records its victory. Keep the campaign victory flag intact; only the
+        # encounter instance is a preview, and normal mode still cannot respawn it.
+        developer_boss_replay = developer_mode.enabled and boss_defeated
         if (boss_id and entrance_approached and current_boss_zone is not None
-                and not boss_defeated and not boss_is_active
+                and (not boss_defeated or developer_boss_replay)
+                and not boss_is_active
                 and (boss_access.unlocked or debug_boss_access
                      or developer_mode.enabled)):
             boss_entry_position = (player_rect.x, player_rect.y)
+            if developer_boss_replay:
+                # Allow the preview fight to display its normal result without
+                # changing the already-earned campaign completion state.
+                boss_victory_handled = False
 
             # Swap to boss battle music the moment the encounter popup
             # appears, so the fight has its own theme from the very start.

@@ -73,6 +73,10 @@ class AnimatedTileRenderer:
         self.scaled_images = {}
         # Track painted frames so off-screen cells can catch up when visible.
         self.cell_animation_state = {}
+        # Cache each fully composited animated cell/frame combination. The
+        # Stage 3 lava field has many repeated cells; composing the layer
+        # stack on every animation tick causes visible gameplay stalls.
+        self.composed_cells = {}
         self.animated_cells = {
             cell: tuple(gid for gid in layers if gid in self.animations)
             for cell, layers in self.cell_layers.items()
@@ -143,15 +147,22 @@ class AnimatedTileRenderer:
             destination = (left, top)
             cell_rect = pygame.Rect(left, top, *size)
 
-            # Preserve transparent pixels by redrawing the complete layer stack.
-            map_surface.fill((0, 0, 0), cell_rect)
-            for base_gid in self.cell_layers[cell]:
-                frames = self.animations.get(base_gid)
-                draw_gid = frames[self.frame_indices.get(base_gid, 0)][0] if frames else base_gid
-                image = self._scaled_image(draw_gid, size)
-                if image is not None:
-                    map_surface.blit(image, destination)
+            # Compose the full layer stack once for this cell/frame state.
+            # Blitting one cached surface per changed cell avoids repeated
+            # per-layer work during the large Stage 3 lava animation.
+            cache_key = (cell, state)
+            composed = self.composed_cells.get(cache_key)
+            if composed is None:
+                composed = pygame.Surface(size, pygame.SRCALPHA)
+                for base_gid in self.cell_layers[cell]:
+                    frames = self.animations.get(base_gid)
+                    draw_gid = frames[self.frame_indices.get(base_gid, 0)][0] if frames else base_gid
+                    image = self._scaled_image(draw_gid, size)
+                    if image is not None:
+                        composed.blit(image, (0, 0))
+                self.composed_cells[cache_key] = composed
 
+            map_surface.blit(composed, destination)
             self.cell_animation_state[cell] = state
             changed_cells += 1
 

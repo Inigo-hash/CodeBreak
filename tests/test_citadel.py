@@ -325,6 +325,20 @@ class Stage3CurriculumTests(unittest.TestCase):
         self.assertEqual(lapu["base_sword_damage"], 60)
         self.assertEqual(tuple(phase.sword_damage for phase in lapu["phases"]), (75, 90))
 
+    def test_completing_citadel_after_stages_one_and_two_issues_both_certificates(self):
+        from src.systems.certificates import issue_stage_certificate
+        state = {
+            "completed_stages": ["island", "castle", "citadel"],
+            "certificates": [],
+        }
+        stage_certificate = issue_stage_certificate(state, "citadel")
+        self.assertEqual(stage_certificate["stage_id"], "citadel")
+        grandmaster = next(
+            certificate for certificate in state["certificates"]
+            if certificate["stage_id"] == "grandmaster"
+        )
+        self.assertEqual(grandmaster["title"], "CodeBreak Grandmaster")
+
 
 if __name__ == "__main__":
     unittest.main()

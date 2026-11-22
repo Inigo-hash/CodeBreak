@@ -173,6 +173,55 @@ class Stage3CurriculumTests(unittest.TestCase):
         finally:
             pygame.quit()
 
+    def test_citadel_boss_has_a_collision_free_spawn_inside_its_arena(self):
+        pygame.init()
+        try:
+            from src.screens.game import object_collision_rects
+            world = CITADEL_STAGE["world"]
+            tmx = load_pygame(world["map"])
+            collision_rects = []
+            for layer in tmx.visible_layers:
+                if not hasattr(layer, "data"):
+                    continue
+                for x, y, gid in layer:
+                    props = tmx.get_tile_properties_by_gid(gid) if gid else None
+                    if props and props.get("collidable"):
+                        collision_rects.append(pygame.Rect(
+                            x * tmx.tilewidth, y * tmx.tileheight,
+                            tmx.tilewidth, tmx.tileheight,
+                        ))
+            collision_rects.extend(object_collision_rects(tmx))
+            boss_zone = next(z for z in world["zones"] if z.get("is_boss_zone"))
+            map_width = tmx.width * tmx.tilewidth
+            map_height = tmx.height * tmx.tileheight
+            spawn = resolve_encounter_spawns(
+                ({
+                    "id": "citadel_boss",
+                    "anchor": (
+                        boss_zone["rect"][0] + boss_zone["rect"][2] / 2,
+                        boss_zone["rect"][1] + boss_zone["rect"][3] / 2,
+                    ),
+                    "zone_size": (
+                        round(boss_zone["rect"][2] * map_width),
+                        round(boss_zone["rect"][3] * map_height),
+                    ),
+                    "spawn_margin": world["boss_spawn_margin"],
+                    "require_path": False,
+                    "enemies": ("zombie_lapu_lapu",),
+                },),
+                map_width, map_height, collision_rects, set(), tmx.tilewidth,
+                (round(86 / 120 * map_width), round(92 / 120 * map_height)),
+                zones=world["zones"],
+            )
+        finally:
+            pygame.quit()
+
+        self.assertEqual(len(spawn), 1)
+        boss_body = pygame.Rect(0, 0, *ENEMY_BODY_SIZES["zombie_lapu_lapu"])
+        boss_body.center = spawn[0]["position"]
+        self.assertTrue(all(not boss_body.colliderect(blocker) for blocker in collision_rects))
+        self.assertTrue(spawn[0]["zone_rect"].contains(boss_body))
+
     def test_citadel_boss_and_assessment_are_progression_gated(self):
         from src.data.final_assessments import assessment_ids_for_stage
         from src.data.enemies import ENEMIES

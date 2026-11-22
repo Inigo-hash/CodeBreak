@@ -2280,7 +2280,11 @@ def game_screen(screen, slot_num=None, save_state=None):
 
         # --- Camera ---
         camera_x, camera_y = update_camera()
-        animated_tile_renderer.update(map_surface, pygame.time.get_ticks())
+        animated_tile_renderer.update(
+            map_surface,
+            pygame.time.get_ticks(),
+            viewport=(camera_x, camera_y, SCREEN_W, SCREEN_H),
+        )
 
         near_passage = passage_at_player()
         if passage_hold.update(

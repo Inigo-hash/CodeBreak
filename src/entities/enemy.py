@@ -21,6 +21,7 @@ class Enemy:
         "kapre_usikan": ("walking", "attack", "{direction}.png", 180, (250, 220)),
         "white_lady": ("floating", "white_lady_attack", "{direction}.png", 120, (180, 144)),
         "zombie_aktan": ("walking", "attacking", "{direction}.png", 130, (180, 150)),
+        "zombie_lapu_lapu": ("walking", "attacking", "{direction}.png", 205, (270, 230)),
         "citadel_flame_warden": ("walking", "attack", "{direction}.png", 195, (260, 225)),
         "tiyanak_sinta": ("walking", "attacking", "{direction}.png", 40, (72, 50)),
         "manananggal": ("flying", "attacking", "manananggal_{direction}.png", 76, (110, 88)),

@@ -1429,6 +1429,7 @@ def game_screen(screen, slot_num=None, save_state=None):
         collision_rects, path_cells, TILE_SIZE,
         (stage_spawn[0] + player_size // 2, stage_spawn[1] + player_size),
         zones=world["zones"],
+        max_enemies=world.get("max_enemies"),
     )
     authored_encounter_ids = tuple(
         encounter["id"]

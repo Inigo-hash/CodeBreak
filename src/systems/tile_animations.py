@@ -128,14 +128,15 @@ class AnimatedTileRenderer:
             view_right = view_left + view_width
             view_bottom = view_top + view_height
             scaled_tile = self.tile_size * self.zoom
+            first_x = max(0, int(view_left // scaled_tile))
+            last_x = int((view_right - 1e-9) // scaled_tile)
+            first_y = max(0, int(view_top // scaled_tile))
+            last_y = int((view_bottom - 1e-9) // scaled_tile)
             visible_cells = {
-                (x, y) for x, y in self.pending_cells
-                if (
-                    (x + 1) * scaled_tile > view_left
-                    and x * scaled_tile < view_right
-                    and (y + 1) * scaled_tile > view_top
-                    and y * scaled_tile < view_bottom
-                )
+                (x, y)
+                for x in range(first_x, last_x + 1)
+                for y in range(first_y, last_y + 1)
+                if (x, y) in self.pending_cells
             }
 
         for x, y in visible_cells:

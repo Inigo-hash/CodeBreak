@@ -55,7 +55,21 @@ def resolve_encounter_spawns(encounters, map_width, map_height,
         zone_record, zone_rect = get_zone_record_at(
             anchor_x, anchor_y, map_width, map_height, zones
         )
-        spawn_area = pygame.Rect(zone_rect) if zone_rect else bounds.copy()
+        if zone_rect:
+            # A named map zone is the strongest authored boundary.
+            spawn_area = pygame.Rect(zone_rect)
+        elif encounter.get("zone_size"):
+            # Stages without named zones (currently Citadel) still need each
+            # camp constrained to its own local footprint. Previously this
+            # metadata was returned to Enemy but never used for placement,
+            # so groups could drift hundreds of pixels from their anchors
+            # and overlap neighboring patrol areas.
+            zone_width, zone_height = encounter["zone_size"]
+            spawn_area = pygame.Rect(0, 0, zone_width, zone_height)
+            spawn_area.center = (anchor_x, anchor_y)
+            spawn_area = spawn_area.clip(bounds)
+        else:
+            spawn_area = bounds.copy()
         spawn_margin = encounter.get("spawn_margin", 0)
         if spawn_margin:
             spawn_area.inflate_ip(-spawn_margin * 2, -spawn_margin * 2)

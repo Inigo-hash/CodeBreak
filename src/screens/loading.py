@@ -438,7 +438,7 @@ class StageLoadingScreen:
                              border_radius=2)
 
         percent = self.percent_font.render(
-            f"{self.progress}%", True, UI_COLORS["gold"]
+            f"{self.progress}%", True, (255, 255, 255)
         )
         self.screen.blit(percent, percent.get_rect(center=bar.center))
 

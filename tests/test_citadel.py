@@ -305,6 +305,7 @@ class Stage3CurriculumTests(unittest.TestCase):
         boss_zones = [zone for zone in CITADEL_STAGE["world"]["zones"] if zone.get("is_boss_zone")]
         self.assertEqual(len(boss_zones), 1)
         self.assertEqual(boss_zones[0]["name"], "The Lapu-Lapu Arena")
+        self.assertFalse(boss_zones[0].get("map_label", True))
         self.assertTrue(CITADEL_STAGE["progress"]["enabled"])
         self.assertEqual(len(CITADEL_STAGE["world"]["encounters"]), 7)
 

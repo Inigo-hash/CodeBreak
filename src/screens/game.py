@@ -191,6 +191,7 @@ def load_interactables(tmx_data):
                 "actions": action or "",
                 "topic_id": properties.get("topic_id"),
                 "terminal_visual": properties.get("terminal_visual", False),
+                "progress_altar_visual": properties.get("progress_altar_visual", False),
                 "entity_visual": properties.get("entity_visual", False),
                 "interaction_id": str(properties.get('persistent_id') or getattr(obj, "id", "")),
                 "independent_search": bool(properties.get('independent_search')),
@@ -3159,7 +3160,20 @@ def game_screen(screen, slot_num=None, save_state=None):
         for terminal in interactables:
             if terminal.get('entity_visual') and terminal.get('entity') is not None:
                 terminal['entity'].draw(screen,ZOOM,camera_x,camera_y)
-            if terminal.get('terminal_visual'):
+            if terminal.get('progress_altar_visual'):
+                rect = terminal['rect']
+                altar_rect = pygame.Rect(
+                    round(rect.x * ZOOM - camera_x),
+                    round(rect.y * ZOOM - camera_y),
+                    round(rect.w * ZOOM),
+                    round(rect.h * ZOOM),
+                )
+                # Match the Stage 2 throne marker: a clean gold outline only.
+                pygame.draw.rect(
+                    screen, UI_COLORS['gold'], altar_rect,
+                    width=max(2, round(1.5 * ZOOM)), border_radius=max(3, round(3 * ZOOM)),
+                )
+            elif terminal.get('terminal_visual'):
                 rect = terminal['rect']
                 sprite = terminal_art(round(rect.w * ZOOM),
                                       terminal['topic_id'] in gameplay_state['topics_completed'])

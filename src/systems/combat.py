@@ -85,6 +85,7 @@ ENEMY_STATS = {
         1000, 18, 1.10, 144, 260, 180, 520, 640, 220, 6, 1.10, 0.66, 45
     ),
     "citadel_flame_warden": EnemyStats(1000, 16, .90, 140, 240, 160, 320, 400, 140, 5, 1.65, .85, 60),
+    "zombie_lapu_lapu": EnemyStats(1500, 24, 1.05, 120, 280, 190, 520, 680, 220, 5, 1.45, .82, 90),
 }
 
 def enemy_stats_for_tier(enemy_id, combat_tier=1, *, is_boss=False):
@@ -115,6 +116,7 @@ ENEMY_BODY_SIZES = {
     "tikbalang": (36, 38),
     "corrupted_core_kapre": (58, 64),
     "citadel_flame_warden": (38, 42),
+    "zombie_lapu_lapu": (44, 48),
 }
 
 
@@ -140,6 +142,14 @@ class BossPhase:
 # ordinary weapon damage and never changes phase, so a stage can ship its
 # boss before its phase table is tuned.
 BOSS_PHASES = {
+    "zombie_lapu_lapu": {
+        "base_sword_damage": 45,
+        "phase_label": "LAPU-LAPU'S WAR FURY",
+        "phases": (
+            BossPhase(1000, 60, 1.08, ("zombie_aktan",)),
+            BossPhase(500, 75, 1.16, ("white_lady", "zombie_aktan")),
+        ),
+    },
     'citadel_flame_warden': {
         'base_sword_damage': 60, 'phase_label': 'WARDEN ARMOR BREAKS',
         'phases': (BossPhase(900,75,1.06,()), BossPhase(450,90,1.12,())),

@@ -71,6 +71,9 @@ class AnimatedTileRenderer:
         self.started_at_ms = None
         self.frame_indices = {}
         self.scaled_images = {}
+        # Cells whose animation frame changed but which were outside the
+        # camera viewport. Keep them pending until they become visible.
+        self.pending_cells = set()
 
     @property
     def has_animations(self):
@@ -87,10 +90,12 @@ class AnimatedTileRenderer:
             self.scaled_images[key] = image
         return image
 
-    def update(self, map_surface, now_ms):
-        """Advance animations and redraw only cells whose frame changed.
+    def update(self, map_surface, now_ms, viewport=None):
+        """Advance animations and redraw changed cells visible to the camera.
 
-        Returns the number of map cells redrawn.
+        viewport is (left, top, width, height) in scaled map-surface pixels.
+        Off-screen cells remain pending until the camera brings them into
+        view. Omitting viewport redraws all changed cells.
         """
         if not self.has_animations:
             return 0
@@ -109,14 +114,31 @@ class AnimatedTileRenderer:
                 self.frame_indices[gid] = index
                 changed_gids.add(gid)
 
-        if not changed_gids:
+        # Preserve off-screen changes until those cells enter the viewport.
+        for gid in changed_gids:
+            self.pending_cells.update(self.cells_by_gid[gid])
+
+        if not self.pending_cells:
             return 0
 
-        changed_cells = set()
-        for gid in changed_gids:
-            changed_cells.update(self.cells_by_gid[gid])
+        if viewport is None:
+            visible_cells = self.pending_cells
+        else:
+            view_left, view_top, view_width, view_height = viewport
+            view_right = view_left + view_width
+            view_bottom = view_top + view_height
+            scaled_tile = self.tile_size * self.zoom
+            visible_cells = {
+                (x, y) for x, y in self.pending_cells
+                if (
+                    (x + 1) * scaled_tile > view_left
+                    and x * scaled_tile < view_right
+                    and (y + 1) * scaled_tile > view_top
+                    and y * scaled_tile < view_bottom
+                )
+            }
 
-        for x, y in changed_cells:
+        for x, y in visible_cells:
             left = round(x * self.tile_size * self.zoom)
             top = round(y * self.tile_size * self.zoom)
             right = round((x + 1) * self.tile_size * self.zoom)
@@ -125,10 +147,8 @@ class AnimatedTileRenderer:
             destination = (left, top)
             cell_rect = pygame.Rect(left, top, *size)
 
-            # The map surface is initially black, so clear to the same
-            # background before compositing every tile layer at this cell.
+            # Keep the original complete layer-stack composition for each cell.
             map_surface.fill((0, 0, 0), cell_rect)
-
             for base_gid in self.cell_layers[(x, y)]:
                 draw_gid = base_gid
                 frames = self.animations.get(base_gid)
@@ -140,4 +160,5 @@ class AnimatedTileRenderer:
                 if image is not None:
                     map_surface.blit(image, destination)
 
-        return len(changed_cells)
+        self.pending_cells.difference_update(visible_cells)
+        return len(visible_cells)

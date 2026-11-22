@@ -220,7 +220,7 @@ class Stage3CurriculumTests(unittest.TestCase):
         boss_body = pygame.Rect(0, 0, *ENEMY_BODY_SIZES["zombie_lapu_lapu"])
         boss_body.center = spawn[0]["position"]
         self.assertTrue(all(not boss_body.colliderect(blocker) for blocker in collision_rects))
-        self.assertTrue(spawn[0]["zone_rect"].contains(boss_body))
+        self.assertTrue(pygame.Rect(spawn[0]["zone_rect"]).contains(boss_body))
 
     def test_citadel_boss_and_assessment_are_progression_gated(self):
         from src.data.final_assessments import assessment_ids_for_stage

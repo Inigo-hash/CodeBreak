@@ -84,9 +84,25 @@ class Stage3CurriculumTests(unittest.TestCase):
                 for x, y, gid in layer
                 if gid in runtime_path_gids
             }
+            # Match the real game loader: enemy placement must account for
+            # collidable tiles and Tiled object boundaries, not an empty
+            # collision list (which made the old spawn test over-optimistic).
+            collision_rects = []
+            for layer in tmx.visible_layers:
+                if not hasattr(layer, "data"):
+                    continue
+                for x, y, gid in layer:
+                    props = tmx.get_tile_properties_by_gid(gid) if gid else None
+                    if props and props.get("collidable"):
+                        collision_rects.append(pygame.Rect(
+                            x * tmx.tilewidth, y * tmx.tileheight,
+                            tmx.tilewidth, tmx.tileheight,
+                        ))
+            from src.screens.game import object_collision_rects
+            collision_rects.extend(object_collision_rects(tmx))
             spawns = resolve_encounter_spawns(
                 world["encounters"], tmx.width * tmx.tilewidth,
-                tmx.height * tmx.tileheight, [], path_cells, tmx.tilewidth,
+                tmx.height * tmx.tileheight, collision_rects, path_cells, tmx.tilewidth,
                 (round(86 / 120 * 1920), round(92 / 120 * 1920)),
                 zones=world["zones"],
             )

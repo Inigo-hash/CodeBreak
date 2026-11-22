@@ -147,6 +147,24 @@ class Stage1EndingRegressions(unittest.TestCase):
         _, intros, _, _ = self.run_frames(save_manager.new_game_state(), developer=True, doorway=False)
         self.assertEqual(intros, 0)
 
+    def test_developer_mode_can_replay_a_previously_defeated_boss(self):
+        boss_id = get_stage("island")["completion"]["required_boss"]
+        state = save_manager.new_game_state()
+        state["stage_progress"] = {"defeated_enemies": [boss_id]}
+
+        def check(frame, live):
+            self.assertIsNotNone(live["boss_enemy"])
+            self.assertEqual(live["boss_enemy"].enemy_id, boss_id)
+            self.assertIn(live["boss_enemy"], live["enemies"])
+            # Replaying the boss must not clear its existing campaign victory.
+            self.assertTrue(live["boss_defeated"])
+
+        saved, intros, _, _ = self.run_frames(
+            state, developer=True, check=check
+        )
+        self.assertEqual(intros, 1)
+        self.assertIn(boss_id, saved["stage_progress"]["defeated_enemies"])
+
     def test_unfinished_boss_is_restored_after_save_and_reload(self):
         state = save_manager.new_game_state()
         state['keys'] = 9

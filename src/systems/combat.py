@@ -73,7 +73,7 @@ class EnemyStats:
 ENEMY_STATS = {
     "kapre_usikan": EnemyStats(140, 13, .85, 140, 150, 110, 180, 240, 110, 5, 1.8, 1.0, 18),
     "white_lady": EnemyStats(75, 9, 1.05, 100, 130, 95, 180, 240, 110, 4, 1.4, .7, 12),
-    "zombie_aktan": EnemyStats(900, 18, 1.0, 96, 200, 140, 240, 400, 180, 5, 1.5, .8, 45),
+    "zombie_aktan": EnemyStats(75, 18, 1.0, 96, 200, 140, 240, 400, 180, 5, 1.5, .8, 45),
     # Attack ranges share the fixed, 1x character-art scale. Enemy instances
     # convert only that value into campaign world units; detection/chase
     # distances remain authored against the map itself.

@@ -1803,18 +1803,18 @@ def game_screen(screen, slot_num=None, save_state=None):
                 continue
 
             if not paused and event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_F3:
+                if event.key == pygame.K_F8:
                     position_debug_enabled = not position_debug_enabled
                     status = "ON" if position_debug_enabled else "OFF"
                     print(
                         f"[player-position] live logging {status} "
-                        "(F3 toggles, F4 prints one snapshot)",
+                        "(F8 toggles, F9 prints one snapshot)",
                         flush=True,
                     )
                     if position_debug_enabled:
                         position_debug_last_position = None
                     continue
-                if event.key == pygame.K_F4:
+                if event.key == pygame.K_F9:
                     position_debug_snapshot_requested = True
                     continue
 

@@ -184,8 +184,8 @@ class Stage3CurriculumTests(unittest.TestCase):
         marker = markers[0]
         self.assertTrue(marker["progress_altar_visual"])
         self.assertIsNone(marker["topic_id"])
-        self.assertAlmostEqual(marker["rect"].centerx / (tmx.width * 16), 0.747, delta=0.02)
-        self.assertAlmostEqual(marker["rect"].centery / (tmx.height * 16), 0.447, delta=0.02)
+        self.assertEqual(marker["rect"].size, (16, 16))
+        self.assertEqual(marker["rect"].center, (1067, 486))
 
     def test_citadel_boss_has_a_collision_free_spawn_inside_its_arena(self):
         pygame.init()

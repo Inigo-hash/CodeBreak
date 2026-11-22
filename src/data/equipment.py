@@ -2,7 +2,7 @@
 
 EQUIPMENT = {
     "base_sword": {
-        "name": "Base Sword", "kind": "weapon", "damage": 20,
+        "name": "Base Sword", "kind": "weapon", "damage": 30,
         "description": "A dependable starter blade. Select its hotbar slot to wield it.",
     },
     "torch": {

@@ -88,7 +88,8 @@ from src.screens.boss_encounter import (
 )
 from src.screens.tutorial import tutorial_screen
 from src.systems.boss_trigger import (
-    BossEntranceTrigger, boss_arena_exit_at, boss_main_entrance_at, boss_zone_at, required_boss_id,
+    BossEntranceTrigger, boss_arena_exit_at, boss_main_entrance_at,
+    boss_main_entrance_rect, boss_zone_at, required_boss_id,
 )
 from src.systems.stage_gate import (
     evaluate_boss_access,
@@ -764,6 +765,19 @@ def game_screen(screen, slot_num=None, save_state=None):
                     save_manager.save_slot(slot_num, award_state)
                 from src.screens.certificates import show_certificate_award
                 show_certificate_award(screen, certificate, stage_name)
+                # Completing Stage 3 after Stages 1 and 2 also earns the
+                # campaign-wide Grandmaster certificate. Present it as a
+                # separate award so the player sees both achievements.
+                if stage_id == "citadel":
+                    grandmaster = next(
+                        (record for record in award_state.get("certificates", [])
+                         if record.get("stage_id") == "grandmaster"),
+                        None,
+                    )
+                    if grandmaster:
+                        show_certificate_award(
+                            screen, grandmaster, "Stages 1–3"
+                        )
 
 
         def consume_bonus(seconds):
@@ -1081,7 +1095,8 @@ def game_screen(screen, slot_num=None, save_state=None):
         [(zone['name'],
           (zone['rect'].centerx * minimap_px_per_unit,
            zone['rect'].centery * minimap_px_per_unit),
-          zone['is_boss_zone']) for zone in zone_pixel_rects],
+          zone['is_boss_zone']) for zone in zone_pixel_rects
+         if zone.get('map_label', True)],
         minimap_texture.get_rect(),
     )
 
@@ -2949,11 +2964,56 @@ def game_screen(screen, slot_num=None, save_state=None):
                 stage, gameplay_state["keys"], save_challenges_passed,
                 stage_victories(),
             )
-            open_stage_gate(
+            gate_decision = open_stage_gate(
                 screen, gate_status, gate_name=stage_exit_name,
                 background=screen.copy(), stage_name=stage_name,
                 developer_access=developer_mode.enabled,
             )
+            # The Citadel's yellow marker is the one and only gate UI.
+            # Its FIGHT BOSS choice must launch the same authored boss
+            # encounter as the arena doorway, rather than being discarded.
+            if (gate_decision == "fight_boss" and stage.get("id") == "citadel"
+                    and boss_id and not boss_defeated and boss_enemy is None):
+                previous_player_position = player_rect.topleft
+                entrance_rect = boss_main_entrance_rect(boss_zone)
+                if entrance_rect is not None:
+                    # Move the player to the south threshold so the boss
+                    # appears in the visible arena instead of off-screen
+                    # from the distant yellow marker.
+                    player_rect.center = (
+                        entrance_rect.centerx,
+                        entrance_rect.bottom + player_rect.height // 2,
+                    )
+                    player_x, player_y = map(float, player_rect.topleft)
+                boss_entry_position = player_rect.topleft
+                start_boss_music()
+                intro_decision = open_boss_intro(
+                    screen, boss_id, background=screen.copy()
+                )
+                if intro_decision == "retreat":
+                    start_stage_music()
+                    player_rect.topleft = previous_player_position
+                    player_x, player_y = map(float, player_rect.topleft)
+                else:
+                    boss_enemy = create_boss()
+                    if boss_enemy is not None:
+                        enemies.append(boss_enemy)
+                        stage_progress.discover_enemy(boss_enemy.enemy_id)
+                        stage_progress.sync_objectives(
+                            stage, save_challenges_passed
+                        )
+                        boss_entrance_trigger.armed = False
+                        previous_boss_zone = boss_zone_at(
+                            zone_pixel_rects, player_rect.center
+                        )
+                        if slot_num is not None:
+                            save_manager.save_slot(
+                                slot_num, build_save_state()
+                            )
+                    else:
+                        start_stage_music()
+                        player_rect.topleft = previous_player_position
+                        player_x, player_y = map(float, player_rect.topleft)
         elif not near_proximity_gate:
             proximity_gate_warning_active = False
 

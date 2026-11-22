@@ -305,9 +305,39 @@ class Stage3CurriculumTests(unittest.TestCase):
         boss_zones = [zone for zone in CITADEL_STAGE["world"]["zones"] if zone.get("is_boss_zone")]
         self.assertEqual(len(boss_zones), 1)
         self.assertEqual(boss_zones[0]["name"], "The Lapu-Lapu Arena")
+        self.assertFalse(boss_zones[0].get("map_label", True))
         self.assertTrue(CITADEL_STAGE["progress"]["enabled"])
         self.assertEqual(len(CITADEL_STAGE["world"]["encounters"]), 7)
 
+    def test_citadel_combat_tuning_is_more_forgiving_and_sword_is_stronger(self):
+        from src.data.equipment import EQUIPMENT
+        from src.data.combat_difficulty import COMBAT_PROFILES
+        from src.systems.combat import BASE_SWORD_DAMAGE, BOSS_PHASES
+        advanced = COMBAT_PROFILES[3]
+        self.assertEqual(EQUIPMENT["base_sword"]["damage"], 30)
+        self.assertEqual(BASE_SWORD_DAMAGE, 30)
+        self.assertLess(advanced["hp"], 1.70)
+        self.assertLess(advanced["boss_hp"], 1.55)
+        self.assertLess(advanced["damage"], 1.60)
+        self.assertLess(advanced["speed"], 1.18)
+        self.assertGreater(advanced["cooldown"], 0.74)
+        lapu = BOSS_PHASES["zombie_lapu_lapu"]
+        self.assertEqual(lapu["base_sword_damage"], 60)
+        self.assertEqual(tuple(phase.sword_damage for phase in lapu["phases"]), (75, 90))
+
+    def test_completing_citadel_after_stages_one_and_two_issues_both_certificates(self):
+        from src.systems.certificates import issue_stage_certificate
+        state = {
+            "completed_stages": ["island", "castle", "citadel"],
+            "certificates": [],
+        }
+        stage_certificate = issue_stage_certificate(state, "citadel")
+        self.assertEqual(stage_certificate["stage_id"], "citadel")
+        grandmaster = next(
+            certificate for certificate in state["certificates"]
+            if certificate["stage_id"] == "grandmaster"
+        )
+        self.assertEqual(grandmaster["title"], "CodeBreak Grandmaster")
 
 
 if __name__ == "__main__":

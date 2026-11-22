@@ -10,6 +10,6 @@ COMBAT_PROFILES = {
         "speed": 1.0, "cooldown": 1.0, "committed_attacks": False},
     2: {"name": "Intermediate", "hp": 1.35, "boss_hp": 1.20, "damage": 1.30,
         "speed": 1.10, "cooldown": 0.85, "committed_attacks": True},
-    3: {"name": "Advanced", "hp": 1.70, "boss_hp": 1.55, "damage": 1.60,
-        "speed": 1.18, "cooldown": 0.74, "committed_attacks": True},
+    3: {"name": "Advanced", "hp": 1.55, "boss_hp": 1.35, "damage": 1.40,
+        "speed": 1.12, "cooldown": 0.80, "committed_attacks": True},
 }

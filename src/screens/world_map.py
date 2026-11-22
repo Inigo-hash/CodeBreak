@@ -379,7 +379,8 @@ def _build_paper(map_texture, map_width, map_height, zone_rects,
             map_rect.left + rect.centerx * scale,
             map_rect.top + rect.centery * scale,
         )
-        labels.append((zone['name'],center,zone.get('is_boss_zone',False)))
+        if zone.get('map_label', True):
+            labels.append((zone['name'],center,zone.get('is_boss_zone',False)))
     for name,label_rect,boss in layout_map_labels(label_font,labels,map_rect.inflate(-24,-24),gap=18):
         label_rect = _ink_text(paper,label_font,name,label_rect.center,
                                BOSS_INK if boss else INK,

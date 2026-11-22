@@ -157,10 +157,10 @@ class Stage3CurriculumTests(unittest.TestCase):
         self.assertTrue(all(camp["require_path"] is True for camp in encounters))
         compositions = [camp["enemies"] for camp in encounters]
         self.assertIn(("zombie_aktan",) * 4, compositions)
-        self.assertIn(("white_lady",) * 4, compositions)
+        self.assertIn(("white_lady", "zombie_aktan") * 2, compositions)
         statue_south = next(camp for camp in encounters if camp["id"] == "citadel_patrol_statue_south")
         self.assertEqual(statue_south["anchor"], (27/120, 75/120))
-        self.assertIn(("white_lady",) * 4, compositions)
+        self.assertIn(("white_lady",) * 4 + ("zombie_aktan",) * 2, compositions)
         self.assertIn(("zombie_aktan", "white_lady") * 2, compositions)
         self.assertEqual(CITADEL_STAGE["world"]["zones"], ())
         self.assertNotIn("required_boss", CITADEL_STAGE["completion"])

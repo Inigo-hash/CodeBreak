@@ -73,8 +73,13 @@ def resolve_encounter_spawns(encounters, map_width, map_height,
         spawn_margin = encounter.get("spawn_margin", 0)
         if spawn_margin:
             spawn_area.inflate_ip(-spawn_margin * 2, -spawn_margin * 2)
+        authored_offsets = encounter.get("spawn_offsets", ())
         for index, enemy_id in enumerate(encounter["enemies"]):
-            offset = _group_offset(index)
+            offset = (
+                authored_offsets[index]
+                if index < len(authored_offsets)
+                else _group_offset(index)
+            )
             desired = (anchor_x + offset[0], anchor_y + offset[1])
             body_size = ENEMY_BODY_SIZES[enemy_id]
             position = _nearest_walkable(

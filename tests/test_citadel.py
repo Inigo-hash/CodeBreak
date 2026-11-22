@@ -222,6 +222,49 @@ class Stage3CurriculumTests(unittest.TestCase):
         self.assertTrue(all(not boss_body.colliderect(blocker) for blocker in collision_rects))
         self.assertTrue(pygame.Rect(spawn[0]["zone_rect"]).contains(boss_body))
 
+    def test_every_citadel_final_assessment_has_a_working_f7_solution(self):
+        from src.data.citadel_assessments import CITADEL_ASSESSMENT_IDS
+        manager = ChallengeManager()
+        self.assertEqual(
+            set(CITADEL_ASSESSMENT_IDS),
+            {"citadel_expedition_final", "citadel_json_final", "citadel_route_final"},
+        )
+        for challenge_id in CITADEL_ASSESSMENT_IDS:
+            with self.subTest(assessment=challenge_id):
+                self.assertIn(challenge_id, DEVELOPER_SOLUTIONS)
+                passed, feedback = manager.validate(
+                    CHALLENGES[challenge_id], DEVELOPER_SOLUTIONS[challenge_id]
+                )
+                self.assertTrue(passed, feedback)
+
+    def test_citadel_assessment_failure_advances_rotation_without_repeating(self):
+        import random
+        from src.data.citadel_assessments import CITADEL_ASSESSMENT_IDS
+        from src.systems.final_assessment import peek_assessment, start_attempt, finish_attempt
+        session = {}
+        seen = []
+        for index in range(len(CITADEL_ASSESSMENT_IDS)):
+            challenge = peek_assessment(
+                session, rng=random.Random(17 + index),
+                assessment_ids=CITADEL_ASSESSMENT_IDS,
+            )
+            seen.append(challenge["id"])
+            start_attempt(session, challenge, now=100 + index)
+            finish_attempt(session, "timed_out", now=200 + index)
+            self.assertTrue(session["practice_required"])
+        self.assertEqual(set(seen), set(CITADEL_ASSESSMENT_IDS))
+        next_challenge = peek_assessment(
+            session, rng=random.Random(31),
+            assessment_ids=CITADEL_ASSESSMENT_IDS,
+        )
+        self.assertNotEqual(next_challenge["id"], seen[-1])
+
+    def test_citadel_final_assessment_time_limits_match_problem_complexity(self):
+        from src.data.citadel_assessments import CITADEL_ASSESSMENTS
+        self.assertEqual(CITADEL_ASSESSMENTS["citadel_expedition_final"]["time_limit"], 1080)
+        self.assertEqual(CITADEL_ASSESSMENTS["citadel_json_final"]["time_limit"], 900)
+        self.assertEqual(CITADEL_ASSESSMENTS["citadel_route_final"]["time_limit"], 720)
+
     def test_citadel_boss_and_assessment_are_progression_gated(self):
         from src.data.final_assessments import assessment_ids_for_stage
         from src.data.enemies import ENEMIES

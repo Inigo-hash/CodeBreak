@@ -1596,7 +1596,7 @@ def game_screen(screen, slot_num=None, save_state=None):
             )
             fallback_position = resolve_boss_spawn_position(
                 boss_id, desired, boss_zone["rect"], map_width, map_height,
-                collision_rects, path_cells, TILE_SIZE,
+                collision_rects, (), TILE_SIZE,
             )
             if fallback_position is not None:
                 spawn_record = {

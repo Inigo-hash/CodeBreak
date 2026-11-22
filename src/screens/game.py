@@ -2955,7 +2955,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                                     near_interactable["interaction_message"] = "Checkpoint activated. Return here anytime to heal."
                                     if slot_num is not None:
                                         save_manager.save_slot(slot_num, build_save_state())
-                                    show_statue_checkpoint_popup(screen, screen.copy())
+                                    show_statue_checkpoint_popup(screen, background_snapshot)
 
                                 break
 
@@ -2999,7 +2999,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                                             near_interactable["interaction_message"] = "Checkpoint activated. Return here anytime to heal."
                                             if slot_num is not None:
                                                 save_manager.save_slot(slot_num, build_save_state())
-                                            show_statue_checkpoint_popup(screen, screen.copy())
+                                            show_statue_checkpoint_popup(screen, background_snapshot)
 
                                         print(
                                             f"Stored topic: "

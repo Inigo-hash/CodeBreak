@@ -3002,7 +3002,8 @@ def game_screen(screen, slot_num=None, save_state=None):
                                         )
                                     )
 
-                                    if stored:
+                                    already_stored = topic_id in player_inventory.get_stored_topic_ids()
+                                    if stored or already_stored:
 
                                         near_interactable[
                                             "topic_handled"
@@ -3015,10 +3016,11 @@ def game_screen(screen, slot_num=None, save_state=None):
                                             near_interactable["actions"] = "heal_statue"
                                             near_interactable["searched"] = True
                                             near_interactable["interaction_message"] = "Checkpoint activated. Return here anytime to heal."
-                                            checkpoint_popup_seen = True
+                                            if not checkpoint_popup_seen:
+                                                show_statue_checkpoint_popup(screen, background_snapshot)
+                                                checkpoint_popup_seen = True
                                             if slot_num is not None:
                                                 save_manager.save_slot(slot_num, build_save_state())
-                                            show_statue_checkpoint_popup(screen, background_snapshot)
 
                                         print(
                                             f"Stored topic: "

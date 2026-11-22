@@ -77,7 +77,7 @@ CITADEL_STAGE = {
                 "zone_size": (320, 280),
                 "spawn_margin": 32,
                 "require_path": True,
-                "enemies": ("white_lady",) * 4 + ("zombie_aktan",) * 2,
+                "enemies": ("white_lady",) * 2 + ("zombie_aktan",) * 2,
             },
             {
                 "id": "citadel_patrol_southwest",

@@ -638,8 +638,15 @@ class InventoryScreen:
         self.panel_x = (self.screen_w-self.panel_w)//2
         self.panel_final_y = (self.screen_h-self.panel_h)//2
         self.bag_rects_local = _build_slot_grid(BAG_COLS, BAG_ROWS, side_padding, bag_top, self.slot_size)
-        self.equipped_rects_local = _build_slot_grid(TOOLBAR_SLOTS, 1, side_padding,
-                                                   bag_top+grid_h+equipped_gap, self.slot_size)
+
+        # Centre the two-slot hotbar beneath the bag grid instead of aligning
+        # it to the left edge of the inventory panel.
+        hotbar_w = grid_pixel_width(TOOLBAR_SLOTS) * (self.slot_size / SLOT_SIZE)
+        hotbar_left = (self.panel_w - hotbar_w) // 2
+        self.equipped_rects_local = _build_slot_grid(
+            TOOLBAR_SLOTS, 1, int(hotbar_left),
+            bag_top+grid_h+equipped_gap, self.slot_size
+        )
 
         # Animation state: 0.0 = fully off-screen, 1.0 = fully open.
         self.progress = 0.0
@@ -782,12 +789,6 @@ class InventoryScreen:
                           panel_rect.top + 64))
 
         # --- Bag grid -------------------------------------------------------
-        first_bag = self.bag_rects_local[0]
-        bag_label = fit_text(self.font_section,'BAG',TEXT_DIM,(self.panel_w-100,20))
-        self.screen.blit(bag_label,
-                         (panel_rect.left + first_bag.left,
-                          panel_rect.top + first_bag.top - 26))
-
         hovered_topic = None
 
         for i, local in enumerate(self.bag_rects_local):

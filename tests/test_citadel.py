@@ -173,30 +173,27 @@ class Stage3CurriculumTests(unittest.TestCase):
         finally:
             pygame.quit()
 
-    def test_citadel_patrols_added_without_boss_content(self):
-        self.assertEqual(set(CITADEL_STAGE["enemies"]), {"white_lady", "zombie_aktan"})
-        encounters = CITADEL_STAGE["world"]["encounters"]
-        self.assertEqual(len(encounters), 7)
-        self.assertEqual(len({camp["id"] for camp in encounters}), 7)
-        self.assertTrue(all(camp["require_path"] is True for camp in encounters))
-        compositions = [camp["enemies"] for camp in encounters]
-        self.assertIn(("zombie_aktan",) * 4, compositions)
-        self.assertIn(("white_lady", "zombie_aktan") * 2, compositions)
-        statue_south = next(camp for camp in encounters if camp["id"] == "citadel_patrol_statue_south")
-        self.assertEqual(statue_south["anchor"], (27/120, 75/120))
-        statue_south = next(camp for camp in encounters if camp["id"] == "citadel_patrol_statue_south")
+    def test_citadel_boss_and_assessment_are_progression_gated(self):
+        from src.data.final_assessments import assessment_ids_for_stage
+        from src.data.enemies import ENEMIES
+        from src.systems.combat import BOSS_PHASES
+        completion = CITADEL_STAGE["completion"]
+        self.assertEqual(completion["required_keys"], 6)
+        self.assertEqual(completion["required_boss"], "zombie_lapu_lapu")
+        self.assertEqual(completion["required_final_challenge"], "citadel_expedition_final")
         self.assertEqual(
-            statue_south["spawn_offsets"],
-            ((-42, -22), (42, -22), (80, 0), (112, 0)),
+            assessment_ids_for_stage(CITADEL_STAGE),
+            ("citadel_expedition_final", "citadel_json_final", "citadel_route_final"),
         )
-        self.assertEqual(
-            statue_south["enemies"],
-            ("white_lady", "white_lady", "zombie_aktan", "zombie_aktan"),
-        )
-        self.assertIn(("zombie_aktan", "white_lady") * 2, compositions)
-        self.assertEqual(CITADEL_STAGE["world"]["zones"], ())
-        self.assertNotIn("required_boss", CITADEL_STAGE["completion"])
-        self.assertEqual(CITADEL_STAGE["completion"]["required_keys"], 6)
+        self.assertIn("zombie_lapu_lapu", ENEMIES)
+        self.assertIn("zombie_lapu_lapu", ENEMY_BODY_SIZES)
+        self.assertIn("zombie_lapu_lapu", BOSS_PHASES)
+        boss_zones = [zone for zone in CITADEL_STAGE["world"]["zones"] if zone.get("is_boss_zone")]
+        self.assertEqual(len(boss_zones), 1)
+        self.assertEqual(boss_zones[0]["name"], "The Lapu-Lapu Arena")
+        self.assertTrue(CITADEL_STAGE["progress"]["enabled"])
+        self.assertEqual(len(CITADEL_STAGE["world"]["encounters"]), 7)
+
 
 
 if __name__ == "__main__":

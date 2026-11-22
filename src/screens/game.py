@@ -2280,12 +2280,7 @@ def game_screen(screen, slot_num=None, save_state=None):
 
         # --- Camera ---
         camera_x, camera_y = update_camera()
-        # Stage 3 contains thousands of animated lava/ground cells. Refresh
-        # only the portion of the map currently visible on screen.
-        animated_tile_renderer.update(
-            map_surface, pygame.time.get_ticks(),
-            viewport=(camera_x, camera_y, SCREEN_W, SCREEN_H),
-        )
+        animated_tile_renderer.update(map_surface, pygame.time.get_ticks())
 
         near_passage = passage_at_player()
         if passage_hold.update(

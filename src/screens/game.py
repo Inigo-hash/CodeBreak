@@ -67,6 +67,7 @@ from src.data.practice_templates import (
 from src.data.enemies import get_enemy
 from src.screens.topic_lesson import open_topic_lesson
 from src.systems.enemy_spawns import resolve_encounter_spawns
+from src.systems.checkpoints import statue_checkpoint_position
 from src.systems.enemy_alerts import alert_camp
 from src.systems.encounter_progress import newly_cleared_encounter_ids
 from src.systems.topic_mastery import reconcile_mastery, complete_topic_challenge
@@ -693,8 +694,15 @@ def game_screen(screen, slot_num=None, save_state=None):
             item.get("checkpoint") and item.get("healing_station")
         )
         if is_statue_item and (checkpoint_position or topic_id in saved_topic_ids):
-            if checkpoint_position is None:
-                checkpoint_position = tuple(item["rect"].topleft)
+            # Recompute even an existing saved checkpoint: older saves used
+            # the statue's top-left corner, which can overlap the prop or sit
+            # outside its walkable footprint.
+            safe_checkpoint = statue_checkpoint_position(
+                item["rect"], (player_size, player_size), map_width, map_height,
+                path_cells, TILE_SIZE, collision_rects,
+            )
+            if safe_checkpoint is not None:
+                checkpoint_position = safe_checkpoint
             item["checkpoint_activated"] = True
             item["topic_handled"] = True
             item["searched"] = True
@@ -2973,7 +2981,11 @@ def game_screen(screen, slot_num=None, save_state=None):
                                 )
 
                                 if is_statue and topic_result == "solved":
-                                    checkpoint_position = tuple(near_interactable["rect"].topleft)
+                                    checkpoint_position = statue_checkpoint_position(
+                                        near_interactable["rect"], (player_size, player_size),
+                                        map_width, map_height, path_cells, TILE_SIZE,
+                                        collision_rects,
+                                    ) or stage_spawn
                                     near_interactable["checkpoint_activated"] = True
                                     near_interactable["topic_id"] = None
                                     near_interactable["actions"] = "heal_statue"
@@ -3019,7 +3031,11 @@ def game_screen(screen, slot_num=None, save_state=None):
                                         ] = True
 
                                         if is_statue:
-                                            checkpoint_position = tuple(near_interactable["rect"].topleft)
+                                            checkpoint_position = statue_checkpoint_position(
+                                                near_interactable["rect"], (player_size, player_size),
+                                                map_width, map_height, path_cells, TILE_SIZE,
+                                                collision_rects,
+                                            ) or stage_spawn
                                             near_interactable["checkpoint_activated"] = True
                                             near_interactable["topic_id"] = None
                                             near_interactable["actions"] = "heal_statue"

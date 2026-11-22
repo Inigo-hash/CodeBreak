@@ -384,9 +384,11 @@ class MainCharacter():
                 self.frame_elapsed -= frame_duration
                 self.current = min(self.current + 1, len(self.current_frames) - 1)
         else:
-            # Time-based animation prevents frame drops from looking like pauses.
+            # Keep the original six-frame walking cadence at the game's
+            # 120 FPS target, but use elapsed time so dropped frames do not
+            # make the character appear to pause mid-step.
             self.frame_elapsed += dt
-            frame_duration = 0.10
+            frame_duration = 0.05
             while self.frame_elapsed >= frame_duration:
                 self.frame_elapsed -= frame_duration
                 self.current = (self.current + 1) % len(self.current_frames)

@@ -27,6 +27,9 @@ CITADEL_STAGE = {
         "path_layer": "ground",
         # GID 2275 is the solid land ground tile; GID 3912 is the surrounding lava.
         "path_gids": frozenset({2275}),
+        # Keep the currently established 23-enemy layout; any later authored
+        # patrol entries are intentionally not instantiated.
+        "max_enemies": 23,
         "encounters": (
             # Six optional patrol camps at the marked circle locations.
             # Anchors are normalized to the 120x120 map, estimated from the

@@ -2,6 +2,7 @@
 import re
 import unittest
 import pygame
+from pytmx.util_pygame import load_pygame
 from src.data.stage3_topics import CITADEL_TOPICS, CITADEL_CHALLENGES, CITADEL_TOPIC_ORDER, CITADEL_CHALLENGE_IDS
 from src.data.citadel import CITADEL_STAGE
 from src.data.topics import TOPICS, topic_challenge_ids
@@ -10,7 +11,8 @@ from src.data.developer_solutions import DEVELOPER_SOLUTIONS
 from src.learning.challenge_manager import ChallengeManager
 from src.learning.sandbox import run_user_code
 from src.systems.topic_mastery import complete_topic_challenge
-from src.systems.enemy_spawns import resolve_encounter_spawns
+from src.systems.enemy_spawns import resolve_encounter_spawns, body_is_on_path
+from src.systems.checkpoints import statue_checkpoint_position
 
 
 class Stage3CurriculumTests(unittest.TestCase):
@@ -68,9 +70,23 @@ class Stage3CurriculumTests(unittest.TestCase):
         pygame.init()
         try:
             world = CITADEL_STAGE["world"]
+            tmx = load_pygame(world["map"])
+            runtime_path_gids = {
+                runtime_gid
+                for authored_gid in world["path_gids"]
+                for runtime_gid, _flags in (tmx.map_gid(authored_gid) or ())
+            }
+            path_cells = {
+                (x, y)
+                for layer in tmx.visible_layers
+                if getattr(layer, "name", None) == world["path_layer"]
+                for x, y, gid in layer
+                if gid in runtime_path_gids
+            }
             spawns = resolve_encounter_spawns(
-                world["encounters"], 120 * 16, 120 * 16,
-                [], set(), 16, (round(86 / 120 * 1920), round(92 / 120 * 1920)),
+                world["encounters"], tmx.width * tmx.tilewidth,
+                tmx.height * tmx.tileheight, [], path_cells, tmx.tilewidth,
+                (round(86 / 120 * 1920), round(92 / 120 * 1920)),
                 zones=world["zones"],
             )
         finally:
@@ -94,13 +110,50 @@ class Stage3CurriculumTests(unittest.TestCase):
                     x, y = spawn["position"]
                     self.assertLessEqual(abs(x - anchor[0]), half_w)
                     self.assertLessEqual(abs(y - anchor[1]), half_h)
+                    body = pygame.Rect(0, 0, *(__import__("src.systems.combat", fromlist=["ENEMY_BODY_SIZES"]).ENEMY_BODY_SIZES[spawn["enemy_id"]]))
+                    body.center = spawn["position"]
+                    self.assertTrue(body_is_on_path(body, path_cells, 16))
+
+
+    def test_statue_checkpoint_is_on_land_beside_the_statue(self):
+        pygame.init()
+        try:
+            from pytmx.util_pygame import load_pygame
+            from src.screens.game import load_interactables, object_collision_rects
+            world = CITADEL_STAGE["world"]
+            tmx = load_pygame(world["map"])
+            runtime_path_gids = {
+                runtime_gid
+                for authored_gid in world["path_gids"]
+                for runtime_gid, _flags in (tmx.map_gid(authored_gid) or ())
+            }
+            path_cells = {
+                (x, y)
+                for layer in tmx.visible_layers
+                if getattr(layer, "name", None) == world["path_layer"]
+                for x, y, gid in layer
+                if gid in runtime_path_gids
+            }
+            statue = next(item for item in load_interactables(tmx)
+                          if item["actions"] == "search_statue")
+            position = statue_checkpoint_position(
+                statue["rect"], (16, 16), tmx.width * 16, tmx.height * 16,
+                path_cells, 16, object_collision_rects(tmx),
+            )
+            self.assertIsNotNone(position)
+            player = pygame.Rect(position, (16, 16))
+            self.assertFalse(player.colliderect(statue["rect"]))
+            self.assertGreaterEqual(player.centerx, statue["rect"].right)
+            self.assertTrue(body_is_on_path(player, path_cells, 16))
+        finally:
+            pygame.quit()
 
     def test_citadel_patrols_added_without_boss_content(self):
         self.assertEqual(set(CITADEL_STAGE["enemies"]), {"white_lady", "zombie_aktan"})
         encounters = CITADEL_STAGE["world"]["encounters"]
         self.assertEqual(len(encounters), 6)
         self.assertEqual(len({camp["id"] for camp in encounters}), 6)
-        self.assertTrue(all(camp["require_path"] is False for camp in encounters))
+        self.assertTrue(all(camp["require_path"] is True for camp in encounters))
         compositions = [camp["enemies"] for camp in encounters]
         self.assertIn(("zombie_aktan",) * 4, compositions)
         self.assertIn(("white_lady",) * 4, compositions)

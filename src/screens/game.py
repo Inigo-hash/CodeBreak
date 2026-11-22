@@ -201,10 +201,58 @@ def load_interactables(tmx_data):
                 "inspecting": False,
                 "inspect_progress": 0.0,
                 "topic_handled": False,
+                "checkpoint": bool(properties.get("checkpoint")),
+                "healing_station": bool(properties.get("healing_station")),
             })
     # Only explicitly tagged Tiled objects provide lessons. Untagged
     # interactables remain searchable but intentionally have no topic.
     return interactables
+
+
+def show_statue_checkpoint_popup(screen, background):
+    """Explain the newly activated checkpoint and its repeatable healing use."""
+    clock = pygame.time.Clock()
+    screen_w, screen_h = screen.get_size()
+    panel = pygame.Rect(0, 0, min(640, screen_w - 48), 330)
+    panel.center = screen.get_rect().center
+    close_button = pygame.Rect(0, 0, 190, 48)
+    close_button.midbottom = (panel.centerx, panel.bottom - 28)
+    heading_font, body = title_font(28), body_font(18)
+    button_font = title_font(17, bold=False)
+    pygame.event.clear()
+    while True:
+        mouse_pos = pygame.mouse.get_pos()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                raise SystemExit
+            if handle_music_shortcut(event):
+                continue
+            if event.type == pygame.KEYDOWN and event.key in (pygame.K_ESCAPE, pygame.K_RETURN, pygame.K_SPACE):
+                return
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and close_button.collidepoint(event.pos):
+                return
+        screen.blit(background, (0, 0))
+        overlay = pygame.Surface((screen_w, screen_h), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 175))
+        screen.blit(overlay, (0, 0))
+        draw_panel(screen, panel, radius=12, alpha=255)
+        heading = heading_font.render("CHECKPOINT ACTIVATED!", True, UI_COLORS["gold"])
+        screen.blit(heading, heading.get_rect(center=(panel.centerx, panel.top + 48)))
+        lines = (
+            "The statue is now your checkpoint.",
+            "If you fall in battle, you will respawn here.",
+            "Return to this statue anytime and hold E to heal",
+            "your health. You can use the healing station again",
+            "whenever you need it."
+        )
+        for index, line in enumerate(lines):
+            rendered = body.render(line, True, UI_COLORS["text"])
+            screen.blit(rendered, rendered.get_rect(center=(panel.centerx, panel.top + 112 + index * 31)))
+        draw_button(screen, close_button, "CLOSE", button_font,
+                    hovered=close_button.collidepoint(mouse_pos), tier=TIER_PRIMARY)
+        pygame.display.flip()
+        clock.tick(60)
 
 
 def nearest_interactable(player_rect, interactables, reach=32, blockers=()):
@@ -364,6 +412,11 @@ def game_screen(screen, slot_num=None, save_state=None):
     player_x = float(player_rect.x)
     player_y = float(player_rect.y)
     stage_spawn = player_rect.topleft
+    saved_checkpoint = (save_state or {}).get("checkpoint_position")
+    checkpoint_position = None
+    if (isinstance(saved_checkpoint, (list, tuple)) and len(saved_checkpoint) == 2
+            and stage.get("id") == "citadel"):
+        checkpoint_position = (int(saved_checkpoint[0]), int(saved_checkpoint[1]))
     player_speed = 2.50
 
     # --- Restore from a save slot, if one was passed in ---
@@ -514,6 +567,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                 and boss_enemy.state != "defeated" and player_combat.hp > 0
             ) else None,
             "stage_checkpoints": (save_state or {}).get("stage_checkpoints", {}),
+            "checkpoint_position": list(checkpoint_position) if checkpoint_position else None,
         }
         if room:
             state.update(room_id=room_id,
@@ -630,6 +684,13 @@ def game_screen(screen, slot_num=None, save_state=None):
             item[
                 "topic_handled"
             ] = True
+
+        if item.get("checkpoint") and checkpoint_position:
+            item["checkpoint_activated"] = True
+            item["topic_handled"] = True
+            item["searched"] = True
+            item["topic_id"] = None
+            item["actions"] = "heal_statue"
 
         entity = item.get("entity")
         if (entity is not None
@@ -2707,8 +2768,9 @@ def game_screen(screen, slot_num=None, save_state=None):
                     gameplay_state["hearts"] = 5
                 player_combat.reset()
                 death_animation_complete = False
-                player_rect.topleft = stage_spawn
-                player_x, player_y = map(float, stage_spawn)
+                respawn_position = checkpoint_position or stage_spawn
+                player_rect.topleft = respawn_position
+                player_x, player_y = map(float, respawn_position)
                 enemies[:] = [
                     enemy for enemy in enemies
                     if (enemy is boss_enemy
@@ -2797,6 +2859,27 @@ def game_screen(screen, slot_num=None, save_state=None):
 
                     topic_id = near_interactable.get('topic_id')
                     action = near_interactable.get('actions', '')
+                    is_statue = bool(near_interactable.get("checkpoint") and near_interactable.get("healing_station"))
+                    statue_activated = bool(near_interactable.get("checkpoint_activated") or checkpoint_position)
+                    if is_statue and statue_activated:
+                        near_interactable["checkpoint_activated"] = True
+                        near_interactable["topic_id"] = None
+                        near_interactable["actions"] = "heal_statue"
+                        near_interactable["searched"] = True
+                        near_interactable["topic_handled"] = True
+                        if player_combat.hp < player_combat.max_hp:
+                            if near_interactable["inspect_progress"] >= 1.0:
+                                restored = player_combat.heal(player_combat.max_hp)
+                                near_interactable["interaction_message"] = (
+                                    f"Healing in Progress... Health restored to {player_combat.hp}/{player_combat.max_hp}."
+                                    if restored else "Your health is already full."
+                                )
+                                near_interactable["inspecting"] = True
+                        else:
+                            near_interactable["interaction_message"] = "Your health is already full."
+                            near_interactable["inspecting"] = True
+                        topic_id = None
+                        action = "heal_statue"
                     was_opened = stage_progress.has_opened_interactable(near_interactable['interaction_id'])
                     topic = get_topic(topic_id) if topic_id else None
                     lesson_available = bool(
@@ -2808,7 +2891,9 @@ def game_screen(screen, slot_num=None, save_state=None):
                         and not lesson_available
                     )
 
-                    if was_searched:
+                    if is_statue and statue_activated:
+                        was_searched = True
+                    elif was_searched:
                         topic_id = None
                         object_name = action.removeprefix("search_").replace("_", " ") or "object"
                         near_interactable["interaction_message"] = f"The {object_name} is empty."
@@ -2861,6 +2946,17 @@ def game_screen(screen, slot_num=None, save_state=None):
                                     topic_result == "solved"
                                 )
 
+                                if is_statue and topic_result == "solved":
+                                    checkpoint_position = tuple(player_rect.topleft)
+                                    near_interactable["checkpoint_activated"] = True
+                                    near_interactable["topic_id"] = None
+                                    near_interactable["actions"] = "heal_statue"
+                                    near_interactable["searched"] = True
+                                    near_interactable["interaction_message"] = "Checkpoint activated. Return here anytime to heal."
+                                    if slot_num is not None:
+                                        save_manager.save_slot(slot_num, build_save_state())
+                                    show_statue_checkpoint_popup(screen, screen.copy())
+
                                 break
 
                             # -------------------------------------------------
@@ -2893,6 +2989,17 @@ def game_screen(screen, slot_num=None, save_state=None):
                                         near_interactable[
                                             "topic_handled"
                                         ] = True
+
+                                        if is_statue:
+                                            checkpoint_position = tuple(player_rect.topleft)
+                                            near_interactable["checkpoint_activated"] = True
+                                            near_interactable["topic_id"] = None
+                                            near_interactable["actions"] = "heal_statue"
+                                            near_interactable["searched"] = True
+                                            near_interactable["interaction_message"] = "Checkpoint activated. Return here anytime to heal."
+                                            if slot_num is not None:
+                                                save_manager.save_slot(slot_num, build_save_state())
+                                            show_statue_checkpoint_popup(screen, screen.copy())
 
                                         print(
                                             f"Stored topic: "
@@ -3151,6 +3258,8 @@ def game_screen(screen, slot_num=None, save_state=None):
 
                 if action == "read_sign":
                     message = near_interactable["interaction_message"]
+                elif action == "heal_statue":
+                    message = near_interactable.get("interaction_message") or "The statue restores your health."
                 elif near_interactable.get("searched"):
                     object_name = action.removeprefix("search_").replace("_", " ") or "object"
                     message = near_interactable.get("interaction_message") or f"The {object_name} is empty."
@@ -3217,6 +3326,8 @@ def game_screen(screen, slot_num=None, save_state=None):
             if action == "read_sign":
                 topic = get_topic(near_interactable.get('topic_id'))
                 interaction_prompt = 'Hold E to study ' + topic['title'] if topic else 'Hold E to read sign'
+            elif action == "heal_statue":
+                interaction_prompt = "Hold E to heal"
             elif action.startswith("search_"):
                 target = action.removeprefix("search_").replace("_", " ").title()
                 interaction_prompt = f"Hold E to search {target.lower()}" if target else "Hold E to interact"

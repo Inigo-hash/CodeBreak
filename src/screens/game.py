@@ -3327,7 +3327,10 @@ def game_screen(screen, slot_num=None, save_state=None):
                 topic = get_topic(near_interactable.get('topic_id'))
                 interaction_prompt = 'Hold E to study ' + topic['title'] if topic else 'Hold E to read sign'
             elif action == "heal_statue":
-                interaction_prompt = "Hold E to heal"
+                interaction_prompt = (
+                    "Healing in Progress..." if keys[pygame.K_e] and near_interactable["inspect_progress"] > 0
+                    else "Hold E to heal"
+                )
             elif action.startswith("search_"):
                 target = action.removeprefix("search_").replace("_", " ").title()
                 interaction_prompt = f"Hold E to search {target.lower()}" if target else "Hold E to interact"

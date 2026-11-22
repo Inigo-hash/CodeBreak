@@ -12,7 +12,7 @@ from src.systems.topic_mastery import complete_topic_challenge
 
 
 class Stage3CurriculumTests(unittest.TestCase):
-    def test_five_existing_tiled_ids_match_topic_registry(self):
+    def test_six_existing_tiled_ids_match_topic_registry(self):
         with open("assets/map/tmx/map3.tmx", encoding="utf-8") as source:
             tiled_ids = set(re.findall(r'<property name="topic_id" value="([^"]+)"', source.read()))
         self.assertEqual(tiled_ids, set(CITADEL_TOPIC_ORDER))
@@ -27,6 +27,7 @@ class Stage3CurriculumTests(unittest.TestCase):
             "file_handling_lesson": ["modules_imports_lesson"],
             "advance_error_handling_lesson": ["file_handling_lesson"],
             "advance_data_structure_lesson": ["advance_error_handling_lesson"],
+            "code_validation_lesson": ["advance_data_structure_lesson"],
         }
         self.assertEqual(
             {topic_id: topic["requirements"] for topic_id, topic in CITADEL_TOPICS.items()},
@@ -34,8 +35,8 @@ class Stage3CurriculumTests(unittest.TestCase):
         )
 
     def test_problem_counts_match_reference_outline(self):
-        self.assertEqual([len(topic_challenge_ids(CITADEL_TOPICS[tid])) for tid in CITADEL_TOPIC_ORDER], [6, 2, 2, 1, 3])
-        self.assertEqual(len(CITADEL_CHALLENGE_IDS), 14)
+        self.assertEqual([len(topic_challenge_ids(CITADEL_TOPICS[tid])) for tid in CITADEL_TOPIC_ORDER], [6, 2, 2, 1, 3, 1])
+        self.assertEqual(len(CITADEL_CHALLENGE_IDS), 15)
 
     def test_every_stage3_problem_has_a_valid_f7_solution(self):
         manager = ChallengeManager()
@@ -66,7 +67,7 @@ class Stage3CurriculumTests(unittest.TestCase):
         self.assertEqual(CITADEL_STAGE["world"]["encounters"], ())
         self.assertEqual(CITADEL_STAGE["world"]["zones"], ())
         self.assertNotIn("required_boss", CITADEL_STAGE["completion"])
-        self.assertEqual(CITADEL_STAGE["completion"]["required_keys"], 5)
+        self.assertEqual(CITADEL_STAGE["completion"]["required_keys"], 6)
 
 
 if __name__ == "__main__":

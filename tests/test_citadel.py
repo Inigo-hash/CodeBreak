@@ -160,7 +160,15 @@ class Stage3CurriculumTests(unittest.TestCase):
         self.assertIn(("white_lady", "zombie_aktan") * 2, compositions)
         statue_south = next(camp for camp in encounters if camp["id"] == "citadel_patrol_statue_south")
         self.assertEqual(statue_south["anchor"], (27/120, 75/120))
-        self.assertIn(("white_lady",) * 4 + ("zombie_aktan",) * 2, compositions)
+        statue_south = next(camp for camp in encounters if camp["id"] == "citadel_patrol_statue_south")
+        self.assertEqual(
+            statue_south["spawn_offsets"],
+            ((-42, -22), (42, -22), (80, 0), (112, 0)),
+        )
+        self.assertEqual(
+            statue_south["enemies"],
+            ("white_lady", "white_lady", "zombie_aktan", "zombie_aktan"),
+        )
         self.assertIn(("zombie_aktan", "white_lady") * 2, compositions)
         self.assertEqual(CITADEL_STAGE["world"]["zones"], ())
         self.assertNotIn("required_boss", CITADEL_STAGE["completion"])

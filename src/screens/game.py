@@ -1402,6 +1402,33 @@ def game_screen(screen, slot_num=None, save_state=None):
     # the sprite before the player has moved at all.
     minimap_heading = (1, 0)
 
+    # Developer coordinate readout:
+    # F3 toggles live position logging; F4 prints one exact snapshot.
+    position_debug_enabled = False
+    position_debug_snapshot_requested = False
+    position_debug_last_print = 0.0
+    position_debug_last_position = None
+
+    def log_player_position():
+        """Print map-world, tile, and camera-relative screen coordinates."""
+        center_x, center_y = player_rect.center
+        feet_x, feet_y = center_x, player_rect.bottom
+        tile_x = center_x // TILE_SIZE
+        tile_y = center_y // TILE_SIZE
+        screen_x = center_x * ZOOM - camera_x
+        screen_y = center_y * ZOOM - camera_y
+        print(
+            f"[player-position] stage={stage['id']} room={room_id or '-'} | "
+            f"world_xy=({player_x:.2f}, {player_y:.2f}) px top-left | "
+            f"rect=({player_rect.x}, {player_rect.y}, "
+            f"{player_rect.width}, {player_rect.height}) | "
+            f"center=({center_x}, {center_y}) px | "
+            f"feet=({feet_x}, {feet_y}) px | "
+            f"tile=({tile_x}, {tile_y}) | "
+            f"screen_center=({screen_x:.1f}, {screen_y:.1f}) px",
+            flush=True,
+        )
+
     def show_world_map(current_night):
         """Open the paper map from either M or a minimap click."""
         return open_world_map(
@@ -1774,6 +1801,22 @@ def game_screen(screen, slot_num=None, save_state=None):
                 sys.exit()
             if handle_music_shortcut(event):
                 continue
+
+            if not paused and event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_F3:
+                    position_debug_enabled = not position_debug_enabled
+                    status = "ON" if position_debug_enabled else "OFF"
+                    print(
+                        f"[player-position] live logging {status} "
+                        "(F3 toggles, F4 prints one snapshot)",
+                        flush=True,
+                    )
+                    if position_debug_enabled:
+                        position_debug_last_position = None
+                    continue
+                if event.key == pygame.K_F4:
+                    position_debug_snapshot_requested = True
+                    continue
 
             # ---------------------------------------------------------
             # Reopen unfinished stage final challenge
@@ -2367,6 +2410,20 @@ def game_screen(screen, slot_num=None, save_state=None):
 
         # --- Camera ---
         camera_x, camera_y = update_camera()
+
+        # Print only when the player has moved, at most five times per
+        # second, so the VS Code terminal stays readable.
+        if position_debug_snapshot_requested or position_debug_enabled:
+            current_debug_position = (round(player_x, 2), round(player_y, 2))
+            now = time.perf_counter()
+            moved = current_debug_position != position_debug_last_position
+            ready = now - position_debug_last_print >= 0.2
+            if position_debug_snapshot_requested or (moved and ready):
+                log_player_position()
+                position_debug_last_print = now
+                position_debug_last_position = current_debug_position
+            position_debug_snapshot_requested = False
+
         animated_tile_renderer.update(
             map_surface,
             pygame.time.get_ticks(),

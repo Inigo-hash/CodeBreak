@@ -23,7 +23,15 @@ CITADEL_STAGE = {
         "resume_position": False,
         "zoom": 2.5,
         "follow_edges": True,
-        "zones": (),
+        "zones": (
+            {
+                "name": "The Lapu-Lapu Arena",
+                "rect": (0.635, 0.405, 0.105, 0.105),
+                "is_boss_zone": True,
+                "entrance_rect": (0.655, 0.485, 0.065, 0.035),
+                "movement_rect": (0.275, 0.055, 0.515, 0.435),
+            },
+        ),
         "path_layer": "ground",
         # GID 2275 is the solid land ground tile; GID 3912 is the surrounding lava.
         "path_gids": frozenset({2275}),
@@ -117,6 +125,14 @@ CITADEL_STAGE = {
     "completion": {
         "content_ready": True,
         "required_keys": 6,
+        "required_boss": "zombie_lapu_lapu",
+        "required_final_challenge": "citadel_expedition_final",
+        "final_assessment_ids": (
+            "citadel_expedition_final",
+            "citadel_json_final",
+            "citadel_route_final",
+        ),
+        "practice_after_failure": True,
         "mastery_bundles": CITADEL_BUNDLES,
         "topic_key_rewards": {cid: 0 for cid in CITADEL_CHALLENGE_IDS},
         "encounter_key_reward": 0,
@@ -124,5 +140,8 @@ CITADEL_STAGE = {
     "objectives": [
         {"id": tid + "_mastery", "text": "Master " + CITADEL_TOPICS[tid]["title"] + ".", "kind": "topic", "target": tid, "optional": False}
         for tid in CITADEL_TOPIC_ORDER
+    ] + [
+        {"id": "citadel_lapu_lapu", "text": "Defeat Zombie Lapu-Lapu in the Citadel arena.", "kind": "defeat", "target": "zombie_lapu_lapu", "optional": False},
+        {"id": "citadel_final", "text": "Pass the Citadel final coding assessment.", "kind": "challenge", "target": "citadel_expedition_final", "optional": False},
     ],
 }

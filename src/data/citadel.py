@@ -105,12 +105,14 @@ CITADEL_STAGE = {
         "map_layout_version": 3,
     },
     "manual": {
-        "summary": "Study six advanced programming topics in the Citadel. Complete all 15 coding problems to earn six mastery keys.",
+        "summary": "Study six advanced programming topics in the Citadel. Complete all 15 coding problems to earn six mastery keys, defeat Zombie Lapu-Lapu, and pass the final assessment.",
         "controls": WORLD_CONTROLS,
         "topics": CITADEL_CHALLENGE_IDS,
         "mechanics": [
             "Complete every problem at a topic terminal to earn that topic's mastery key once.",
             "Practice attempts and repeated submissions do not grant extra keys.",
+            "Complete all six topics and collect all six mastery keys before entering the Lapu-Lapu Arena.",
+            "Defeat Zombie Lapu-Lapu to unlock the Citadel final assessment. Passing it completes the stage.",
             "File-handling challenges use in-memory text/JSON because the game editor cannot access real files.",
             "Six optional patrol camps are spread across the Citadel. Clear them for combat practice while completing the mapped lessons.",
         ],
@@ -120,7 +122,7 @@ CITADEL_STAGE = {
             "Developer mode can load the matching reference solution with F7 while a challenge editor is open.",
         ],
     },
-    "enemies": ["white_lady", "zombie_aktan"],
+    "enemies": ["white_lady", "zombie_aktan", "zombie_lapu_lapu"],
     "items": [],
     "completion": {
         "content_ready": True,

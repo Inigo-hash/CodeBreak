@@ -39,7 +39,7 @@ CITADEL_ASSESSMENTS = {
                 {"name": "Rin", "health": 50, "status": "Ready"},
                 {"name": "Kai", "health": 49, "status": "Recover"},
             ]},
-            {"args": [[[]]], "expected": []},
+            {"args": [[]], "expected": []},
         ],
     },
     "citadel_json_final": {
@@ -88,7 +88,7 @@ CITADEL_ASSESSMENTS = {
             {"args": [[{"name":"North","checkpoints":[{"name":"Gate","passed":True},{"name":"Bridge","passed":False},{"name":"Tower","passed":True}]},{"name":"South","checkpoints":[{"name":"Cave","passed":False}]}], 2], "expected": {"North": ["Gate", "Tower"]}},
             {"args": [[{"name":"West","checkpoints":[{"name":"Dock","passed":True}]}], 2], "expected": {}},
             {"args": [[{"name":"East","checkpoints":[{"name":"A","passed":True},{"name":"B","passed":True}]}], 2], "expected": {"East": ["A", "B"]}},
-            {"args": [[[]], 0], "expected": {}},
+            {"args": [[], 0], "expected": {}},
         ],
     },
 }

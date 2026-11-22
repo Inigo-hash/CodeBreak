@@ -173,6 +173,20 @@ class Stage3CurriculumTests(unittest.TestCase):
         finally:
             pygame.quit()
 
+    def test_citadel_has_its_own_progress_altar_marker(self):
+        from src.screens.game import load_interactables
+        tmx = load_pygame(CITADEL_STAGE["world"]["map"])
+        markers = [
+            item for item in load_interactables(tmx)
+            if item["actions"] == "open_learning_progress"
+        ]
+        self.assertEqual(len(markers), 1)
+        marker = markers[0]
+        self.assertTrue(marker["terminal_visual"])
+        self.assertIsNone(marker["topic_id"])
+        self.assertAlmostEqual(marker["rect"].centerx / (tmx.width * 16), 0.688, delta=0.02)
+        self.assertAlmostEqual(marker["rect"].centery / (tmx.height * 16), 0.45, delta=0.02)
+
     def test_citadel_boss_has_a_collision_free_spawn_inside_its_arena(self):
         pygame.init()
         try:
@@ -197,10 +211,10 @@ class Stage3CurriculumTests(unittest.TestCase):
             spawn = resolve_encounter_spawns(
                 ({
                     "id": "citadel_boss",
-                    "anchor": (
+                    "anchor": world.get("boss_spawn_anchor", (
                         boss_zone["rect"][0] + boss_zone["rect"][2] / 2,
                         boss_zone["rect"][1] + boss_zone["rect"][3] / 2,
-                    ),
+                    )),
                     "zone_size": (
                         round(boss_zone["rect"][2] * map_width),
                         round(boss_zone["rect"][3] * map_height),

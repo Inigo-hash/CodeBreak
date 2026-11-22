@@ -1487,12 +1487,12 @@ def game_screen(screen, slot_num=None, save_state=None):
             boss_zone["rect"].centerx / map_width,
             boss_zone["rect"].centery / map_height,
         )
-        boss_spawn = resolve_encounter_spawns(
+        resolved_boss_spawns = resolve_encounter_spawns(
             ({
                 "id": f"{stage.get('id', 'stage')}_boss",
                 "anchor": boss_anchor,
                 "zone_size": boss_zone["rect"].size,
-                "spawn_margin": world.get("boss_spawn_margin", TILE_SIZE * 4),
+                "spawn_margin": world.get("boss_spawn_margin", TILE_SIZE),
                 "require_path": False,
                 "enemies": (boss_id,),
                 "detection_range": 260,
@@ -1502,7 +1502,13 @@ def game_screen(screen, slot_num=None, save_state=None):
             map_width, map_height, collision_rects, path_cells, TILE_SIZE,
             (stage_spawn[0] + player_size // 2, stage_spawn[1] + player_size),
             zones=world["zones"],
-        )[0]
+        )
+        # A tightly bounded boss zone can be fully consumed by the spawn
+        # margin and the resolver's escape-route clearance. Never crash the
+        # whole stage when map geometry leaves no valid boss position.
+        boss_spawn = resolved_boss_spawns[0] if resolved_boss_spawns else None
+        if boss_spawn is None and DEBUG_MODE:
+            print(f"[stage] Could not resolve a safe spawn for boss {boss_id!r} in {boss_zone['name']!r}.")
 
     boss_enemy = None
     boss_defeated = bool(

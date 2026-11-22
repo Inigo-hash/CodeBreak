@@ -41,7 +41,7 @@ CITADEL_STAGE = {
             },
             {
                 "id": "citadel_patrol_west_center",
-                "anchor": (45/120, 41/120),
+                "anchor": (45/120, 43/120),
                 "zone_size": (320, 280),
                 "spawn_margin": 32,
                 "require_path": True,
@@ -49,11 +49,11 @@ CITADEL_STAGE = {
             },
             {
                 "id": "citadel_patrol_east",
-                "anchor": (94/120, 44/120),
+                "anchor": (94/120, 47/120),
                 "zone_size": (320, 280),
                 "spawn_margin": 32,
                 "require_path": True,
-                "enemies": ("white_lady",) * 4,
+                "enemies": ("white_lady", "zombie_aktan") * 2,
             },
             {
                 "id": "citadel_patrol_midwest",
@@ -77,7 +77,7 @@ CITADEL_STAGE = {
                 "zone_size": (320, 280),
                 "spawn_margin": 32,
                 "require_path": True,
-                "enemies": ("white_lady",) * 4,
+                "enemies": ("white_lady",) * 4 + ("zombie_aktan",) * 2,
             },
             {
                 "id": "citadel_patrol_southwest",

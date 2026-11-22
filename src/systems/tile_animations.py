@@ -59,36 +59,18 @@ class AnimatedTileRenderer:
         for layer in tmx_data.visible_layers:
             if not hasattr(layer, "data"):
                 continue
-            # The Stage 3 ground layer uses an animated atlas tile across
-            # thousands of cells. That sequence reads as a scrolling flow on
-            # the entire floor, rather than localized lava animation. Keep
-            # the ground's base tile static and animate only the dedicated
-            # lava feature layers.
-            layer_name = str(getattr(layer, "name", "")).lower()
-            animate_layer = "lava" in layer_name
             for x, y, gid in layer:
                 gid = int(gid)
                 if not gid:
                     continue
                 cell = (int(x), int(y))
                 self.cell_layers.setdefault(cell, []).append(gid)
-                if animate_layer and gid in self.animations:
+                if gid in self.animations:
                     self.cells_by_gid.setdefault(gid, set()).add(cell)
 
         self.started_at_ms = None
         self.frame_indices = {}
         self.scaled_images = {}
-        # Track painted frames so off-screen cells can catch up when visible.
-        self.cell_animation_state = {}
-        # Cache each fully composited animated cell/frame combination. The
-        # Stage 3 lava field has many repeated cells; composing the layer
-        # stack on every animation tick causes visible gameplay stalls.
-        self.composed_cells = {}
-        self.animated_cells = {
-            cell: tuple(gid for gid in layers if gid in self.animations)
-            for cell, layers in self.cell_layers.items()
-            if any(gid in self.animations for gid in layers)
-        }
 
     @property
     def has_animations(self):
@@ -105,11 +87,10 @@ class AnimatedTileRenderer:
             self.scaled_images[key] = image
         return image
 
-    def update(self, map_surface, now_ms, viewport=None):
-        """Advance animations, repainting only animated cells in the visible area.
+    def update(self, map_surface, now_ms):
+        """Advance animations and redraw only cells whose frame changed.
 
-        viewport is an optional (x, y, width, height) rectangle in scaled
-        map-surface coordinates. Omitting it updates every animated cell.
+        Returns the number of map cells redrawn.
         """
         if not self.has_animations:
             return 0
@@ -118,34 +99,24 @@ class AnimatedTileRenderer:
             self.started_at_ms = int(now_ms)
 
         elapsed_ms = max(0, int(now_ms) - self.started_at_ms)
+        changed_gids = set()
+
         for gid, frames in self.animations.items():
-            if gid in self.cells_by_gid:
-                self.frame_indices[gid] = _frame_index(frames, elapsed_ms)
-
-        if viewport is None:
-            cells = self.animated_cells.keys()
-        else:
-            view_x, view_y, view_w, view_h = viewport
-            tile_pixels = self.tile_size * self.zoom
-            left = max(0, int(view_x // tile_pixels))
-            top = max(0, int(view_y // tile_pixels))
-            right = min(self.tmx_data.width, int((view_x + view_w + tile_pixels - 1) // tile_pixels))
-            bottom = min(self.tmx_data.height, int((view_y + view_h + tile_pixels - 1) // tile_pixels))
-            cells = (
-                (x, y)
-                for y in range(top, bottom)
-                for x in range(left, right)
-                if (x, y) in self.animated_cells
-            )
-
-        changed_cells = 0
-        for cell in cells:
-            animation_gids = self.animated_cells[cell]
-            state = tuple((gid, self.frame_indices.get(gid, 0)) for gid in animation_gids)
-            if self.cell_animation_state.get(cell) == state:
+            if gid not in self.cells_by_gid:
                 continue
+            index = _frame_index(frames, elapsed_ms)
+            if self.frame_indices.get(gid) != index:
+                self.frame_indices[gid] = index
+                changed_gids.add(gid)
 
-            x, y = cell
+        if not changed_gids:
+            return 0
+
+        changed_cells = set()
+        for gid in changed_gids:
+            changed_cells.update(self.cells_by_gid[gid])
+
+        for x, y in changed_cells:
             left = round(x * self.tile_size * self.zoom)
             top = round(y * self.tile_size * self.zoom)
             right = round((x + 1) * self.tile_size * self.zoom)
@@ -154,26 +125,19 @@ class AnimatedTileRenderer:
             destination = (left, top)
             cell_rect = pygame.Rect(left, top, *size)
 
-            # Compose the full layer stack once for this cell/frame state.
-            # Blitting one cached surface per changed cell avoids repeated
-            # per-layer work during the large Stage 3 lava animation.
-            cache_key = (cell, state)
-            composed = self.composed_cells.get(cache_key)
-            if composed is None:
-                composed = pygame.Surface(size, pygame.SRCALPHA)
-                for base_gid in self.cell_layers[cell]:
-                    frames = self.animations.get(base_gid)
-                    draw_gid = frames[self.frame_indices.get(base_gid, 0)][0] if frames else base_gid
-                    image = self._scaled_image(draw_gid, size)
-                    if image is not None:
-                        composed.blit(image, (0, 0))
-                self.composed_cells[cache_key] = composed
-
-            # Clear the previous frame before drawing the complete stack,
-            # matching the renderer's original repaint behavior.
+            # The map surface is initially black, so clear to the same
+            # background before compositing every tile layer at this cell.
             map_surface.fill((0, 0, 0), cell_rect)
-            map_surface.blit(composed, destination)
-            self.cell_animation_state[cell] = state
-            changed_cells += 1
 
-        return changed_cells
+            for base_gid in self.cell_layers[(x, y)]:
+                draw_gid = base_gid
+                frames = self.animations.get(base_gid)
+                if frames:
+                    frame_index = self.frame_indices.get(base_gid, 0)
+                    draw_gid = frames[frame_index][0]
+
+                image = self._scaled_image(draw_gid, size)
+                if image is not None:
+                    map_surface.blit(image, destination)
+
+        return len(changed_cells)

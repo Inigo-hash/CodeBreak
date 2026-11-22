@@ -1,8 +1,4 @@
-"""Stage 3 Citadel map and learning progression.
-
-Learning terminals are active; the previous cleanup remains in force:
-no enemies, boss arena, encounters, or boss/assessment sequence is configured.
-"""
+"""Stage 3 Citadel map, patrol encounters, and learning progression."""
 from src.data.stage_music import STAGE_MUSIC
 from src.data.controls import WORLD_CONTROLS
 from src.data.stage3_topics import (
@@ -91,7 +87,7 @@ CITADEL_STAGE = {
             "Complete every problem at a topic terminal to earn that topic's mastery key once.",
             "Practice attempts and repeated submissions do not grant extra keys.",
             "File-handling challenges use in-memory text/JSON because the game editor cannot access real files.",
-            "Only the six mapped learning terminals are active. No enemies, boss arena, or encounters are configured.",
+            "Six optional patrol camps are spread across the Citadel. Clear them for combat practice while completing the mapped lessons.",
         ],
         "tips": [
             "Read the topic lesson before opening its challenge list.",

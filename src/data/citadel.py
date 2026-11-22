@@ -26,6 +26,7 @@ CITADEL_STAGE = {
         "zones": (
             {
                 "name": "The Lapu-Lapu Arena",
+                "map_label": False,
                 "rect": (0.635, 0.405, 0.105, 0.105),
                 "is_boss_zone": True,
                 "entrance_rect": (0.655, 0.485, 0.065, 0.035),

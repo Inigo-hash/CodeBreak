@@ -1403,7 +1403,7 @@ def game_screen(screen, slot_num=None, save_state=None):
     minimap_heading = (1, 0)
 
     # Developer coordinate readout:
-    # F3 toggles live position logging; F4 prints one exact snapshot.
+    # F7 toggles live position logging; F8 prints one exact snapshot.
     position_debug_enabled = False
     position_debug_snapshot_requested = False
     position_debug_last_print = 0.0
@@ -1803,18 +1803,18 @@ def game_screen(screen, slot_num=None, save_state=None):
                 continue
 
             if not paused and event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_F3:
+                if event.key == pygame.K_F7:
                     position_debug_enabled = not position_debug_enabled
                     status = "ON" if position_debug_enabled else "OFF"
                     print(
                         f"[player-position] live logging {status} "
-                        "(F3 toggles, F4 prints one snapshot)",
+                        "(F7 toggles, F8 prints one snapshot)",
                         flush=True,
                     )
                     if position_debug_enabled:
                         position_debug_last_position = None
                     continue
-                if event.key == pygame.K_F4:
+                if event.key == pygame.K_F8:
                     position_debug_snapshot_requested = True
                     continue
 

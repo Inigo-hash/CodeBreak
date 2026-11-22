@@ -105,13 +105,13 @@ class Stage3CurriculumTests(unittest.TestCase):
                 tmx.height * tmx.tileheight, collision_rects, path_cells, tmx.tilewidth,
                 (round(86 / 120 * 1920), round(92 / 120 * 1920)),
                 zones=world["zones"],
+                max_enemies=world.get("max_enemies"),
             )
         finally:
             pygame.quit()
 
-        expected_total = sum(len(camp["enemies"]) for camp in world["encounters"])
-        self.assertEqual(expected_total, 28)
-        self.assertEqual(len(spawns), expected_total)
+        self.assertEqual(world["max_enemies"], 23)
+        self.assertEqual(len(spawns), 23)
         bodies = []
         for spawn in spawns:
             body = pygame.Rect(0, 0, *ENEMY_BODY_SIZES[spawn["enemy_id"]])
@@ -130,7 +130,7 @@ class Stage3CurriculumTests(unittest.TestCase):
             margin = camp.get("spawn_margin", 0)
             half_w, half_h = width // 2 - margin, height // 2 - margin
             with self.subTest(camp=camp["id"]):
-                self.assertEqual(len(by_camp[camp["id"]]), len(camp["enemies"]))
+                self.assertLessEqual(len(by_camp[camp["id"]]), len(camp["enemies"]))
                 for spawn in by_camp[camp["id"]]:
                     x, y = spawn["position"]
                     body = pygame.Rect(0, 0, *ENEMY_BODY_SIZES[spawn["enemy_id"]])

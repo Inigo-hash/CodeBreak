@@ -109,9 +109,17 @@ class Stage3CurriculumTests(unittest.TestCase):
         finally:
             pygame.quit()
 
-        self.assertEqual(len(spawns), sum(
-            len(camp["enemies"]) for camp in world["encounters"]
-        ))
+        expected_total = sum(len(camp["enemies"]) for camp in world["encounters"])
+        self.assertEqual(expected_total, 28)
+        self.assertEqual(len(spawns), expected_total)
+        bodies = []
+        for spawn in spawns:
+            body = pygame.Rect(0, 0, *ENEMY_BODY_SIZES[spawn["enemy_id"]])
+            body.center = spawn["position"]
+            self.assertTrue(body_is_on_path(body, path_cells, 16))
+            self.assertTrue(all(not body.colliderect(blocker) for blocker in collision_rects))
+            self.assertTrue(all(not body.colliderect(other) for other in bodies))
+            bodies.append(body)
         by_camp = {}
         for spawn in spawns:
             by_camp.setdefault(spawn["encounter_id"], []).append(spawn)
@@ -125,11 +133,11 @@ class Stage3CurriculumTests(unittest.TestCase):
                 self.assertEqual(len(by_camp[camp["id"]]), len(camp["enemies"]))
                 for spawn in by_camp[camp["id"]]:
                     x, y = spawn["position"]
-                    self.assertLessEqual(abs(x - anchor[0]), half_w)
-                    self.assertLessEqual(abs(y - anchor[1]), half_h)
                     body = pygame.Rect(0, 0, *ENEMY_BODY_SIZES[spawn["enemy_id"]])
                     body.center = spawn["position"]
                     self.assertTrue(body_is_on_path(body, path_cells, 16))
+                    # A spawn may leave its local camp only when local land
+                    # was exhausted; it must still remain on island path.
 
 
     def test_statue_checkpoint_is_on_land_beside_the_statue(self):

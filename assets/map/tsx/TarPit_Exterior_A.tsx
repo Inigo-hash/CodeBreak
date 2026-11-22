@@ -1,6 +1,172 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <tileset version="1.10" tiledversion="1.12.2" name="TarPit_Exterior_A" tilewidth="16" tileheight="16" tilecount="1944" columns="54">
  <image source="../tiledsets/TarPit_Exterior_A.png" width="864" height="576"/>
+ <tile id="211">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="212">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="213">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="214">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="215">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="265">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="266">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="267">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="268">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="269">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="319">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="320">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="0.0625" y="0">
+    <polygon points="0,0 -0.125,11.875 3.0625,15.9375 15.9375,16.0625 15.9375,0.0625"/>
+   </object>
+  </objectgroup>
+ </tile>
+ <tile id="321">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="322">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="15.9375" y="0">
+    <polygon points="0,0 0.0625,12.1875 -3.0625,15.9375 -15.9375,15.9375 -15.8125,-0.125"/>
+   </object>
+  </objectgroup>
+ </tile>
+ <tile id="323">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="373">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="374">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="2.875" y="0">
+    <polygon points="0,0 0.25,2.8125 2,3.875 8.125,4.0625 13.0625,1.75 13.1875,0.0625"/>
+   </object>
+  </objectgroup>
+ </tile>
+ <tile id="375">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="376">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="0" y="2.0625">
+    <polygon points="0,0 5.125,1.8125 10.875,1.875 13.3125,0.75 12.9375,-2.125 -0.0625,-2.0625"/>
+   </object>
+  </objectgroup>
+ </tile>
+ <tile id="377">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="427">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="428">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="5" y="-0.25">
+    <polygon points="0,0 0.0625,10.125 7.0625,16.0625 11,16.0625 11.0625,10.25 6.0625,0.25"/>
+   </object>
+  </objectgroup>
+ </tile>
+ <tile id="429">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="-0.0625" y="13.0625">
+    <polygon points="0,0 1.0625,-1.25 3.75,-1.1875 6.125,0.875 6.125,3.125 0.25,2.8125"/>
+   </object>
+   <object id="2" x="8.75" y="13">
+    <polygon points="0,0 0.3125,1.8125 3.0625,1.875 2.875,-0.125"/>
+   </object>
+   <object id="3" x="13" y="13.25">
+    <polygon points="0,0 -0.125,2.9375 3.3125,2.8125 3.0625,-1.4375 1.375,-1.375 1.625,-0.375 0.5625,-0.375"/>
+   </object>
+  </objectgroup>
+ </tile>
+ <tile id="430">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="10.9375" y="0.125">
+    <polygon points="0,0 -0.9375,10.75 -3.125,14.125 -6,15.6875 -10.8125,15.875 -10.8125,10.75 -8.875,7.6875 -6.9375,-0.25"/>
+   </object>
+  </objectgroup>
+ </tile>
+ <tile id="431">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
  <tile id="493">
   <properties>
    <property name="collidable" type="bool" value="true"/>
@@ -389,6 +555,26 @@
    </object>
   </objectgroup>
  </tile>
+ <tile id="725">
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="0.125" y="5.6875" width="16" height="10.25"/>
+  </objectgroup>
+ </tile>
+ <tile id="726">
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="-0.125" y="5.8125" width="16.1875" height="10.25"/>
+  </objectgroup>
+ </tile>
+ <tile id="727">
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="0.125" y="7.875" width="15.9375" height="8.3125"/>
+  </objectgroup>
+ </tile>
+ <tile id="728">
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="0.0625" y="7.75" width="16" height="8.3125"/>
+  </objectgroup>
+ </tile>
  <tile id="756">
   <properties>
    <property name="collidable" type="bool" value="true"/>
@@ -417,6 +603,37 @@
    <object id="1" x="0.956522" y="15.8696">
     <polygon points="0,0 0.0434783,-1.86957 1,-4.91304 2,-6.86957 3.08696,-8 5.08696,-10 6.08696,-12.087 7,-13.8696 8,-15 11.0435,-15.913 15.0435,-15.913 15.0435,0.0434783"/>
    </object>
+  </objectgroup>
+ </tile>
+ <tile id="773">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="0.0625" y="0" width="8.8125" height="16"/>
+  </objectgroup>
+ </tile>
+ <tile id="774">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="775">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="776">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="777">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="9" y="0" width="6.9375" height="16"/>
   </objectgroup>
  </tile>
  <tile id="778">
@@ -453,6 +670,37 @@
    <object id="1" x="0.0869565" y="0" width="8.34783" height="15.9565"/>
   </objectgroup>
  </tile>
+ <tile id="827">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="0" y="0" width="9.3125" height="16"/>
+  </objectgroup>
+ </tile>
+ <tile id="828">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="829">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="830">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="831">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="10.125" y="0" width="5.875" height="16.125"/>
+  </objectgroup>
+ </tile>
  <tile id="832">
   <properties>
    <property name="collidable" type="bool" value="true"/>
@@ -483,6 +731,50 @@
   </properties>
   <objectgroup draworder="index" id="2">
    <object id="1" x="0.0434783" y="0.0434783" width="5.86957" height="15.8696"/>
+  </objectgroup>
+ </tile>
+ <tile id="881">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="0.0625" y="0.125">
+    <polygon points="0,0 12.3125,15.8125 0,15.8125"/>
+   </object>
+  </objectgroup>
+ </tile>
+ <tile id="882">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="0" y="7.0625" width="16" height="8.875"/>
+  </objectgroup>
+ </tile>
+ <tile id="883">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="3">
+   <object id="2" x="0.125" y="8.875" width="15.8125" height="7.0625"/>
+  </objectgroup>
+ </tile>
+ <tile id="884">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="0" y="7.8125" width="16.0625" height="8.125"/>
+  </objectgroup>
+ </tile>
+ <tile id="885">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="15.875" y="2.1875">
+    <polygon points="0,0 -15.9375,13.75 0.125,13.75"/>
+   </object>
   </objectgroup>
  </tile>
  <tile id="886">
@@ -610,6 +902,352 @@
   <objectgroup draworder="index" id="2">
    <object id="1" x="15.9565" y="0">
     <polygon points="0,0 0.0869565,6.86957 -1.95652,10 -2.91304,11.8261 -3.91304,12.913 -6,13.9565 -15.913,14 -15.913,0"/>
+   </object>
+  </objectgroup>
+ </tile>
+ <tile id="1042">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="0" y="5.25" width="15.9375" height="10.875"/>
+  </objectgroup>
+ </tile>
+ <tile id="1043">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="-0.0625" y="5.625" width="16" height="10.3125"/>
+  </objectgroup>
+ </tile>
+ <tile id="1044">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="0.125" y="7.625" width="15.875" height="8.375"/>
+  </objectgroup>
+ </tile>
+ <tile id="1096">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="0.125" y="3.8125" width="15.8125" height="12.1875"/>
+  </objectgroup>
+ </tile>
+ <tile id="1097">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="-0.125" y="5.0625" width="16" height="10.8125"/>
+  </objectgroup>
+ </tile>
+ <tile id="1098">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="0" y="5.625" width="16.125" height="10.4375"/>
+  </objectgroup>
+ </tile>
+ <tile id="1150">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="1151">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="1152">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="1194">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="1195">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="0.0625" y="-0.0625" width="9.4375" height="16.125"/>
+  </objectgroup>
+ </tile>
+ <tile id="1196">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="1197">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="1198">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="10" y="0" width="6.0625" height="16"/>
+  </objectgroup>
+ </tile>
+ <tile id="1199">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="1248">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="1249">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="0.125" y="0.0625" width="7.25" height="15.9375"/>
+  </objectgroup>
+ </tile>
+ <tile id="1250">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="1251">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="1252">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="8.1875" y="0" width="7.8125" height="16"/>
+  </objectgroup>
+ </tile>
+ <tile id="1253">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="1287">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="0" y="10.9375">
+    <polygon points="0,0 1.0625,-3.125 7.0625,-9.9375 11.0625,-10.875 13,-10.8125 15.9375,-6.8125 15.9375,-1.8125 14.8125,-1.125 8.875,3.125 8,4 6.875,4.9375 0.8125,5 0,4.125 0,0.5625"/>
+   </object>
+  </objectgroup>
+ </tile>
+ <tile id="1288">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="3.125" y="0.75">
+    <polygon points="0,0 -3.25,4.5 -3.125,7 2.125,10.1875 11.9375,10.0625 13,8.6875 12.875,4.0625 8.625,-0.8125 6.6875,-0.6875"/>
+   </object>
+  </objectgroup>
+ </tile>
+ <tile id="1289">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="1290">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="1291">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="1292">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="1293">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="-0.1875" y="5.0625">
+    <polygon points="0,0 6.375,-4.1875 9.3125,-5 12.375,-5.0625 16.1875,0 16.0625,5 6.375,4.875 0.375,3.9375"/>
+   </object>
+  </objectgroup>
+ </tile>
+ <tile id="1294">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="5.75" y="-0.0625">
+    <polygon points="0,0 8,4.0625 10.0625,6.8125 10.3125,10.75 8.3125,15.25 7.0625,16.3125 1.875,15.8125 1.3125,14.5 -5.9375,11.0625 -5.5625,5.625 -1.9375,0"/>
+   </object>
+  </objectgroup>
+ </tile>
+ <tile id="1302">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="1303">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="3">
+   <object id="2" x="0.0625" y="-0.0625" width="7.9375" height="16.125"/>
+  </objectgroup>
+ </tile>
+ <tile id="1304">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="1305">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="1306">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="7.5" y="-0.125" width="8.5" height="16.0625"/>
+  </objectgroup>
+ </tile>
+ <tile id="1307">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="1341">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="-0.0625" y="12.125">
+    <polygon points="0,0 3.25,-4.3125 5,-4.3125 10.3125,3.0625 10.0625,4.1875 0.125,3.9375 0.5625,-0.3125"/>
+   </object>
+  </objectgroup>
+ </tile>
+ <tile id="1342">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="1343">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="1344">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="1345">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="1346">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="1347">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="7.75" y="15.125">
+    <polygon points="0,0 2.3125,-2.5625 4.375,-2.4375 6.625,0.5 0.25,0.8125"/>
+   </object>
+  </objectgroup>
+ </tile>
+ <tile id="1348">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="5.9375" y="15.125">
+    <polygon points="0,0 5.0625,-7.125 7.25,-7.0625 10,-3.0625 10,0.8125 0.125,0.875"/>
+   </object>
+  </objectgroup>
+ </tile>
+ <tile id="1395">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="0" y="0.1875">
+    <polygon points="0,0 0.125,4.0625 4,7.8125 16,7.625 15.875,2.125 13.9375,-0.4375"/>
+   </object>
+  </objectgroup>
+ </tile>
+ <tile id="1396">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="-0.125" y="3.3125">
+    <polygon points="0,0 2.25,-3.375 9.1875,-3.375 14.125,-2.3125 16.125,0.625 16.125,4.625 0.1875,4.6875"/>
+   </object>
+  </objectgroup>
+ </tile>
+ <tile id="1397">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="1398">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="1399">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="1400">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="1401">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="0.0625" y="3.875">
+    <polygon points="0,0 2.125,-3 4.1875,-2.8125 6.8125,-3.9375 13.75,-3.9375 15.8125,-1.0625 15.8125,4.1875 0.0625,4.125"/>
+   </object>
+  </objectgroup>
+ </tile>
+ <tile id="1402">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="-0.0625" y="1.875">
+    <polygon points="0,0 2.125,-2.1875 15.9375,-1.8125 16.125,2 12.0625,6.125 -0.125,6"/>
    </object>
   </objectgroup>
  </tile>

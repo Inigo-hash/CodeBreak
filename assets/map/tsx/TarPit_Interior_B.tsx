@@ -7,6 +7,121 @@
    <frame tileid="395" duration="250"/>
   </animation>
  </tile>
+ <tile id="509">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="510">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="511">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="512">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="513">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="563">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="564">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="565">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="566">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="567">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="617">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="618">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="619">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="620">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="621">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="671">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="0.125" y="2.625" width="15.8125" height="13.25"/>
+  </objectgroup>
+ </tile>
+ <tile id="672">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="-0.0625" y="5.9375" width="16.125" height="10.0625"/>
+  </objectgroup>
+ </tile>
+ <tile id="673">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="-0.0625" y="7.75" width="16" height="8.25"/>
+  </objectgroup>
+ </tile>
+ <tile id="674">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="0.125" y="7.6875" width="15.875" height="8.3125"/>
+  </objectgroup>
+ </tile>
+ <tile id="675">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="0.125" y="9.0625" width="15.75" height="6.875"/>
+  </objectgroup>
+ </tile>
  <tile id="718">
   <properties>
    <property name="collidable" type="bool" value="true"/>
@@ -60,6 +175,38 @@
   <properties>
    <property name="collidable" type="bool" value="true"/>
   </properties>
+ </tile>
+ <tile id="725">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="0.0625" y="6.4375" width="16.0625" height="9.625"/>
+  </objectgroup>
+ </tile>
+ <tile id="726">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="0.125" y="6.75" width="15.875" height="9.3125"/>
+  </objectgroup>
+ </tile>
+ <tile id="727">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="0" y="7.1875" width="15.875" height="8.75"/>
+  </objectgroup>
+ </tile>
+ <tile id="728">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="0.0625" y="8" width="15.9375" height="7.875"/>
+  </objectgroup>
  </tile>
  <tile id="772">
   <properties>

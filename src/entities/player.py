@@ -384,9 +384,11 @@ class MainCharacter():
                 self.frame_elapsed -= frame_duration
                 self.current = min(self.current + 1, len(self.current_frames) - 1)
         else:
-            self.timer += 1
-            if self.timer >= 6:
-                self.timer = 0
+            # Time-based animation prevents frame drops from looking like pauses.
+            self.frame_elapsed += dt
+            frame_duration = 0.10
+            while self.frame_elapsed >= frame_duration:
+                self.frame_elapsed -= frame_duration
                 self.current = (self.current + 1) % len(self.current_frames)
 
         frame = self.current_frames[self.current]

@@ -2010,8 +2010,12 @@ def game_screen(screen, slot_num=None, save_state=None):
                 if event.key == pygame.K_e and not paused and not engaged and passage_at_player():
                     attack_key_ready = False
                     continue
+                # Citadel uses its authored yellow proximity marker for the
+                # sealed-gate popup. Do not also activate the legacy map-exit
+                # gate from a second location in this stage.
                 at_stage_exit = (
-                    stage_exit_detection_rect is not None
+                    stage["id"] != "citadel"
+                    and stage_exit_detection_rect is not None
                     and player_rect.colliderect(stage_exit_detection_rect)
                 )
                 if (event.key == pygame.K_e and not paused and not engaged
@@ -3349,7 +3353,7 @@ def game_screen(screen, slot_num=None, save_state=None):
         # Keep the castle exit discoverable at night. Its colour immediately
         # communicates whether all completion requirements are satisfied;
         # E opens the full checklist instead of making the player guess.
-        if stage_exit_rect is not None:
+        if stage["id"] != "citadel" and stage_exit_rect is not None:
             gate_screen_rect = pygame.Rect(
                 round(stage_exit_rect.x * ZOOM - camera_x),
                 round(stage_exit_rect.y * ZOOM - camera_y),

@@ -765,6 +765,19 @@ def game_screen(screen, slot_num=None, save_state=None):
                     save_manager.save_slot(slot_num, award_state)
                 from src.screens.certificates import show_certificate_award
                 show_certificate_award(screen, certificate, stage_name)
+                # Completing Stage 3 after Stages 1 and 2 also earns the
+                # campaign-wide Grandmaster certificate. Present it as a
+                # separate award so the player sees both achievements.
+                if stage_id == "citadel":
+                    grandmaster = next(
+                        (record for record in award_state.get("certificates", [])
+                         if record.get("stage_id") == "grandmaster"),
+                        None,
+                    )
+                    if grandmaster:
+                        show_certificate_award(
+                            screen, grandmaster, "Stages 1–3"
+                        )
 
 
         def consume_bonus(seconds):

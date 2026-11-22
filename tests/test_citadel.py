@@ -1,6 +1,7 @@
 """Stage 3 mapped curriculum, safe execution, mastery, and developer fixtures."""
 import re
 import unittest
+import pygame
 from src.data.stage3_topics import CITADEL_TOPICS, CITADEL_CHALLENGES, CITADEL_TOPIC_ORDER, CITADEL_CHALLENGE_IDS
 from src.data.citadel import CITADEL_STAGE
 from src.data.topics import TOPICS, topic_challenge_ids
@@ -9,6 +10,7 @@ from src.data.developer_solutions import DEVELOPER_SOLUTIONS
 from src.learning.challenge_manager import ChallengeManager
 from src.learning.sandbox import run_user_code
 from src.systems.topic_mastery import complete_topic_challenge
+from src.systems.enemy_spawns import resolve_encounter_spawns
 
 
 class Stage3CurriculumTests(unittest.TestCase):
@@ -61,6 +63,37 @@ class Stage3CurriculumTests(unittest.TestCase):
             state = complete_topic_challenge(state, CITADEL_STAGE, topic_id, challenge_id)
         self.assertEqual(state["keys"], 1)
         self.assertIn(topic_id, state["topics_completed"])
+
+    def test_citadel_patrol_groups_stay_near_their_authored_anchors(self):
+        pygame.init()
+        try:
+            world = CITADEL_STAGE["world"]
+            spawns = resolve_encounter_spawns(
+                world["encounters"], 120 * 16, 120 * 16,
+                [], set(), 16, (round(86 / 120 * 1920), round(92 / 120 * 1920)),
+                zones=world["zones"],
+            )
+        finally:
+            pygame.quit()
+
+        self.assertEqual(len(spawns), sum(
+            len(camp["enemies"]) for camp in world["encounters"]
+        ))
+        by_camp = {}
+        for spawn in spawns:
+            by_camp.setdefault(spawn["encounter_id"], []).append(spawn)
+        for camp in world["encounters"]:
+            anchor = (round(camp["anchor"][0] * 1920),
+                      round(camp["anchor"][1] * 1920))
+            width, height = camp["zone_size"]
+            margin = camp.get("spawn_margin", 0)
+            half_w, half_h = width // 2 - margin, height // 2 - margin
+            with self.subTest(camp=camp["id"]):
+                self.assertEqual(len(by_camp[camp["id"]]), len(camp["enemies"]))
+                for spawn in by_camp[camp["id"]]:
+                    x, y = spawn["position"]
+                    self.assertLessEqual(abs(x - anchor[0]), half_w)
+                    self.assertLessEqual(abs(y - anchor[1]), half_h)
 
     def test_citadel_patrols_added_without_boss_content(self):
         self.assertEqual(set(CITADEL_STAGE["enemies"]), {"white_lady", "zombie_aktan"})

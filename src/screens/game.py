@@ -47,8 +47,8 @@ from src.ui.chart import (
 from src.systems.combat import (
     COMBAT_DEBUG, DEBUG_ENEMY_AI, FACING_VECTORS, PLAYER_DODGE_SPEED,
     PLAYER_ENERGY_REGEN, PLAYER_TORCH_ENERGY_REGEN, PLAYER_TORCH_HP_REGEN,
-    PlayerCombat, ENEMY_BODY_SIZES, attack_connects, attack_path_blocked,
-    attack_sweep_points, boss_phase_table, move_rect, selected_weapon_damage,
+    PlayerCombat, attack_connects, attack_path_blocked, attack_sweep_points,
+    boss_phase_table, move_rect, selected_weapon_damage,
 )
 from src.systems.audio import (
     CombatAudio, EncounterMusic, apply_music_volume, handle_music_shortcut, play_crumble_sfx,

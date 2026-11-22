@@ -2139,7 +2139,7 @@
     <property name="types" value="interactive"/>
    </properties>
   </object>
-  <object id="22" x="1521" y="913" width="64" height="32">
+  <object id="22" x="1059" y="478" width="16" height="16">
    <properties>
     <property name="actions" value="open_learning_progress"/>
     <property name="progress_altar_visual" type="bool" value="true"/>

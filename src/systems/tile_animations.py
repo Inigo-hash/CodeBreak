@@ -162,6 +162,9 @@ class AnimatedTileRenderer:
                         composed.blit(image, (0, 0))
                 self.composed_cells[cache_key] = composed
 
+            # Clear the previous frame before drawing the complete stack,
+            # matching the renderer's original repaint behavior.
+            map_surface.fill((0, 0, 0), cell_rect)
             map_surface.blit(composed, destination)
             self.cell_animation_state[cell] = state
             changed_cells += 1

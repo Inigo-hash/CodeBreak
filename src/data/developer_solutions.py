@@ -122,6 +122,64 @@ DEVELOPER_SOLUTIONS = {
                 if checkpoint["passed"]
             ]
     return result""",
+    "citadel_log_final": """def read_mission_log(log_text):
+    entries = []
+    for line in log_text.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = [part.strip() for part in line.split(",")]
+        if len(parts) != 2:
+            continue
+        try:
+            distance = int(parts[1])
+        except ValueError:
+            continue
+        if distance < 0:
+            continue
+        entries.append((parts[0], distance))
+    farthest = None
+    best = -1
+    for name, distance in entries:
+        if distance > best:
+            best = distance
+            farthest = name
+    return {
+        "entries": entries,
+        "total": sum(distance for _, distance in entries),
+        "farthest": farthest,
+    }""",
+    "citadel_supply_final": """def process_supply_requests(stock, requests):
+    class SupplyError(Exception):
+        pass
+
+    remaining = dict(stock)
+    errors = []
+    attempts = 0
+    for item, raw_amount in requests:
+        try:
+            amount = int(raw_amount)
+            if item not in remaining:
+                raise SupplyError("unknown")
+            if amount <= 0:
+                raise SupplyError("invalid")
+            if amount > remaining[item]:
+                raise SupplyError("short")
+            remaining[item] -= amount
+        except SupplyError as error:
+            errors.append((item, str(error)))
+        except ValueError:
+            errors.append((item, "invalid"))
+        finally:
+            attempts += 1
+    return {"stock": remaining, "errors": errors, "attempts": attempts}""",
+    "citadel_leaderboard_final": """def rank_explorers(scores):
+    best = {}
+    for name, points in scores:
+        if name not in best or points > best[name]:
+            best[name] = points
+    ranked = sorted(best, key=lambda name: (-best[name], name))
+    return {"players": sorted(best), "best": best, "top": ranked[:3]}""",
     # Stage 3: five advanced topics, with one F7 solution per challenge.
     "object_oriented_programming_lesson_classes_001": "def describe_player(name):\n    class Player:\n        pass\n    player = Player()\n    player.name = name\n    return {'class': 'Player', 'name': player.name}",
     "object_oriented_programming_lesson_constructors_001": "def create_explorer(name, hp):\n    class Explorer:\n        def __init__(self, name, hp):\n            self.name = name\n            self.hp = hp\n    explorer = Explorer(name, hp)\n    return {'name': explorer.name, 'hp': explorer.hp}",

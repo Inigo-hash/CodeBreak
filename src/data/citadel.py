@@ -1,6 +1,7 @@
 """Stage 3 Citadel map, patrol encounters, and learning progression."""
 from src.data.stage_music import STAGE_MUSIC
 from src.data.controls import WORLD_CONTROLS
+from src.data.citadel_assessments import CITADEL_ASSESSMENT_IDS
 from src.data.stage3_topics import (
     CITADEL_TOPICS, CITADEL_CHALLENGES, CITADEL_TOPIC_ORDER,
     CITADEL_CHALLENGE_IDS, CITADEL_BUNDLES,
@@ -45,6 +46,18 @@ CITADEL_STAGE = {
         # The altar is north of the player-facing approach; place the boss at
         # the marked X on the south side of the arena rather than its center.
         "boss_spawn_anchor": (0.68, 0.502),
+        # Exact world-pixel position (body center) where Zombie Lapu-Lapu
+        # appears. It sits a little south of the spot at world_xy
+        # (1056, 625). If a wall is in the way, the nearest clear spot is used.
+        "boss_spawn_position": (1064, 681),
+        # Dying during the boss fight ends the fight, removes the boss and
+        # respawns the player at the statue checkpoint. Use Fight Boss at the
+        # yellow marker again to start a fresh encounter.
+        "boss_loss_respawn_at_checkpoint": True,
+        # The fight only ever starts from the yellow marker's FIGHT BOSS
+        # button. It is never saved, so quitting and reloading removes the
+        # boss, and walking through the arena doorway does not start it.
+        "boss_fight_via_gate_only": True,
         "encounters": (
             # Six optional patrol camps at the marked circle locations.
             # Anchors are normalized to the 120x120 map, estimated from the
@@ -136,11 +149,9 @@ CITADEL_STAGE = {
         "required_keys": 6,
         "required_boss": "zombie_lapu_lapu",
         "required_final_challenge": "citadel_expedition_final",
-        "final_assessment_ids": (
-            "citadel_expedition_final",
-            "citadel_json_final",
-            "citadel_route_final",
-        ),
+        # Six different problems with their own timers; see
+        # citadel_assessments.py.
+        "final_assessment_ids": CITADEL_ASSESSMENT_IDS,
         "practice_after_failure": True,
         "mastery_bundles": CITADEL_BUNDLES,
         "topic_key_rewards": {cid: 0 for cid in CITADEL_CHALLENGE_IDS},

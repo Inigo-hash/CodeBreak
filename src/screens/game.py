@@ -66,6 +66,7 @@ from src.data.practice_templates import (
 )
 from src.data.enemies import get_enemy
 from src.screens.topic_lesson import open_topic_lesson
+from src.systems.combat import ENEMY_BODY_SIZES
 from src.systems.enemy_spawns import (
     resolve_encounter_spawns, resolve_boss_spawn_position,
 )
@@ -576,7 +577,8 @@ def game_screen(screen, slot_num=None, save_state=None):
             "inventory_layout": player_inventory.to_dict(),
             "stage_progress": stage_progress.to_dict(),
             "active_boss": boss_id if (
-                boss_enemy is not None and boss_enemy.active
+                not world.get("boss_fight_via_gate_only")
+                and boss_enemy is not None and boss_enemy.active
                 and boss_enemy.state != "defeated" and player_combat.hp > 0
             ) else None,
             "stage_checkpoints": (save_state or {}).get("stage_checkpoints", {}),
@@ -1073,6 +1075,7 @@ def game_screen(screen, slot_num=None, save_state=None):
         zone_pixel_rects.append({
             "name": zone["name"],
             "is_boss_zone": zone.get("is_boss_zone", False),
+            "map_label": zone.get("map_label", True),
             "movement_rect": zone.get("movement_rect"),
             "gate_all_edges": zone.get('gate_all_edges', False),
             "entrance_rect": (
@@ -1535,7 +1538,7 @@ def game_screen(screen, slot_num=None, save_state=None):
         (zone for zone in zone_pixel_rects if zone.get("is_boss_zone")), None
     )
     boss_spawn = None
-    if boss_id and boss_zone:
+    if boss_id and boss_zone and not world.get("boss_spawn_position"):
         boss_anchor = world.get("boss_spawn_anchor") or (
             boss_zone["rect"].centerx / map_width,
             boss_zone["rect"].centery / map_height,
@@ -1585,6 +1588,39 @@ def game_screen(screen, slot_num=None, save_state=None):
     def create_boss():
         """Build the one dedicated boss instance for this stage run."""
         spawn_record = boss_spawn
+        fixed_spawn = world.get("boss_spawn_position")
+        if spawn_record is None and fixed_spawn and boss_id and boss_zone:
+            # Authored exact spawn: nearest collision-free body position to
+            # it. It may lie outside the small arena doorway rectangle, so
+            # no zone restriction is applied here.
+            body_w, body_h = ENEMY_BODY_SIZES[boss_id]
+            map_bounds = pygame.Rect(16, 16, map_width - 32, map_height - 32)
+            radius, step = 160, 4
+            ordered = sorted(
+                (dx * dx + dy * dy, fixed_spawn[0] + dx, fixed_spawn[1] + dy)
+                for dy in range(-radius, radius + 1, step)
+                for dx in range(-radius, radius + 1, step)
+            )
+            for _distance, cx, cy in ordered:
+                body = pygame.Rect(0, 0, body_w, body_h)
+                body.center = (cx, cy)
+                if not map_bounds.contains(body):
+                    continue
+                if body.collidelist(collision_rects) != -1:
+                    continue
+                spawn_record = {
+                    "position": (cx, cy),
+                    "enemy_id": boss_id,
+                    "zone_size": boss_zone["rect"].size,
+                    "zone_name": boss_zone["name"],
+                    "zone_rect": boss_zone["rect"],
+                    "encounter_id": f"{stage.get('id', 'stage')}_boss",
+                    "detection_range": 280,
+                    "chase_range": 640,
+                    "disengage_range": 520,
+                    "return_tolerance": None,
+                }
+                break
         if spawn_record is None and boss_id and boss_zone:
             # A required boss is not an optional patrol. If the general
             # encounter resolver rejects its tight authored anchor, search
@@ -1640,6 +1676,7 @@ def game_screen(screen, slot_num=None, save_state=None):
     # An interrupted fight is restarted at full health on reload. Victory
     # remains authoritative, so a stale encounter marker cannot revive it.
     if (boss_id and not boss_defeated
+            and not world.get("boss_fight_via_gate_only")
             and (save_state or {}).get("active_boss") == boss_id):
         boss_enemy = create_boss()
         if boss_enemy is not None:
@@ -2594,6 +2631,7 @@ def game_screen(screen, slot_num=None, save_state=None):
         if (boss_id and entrance_approached and current_boss_zone is not None
                 and (not boss_defeated or developer_boss_replay)
                 and not boss_is_active
+                and not world.get("boss_fight_via_gate_only")
                 and (boss_access.unlocked or debug_boss_access
                      or developer_mode.enabled)):
             boss_entry_position = (player_rect.x, player_rect.y)
@@ -2867,6 +2905,21 @@ def game_screen(screen, slot_num=None, save_state=None):
                 and not boss_defeated
                 and boss_enemy.active
             )
+            if boss_loss and world.get("boss_loss_respawn_at_checkpoint"):
+                # The fight is over. Remove the boss entirely and fall
+                # through to the normal death flow, which respawns the
+                # player at the statue checkpoint. Pressing Fight Boss at
+                # the gate again starts a brand-new encounter.
+                start_stage_music()
+                enemies[:] = [
+                    enemy for enemy in enemies
+                    if enemy is not boss_enemy
+                    and not enemy.group_id.startswith("boss_wave_")
+                ]
+                boss_enemy = None
+                boss_victory_handled = False
+                previous_boss_zone = None
+                boss_loss = False
             if boss_loss:
                 # Fight lost - drop the boss theme before showing the
                 # retry/retreat modal.
@@ -3006,19 +3059,8 @@ def game_screen(screen, slot_num=None, save_state=None):
             if (gate_decision == "fight_boss" and stage.get("id") == "citadel"
                     and boss_id and not boss_defeated and boss_enemy is None):
                 previous_player_position = player_rect.topleft
-                entrance_rect = boss_main_entrance_rect(boss_zone)
-                if entrance_rect is not None:
-                    # Move the player to the south threshold so the boss
-                    # appears in the visible arena instead of off-screen
-                    # from the distant yellow marker.
-                    # Stand just inside the authored arena threshold.
-                    # The previous placement put the player below the boss
-                    # zone, outside the boss's initial awareness boundary.
-                    player_rect.center = (
-                        entrance_rect.centerx,
-                        min(entrance_rect.centery, boss_zone["rect"].bottom - player_rect.height // 2 - 4),
-                    )
-                    player_x, player_y = map(float, player_rect.topleft)
+                # No teleport: the player stays exactly where the yellow
+                # marker is, and the boss spawns at its authored position.
                 boss_entry_position = player_rect.topleft
                 start_boss_music()
                 intro_decision = open_boss_intro(

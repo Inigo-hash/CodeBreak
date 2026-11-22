@@ -1,7 +1,10 @@
 """Stage-authored post-boss assessment flow, reused by the reminder and exit gate."""
-from src.data.final_assessments import assessment_ids_for_stage
+from src.data.final_assessments import assessment_ids_for_stage, get_final_assessment
 from src.systems.rooms import stage_defeated_enemies
-from src.systems.final_assessment import peek_assessment, start_attempt, finish_attempt, settle_interrupted
+from src.systems.final_assessment import (
+    peek_assessment, start_attempt, finish_attempt, settle_interrupted,
+    pick_practice_assessment,
+)
 from src.systems.stage_gate import evaluate_stage_gate
 from src.screens.assessment_briefing import assessment_dialog
 from src.ui.code_editor import CodeEditor
@@ -29,11 +32,16 @@ def open_final_assessment(screen, stage, state, sessions, persist, mark_passed, 
         return False
     if stage.get('completion', {}).get('practice_after_failure') and session.get('practice_required'):
         if not assessment_dialog(screen, 'PRACTICE BEFORE RETAKING', [
-                'Complete one untimed practice report before the next timed attempt.',
+                'Complete one untimed practice problem before the next timed attempt.',
                 'Practice keeps your keys, boss victory and bonus time. It grants no completion rewards.',
         ], 'OPEN PRACTICE'):
             return False
-        practice = dict(challenge, id='practice_' + challenge['id'], practice_only=True)
+        # Practice a DIFFERENT problem from the one about to be timed.
+        practice_id = pick_practice_assessment(
+            session, challenge['id'], assessment_ids_for_stage(stage))
+        practice_source = get_final_assessment(practice_id) or challenge
+        practice = dict(practice_source, id='practice_' + practice_source['id'],
+                        practice_only=True)
         practice_editor = CodeEditor(screen, practice, screen.copy(), mode='practice')
         practice_editor.run()
         if not practice_editor.solved:

@@ -92,3 +92,100 @@ CITADEL_ASSESSMENTS = {
         ],
     },
 }
+
+
+# ---------------------------------------------------------------------------
+# Additional final problems. Together with the three above, the Citadel has
+# six different problems. Timers scale with difficulty:
+#   Explorer Leaderboard 10:00 < Supply JSON Audit 12:00 < Mission Log Reader
+#   14:00 < Route Validation 15:00 < Expedition Readiness 18:00 < Supply
+#   Request Handler 20:00.
+# ---------------------------------------------------------------------------
+CITADEL_ASSESSMENTS.update({
+    "citadel_log_final": {
+        "id": "citadel_log_final",
+        "title": "Mission Log Reader",
+        "difficulty": "Advanced Final",
+        "type": "function",
+        "function_name": "read_mission_log",
+        "preserve_args": True,
+        "time_limit": 840,
+        "objective": "Use in-memory file text, string methods and safe conversions to read a mission log.",
+        "problem": """Write read_mission_log(log_text). log_text is the text of a log file; the game cannot open real files, so treat the text as the file contents and go through it one line at a time with splitlines(). Each useful line looks like 'name,distance'. Strip whitespace from every line and from each part. Ignore blank lines and lines starting with '#'. Skip lines that do not have exactly two comma-separated parts, lines whose distance is not an integer (use try/except ValueError), and negative distances. Return {'entries': [(name, distance), ...], 'total': sum_of_distances, 'farthest': name_with_the_largest_distance}. Entries keep their original order. If several entries tie for the largest distance, farthest is the first of them. If there are no entries, farthest is None and total is 0.""",
+        "starter_code": "def read_mission_log(log_text):\n    # Read log_text line by line with splitlines() and collect valid entries.\n    pass",
+        "hints": [
+            "Loop over log_text.splitlines() as if each item were one line read from a file.",
+            "Call line.strip() and skip blank or '#' lines with continue.",
+            "Use line.split(',') and check that there are exactly two parts before converting.",
+            "Wrap int(distance_text) in try/except ValueError and skip negative values.",
+            "Track the largest distance with a > comparison so the first tie wins.",
+        ],
+        "function_cases": [
+            {"args": ["# mission log\nMira, 40\nBato,15\n\nbad line\nDara,x\nEli,-5\nYen,40\n"], "expected": {
+                "entries": [("Mira", 40), ("Bato", 15), ("Yen", 40)], "total": 95, "farthest": "Mira"}},
+            {"args": [""], "expected": {"entries": [], "total": 0, "farthest": None}},
+            {"args": ["Kai,0"], "expected": {"entries": [("Kai", 0)], "total": 0, "farthest": "Kai"}},
+            {"args": ["# only a comment\n   \nA,1,2\n"], "expected": {"entries": [], "total": 0, "farthest": None}},
+        ],
+    },
+    "citadel_supply_final": {
+        "id": "citadel_supply_final",
+        "title": "Supply Request Handler",
+        "difficulty": "Advanced Final",
+        "type": "function",
+        "function_name": "process_supply_requests",
+        "preserve_args": True,
+        "time_limit": 1200,
+        "objective": "Define a custom exception and combine try/except/finally with dictionaries to process supply requests.",
+        "problem": """Write process_supply_requests(stock, requests). stock is a dictionary of item -> quantity and requests is a list of (item, raw_amount) tuples. Define class SupplyError(Exception) inside the function. Work on a copy of stock; never change the dictionary that was passed in. Handle every request in order inside try/except/finally: convert raw_amount with int() (a ValueError means the request is 'invalid'); raise SupplyError('unknown') when the item is not in stock; raise SupplyError('invalid') when the amount is zero or negative; raise SupplyError('short') when the amount is larger than the quantity in stock; otherwise subtract the amount. Record each failed request as (item, reason) in order. The finally block must count every request as an attempt. Return {'stock': updated_copy, 'errors': [(item, reason), ...], 'attempts': number_of_requests}.""",
+        "starter_code": "def process_supply_requests(stock, requests):\n    # Define SupplyError, copy stock, and handle each request safely.\n    pass",
+        "hints": [
+            "Define class SupplyError(Exception): pass inside the function, then make remaining = dict(stock).",
+            "Put int(raw_amount) first in the try block so a bad value raises ValueError.",
+            "Check unknown first, then amount <= 0, then amount > remaining[item], raising SupplyError with the reason text.",
+            "Use except SupplyError as error: and append (item, str(error)); use a second except ValueError: for 'invalid'.",
+            "Add 1 to attempts in a finally block so every request is counted.",
+        ],
+        "function_cases": [
+            {"args": [{"potion": 5, "torch": 2}, [["potion", "2"], ["map", "1"], ["torch", "3"], ["potion", "bad"], ["torch", "0"], ["potion", "3"]]],
+             "expected": {"stock": {"potion": 0, "torch": 2},
+                          "errors": [("map", "unknown"), ("torch", "short"), ("potion", "invalid"), ("torch", "invalid")],
+                          "attempts": 6}},
+            {"args": [{}, []], "expected": {"stock": {}, "errors": [], "attempts": 0}},
+            {"args": [{"rope": 1}, [["rope", "1"], ["rope", "1"]]],
+             "expected": {"stock": {"rope": 0}, "errors": [("rope", "short")], "attempts": 2}},
+        ],
+    },
+    "citadel_leaderboard_final": {
+        "id": "citadel_leaderboard_final",
+        "title": "Explorer Leaderboard",
+        "difficulty": "Advanced Final",
+        "type": "function",
+        "function_name": "rank_explorers",
+        "preserve_args": True,
+        "time_limit": 600,
+        "objective": "Use dictionaries, sorted() with a key function and slicing to build a leaderboard.",
+        "problem": """Write rank_explorers(scores). scores is a list of (name, points) tuples and a name can appear more than once. Keep only each explorer's highest points. Return {'players': alphabetical list of unique names, 'best': {name: highest_points}, 'top': up to three names ordered by highest points from largest to smallest, with ties broken alphabetically}. Use sorted() with a key function for the ranking. Return empty collections when scores is empty.""",
+        "starter_code": "def rank_explorers(scores):\n    # Track each explorer's best points, then rank the names.\n    pass",
+        "hints": [
+            "Build best = {} and update best[name] only when the name is new or points is higher.",
+            "sorted(best) gives the alphabetical list of unique names.",
+            "Use sorted(best, key=lambda name: (-best[name], name)) for points high to low, then name.",
+            "Slice the ranked list with [:3] to keep at most three names.",
+        ],
+        "function_cases": [
+            {"args": [[["Mira", 50], ["Bato", 70], ["Mira", 90], ["Dara", 70], ["Eli", 10]]],
+             "expected": {"players": ["Bato", "Dara", "Eli", "Mira"],
+                          "best": {"Mira": 90, "Bato": 70, "Dara": 70, "Eli": 10},
+                          "top": ["Mira", "Bato", "Dara"]}},
+            {"args": [[]], "expected": {"players": [], "best": {}, "top": []}},
+            {"args": [[["Zed", 5]]], "expected": {"players": ["Zed"], "best": {"Zed": 5}, "top": ["Zed"]}},
+            {"args": [[["A", -5], ["A", -9], ["B", -7]]],
+             "expected": {"players": ["A", "B"], "best": {"A": -5, "B": -7}, "top": ["A", "B"]}},
+        ],
+    },
+})
+
+# Every problem in the rotation. The expedition report stays first because it
+# is the stage's recorded completion challenge.
+CITADEL_ASSESSMENT_IDS = tuple(CITADEL_ASSESSMENTS)

@@ -803,7 +803,16 @@ class CodeEditor:
                 # challenge. It is available only after password-gated
                 # developer mode has been enabled from gameplay with F4.
                 if event.key == pygame.K_F7 and developer_mode.enabled:
-                    solution = DEVELOPER_SOLUTIONS.get(self.challenge.get("id"))
+                    challenge_id = self.challenge.get("id")
+                    solution = DEVELOPER_SOLUTIONS.get(challenge_id)
+                    if not solution and isinstance(challenge_id, str):
+                        # Practice runs (e.g. the practice report before an
+                        # assessment retake) reuse the real challenge under
+                        # a "practice_" id, so fall back to the original.
+                        original_id = challenge_id
+                        while not solution and original_id.startswith("practice_"):
+                            original_id = original_id[len("practice_"):]
+                            solution = DEVELOPER_SOLUTIONS.get(original_id)
                     if solution:
                         self.text_buffer.lines = solution.split("\n")
                         self.text_buffer.cursor_row = len(self.text_buffer.lines) - 1

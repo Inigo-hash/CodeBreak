@@ -37,9 +37,10 @@ class Enemy:
     _asset_sources = {
         "corrupted_core_kapre": "kapre_usikan",
         "citadel_flame_warden": "kapre_usikan",
-        # The authored asset directory uses a hyphen, while the gameplay
-        # enemy ID uses underscores.
-        "zombie_lapu_lapu": "zombie-lapu-lapu",
+        # The authored asset directory is "zombie_lapu-lapu" (underscore
+        # after "zombie", hyphen between the names), while the gameplay
+        # enemy ID is "zombie_lapu_lapu".
+        "zombie_lapu_lapu": "zombie_lapu-lapu",
     }
 
     def __init__(self, screen, map_width, map_height, world_x=None, world_y=None,
@@ -131,8 +132,8 @@ class Enemy:
             move_group, attack_group, flinch_name, target_height, canvas = (
                 self._asset_config[self.enemy_id]
             )
-            root = Path("assets/images/frames") / self._asset_sources.get(
-                self.enemy_id, self.enemy_id
+            root = self._resolve_asset_root(
+                self._asset_sources.get(self.enemy_id, self.enemy_id)
             )
             paths = {"walking": {}, "attack": {}, "flinch": {}}
             if self._asset_sources.get(self.enemy_id, self.enemy_id) == 'kapre_usikan':
@@ -196,6 +197,25 @@ class Enemy:
                 f"assets/images/frames/duwende_mandurug/flinch/{direction}.png"
             ])
         return result
+
+    @staticmethod
+    def _resolve_asset_root(name):
+        """Find the frame folder even if its spelling differs slightly.
+
+        Tries the exact name first, then any folder whose name matches when
+        hyphens and underscores are treated as the same character.
+        """
+        base = Path(__file__).resolve().parents[2] / "assets" / "images" / "frames"
+        if not base.exists():
+            base = Path("assets/images/frames")
+        exact = base / name
+        if exact.is_dir():
+            return exact
+        wanted = name.replace("-", "_").lower()
+        for folder in base.iterdir():
+            if folder.is_dir() and folder.name.replace("-", "_").lower() == wanted:
+                return folder
+        return exact
 
     @staticmethod
     def _numbered_frames(folder):

@@ -30,6 +30,23 @@ def peek_assessment(session, rng=None, assessment_ids=None):
     return get_final_assessment(bag[-1])
 
 
+def pick_practice_assessment(session, upcoming_id, assessment_ids, rng=None):
+    """Choose an untimed practice problem that differs from the next real attempt.
+
+    The practice report must never be the same problem the player is about to
+    be timed on, and it avoids repeating the previous practice problem when
+    other choices exist.
+    """
+    rng = rng or random
+    pool = [key for key in dict.fromkeys(assessment_ids) if key != upcoming_id]
+    if not pool:
+        return upcoming_id
+    fresh = [key for key in pool if key != session.get('last_practice')]
+    choice = rng.choice(fresh or pool)
+    session['last_practice'] = choice
+    return choice
+
+
 def start_attempt(session, challenge, now=None, bonus_time=0):
     if session.get('active'):
         raise ValueError('An assessment attempt is already active.')

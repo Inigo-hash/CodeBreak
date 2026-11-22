@@ -24,16 +24,19 @@ CITADEL_STAGE = {
         "zoom": 2.5,
         "follow_edges": True,
         "zones": (),
+        "path_layer": "ground",
+        # GID 2275 is the solid land ground tile; GID 3912 is the surrounding lava.
+        "path_gids": frozenset({2275}),
         "encounters": (
             # Six optional patrol camps at the marked circle locations.
             # Anchors are normalized to the 120x120 map, estimated from the
             # user's screenshot; collision-safe resolver chooses final positions.
             {
                 "id": "citadel_patrol_northwest",
-                "anchor": (14/120, 32/120),
+                "anchor": (20/120, 32/120),
                 "zone_size": (320, 280),
                 "spawn_margin": 32,
-                "require_path": False,
+                "require_path": True,
                 "enemies": ("zombie_aktan",) * 4,
             },
             {
@@ -70,7 +73,7 @@ CITADEL_STAGE = {
             },
             {
                 "id": "citadel_patrol_southwest",
-                "anchor": (15/120, 72/120),
+                "anchor": (20/120, 72/120),
                 "zone_size": (320, 280),
                 "spawn_margin": 32,
                 "require_path": False,

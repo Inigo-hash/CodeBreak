@@ -192,6 +192,7 @@ def load_interactables(tmx_data):
                 "topic_id": properties.get("topic_id"),
                 "terminal_visual": properties.get("terminal_visual", False),
                 "progress_altar_visual": properties.get("progress_altar_visual", False),
+                "proximity_only": bool(properties.get("proximity_only")),
                 "entity_visual": properties.get("entity_visual", False),
                 "interaction_id": str(properties.get('persistent_id') or getattr(obj, "id", "")),
                 "independent_search": bool(properties.get('independent_search')),
@@ -257,12 +258,18 @@ def show_statue_checkpoint_popup(screen, background):
         clock.tick(60)
 
 
+def player_near_proximity_marker(player_rect, marker_rect, reach=48):
+    """Return whether the player is within the marker's automatic trigger range."""
+    return player_rect.colliderect(marker_rect.inflate(reach * 2, reach * 2))
+
+
 def nearest_interactable(player_rect, interactables, reach=32, blockers=()):
     """Choose the closest reachable prop instead of map-file order."""
 
     candidates = [
         item for item in interactables
-        if player_rect.colliderect(item["rect"].inflate(reach * 2, reach * 2))
+        if not item.get("proximity_only")
+        and player_rect.colliderect(item["rect"].inflate(reach * 2, reach * 2))
         and not any(
             wall.clipline(player_rect.center, item["rect"].center)
             for wall in blockers
@@ -419,6 +426,7 @@ def game_screen(screen, slot_num=None, save_state=None):
     if isinstance(saved_checkpoint, (list, tuple)) and len(saved_checkpoint) == 2:
         checkpoint_position = (int(saved_checkpoint[0]), int(saved_checkpoint[1]))
     checkpoint_popup_seen = bool((save_state or {}).get("checkpoint_popup_seen", False))
+    proximity_gate_warning_active = False
     player_speed = 2.50
 
     # --- Restore from a save slot, if one was passed in ---
@@ -2914,6 +2922,33 @@ def game_screen(screen, slot_num=None, save_state=None):
             player_rect, interactables, reach=TILE_SIZE * 2,
             blockers=collision_rects,
         )
+
+        # The Citadel gate marker is visual-only: entering its nearby area
+        # opens the sealed-gate information automatically, without an E press.
+        proximity_gate = next(
+            (item for item in interactables if item.get("proximity_only")),
+            None,
+        )
+        near_proximity_gate = (
+            not engaged
+            and proximity_gate is not None
+            and player_near_proximity_marker(
+                player_rect, proximity_gate["rect"], reach=TILE_SIZE * 3,
+            )
+        )
+        if near_proximity_gate and not proximity_gate_warning_active:
+            proximity_gate_warning_active = True
+            gate_status = evaluate_stage_gate(
+                stage, gameplay_state["keys"], save_challenges_passed,
+                stage_victories(),
+            )
+            open_stage_gate(
+                screen, gate_status, gate_name=stage_exit_name,
+                background=screen.copy(), stage_name=stage_name,
+                developer_access=developer_mode.enabled,
+            )
+        elif not near_proximity_gate:
+            proximity_gate_warning_active = False
 
         # Combat takes input priority over environmental hold interactions.
         if engaged:

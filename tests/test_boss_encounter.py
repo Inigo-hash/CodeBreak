@@ -193,6 +193,24 @@ class BossTriggerTests(unittest.TestCase):
         self.assertEqual(len(damage_seen), 30)
         self.assertEqual(sorted(set(damage_seen)), [25, 35, 40, 45])
 
+    def test_lapu_lapu_animation_assets_load_without_missing_direction_crash(self):
+        self.assertEqual(
+            Enemy._asset_sources["zombie_lapu_lapu"], "zombie-lapu-lapu"
+        )
+        portrait = Path(ENEMIES["zombie_lapu_lapu"]["portrait"])
+        self.assertTrue(portrait.is_file())
+        enemy = Enemy(
+            self.screen, 1920, 1920,
+            world_x=1200, world_y=900,
+            enemy_id="zombie_lapu_lapu", is_boss=True,
+        )
+        for group in ("walking", "attack", "flinch"):
+            for direction in ("north", "south", "east", "west"):
+                self.assertTrue(
+                    enemy.frames[group][direction],
+                    f"Missing {group}/{direction} frames for Zombie Lapu-Lapu",
+                )
+
     def test_kapre_attack_plays_all_nine_frames_using_combat_time(self):
         enemy = Enemy(self.screen, 1000, 800, 500, 400, enemy_id=self.boss_id)
         player = pygame.Rect(0, 0, 20, 20)

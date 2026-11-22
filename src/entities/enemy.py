@@ -37,6 +37,9 @@ class Enemy:
     _asset_sources = {
         "corrupted_core_kapre": "kapre_usikan",
         "citadel_flame_warden": "kapre_usikan",
+        # The authored asset directory uses a hyphen, while the gameplay
+        # enemy ID uses underscores.
+        "zombie_lapu_lapu": "zombie-lapu-lapu",
     }
 
     def __init__(self, screen, map_width, map_height, world_x=None, world_y=None,
@@ -150,6 +153,31 @@ class Enemy:
                 paths["flinch"][direction] = [
                     str(root / "flinch" / flinch_name.format(direction=direction))
                 ]
+            if self.enemy_id == "zombie_lapu_lapu":
+                # The Lapu-Lapu artwork is authored with an incomplete set
+                # of directional sheets. Reuse the closest available facing
+                # rather than crashing the entire game when a direction is
+                # absent. Keep the full south-facing animation when present.
+                for group in ("walking", "attack"):
+                    available = next(
+                        (frames for frames in paths[group].values() if frames),
+                        [],
+                    )
+                    if group == "attack" and not available:
+                        available = next(
+                            (frames for frames in paths["walking"].values() if frames),
+                            [],
+                        )
+                    preferred = paths[group].get("south") or available
+                    if group == "attack" and not preferred:
+                        preferred = paths["walking"].get("south", [])
+                    for direction in ("north", "south", "east", "west"):
+                        if not paths[group][direction]:
+                            paths[group][direction] = list(preferred)
+                for direction in ("north", "south", "east", "west"):
+                    if not paths["flinch"][direction]:
+                        fallback = paths["attack"][direction] or paths["walking"][direction]
+                        paths["flinch"][direction] = fallback[:1]
             return self._normalized_animations(paths, target_height, canvas)
 
         # In this authored set "forward" shows the Duwende's back (moving

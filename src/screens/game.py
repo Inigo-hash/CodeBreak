@@ -47,8 +47,8 @@ from src.ui.chart import (
 from src.systems.combat import (
     COMBAT_DEBUG, DEBUG_ENEMY_AI, FACING_VECTORS, PLAYER_DODGE_SPEED,
     PLAYER_ENERGY_REGEN, PLAYER_TORCH_ENERGY_REGEN, PLAYER_TORCH_HP_REGEN,
-    PlayerCombat, attack_connects, attack_path_blocked, attack_sweep_points,
-    boss_phase_table, move_rect, selected_weapon_damage,
+    PlayerCombat, ENEMY_BODY_SIZES, attack_connects, attack_path_blocked,
+    attack_sweep_points, boss_phase_table, move_rect, selected_weapon_damage,
 )
 from src.systems.audio import (
     CombatAudio, EncounterMusic, apply_music_volume, handle_music_shortcut, play_crumble_sfx,
@@ -66,7 +66,9 @@ from src.data.practice_templates import (
 )
 from src.data.enemies import get_enemy
 from src.screens.topic_lesson import open_topic_lesson
-from src.systems.enemy_spawns import resolve_encounter_spawns
+from src.systems.enemy_spawns import (
+    resolve_encounter_spawns, resolve_boss_spawn_position,
+)
 from src.systems.checkpoints import statue_checkpoint_position
 from src.systems.enemy_alerts import alert_camp
 from src.systems.encounter_progress import newly_cleared_encounter_ids
@@ -1582,21 +1584,50 @@ def game_screen(screen, slot_num=None, save_state=None):
 
     def create_boss():
         """Build the one dedicated boss instance for this stage run."""
-        if boss_spawn is None:
+        spawn_record = boss_spawn
+        if spawn_record is None and boss_id and boss_zone:
+            # A required boss is not an optional patrol. If the general
+            # encounter resolver rejects its tight authored anchor, search
+            # the full arena for a clear body-sized position instead of
+            # silently returning None and leaving Fight Boss with no enemy.
+            desired = (
+                round((world.get("boss_spawn_anchor") or (0.5, 0.5))[0] * map_width),
+                round((world.get("boss_spawn_anchor") or (0.5, 0.5))[1] * map_height),
+            )
+            fallback_position = resolve_boss_spawn_position(
+                boss_id, desired, boss_zone["rect"], map_width, map_height,
+                collision_rects, path_cells, TILE_SIZE,
+            )
+            if fallback_position is not None:
+                spawn_record = {
+                    "position": fallback_position,
+                    "enemy_id": boss_id,
+                    "zone_size": boss_zone["rect"].size,
+                    "zone_name": boss_zone["name"],
+                    "zone_rect": boss_zone["rect"],
+                    "encounter_id": f"{stage.get('id', 'stage')}_boss",
+                    "detection_range": 280,
+                    "chase_range": 640,
+                    "disengage_range": 520,
+                    "return_tolerance": None,
+                }
+        if spawn_record is None:
+            if DEBUG_MODE:
+                print(f"[stage] No collision-free boss spawn found for {boss_id!r}.")
             return None
         boss = Enemy(
             screen, map_width, map_height,
-            world_x=boss_spawn["position"][0],
-            world_y=boss_spawn["position"][1],
-            enemy_id=boss_spawn["enemy_id"],
-            zone_size=boss_spawn["zone_size"],
-            zone_name=boss_spawn["zone_name"],
-            zone_rect=boss_spawn["zone_rect"],
-            group_id=boss_spawn["encounter_id"],
-            detection_range=boss_spawn["detection_range"],
-            chase_range=boss_spawn["chase_range"],
-            disengage_range=boss_spawn["disengage_range"],
-            return_tolerance=boss_spawn["return_tolerance"],
+            world_x=spawn_record["position"][0],
+            world_y=spawn_record["position"][1],
+            enemy_id=spawn_record["enemy_id"],
+            zone_size=spawn_record["zone_size"],
+            zone_name=spawn_record["zone_name"],
+            zone_rect=spawn_record["zone_rect"],
+            group_id=spawn_record["encounter_id"],
+            detection_range=spawn_record["detection_range"],
+            chase_range=spawn_record["chase_range"],
+            disengage_range=spawn_record["disengage_range"],
+            return_tolerance=spawn_record["return_tolerance"],
             combat_scale=1 / ZOOM, combat_tier=world["combat_tier"], is_boss=True,
         )
         boss.phase_thresholds_triggered = set()
@@ -2980,9 +3011,12 @@ def game_screen(screen, slot_num=None, save_state=None):
                     # Move the player to the south threshold so the boss
                     # appears in the visible arena instead of off-screen
                     # from the distant yellow marker.
+                    # Stand just inside the authored arena threshold.
+                    # The previous placement put the player below the boss
+                    # zone, outside the boss's initial awareness boundary.
                     player_rect.center = (
                         entrance_rect.centerx,
-                        entrance_rect.bottom + player_rect.height // 2,
+                        min(entrance_rect.centery, boss_zone["rect"].bottom - player_rect.height // 2 - 4),
                     )
                     player_x, player_y = map(float, player_rect.topleft)
                 boss_entry_position = player_rect.topleft

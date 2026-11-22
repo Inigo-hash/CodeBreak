@@ -55,6 +55,73 @@ DEVELOPER_SOLUTIONS = {
     "castle_rooms_final": "def audit_rooms(rooms):\n    result = []\n    for room in rooms:\n        total = 0\n        for item, raw in room:\n            try:\n                quantity = int(raw)\n            except ValueError:\n                continue\n            if quantity >= 0:\n                total += quantity\n        result.append(total)\n    return result",
     "castle_manifest_final": "def read_manifest(records, stop):\n    result = []\n    for item, raw in records:\n        if item == stop:\n            break\n        try:\n            quantity = int(raw)\n        except ValueError:\n            continue\n        if quantity >= 0:\n            result.append((item, quantity))\n    return result",
 
+    # Stage 3 final assessment rotation (F7 reference solutions).
+    "citadel_expedition_final": """def build_expedition_report(records):
+    class Explorer:
+        def __init__(self, name, health):
+            self.name = name
+            self._health = health
+
+        @property
+        def health(self):
+            return self._health
+
+        def status(self):
+            return "Ready" if self.health >= 50 else "Recover"
+
+    report = []
+    for name, raw_health in records:
+        try:
+            health = int(raw_health)
+        except ValueError:
+            continue
+        if health < 0:
+            continue
+        explorer = Explorer(name, health)
+        report.append({
+            "name": explorer.name,
+            "health": explorer.health,
+            "status": explorer.status(),
+        })
+    return report""",
+    "citadel_json_final": """def summarize_json_supplies(json_text):
+    import json
+    try:
+        data = json.loads(json_text)
+    except json.JSONDecodeError:
+        return {"total": 0, "items": []}
+
+    supplies = data.get("supplies", [])
+    if not isinstance(supplies, list):
+        return {"total": 0, "items": []}
+
+    total = 0
+    items = []
+    for supply in supplies:
+        try:
+            name = supply["name"]
+            quantity = int(supply["quantity"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if quantity < 0:
+            continue
+        total += quantity
+        items.append((name, quantity))
+    return {"total": total, "items": items}""",
+    "citadel_route_final": """def summarize_routes(routes, minimum):
+    result = {}
+    for route in routes:
+        passed_count = sum(
+            1 for checkpoint in route["checkpoints"]
+            if checkpoint["passed"]
+        )
+        if passed_count >= minimum:
+            result[route["name"]] = [
+                checkpoint["name"]
+                for checkpoint in route["checkpoints"]
+                if checkpoint["passed"]
+            ]
+    return result""",
     # Stage 3: five advanced topics, with one F7 solution per challenge.
     "object_oriented_programming_lesson_classes_001": "def describe_player(name):\n    class Player:\n        pass\n    player = Player()\n    player.name = name\n    return {'class': 'Player', 'name': player.name}",
     "object_oriented_programming_lesson_constructors_001": "def create_explorer(name, hp):\n    class Explorer:\n        def __init__(self, name, hp):\n            self.name = name\n            self.hp = hp\n    explorer = Explorer(name, hp)\n    return {'name': explorer.name, 'hp': explorer.hp}",

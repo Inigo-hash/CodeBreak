@@ -33,7 +33,7 @@ CITADEL_STAGE = {
             # user's screenshot; collision-safe resolver chooses final positions.
             {
                 "id": "citadel_patrol_northwest",
-                "anchor": (20/120, 32/120),
+                "anchor": (20/120, 35/120),
                 "zone_size": (320, 280),
                 "spawn_margin": 32,
                 "require_path": True,
@@ -41,7 +41,7 @@ CITADEL_STAGE = {
             },
             {
                 "id": "citadel_patrol_west_center",
-                "anchor": (45/120, 38/120),
+                "anchor": (45/120, 41/120),
                 "zone_size": (320, 280),
                 "spawn_margin": 32,
                 "require_path": True,
@@ -49,7 +49,7 @@ CITADEL_STAGE = {
             },
             {
                 "id": "citadel_patrol_east",
-                "anchor": (94/120, 41/120),
+                "anchor": (94/120, 44/120),
                 "zone_size": (320, 280),
                 "spawn_margin": 32,
                 "require_path": True,
@@ -70,6 +70,14 @@ CITADEL_STAGE = {
                 "spawn_margin": 32,
                 "require_path": True,
                 "enemies": ("zombie_aktan", "white_lady") * 2,
+            },
+            {
+                "id": "citadel_patrol_statue_south",
+                "anchor": (27/120, 75/120),
+                "zone_size": (320, 280),
+                "spawn_margin": 32,
+                "require_path": True,
+                "enemies": ("white_lady",) * 4,
             },
             {
                 "id": "citadel_patrol_southwest",

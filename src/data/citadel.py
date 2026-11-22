@@ -32,14 +32,14 @@ CITADEL_STAGE = {
         "map_layout_version": 3,
     },
     "manual": {
-        "summary": "Study five advanced programming topics in the Citadel. Complete all 14 coding problems to earn five mastery keys.",
+        "summary": "Study six advanced programming topics in the Citadel. Complete all 15 coding problems to earn six mastery keys.",
         "controls": WORLD_CONTROLS,
         "topics": CITADEL_CHALLENGE_IDS,
         "mechanics": [
             "Complete every problem at a topic terminal to earn that topic's mastery key once.",
             "Practice attempts and repeated submissions do not grant extra keys.",
             "File-handling challenges use in-memory text/JSON because the game editor cannot access real files.",
-            "Only the five mapped learning terminals are active. No enemies, boss arena, or encounters are configured.",
+            "Only the six mapped learning terminals are active. No enemies, boss arena, or encounters are configured.",
         ],
         "tips": [
             "Read the topic lesson before opening its challenge list.",
@@ -51,7 +51,7 @@ CITADEL_STAGE = {
     "items": [],
     "completion": {
         "content_ready": True,
-        "required_keys": 5,
+        "required_keys": 6,
         "mastery_bundles": CITADEL_BUNDLES,
         "topic_key_rewards": {cid: 0 for cid in CITADEL_CHALLENGE_IDS},
         "encounter_key_reward": 0,

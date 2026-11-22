@@ -97,6 +97,15 @@ def resolve_encounter_spawns(encounters, map_width, map_height,
                     desired, body_size, bounds, collision_rects, occupied,
                     safe_area, path_cells, tile_size, None, True,
                 )
+            # Last resort: scan every authored island path tile, ordered by
+            # distance from this camp. This fills otherwise skipped patrol
+            # slots while still enforcing body-on-path, map collisions,
+            # player safe area, enemy spacing, and an escape route.
+            if position is None and require_path:
+                position = _nearest_path_position(
+                    desired, body_size, bounds, collision_rects, occupied,
+                    safe_area, path_cells, tile_size,
+                )
             # A genuinely full/blocked island must never prevent stage load.
             if position is None:
                 continue
@@ -117,6 +126,36 @@ def resolve_encounter_spawns(encounters, map_width, map_height,
                 "return_tolerance": encounter.get("return_tolerance"),
             })
     return resolved
+
+
+def _nearest_path_position(desired, body_size, bounds, collision_rects,
+                         occupied, safe_area, path_cells, tile_size):
+    """Find the closest collision-free position anywhere on island path."""
+    candidates = sorted(
+        path_cells,
+        key=lambda cell: (
+            (cell[0] * tile_size + tile_size // 2 - desired[0]) ** 2
+            + (cell[1] * tile_size + tile_size // 2 - desired[1]) ** 2
+        ),
+    )
+    for cell_x, cell_y in candidates:
+        center = (
+            cell_x * tile_size + tile_size // 2,
+            cell_y * tile_size + tile_size // 2,
+        )
+        rect = pygame.Rect(0, 0, *body_size)
+        rect.center = center
+        if (bounds.contains(rect)
+                and not safe_area.colliderect(rect)
+                and rect.collidelist(collision_rects) == -1
+                and rect.collidelist(occupied) == -1
+                and body_is_on_path(rect, path_cells, tile_size)
+                and _has_escape_route(
+                    rect, bounds, collision_rects, path_cells, tile_size,
+                    None, True,
+                )):
+            return rect.center
+    return None
 
 
 def _nearest_walkable(desired, body_size, bounds, collision_rects, occupied,

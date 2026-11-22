@@ -59,13 +59,20 @@ class AnimatedTileRenderer:
         for layer in tmx_data.visible_layers:
             if not hasattr(layer, "data"):
                 continue
+            # The Stage 3 ground layer uses an animated atlas tile across
+            # thousands of cells. That sequence reads as a scrolling flow on
+            # the entire floor, rather than localized lava animation. Keep
+            # the ground's base tile static and animate only the dedicated
+            # lava feature layers.
+            layer_name = str(getattr(layer, "name", "")).lower()
+            animate_layer = "lava" in layer_name
             for x, y, gid in layer:
                 gid = int(gid)
                 if not gid:
                     continue
                 cell = (int(x), int(y))
                 self.cell_layers.setdefault(cell, []).append(gid)
-                if gid in self.animations:
+                if animate_layer and gid in self.animations:
                     self.cells_by_gid.setdefault(gid, set()).add(cell)
 
         self.started_at_ms = None

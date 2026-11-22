@@ -163,7 +163,14 @@ class Enemy:
                         (frames for frames in paths[group].values() if frames),
                         [],
                     )
+                    if group == "attack" and not available:
+                        available = next(
+                            (frames for frames in paths["walking"].values() if frames),
+                            [],
+                        )
                     preferred = paths[group].get("south") or available
+                    if group == "attack" and not preferred:
+                        preferred = paths["walking"].get("south", [])
                     for direction in ("north", "south", "east", "west"):
                         if not paths[group][direction]:
                             paths[group][direction] = list(preferred)

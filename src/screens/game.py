@@ -2893,6 +2893,14 @@ def game_screen(screen, slot_num=None, save_state=None):
 
                     topic_id = near_interactable.get('topic_id')
                     action = near_interactable.get('actions', '')
+                    if action == "open_learning_progress":
+                        open_learning_progress(
+                            screen, stage, build_save_state(),
+                            background=screen.copy(),
+                        )
+                        near_interactable["inspect_progress"] = 0.0
+                        near_interactable["inspecting"] = False
+                        continue
                     is_statue = (
                         action == "search_statue"
                         or (near_interactable.get("checkpoint") and near_interactable.get("healing_station"))

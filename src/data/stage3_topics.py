@@ -19,7 +19,7 @@ FILE_IDS = ("file_handling_lesson_text_001", "file_handling_lesson_json_001")
 ERROR_IDS = ("advance_error_handling_lesson_multiple_001",)
 DATA_IDS = tuple(f"advance_data_structure_lesson_{part}_001" for part in
                  ("nested", "list_comp", "dict_comp"))
-VALIDATION_ID = "advance_data_structure_lesson_validation_001"
+VALIDATION_ID = "code_validation_lesson_tests_001"
 
 OOP_LESSON = """
 CLASSES & OBJECTS: A class is a blueprint; an object is an instance created from it.
@@ -135,9 +135,25 @@ CITADEL_TOPICS = {
  "advance_error_handling_lesson": _topic("advance_error_handling_lesson","Advanced Error Handling",ERROR_LESSON,ERROR_CHALLENGES, ("file_handling_lesson",)),
  "advance_data_structure_lesson": _topic("advance_data_structure_lesson","Advanced Data Structures",DATA_LESSON,
      {cid: DATA_CHALLENGES[cid] for cid in DATA_IDS}, ("advance_error_handling_lesson",)),
+ "code_validation_lesson": _topic(
+     "code_validation_lesson", "Code Validation",
+     """
+     CODE VALIDATION: A program should verify that its calculated result meets
+     the expected result. Comparisons produce Boolean values (True or False).
+         total = sum([2, 3])
+         is_valid = total == 5
+
+     TEST CASES: A test case supplies input values and the expected result.
+     Check matching and non-matching results, including empty inputs and
+     boundary values. A correct function returns False when the result differs.
+     """,
+     {VALIDATION_ID: DATA_CHALLENGES[VALIDATION_ID]},
+     ("advance_data_structure_lesson",),
+ ),
 }
 CITADEL_CHALLENGES = {**OOP_CHALLENGES, **MODULE_CHALLENGES, **FILE_CHALLENGES,
-                      **ERROR_CHALLENGES, **{cid: DATA_CHALLENGES[cid] for cid in DATA_IDS}}
+                      **ERROR_CHALLENGES, **{cid: DATA_CHALLENGES[cid] for cid in DATA_IDS},
+                      VALIDATION_ID: DATA_CHALLENGES[VALIDATION_ID]}
 CITADEL_TOPIC_ORDER = tuple(CITADEL_TOPICS)
 CITADEL_CHALLENGE_IDS = tuple(CITADEL_CHALLENGES)
 CITADEL_BUNDLES = {tid + "_key": {"topics":[tid], "challenges":topic["challenge_ids"], "keys":1}

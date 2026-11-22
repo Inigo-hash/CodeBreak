@@ -195,6 +195,28 @@ class Stage3CurriculumTests(unittest.TestCase):
         self.assertFalse(player_near_proximity_marker(player_far, marker["rect"]))
         self.assertIsNone(nearest_interactable(player_near, [marker]))
 
+    def test_required_boss_fallback_finds_a_clear_position_inside_the_arena(self):
+        from src.systems.enemy_spawns import resolve_boss_spawn_position
+        zone = pygame.Rect(1200, 760, 220, 220)
+        blockers = [pygame.Rect(1200, 760, 220, 220)]
+        # Leave a clear central pocket while the preferred anchor is blocked.
+        blockers.pop()
+        blockers.extend((
+            pygame.Rect(1200, 760, 220, 40),
+            pygame.Rect(1200, 940, 220, 40),
+            pygame.Rect(1200, 800, 40, 140),
+            pygame.Rect(1380, 800, 40, 140),
+        ))
+        position = resolve_boss_spawn_position(
+            "zombie_lapu_lapu", (1210, 780), zone, 1920, 1920,
+            blockers, set(), 16,
+        )
+        self.assertIsNotNone(position)
+        body = pygame.Rect(0, 0, *ENEMY_BODY_SIZES["zombie_lapu_lapu"])
+        body.center = position
+        self.assertTrue(zone.contains(body))
+        self.assertEqual(body.collidelist(blockers), -1)
+
     def test_citadel_boss_has_a_collision_free_spawn_inside_its_arena(self):
         pygame.init()
         try:

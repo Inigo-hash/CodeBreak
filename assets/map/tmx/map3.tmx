@@ -2139,10 +2139,10 @@
     <property name="types" value="interactive"/>
    </properties>
   </object>
-  <object id="22" x="1059" y="478" width="16" height="16">
+  <object id="22" x="1055" y="474" width="24" height="24">
    <properties>
-    <property name="actions" value="open_learning_progress"/>
     <property name="progress_altar_visual" type="bool" value="true"/>
+    <property name="proximity_only" type="bool" value="true"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>

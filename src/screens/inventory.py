@@ -64,9 +64,9 @@ TEXT_DIM      = UI_COLORS["modal_text_dim"]
 # ---------------------------------------------------------------------------
 # Layout constants
 # ---------------------------------------------------------------------------
-TOOLBAR_SLOTS   = 5    # hotbar slots; any of them can be the one in hand
-BAG_COLS        = 5    # bag grid columns - matches the toolbar so it lines up
-BAG_ROWS        = 4    # bag grid rows -> 5 x 4 = 20 bag slots
+TOOLBAR_SLOTS   = 2    # one slot for the sword and one for the torch
+BAG_COLS        = 5    # bag grid columns
+BAG_ROWS        = 5    # bag grid rows -> 5 x 5 = 25 bag slots
 
 SLOT_SIZE       = 62
 SLOT_GAP        = 8
@@ -125,9 +125,9 @@ class PlayerInventory:
     """
 
     def __init__(self):
-        # The 5 equipped items shown on the toolbar.
+        # The 2 equipped items shown on the toolbar.
         self.toolbar = [None] * TOOLBAR_SLOTS
-        # The 20 bag slots shown when the inventory screen is open.
+        # The 25 bag slots shown when the inventory screen is open.
         self.bag = [None] * (BAG_COLS * BAG_ROWS)
         # Which toolbar slot is currently active (0-based).
         self.selected = 0
@@ -250,6 +250,9 @@ class PlayerInventory:
                 or not isinstance(layout.get("bag"), list)):
             return False
         seen = set()
+        # Older saves may contain five hotbar slots. Keep the first two in
+        # the hotbar and migrate supported items from removed slots into the
+        # bag rather than silently discarding them.
         for name in ("toolbar", "bag"):
             slots = getattr(self, name)
             slots[:] = [None] * len(slots)
@@ -270,6 +273,22 @@ class PlayerInventory:
                 if identity not in seen:
                     slots[index] = item
                     seen.add(identity)
+
+        for record in layout["toolbar"][TOOLBAR_SLOTS:]:
+            if not isinstance(record, dict):
+                continue
+            equipment_id = record.get("equipment_id")
+            if not isinstance(equipment_id, str) or equipment_id not in EQUIPMENT:
+                continue
+            identity = ("equipment", equipment_id)
+            if identity in seen:
+                continue
+            free_index = next((i for i, item in enumerate(self.bag) if item is None), None)
+            if free_index is None:
+                break
+            self.bag[free_index] = self.equipment_item(equipment_id)
+            seen.add(identity)
+
         selected = layout.get("selected", 0)
         self.selected = selected if isinstance(selected, int) and 0 <= selected < TOOLBAR_SLOTS else 0
         self.weapon_obtained = any(item and item.kind == "weapon"
@@ -456,7 +475,7 @@ def grid_pixel_height(rows):
 # ===========================================================================
 class Toolbar:
     """
-    The 5-slot hotbar drawn at the bottom-centre of the screen.
+    The 2-slot hotbar drawn at the bottom-centre of the screen.
 
     Usage from the game loop:
 
@@ -500,7 +519,7 @@ class Toolbar:
         caller can skip its own handling for that event.
 
         Supported:
-          * number keys 1-5        -> select that slot
+          * number keys 1-2        -> select that slot
           * mouse wheel            -> step through the slots, wrapping
           * left click on a slot   -> select it
 
@@ -508,7 +527,7 @@ class Toolbar:
         how the player puts their weapon away.
         """
         if event.type == pygame.KEYDOWN:
-            # pygame.K_1 .. pygame.K_5 are consecutive keycodes, so subtracting
+            # pygame.K_1 .. pygame.K_2 are consecutive keycodes, so subtracting
             # K_1 converts the keycode straight into a 0-based slot index.
             if pygame.K_1 <= event.key <= pygame.K_1 + TOOLBAR_SLOTS - 1:
                 self.inventory.select(event.key - pygame.K_1)
@@ -531,7 +550,7 @@ class Toolbar:
 
     # -- drawing ------------------------------------------------------------
     def draw(self, mouse_pos=(-1, -1)):
-        """Draw the hotbar panel, its 5 slots and the held item's name."""
+        """Draw the hotbar panel, its 2 slots and the held item's name."""
         # Semi-transparent backing panel so the world stays a little visible.
         panel = pygame.Surface(self.panel_rect.size, pygame.SRCALPHA)
         pygame.draw.rect(panel, (42, 31, 23, 240),
@@ -607,7 +626,10 @@ class InventoryScreen:
         # --- Panel geometry ------------------------------------------------
         # Sized from the grid itself, so the slots are always perfectly centred
         # and evenly padded no matter what the layout constants above say.
-        self.slot_size = max(32, min(SLOT_SIZE, (self.screen_h-32-292)//5))
+        # Fit five bag rows plus the equipped row inside shorter screens.
+        fixed_height = 128 + 56 + 84 + (BAG_ROWS - 1) * SLOT_GAP
+        available_slot_height = self.screen_h - 32 - fixed_height
+        self.slot_size = max(32, min(SLOT_SIZE, available_slot_height // (BAG_ROWS + 1)))
         grid_w = BAG_COLS*self.slot_size+(BAG_COLS-1)*SLOT_GAP
         grid_h = BAG_ROWS*self.slot_size+(BAG_ROWS-1)*SLOT_GAP
         side_padding, bag_top, equipped_gap = 44, 128, 56
@@ -843,7 +865,7 @@ class InventoryScreen:
             self.screen.blit(num, (rect.left + 4, rect.top + 2))
 
         # --- Close hint ------------------------------------------------------
-        caption = hovered_topic.name if hovered_topic is not None else "Drag to equip  |  1-5 select  |  B / ESC close"
+        caption = hovered_topic.name if hovered_topic is not None else "Drag to equip  |  1-2 select  |  B / ESC close"
         hint = fit_text(self.font_hint, caption, SLOT_SELECTED if hovered_topic else TEXT_DIM, (panel_rect.w-88, 20))
         self.screen.blit(hint,
                          (panel_rect.centerx - hint.get_width() // 2,

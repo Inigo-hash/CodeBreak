@@ -187,7 +187,7 @@ def open_stage_gate(screen, status, gate_name="Stage Exit", background=None,
         elif can_fight_boss:
             lines = [
                 "All keys and required lessons are complete.",
-                "Choose FIGHT BOSS to summon the Kapre in the Corrupted Core.",
+                f"Choose FIGHT BOSS to summon {get_enemy(status.required_boss_id).get('name', 'the stage boss') if get_enemy(status.required_boss_id) else 'the stage boss'} in the arena.",
                 "The final assessment will unlock after the boss is defeated.",
             ]
             draw_text_block(screen, '\n'.join(lines), text_font, UI_COLORS['text'],

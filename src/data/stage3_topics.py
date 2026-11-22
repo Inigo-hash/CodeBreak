@@ -19,7 +19,7 @@ FILE_IDS = ("file_handling_lesson_text_001", "file_handling_lesson_json_001")
 ERROR_IDS = ("advance_error_handling_lesson_multiple_001",)
 DATA_IDS = tuple(f"advance_data_structure_lesson_{part}_001" for part in
                  ("nested", "list_comp", "dict_comp"))
-VALIDATION_ID = "code_validation_lesson_tests_001"
+VALIDATION_ID = "advance_data_structure_lesson_validation_001"
 
 OOP_LESSON = """
 CLASSES & OBJECTS: A class is a blueprint; an object is an instance created from it.

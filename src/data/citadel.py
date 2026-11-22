@@ -77,6 +77,9 @@ CITADEL_STAGE = {
                 "zone_size": (320, 280),
                 "spawn_margin": 32,
                 "require_path": True,
+                # Keep the zombies on the wider clear land to the right of
+                # the two ghosts; default lower offsets overlap blocked tiles.
+                "spawn_offsets": ((-42, -22), (42, -22), (80, 0), (112, 0)),
                 "enemies": ("white_lady",) * 2 + ("zombie_aktan",) * 2,
             },
             {

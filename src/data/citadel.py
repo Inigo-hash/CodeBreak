@@ -44,7 +44,7 @@ CITADEL_STAGE = {
                 "anchor": (45/120, 38/120),
                 "zone_size": (320, 280),
                 "spawn_margin": 32,
-                "require_path": False,
+                "require_path": True,
                 "enemies": ("zombie_aktan", "white_lady") * 2,
             },
             {
@@ -52,7 +52,7 @@ CITADEL_STAGE = {
                 "anchor": (94/120, 41/120),
                 "zone_size": (320, 280),
                 "spawn_margin": 32,
-                "require_path": False,
+                "require_path": True,
                 "enemies": ("white_lady",) * 4,
             },
             {
@@ -60,7 +60,7 @@ CITADEL_STAGE = {
                 "anchor": (22/120, 56/120),
                 "zone_size": (320, 280),
                 "spawn_margin": 32,
-                "require_path": False,
+                "require_path": True,
                 "enemies": ("white_lady",) * 4,
             },
             {
@@ -68,7 +68,7 @@ CITADEL_STAGE = {
                 "anchor": (57/120, 62/120),
                 "zone_size": (320, 280),
                 "spawn_margin": 32,
-                "require_path": False,
+                "require_path": True,
                 "enemies": ("zombie_aktan", "white_lady") * 2,
             },
             {
@@ -76,7 +76,7 @@ CITADEL_STAGE = {
                 "anchor": (20/120, 72/120),
                 "zone_size": (320, 280),
                 "spawn_margin": 32,
-                "require_path": False,
+                "require_path": True,
                 "enemies": ("zombie_aktan",) * 4,
             },
         ),

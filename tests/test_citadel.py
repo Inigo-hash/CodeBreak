@@ -309,6 +309,21 @@ class Stage3CurriculumTests(unittest.TestCase):
         self.assertTrue(CITADEL_STAGE["progress"]["enabled"])
         self.assertEqual(len(CITADEL_STAGE["world"]["encounters"]), 7)
 
+    def test_citadel_combat_tuning_is_more_forgiving_and_sword_is_stronger(self):
+        from src.data.equipment import EQUIPMENT
+        from src.data.combat_difficulty import COMBAT_PROFILES
+        from src.systems.combat import BASE_SWORD_DAMAGE, BOSS_PHASES
+        advanced = COMBAT_PROFILES[3]
+        self.assertEqual(EQUIPMENT["base_sword"]["damage"], 30)
+        self.assertEqual(BASE_SWORD_DAMAGE, 30)
+        self.assertLess(advanced["hp"], 1.70)
+        self.assertLess(advanced["boss_hp"], 1.55)
+        self.assertLess(advanced["damage"], 1.60)
+        self.assertLess(advanced["speed"], 1.18)
+        self.assertGreater(advanced["cooldown"], 0.74)
+        lapu = BOSS_PHASES["zombie_lapu_lapu"]
+        self.assertEqual(lapu["base_sword_damage"], 60)
+        self.assertEqual(tuple(phase.sword_damage for phase in lapu["phases"]), (75, 90))
 
 
 if __name__ == "__main__":

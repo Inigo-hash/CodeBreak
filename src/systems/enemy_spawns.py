@@ -36,7 +36,7 @@ def _group_offset(index):
 
 def resolve_encounter_spawns(encounters, map_width, map_height,
                              collision_rects, path_cells, tile_size,
-                             player_spawn, *, zones):
+                             player_spawn, *, zones, max_enemies=None):
     """Return enemy records on nearby walkable ground, spaced per group.
 
     ``zones`` is the loaded stage's zone list. It is keyword-only and has
@@ -50,6 +50,8 @@ def resolve_encounter_spawns(encounters, map_width, map_height,
     bounds = pygame.Rect(16, 16, map_width - 32, map_height - 32)
 
     for encounter in encounters:
+        if max_enemies is not None and len(resolved) >= max_enemies:
+            break
         anchor_x = round(encounter["anchor"][0] * map_width)
         anchor_y = round(encounter["anchor"][1] * map_height)
         zone_record, zone_rect = get_zone_record_at(

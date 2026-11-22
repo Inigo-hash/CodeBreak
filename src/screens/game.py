@@ -3555,9 +3555,9 @@ def game_screen(screen, slot_num=None, save_state=None):
             reminder_font = title_font(16)
 
             reminder_surface = reminder_font.render(
-                "FINAL CHALLENGE NOT COMPLETED",
+                "FINAL ASSESSMENT AVAILABLE - CLICK TO OPEN",
                 True,
-                (255, 120, 120),
+                UI_COLORS["gold"],
             )
 
             reminder_rect = reminder_surface.get_rect(
@@ -3589,13 +3589,9 @@ def game_screen(screen, slot_num=None, save_state=None):
 
             pygame.draw.rect(
                 screen,
-                (
-                    UI_COLORS["gold"]
-                    if reminder_hovered
-                    else UI_COLORS["crimson"]
-                ),
+                (255, 220, 90) if reminder_hovered else UI_COLORS["gold"],
                 reminder_box,
-                2,
+                3 if reminder_hovered else 2,
                 border_radius=6,
             )
 

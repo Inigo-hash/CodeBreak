@@ -13,6 +13,7 @@ from src.learning.sandbox import run_user_code
 from src.systems.topic_mastery import complete_topic_challenge
 from src.systems.enemy_spawns import resolve_encounter_spawns, body_is_on_path
 from src.systems.checkpoints import statue_checkpoint_position
+from src.systems.combat import ENEMY_BODY_SIZES
 
 
 class Stage3CurriculumTests(unittest.TestCase):
@@ -110,7 +111,7 @@ class Stage3CurriculumTests(unittest.TestCase):
                     x, y = spawn["position"]
                     self.assertLessEqual(abs(x - anchor[0]), half_w)
                     self.assertLessEqual(abs(y - anchor[1]), half_h)
-                    body = pygame.Rect(0, 0, *(__import__("src.systems.combat", fromlist=["ENEMY_BODY_SIZES"]).ENEMY_BODY_SIZES[spawn["enemy_id"]]))
+                    body = pygame.Rect(0, 0, *ENEMY_BODY_SIZES[spawn["enemy_id"]])
                     body.center = spawn["position"]
                     self.assertTrue(body_is_on_path(body, path_cells, 16))
 

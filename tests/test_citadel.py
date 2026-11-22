@@ -62,9 +62,16 @@ class Stage3CurriculumTests(unittest.TestCase):
         self.assertEqual(state["keys"], 1)
         self.assertIn(topic_id, state["topics_completed"])
 
-    def test_cleanup_remains_no_combat_or_boss_content(self):
-        self.assertEqual(CITADEL_STAGE["enemies"], [])
-        self.assertEqual(CITADEL_STAGE["world"]["encounters"], ())
+    def test_citadel_patrols_added_without_boss_content(self):
+        self.assertEqual(set(CITADEL_STAGE["enemies"]), {"white_lady", "zombie_aktan"})
+        encounters = CITADEL_STAGE["world"]["encounters"]
+        self.assertEqual(len(encounters), 6)
+        self.assertEqual(len({camp["id"] for camp in encounters}), 6)
+        self.assertTrue(all(camp["require_path"] is False for camp in encounters))
+        compositions = [camp["enemies"] for camp in encounters]
+        self.assertIn(("zombie_aktan",) * 4, compositions)
+        self.assertIn(("white_lady",) * 4, compositions)
+        self.assertIn(("zombie_aktan", "white_lady") * 2, compositions)
         self.assertEqual(CITADEL_STAGE["world"]["zones"], ())
         self.assertNotIn("required_boss", CITADEL_STAGE["completion"])
         self.assertEqual(CITADEL_STAGE["completion"]["required_keys"], 6)

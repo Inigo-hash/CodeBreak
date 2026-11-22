@@ -41,6 +41,9 @@ CITADEL_STAGE = {
         # The arena is compact; leave room for the boss body and its escape
         # route instead of shrinking the spawn area by four tiles per side.
         "boss_spawn_margin": 16,
+        # The altar is north of the player-facing approach; place the boss at
+        # the marked X on the south side of the arena rather than its center.
+        "boss_spawn_anchor": (0.68, 0.502),
         "encounters": (
             # Six optional patrol camps at the marked circle locations.
             # Anchors are normalized to the 120x120 map, estimated from the

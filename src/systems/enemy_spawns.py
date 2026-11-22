@@ -82,14 +82,22 @@ def resolve_encounter_spawns(encounters, map_width, map_height,
             )
             desired = (anchor_x + offset[0], anchor_y + offset[1])
             body_size = ENEMY_BODY_SIZES[enemy_id]
+            require_path = encounter.get("require_path", True)
             position = _nearest_walkable(
                 desired, body_size, bounds, collision_rects, occupied,
-                safe_area, path_cells, tile_size, spawn_area,
-                encounter.get("require_path", True),
+                safe_area, path_cells, tile_size, spawn_area, require_path,
             )
-            # A crowded authored group must never prevent the stage loading.
-            # If every valid dirt position is already occupied, omit only
-            # that excess member instead of putting it on grass or raising.
+            # If a camp's small local footprint is blocked by map geometry,
+            # retry against the entire authored landmass. The path-cell check
+            # remains mandatory, so this can never place an enemy on lava or
+            # outside the island; it only prevents valid land positions from
+            # being discarded because a local camp rectangle was too tight.
+            if position is None and require_path:
+                position = _nearest_walkable(
+                    desired, body_size, bounds, collision_rects, occupied,
+                    safe_area, path_cells, tile_size, None, True,
+                )
+            # A genuinely full/blocked island must never prevent stage load.
             if position is None:
                 continue
             # Reserve the real combat body. Enemy-to-enemy collision keeps

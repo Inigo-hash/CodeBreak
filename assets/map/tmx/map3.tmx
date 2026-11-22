@@ -2141,6 +2141,7 @@
   </object>
   <object id="22" x="1398" y="920" width="64" height="64">
    <properties>
+    <property name="actions" value="open_learning_progress"/>
     <property name="terminal_visual" type="bool" value="true"/>
     <property name="types" value="interactive"/>
    </properties>

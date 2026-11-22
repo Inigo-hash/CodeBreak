@@ -1893,81 +1893,81 @@
     <property name="types" value="interactive"/>
    </properties>
   </object>
-  <object id="5" x="769" y="800" width="31" height="32">
+  <object id="5" x="769" y="798.667" width="35.6667" height="40">
    <properties>
     <property name="actions" value="search_hole"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>
-  <object id="8" x="768" y="897" width="32.6667" height="32">
+  <object id="8" x="768" y="894.333" width="38" height="40">
    <properties>
     <property name="actions" value="search_hole"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>
-  <object id="9" x="912.333" y="735.667" width="31.3333" height="33">
+  <object id="9" x="905.666" y="735.667" width="38" height="37.6667">
    <properties>
     <property name="actions" value="search_hole"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>
-  <object id="10" x="912" y="848.333" width="28.3333" height="32">
+  <object id="10" x="908.333" y="843.333" width="32" height="44.3333">
    <properties>
     <property name="actions" value="search_hole"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>
-  <object id="11" x="912" y="1008.67" width="28" height="31">
+  <object id="11" x="906" y="1008.67" width="34" height="41.6667">
    <properties>
     <property name="actions" value="search_hole"/>
     <property name="topic_id" value="object_oriented_programming_lesson"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>
-  <object id="12" x="703.333" y="997" width="35.3333" height="28">
+  <object id="12" x="701" y="997" width="42.6666" height="33.6667">
    <properties>
     <property name="actions" value="search_hole"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>
-  <object id="13" x="528.333" y="997.667" width="31.6667" height="27">
+  <object id="13" x="528.333" y="997.667" width="41" height="34.3333">
    <properties>
     <property name="actions" value="search_hole"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>
-  <object id="14" x="496.333" y="784.333" width="29.3333" height="32.6667">
+  <object id="14" x="488.333" y="784.333" width="37.3333" height="39.6667">
    <properties>
     <property name="actions" value="search_hole"/>
     <property name="topic_id" value="advance_error_handling_lesson"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>
-  <object id="15" x="1410.33" y="817" width="30.6667" height="32">
+  <object id="15" x="1410.33" y="817" width="38.3334" height="38.6667">
    <properties>
     <property name="actions" value="search_hole"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>
-  <object id="16" x="1343.67" y="901" width="32.6667" height="26.6667">
+  <object id="16" x="1335" y="901" width="41.3334" height="35">
    <properties>
     <property name="actions" value="search_hole"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>
-  <object id="17" x="1185" y="1008" width="31.6667" height="33">
+  <object id="17" x="1185" y="1008" width="38.6667" height="39.3333">
    <properties>
     <property name="actions" value="search_hole"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>
-  <object id="18" x="1135.67" y="1092.33" width="32.6667" height="28">
+  <object id="18" x="1127.67" y="1092.33" width="40.6667" height="35">
    <properties>
     <property name="actions" value="search_hole"/>
     <property name="types" value="interactive"/>
    </properties>
   </object>
-  <object id="19" x="1007.67" y="1093.67" width="32.3333" height="26.6667">
+  <object id="19" x="1001" y="1093.67" width="39" height="34">
    <properties>
     <property name="actions" value="search_hole"/>
     <property name="types" value="interactive"/>

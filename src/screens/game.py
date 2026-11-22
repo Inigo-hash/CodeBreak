@@ -1483,7 +1483,7 @@ def game_screen(screen, slot_num=None, save_state=None):
     )
     boss_spawn = None
     if boss_id and boss_zone:
-        boss_anchor = (
+        boss_anchor = world.get("boss_spawn_anchor") or (
             boss_zone["rect"].centerx / map_width,
             boss_zone["rect"].centery / map_height,
         )

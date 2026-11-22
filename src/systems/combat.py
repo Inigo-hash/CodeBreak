@@ -48,7 +48,7 @@ PLAYER_DEFEAT_DURATION = (DEATH_FRAME_COUNT - 1) * DEATH_FRAME_DURATION + DEATH_
 # prevents a logical range from silently doubling while sprites stay fixed.
 PLAYER_ATTACK_REACH = 48
 PLAYER_ATTACK_WIDTH = 40
-BASE_SWORD_DAMAGE = 25
+BASE_SWORD_DAMAGE = 30
 COMBAT_DEBUG = False
 DEBUG_ENEMY_AI = False
 
@@ -143,11 +143,11 @@ class BossPhase:
 # boss before its phase table is tuned.
 BOSS_PHASES = {
     "zombie_lapu_lapu": {
-        "base_sword_damage": 45,
+        "base_sword_damage": 60,
         "phase_label": "LAPU-LAPU'S WAR FURY",
         "phases": (
-            BossPhase(1000, 60, 1.08, ("zombie_aktan",)),
-            BossPhase(500, 75, 1.16, ("white_lady", "zombie_aktan")),
+            BossPhase(1000, 75, 1.08, ("zombie_aktan",)),
+            BossPhase(500, 90, 1.16, ("white_lady", "zombie_aktan")),
         ),
     },
     'citadel_flame_warden': {

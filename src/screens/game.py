@@ -2491,7 +2491,10 @@ def game_screen(screen, slot_num=None, save_state=None):
             player_rect.topleft = last_safe_position
             player_x, player_y = map(float, last_safe_position)
             current_boss_zone = None
-            if entrance_approached:
+            # Citadel already has its own sealed-gate popup at the yellow
+            # marker. Keep the boss entrance locked here, but do not open a
+            # second checklist modal at the arena doorway.
+            if entrance_approached and stage["id"] != "citadel":
                 open_stage_gate(
                     screen, boss_access, background=screen.copy(),
                     gate_name=boss_zone["name"], show_boss_requirement=False,

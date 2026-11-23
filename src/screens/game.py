@@ -38,6 +38,7 @@ from src.systems.stage_progress import StageProgress
 from src.ui.stage_panel import StagePanel
 from src.ui.gameplay_hud import (
     GameplayHUD, MINIMAP_FRAME, build_minimap_frame, build_view_vignette,
+    toggle_keybinds,
     draw_low_health_warning,
 )
 from src.ui.chart import (
@@ -2251,6 +2252,12 @@ def game_screen(screen, slot_num=None, save_state=None):
 
                         # When the lesson/editor closes, this loop opens
                         # the inventory again.
+
+                # C shows / hides the main-keybinds panel on the left. Nothing
+                # else in the world uses plain C (Ctrl+C only exists inside
+                # the text editors), so it is free here.
+                elif event.key == pygame.K_c and not paused:
+                    toggle_keybinds()
 
                 elif event.key == pygame.K_F1 and not paused:
                     night_mode = not night_mode

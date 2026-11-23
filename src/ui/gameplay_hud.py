@@ -25,6 +25,39 @@ CRIMSON = UI_COLORS["crimson"]
 BLUE = UI_COLORS["blue_bright"]
 
 NAME_GOLD = (236, 205, 149)
+
+# The handful of keys a player needs from the first minute on. Deliberately
+# short: the full list lives in How To Play / the stage manual, and the
+# panel is only meant to be glanced at. Ordered by importance, because the
+# panel drops rows from the bottom when a small window leaves no room.
+MAIN_KEYBINDS = (
+    ("W A S D", "Move"),
+    ("E", "Attack"),
+    ("SHIFT", "Dodge"),
+    ("HOLD E", "Search"),
+    ("B", "Open bag"),
+    ("1 - 2", "Hotbar slot"),
+    ("M", "Island map"),
+    ("ESC", "Pause"),
+)
+
+# Module-level on purpose: a HUD is rebuilt for every stage, so keeping the
+# on/off choice here means Stage 1, 2 and 3 all behave the same and a player
+# who hid the panel does not see it come back after a stage change.
+# Flip this to False to make the panel start hidden.
+_keybinds_visible = True
+
+
+def keybinds_visible():
+    return _keybinds_visible
+
+
+def toggle_keybinds():
+    """Flip the keybind panel on/off and return the new state."""
+    global _keybinds_visible
+    _keybinds_visible = not _keybinds_visible
+    return _keybinds_visible
+
 # Warm amber for the energy bar while torchlight is accelerating regen, so
 # the boost is readable without adding another HUD element. Health uses a
 # green instead: both bars turning the same colour would read as one
@@ -419,6 +452,9 @@ class GameplayHUD:
                                     energy_boosted, hp_healing)
         self.draw_stage_progress(progress_rect,
                                  self.bonus_time if bonus_time is None else bonus_time)
+        if _keybinds_visible:
+            self.draw_keybinds(progress_rect.bottom + 8, progress_rect.x,
+                               progress_rect.width, width, height)
 
         if interaction_prompt:
             self.draw_interaction_prompt(interaction_prompt, width, height)
@@ -524,6 +560,66 @@ class GameplayHUD:
             self.screen.blit(icon, (x, row_y))
             text = fit_text(self.font, label, TEXT, (column_width-26, max(21, self.font.get_height())))
             self.screen.blit(text, (x+26, row_y))
+
+    def draw_keybinds(self, top, x, panel_width, screen_w, screen_h):
+        """Main-controls cheat sheet in the left column, toggled with C.
+
+        It sits between the stage panel and the minimap. The minimap's top
+        edge is worked out with the same sizing rule the minimap uses (see
+        tutor_minimap_rect), so on a short window the panel shows fewer
+        rows instead of running underneath the map.
+        """
+        minimap_size = max(200, min(300, int(screen_h * .30)))
+        limit = screen_h - 14 - minimap_size - 8
+
+        row_h = self.small.get_height() + 4
+        header_h = self.stage_heading.get_height() + 6
+        pad = 10
+        fit_rows = (limit - top - header_h - pad * 2) // row_h
+        rows = MAIN_KEYBINDS[:max(0, fit_rows)]
+        # Two rows is not a useful cheat sheet; better to show nothing.
+        if len(rows) < 3:
+            return
+
+        # Shrink-wrap the panel to its content instead of matching the
+        # (much wider) stage panel above it: widest of the header line and
+        # the key + action rows, capped at the column width.
+        title_w = self.stage_heading.size("CONTROLS")[0]
+        hint = render_text(self.small, "[C] HIDE", DIM)
+        key_w = max(self.small.size(key)[0] for key, _ in rows) + 6
+        action_w = max(self.small.size(action)[0] for _, action in rows)
+        content_w = max(title_w + hint.get_width() + 24,
+                        key_w + 8 + action_w)
+        width = min(panel_width, content_w + pad * 2 + 4 + 8)
+
+        rect = pygame.Rect(x, top, width,
+                           pad * 2 + header_h + len(rows) * row_h)
+        self._profile_panel(rect)
+
+        # Header: title on the left, the toggle hint on the right.
+        title = fit_text(self.stage_heading, "CONTROLS", NAME_GOLD,
+                         (rect.width - hint.get_width() - pad * 3,
+                          self.stage_heading.get_height()))
+        self.screen.blit(title, (rect.x + pad + 2, rect.y + pad))
+        self.screen.blit(hint, hint.get_rect(
+            midright=(rect.right - pad - 2,
+                      rect.y + pad + self.stage_heading.get_height() // 2)))
+        line_y = rect.y + pad + header_h - 3
+        pygame.draw.line(self.screen, METAL, (rect.x + pad, line_y),
+                         (rect.right - pad, line_y))
+
+        # One shared key column so every action lines up.
+        key_w = min(key_w, rect.width // 2)
+        y = line_y + 5
+        for key, action in rows:
+            key_surf = fit_text(self.small, key, GOLD,
+                                (key_w, self.small.get_height()))
+            self.screen.blit(key_surf, (rect.x + pad + 2, y))
+            act_surf = fit_text(self.small, action, TEXT,
+                                (rect.width - key_w - pad * 2 - 12,
+                                 self.small.get_height()))
+            self.screen.blit(act_surf, (rect.x + pad + 2 + key_w + 8, y))
+            y += row_h
 
     def draw_bonus_time(self, x, y, bonus_time):
         value = max(0, round(float(bonus_time or 0)))

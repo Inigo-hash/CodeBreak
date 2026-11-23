@@ -46,7 +46,7 @@ CONTROL_SECTIONS = [
     ("SEARCHING AND ITEMS", [
         ("Hold E", "Search a nearby object"),
         ("B", "Open your bag"),
-        ("1 - 5 / Wheel", "Pick a hotbar slot"),
+        ("1 - 2 / Wheel", "Pick a hotbar slot"),
     ]),
 
     ("SCREENS", [

@@ -1929,7 +1929,7 @@ def game_screen(screen, slot_num=None, save_state=None):
 
                 continue
 
-            # Let the hotbar claim its own input first (number keys 1-5, mouse
+            # Let the hotbar claim its own input first (number keys 1-2, mouse
             # wheel and clicks on a slot). Only while actually playing - the
             # pause menu should not have its clicks stolen. handle_event()
             # returns True when it used the event, so we skip the rest below.
@@ -3658,7 +3658,7 @@ def game_screen(screen, slot_num=None, save_state=None):
                 interaction_prompt = "Hold E to interact"
 
         if not interaction_prompt and not player_inventory.weapon_equipped:
-            interaction_prompt = "[B] Inventory | [1-5] Select sword, torch, or empty slot"
+            interaction_prompt = "[B] Inventory | [1-2] Select sword, torch, or empty slot"
 
         # HUD consumes existing state and nearby-interactable detection.
         gameplay_hud.draw(

@@ -3018,8 +3018,10 @@
   <object id="1541" gid="149" x="1824.91" y="1531.36" width="28.25" height="39.75"/>
   <object id="2879" x="2207.88" y="1950.63">
    <properties>
+    <property name="actions" value="search_statue"/>
     <property name="checkpoint" type="bool" value="true"/>
     <property name="healing_station" type="bool" value="true"/>
+    <property name="types" value="interactive"/>
    </properties>
    <polygon points="0,0 -7.75,-0.132666 -14.375,11.0113 -19.5,28.3905 -28.375,31.8398 -35,41.3917 -43.25,49.219 -48.25,51.3417 -49,77.2115 -21.5,105.071 16.625,105.867 37.75,96.4481 49.25,74.0275 50.5,50.5457 32.125,36.0851 17,23.3492 11.25,2.52065"/>
   </object>
